@@ -1,0 +1,32 @@
+
+// A -> B -> C
+// B is measured
+
+v1 = vmax1 A / (km1 + A)
+v2 = vmax2 B / (km2 + B)
+
+A' = -v1
+B' = v1-v2
+C' = v2
+
+!!B
+
+A = 1
+B = 0
+C = 0
+
+vmax1 = 0.1
+km1   = 0.8
+vmax2 = p *0.02
+km2   = 0.3
+
+p = 0
+@10 p = go
+
+tf = 80
+
+script
+setting go = 0,1
+solve
+next
+end script

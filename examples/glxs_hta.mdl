@@ -1,0 +1,15 @@
+variables: SDLTSH HTA
+
+glx1 : HTA -> SDLTSH, rate = V1*HTA/(Km1 + HTA)
+glx2 : SDLTSH -> , rate = V2*SDLTSH/(Km2 + SDLTSH)
+
+find V1 in [0.00001, 0.0001]
+find Km1 in [0.01, 1]
+find V2 in [0.00001, 0.0001]
+find Km2 in [0.01, 1]
+
+timecourse TSH2a.txt
+timecourse TSH2b.txt
+
+generations = 200
+genomesize = 80
