@@ -119,8 +119,28 @@ class StimatorParser:
 
           self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
 
+    def reset(self):
+          self.error = None
+          self.errorlinetext = ""
+          self.errorline   = -1
+          self.errorstart  = -1
+          self.errorend    = -1
+
+          self.generations = 200
+          self.genomesize  = 10
+
+          self.rates       = []
+          self.variables   = []
+          self.constants   = {}
+          self.parameters  = []
+          self.timecourses = []
+          self.atdefs      = []
+
+          self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
     def parse (self,modeltext):
           "Parses a model definition text line by line"
+          
+          self.reset()
 
           #parse the lines of text using matches and dispatch to *Parse functions
           self.errorline = 0
@@ -204,7 +224,7 @@ class StimatorParser:
         entry['name'] = name
 
         #process rate
-        entry['rate']     = match.group('rate')
+        entry['rate']     = match.group('rate').strip()
         entry['rateline'] = self.errorline
         entry['ratestart']= match.start('rate')
         entry['rateend']  = match.end('rate')
@@ -414,34 +434,29 @@ timecourse anotherfile.txt
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     textlines.insert(12,'pipipi = pois  #this is an error')
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     del(textlines[12])
     textlines.insert(6,'find pois in [1e-5, 2 + kkk]  #this is an error')
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     del(textlines[6])
     textlines.insert(6,'pipipi = pi*1e100**10000  #this is an overflow')
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     del(textlines[6])
     textlines.insert(12,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     del(textlines[12])
     del(textlines[5])
@@ -449,14 +464,12 @@ timecourse anotherfile.txt
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     del(textlines[5])
     textlines.insert(5,'bolas !! not good')
 
     parser.parse(textlines)
     printParserResults(parser)
-    parser.__init__()
 
     print
     raw_input("Press ENTER to finish...")

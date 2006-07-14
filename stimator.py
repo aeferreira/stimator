@@ -262,8 +262,8 @@ class stimatorMainFrame(wx.Frame):
         # Timecourse menu
         TCMenu = wx.Menu()
         self.AddMenuItem(TCMenu, 'Add...', 'Add time courses', self.OnLoadTC)
-        self.AddMenuItem(TCMenu, 'Remove selected', 'Remove selected time courses', self.OnUnloadTC)
-        self.AddMenuItem(TCMenu, 'Remove All', 'Remove all time courses', self.OnUnloadTCAll)
+        #self.AddMenuItem(TCMenu, 'Remove selected', 'Remove selected time courses', self.OnUnloadTC)
+        #self.AddMenuItem(TCMenu, 'Remove All', 'Remove all time courses', self.OnUnloadTCAll)
         menu.Append(TCMenu, 'Time Courses')
 
         # Results menu
@@ -274,8 +274,8 @@ class stimatorMainFrame(wx.Frame):
         menu.Append(ResultsMenu, 'Results')
 
         # Settings menu
-        fileMenu = wx.Menu()
-        menu.Append(fileMenu, 'Settings')
+        #fileMenu = wx.Menu()
+        #menu.Append(fileMenu, 'Settings')
 
         # Help menu
         helpMenu = wx.Menu()
@@ -383,19 +383,19 @@ class stimatorMainFrame(wx.Frame):
 
 ##---------------- Grid functions
 
-    def RefreshTCGrid(self):
-        self.timecoursegrid.ClearGrid()
-        self.timecoursegrid.ClearSelection()
-        self.timecoursegrid.EnableEditing(0)
-        nr = self.timecoursegrid.GetNumberRows()
-        np = len(self.TCpaths)
-        if np > nr:
-                self.timecoursegrid.AppendRows(np-nr)
-        for i in range(np):
-            info = readTCinfo(self.TCpaths[i])
-            self.timecoursegrid.SetCellValue(i,2,info["fullpath"])
-            self.timecoursegrid.SetCellValue(i,0,info["filename"])
-        self.timecoursegrid.AutoSizeColumns()
+    #~ def RefreshTCGrid(self):
+        #~ self.timecoursegrid.ClearGrid()
+        #~ self.timecoursegrid.ClearSelection()
+        #~ self.timecoursegrid.EnableEditing(0)
+        #~ nr = self.timecoursegrid.GetNumberRows()
+        #~ np = len(self.TCpaths)
+        #~ if np > nr:
+                #~ self.timecoursegrid.AppendRows(np-nr)
+        #~ for i in range(np):
+            #~ info = readTCinfo(self.TCpaths[i])
+            #~ self.timecoursegrid.SetCellValue(i,2,info["fullpath"])
+            #~ self.timecoursegrid.SetCellValue(i,0,info["filename"])
+        #~ self.timecoursegrid.AutoSizeColumns()
 
 ##---------------- Event handlers
 
@@ -448,28 +448,13 @@ class stimatorMainFrame(wx.Frame):
     def OnLoadTC(self, event):
         fileNames = self.SelectFilesDialog(True, self.GetCurrentDir())
         if len(fileNames) > 0:
-            for n in fileNames:
-              if self.TCpaths.count(n)==0:
-                 self.TCpaths.append(n)
-            self.RefreshTCGrid()
-
-    def OnUnloadTC(self, event):
-        tl = self.timecoursegrid.GetSelectionBlockTopLeft()
-        br = self.timecoursegrid.GetSelectionBlockBottomRight()
-        toRemove=[]
-        for i in range(len(tl)) :
-              toRemove.extend(range(tl[i][0],br[i][0]+1))
-        toRemove.reverse()
-        for i in toRemove:
-             del self.TCpaths[i]
-        self.RefreshTCGrid()
-
-    def OnUnloadTCAll(self, event):
-        del self.TCpaths[:]
-        self.RefreshTCGrid()
+            self.ModelEditor.Home()
+            for name in fileNames:
+                self.ModelEditor.AddText("timecourse %s"%(name))
+                self.ModelEditor.NewLine()
 
     def OnSaveResults(self, event):
-        self.write("`SaveResults' not implemented!")
+        self.write("'SaveResults' not implemented!")
         event.Skip()
 
     def OnAboutMenu(self, event):
