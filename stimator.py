@@ -5,8 +5,8 @@
 
 Copyright 2005-2006 Antonio Ferreira
 S-timator uses Python, wxPython, and wxWindows."""
-stimatorVersion = "0.20"
-stimatorDate = "7 July 2006"
+stimatorVersion = "0.25"
+stimatorDate = "14 July 2006"
 
 import os
 import os.path
@@ -19,7 +19,7 @@ import stimator_drivergen
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
 demoText = """\
-//Write your model here...
+Write your model here...
 
 """
 
@@ -211,7 +211,6 @@ class stimatorMainFrame(wx.Frame):
 
     def MakeStimatorWidgets(self):
         global ID_LT; ID_LT = wx.NewId()
-#        self.LogText = wx.TextCtrl(self.bottom_pane, ID_LT, "", style=wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
         self.LogText = SDLeditor(self.bottom_left_pane, ID_LT, self)
 
         global ID_ME; ID_ME = wx.NewId()
@@ -353,7 +352,7 @@ class stimatorMainFrame(wx.Frame):
 
 ##---------------- Utility functions
 
-    def GetCurrentDir(self):
+    def GetFileDir(self):
         if self.fileName is not None:
             return os.path.split(self.fileName)[0]
         return "."
@@ -381,22 +380,6 @@ class stimatorMainFrame(wx.Frame):
              self.SetTitle("S-timator [%s]" % self.GetFileName())
         return sucess
 
-##---------------- Grid functions
-
-    #~ def RefreshTCGrid(self):
-        #~ self.timecoursegrid.ClearGrid()
-        #~ self.timecoursegrid.ClearSelection()
-        #~ self.timecoursegrid.EnableEditing(0)
-        #~ nr = self.timecoursegrid.GetNumberRows()
-        #~ np = len(self.TCpaths)
-        #~ if np > nr:
-                #~ self.timecoursegrid.AppendRows(np-nr)
-        #~ for i in range(np):
-            #~ info = readTCinfo(self.TCpaths[i])
-            #~ self.timecoursegrid.SetCellValue(i,2,info["fullpath"])
-            #~ self.timecoursegrid.SetCellValue(i,0,info["filename"])
-        #~ self.timecoursegrid.AutoSizeColumns()
-
 ##---------------- Event handlers
 
     def OnNewMenu(self, event):
@@ -410,7 +393,7 @@ class stimatorMainFrame(wx.Frame):
         if self.ModelEditor.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
                 return
-        fileName = self.SelectFileDialog(True, self.GetCurrentDir())
+        fileName = self.SelectFileDialog(True, self.GetFileDir())
         if fileName is not None:
             if self.OpenFile(fileName) is False:
                 self.OpenFileError(fileName)
@@ -425,7 +408,7 @@ class stimatorMainFrame(wx.Frame):
         self.ModelEditor.SetFocus()
 
     def OnSaveAsMenu(self, event):
-        fileName = self.SelectFileDialog(False, self.GetCurrentDir(),self.GetFileName())
+        fileName = self.SelectFileDialog(False, self.GetFileDir(),self.GetFileName())
         if fileName is not None:
             self.fileName = fileName
             wx.LogMessage("Saving %s..." % self.fileName)
@@ -446,10 +429,13 @@ class stimatorMainFrame(wx.Frame):
         self.ModelEditor.Paste()
 
     def OnLoadTC(self, event):
-        fileNames = self.SelectFilesDialog(True, self.GetCurrentDir())
+        fileNames = self.SelectFilesDialog(True, self.GetFileDir())
         if len(fileNames) > 0:
             self.ModelEditor.Home()
             for name in fileNames:
+                d,n = os.path.split(name)
+                if d == self.GetFileDir():
+                    name = n
                 self.ModelEditor.AddText("timecourse %s"%(name))
                 self.ModelEditor.NewLine()
 
@@ -465,9 +451,6 @@ class stimatorMainFrame(wx.Frame):
         if self.AGEDOprocess is not None:
            self.MessageDialog("Stimator is performing a computation!\nPlease wait.", "Error")
            return
-        #if len(self.TCpaths) == 0 :
-           #self.MessageDialog("No time courses loaded!\nPlease load some time courses with menu Time Courses -> Add...", "Error")
-           #return
         self.LogText.Clear()
         self.LogText.Refresh()
         self.parametergrid.ClearGrid()
@@ -497,25 +480,24 @@ class stimatorMainFrame(wx.Frame):
            return
 
         #generate C++ driver
-        currDir = self.GetCurrentDir()
+        currDir = self.GetFileDir()
         os.chdir(currDir)
         templ = stimator_drivergen.stimatorDriverCPPtemplate
         templ = templ.replace("#####verbose_level#####",       str(1) )
         templ = templ.replace("#####nTCs#####",                str(len(parser.timecourses)) )
-        #templ = templ.replace("#####nTCs#####",                str(len(self.TCpaths)) )
         templ = templ.replace("#####npars#####",               str(len(parser.parameters)) )
         templ = templ.replace("#####nvars#####",               str(len(parser.variables)) )
         templ = templ.replace("#####individuals#####",         str(parser.genomesize))
         templ = templ.replace("#####generations#####",         str(parser.generations))
 
-        #pathlist = [k.replace("\\","\\\\") for k in self.TCpaths]
-        #templ = templ.replace("#####filelist#####",            '"%s"'% ('",\n"'.join(pathlist)))
-        #pathlist = [os.path.split(k)[1] for k in self.TCpaths]
-        #templ = templ.replace("#####filenameslist#####",       '"%s"'% ('",\n"'.join(pathlist)))
-
         pathlist = parser.timecourses
         pathlist = [os.path.abspath(k) for k in pathlist]
         pathlist = [k.replace("\\","\\\\") for k in pathlist]
+        for n in pathlist:
+            if not os.path.exists(n) or not os.path.isfile(n):
+                self.MessageDialog("Time course file \n%s\ndoes not exist"% n, "Error")
+                return
+        
         templ = templ.replace("#####filelist#####",            '"%s"'% ('",\n"'.join(pathlist)))
         pathlist = [os.path.split(k)[1] for k in pathlist]
         templ = templ.replace("#####filenameslist#####",       '"%s"'% ('",\n"'.join(pathlist)))
@@ -600,7 +582,7 @@ class stimatorMainFrame(wx.Frame):
 
     def PostProcessEnded(self):
         self.write("Reading results...")
-        os.chdir(self.GetCurrentDir())
+        os.chdir(self.GetFileDir())
         if not os.path.exists("best.dat"):
            self.write("Results not available!")
            return
@@ -644,7 +626,7 @@ class stimatorMainFrame(wx.Frame):
         wx.Kill(self.pid, wx.SIGKILL)
 
     def OnGenXLS(self, event):
-        os.chdir(self.GetCurrentDir())
+        os.chdir(self.GetFileDir())
         if not os.path.exists("best.dat"):
            self.MessageDialog("best.dat was not found", "Error")
            return
