@@ -395,6 +395,7 @@ class SDLeditor(stc.StyledTextCtrl):
     def __init__(self, parent, ID, log):
         stc.StyledTextCtrl.__init__(self, parent, ID)
         self.log = log
+        #self.UsePopUp(0)
 
         self.Bind(stc.EVT_STC_DO_DROP, self.OnDoDrop)
         self.Bind(stc.EVT_STC_DRAG_OVER, self.OnDragOver)
