@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: ISO-8859-1 -*-
 
-"""S-timator : A Python front-end to AGEDO.
+"""S-timator : still only a Python front-end to AGEDO.
 
 Copyright 2005-2006 Antonio Ferreira
 S-timator uses Python, wxPython, and wxWindows."""
