@@ -1,20 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: ISO-8859-1 -*-
 
-"""S-timator : still only a Python front-end to AGEDO.
+"""S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2006 Antonio Ferreira
-S-timator uses Python, wxPython, and wxWindows."""
-stimatorVersion = "0.25"
-stimatorDate = "14 July 2006"
+Copyright 2005-2008 Antonio Ferreira
+S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
+stimatorVersion = "0.601"
+stimatorDate = "27 June 2008"
 
+import sys
 import os
 import os.path
 import re
+import thread
+#import time
+import DESolver
+from numpy import *
 import wx
+import wx.lib.newevent
 from   stimatorwidgts import SDLeditor, ParamGrid, TCGrid, readTCinfo
 import modelparser
-import stimator_drivergen
+import stimator_timecourse
+from scipy import integrate
+import pylab as p
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
@@ -23,7 +31,146 @@ Write your model here...
 
 """
 
-# fonts to be used.
+##------------- Globals for DeOdeSolver
+timecoursedata = []
+besttimecoursedata = []
+m_Parameters = None
+
+##------------- Computing thread class
+
+# NewEvent objects and a EVT binder functions
+(UpdateGenerationEvent, EVT_UPDATE_GENERATION) = wx.lib.newevent.NewEvent()
+(EndComputationEvent, EVT_END_COMPUTATION) = wx.lib.newevent.NewEvent()
+
+
+class DeOdeSolver(DESolver.DESolver):
+
+    def setup(self, parser, calcThread):
+        global m_Parameters, timecoursedata
+        self.parser = parser
+        self.calcThread = calcThread
+        
+        # cutoffEnergy is 0.1% of deviation from data
+        self.cutoffEnergy =  0.000001*sum([nansum(abs(tc[:,1:])) for tc in timecoursedata])
+        
+        # scale times to maximum time in data
+        scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in timecoursedata]))
+        
+        # generate function calcDerivs (with scale)
+        sss = parser.ODEcalcString(scale = scale)
+        cc = compile(sss, 'bof.log','exec')
+        exec cc
+        self.calcDerivs = calcDerivs
+
+        # store initial values and (scaled) time points
+        self.X0 = []
+        self.times = []
+        for data in timecoursedata:
+            y0 = copy(data[0, 1:]) # variables are in columns 1 to end
+            self.X0.append(y0)
+            
+            t  = data[:, 0]        # times are in columns 0
+            t0 = t[0]
+            times = (t-t0)/scale+t0  # this scales time points
+            self.times.append(times)
+        
+        # dump messages to files instead of standard output streams
+        self.msgfile = open("msgs.txt", 'w')
+        self.msgfileerr = open("msgserr.txt", 'w')
+        self.oldstdout = sys.stdout
+        self.oldstderr = sys.stderr
+        sys.stdout = self.msgfile
+        sys.stderr = self.msgfileerr
+        
+    
+    def externalEnergyFunction(self,trial):
+        global m_Parameters, timecoursedata
+        for par in range(self.parameterCount):
+            if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
+                return 1.0E300
+        
+        m_Parameters = trial
+        
+        timecourse_scores = zeros(len(timecoursedata))
+
+        for (i,data) in enumerate(timecoursedata):
+            y0 = copy(self.X0[i])
+            t  = self.times[i]
+
+            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+
+            if infodict['message'] != 'Integration successful.':
+                return (1.0E300)
+            S = (Y- data[:, 1:])**2
+            score = nansum(S)
+            timecourse_scores[i]=score
+        
+        gscore = timecourse_scores.sum()
+        return gscore
+
+    def reportGeneration (self):
+        evt = UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
+        wx.PostEvent(self.calcThread.win, evt)
+
+    def reportFinal (self):
+        global besttimecoursedata
+        if self.exitCode==0: outCode = -1 
+        else: 
+            outCode = self.exitCode
+            #generate best time-courses
+            besttimecoursedata = []
+            for i in range(len(timecoursedata)):
+                y0 = copy(self.X0[i])
+                t  = self.times[i]
+                Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+                besttimecoursedata.append(Y)
+
+        self.msgfile.close()
+        self.msgfileerr.close()
+        sys.stdout = self.oldstdout
+        sys.stderr = self.oldstderr
+        evt = EndComputationEvent(exitCode = outCode)
+        wx.PostEvent(self.calcThread.win, evt)
+
+class CalcOptmThread:
+    def __init__(self, win):
+        self.win = win
+        #self.genNum = 0
+        self.computationEnded = False
+
+    def Start(self, parser):
+        mins = array([k[1] for k in parser.parameters])
+        maxs = array([k[2] for k in parser.parameters])
+        
+        self.solver = DeOdeSolver(len(parser.parameters), # number of parameters
+                                 int(parser.genomesize),  # genome size
+                                 int(parser.generations), # max number of generations
+                                 mins, maxs,              # min and max parameter values
+                                 "Best2Exp",              # DE strategy
+                                 0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
+                                 False)                   # use class random number methods
+
+        self.solver.setup(parser,self)
+        
+        self.keepGoing = self.running = True
+        thread.start_new_thread(self.Run, ())
+
+    def Stop(self):
+        self.keepGoing = False
+
+    def IsRunning(self):
+        return self.running
+
+    def Run(self):
+        while self.keepGoing:
+            self.solver.computeGeneration()
+            if self.solver.exitCode !=0: self.Stop()
+
+        self.solver.finalize()
+        self.running = False
+
+
+##------------- Fonts to be used.
 if wx.Platform == '__WXMSW__':
     face1 = 'Arial'
     face2 = 'Times New Roman'
@@ -78,12 +225,9 @@ class stimatorMainFrame(wx.Frame):
         self.MakeStimatorWidgets()
         self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
 
-        self.Bind(wx.EVT_IDLE, self.OnIdle)
-
-        # We can either derive from wx.Process and override OnTerminate
-        # or we can let wx.Process send this window an event that is
-        # caught in the normal way...
-        self.Bind(wx.EVT_END_PROCESS, self.OnProcessEnded)
+        #self.Bind(wx.EVT_IDLE, self.OnIdle)
+        self.Bind(EVT_UPDATE_GENERATION, self.OnUpdateGeneration)
+        self.Bind(EVT_END_COMPUTATION, self.OnEndComputation)
 
         self.__set_properties()
         self.__do_layout()
@@ -100,15 +244,16 @@ class stimatorMainFrame(wx.Frame):
     def InitVariables(self):
         self.fileName = None
         self.TCpaths = []
-        self.AGEDOprocess = None
+        self.optimizerThread = None
         self.needRefreshParamsGrid = False
-        self.pid = None
+        #self.pid = None
 
     def __del__(self):
-        if self.AGEDOprocess is not None:
-            self.AGEDOprocess.Detach()
-            self.AGEDOprocess.CloseOutput()
-            self.AGEDOprocess = None
+        pass
+        #~ if self.optimizerThread is not None:
+            #~ self.optimizerThread.Detach()
+            #~ self.optimizerThread.CloseOutput()
+            #~ self.optimizerThread = None
 
     def __set_properties(self):
         # main window configuration
@@ -344,7 +489,6 @@ class stimatorMainFrame(wx.Frame):
         wx.LogMessage('Open file error.')
         self.MessageDialog("Error opening file '%s'!" % fileName, "Error")
 
-
     def SaveFileError(self, fileName):
         wx.LogMessage('Save file error.')
         self.MessageDialog("Error saving file '%s'!" % fileName, "Error")
@@ -447,9 +591,29 @@ class stimatorMainFrame(wx.Frame):
         self.MessageDialog(ABOUT_TEXT, "About S-timator")
         pass
 
+    def IndicateError(self, parser):
+       self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
+       msg = "ERROR in line %d:" % (parser.errorline)
+       msg = msg +"\n" +parser.errorlinetext
+       caretline = [" "]*(len(parser.errorlinetext)+1)
+       caretline[parser.errorstart] = "^"
+       caretline[parser.errorend] = "^"
+       caretline = "".join(caretline)
+       msg = msg +"\n" + caretline
+       msg = msg +"\n" + parser.error
+       self.write(msg)
+
+    def OnAbortButton(self, event):
+        if self.optimizerThread is None:
+           self.MessageDialog("S-timator is NOT performing a computation!", "Error")
+           return
+
+        self.optimizerThread.Stop()
+
     def OnComputeButton(self, event):
-        if self.AGEDOprocess is not None:
-           self.MessageDialog("Stimator is performing a computation!\nPlease wait.", "Error")
+        global timecoursedata
+        if self.optimizerThread is not None:
+           self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
            return
         self.LogText.Clear()
         self.LogText.Refresh()
@@ -463,167 +627,87 @@ class stimatorMainFrame(wx.Frame):
         
         parser.parse(textlines)
         if parser.error:
-           self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
-           msg = "ERROR in line %d:" % (parser.errorline)
-           msg = msg +"\n" +parser.errorlinetext
-           caretline = [" "]*(len(parser.errorlinetext)+1)
-           caretline[parser.errorstart] = "^"
-           caretline[parser.errorend] = "^"
-           caretline = "".join(caretline)
-           msg = msg +"\n" + caretline
-           msg = msg +"\n" + parser.error
-           self.write(msg)
+           self.IndicateError(parser)
            return
 
         if len(parser.timecourses) == 0 :
            self.MessageDialog("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", "Error")
            return
-
-        #generate C++ driver
-        currDir = self.GetFileDir()
-        os.chdir(currDir)
-        templ = stimator_drivergen.stimatorDriverCPPtemplate
-        templ = templ.replace("#####verbose_level#####",       str(1) )
-        templ = templ.replace("#####nTCs#####",                str(len(parser.timecourses)) )
-        templ = templ.replace("#####npars#####",               str(len(parser.parameters)) )
-        templ = templ.replace("#####nvars#####",               str(len(parser.variables)) )
-        templ = templ.replace("#####individuals#####",         str(parser.genomesize))
-        templ = templ.replace("#####generations#####",         str(parser.generations))
-
-        pathlist = parser.timecourses
-        pathlist = [os.path.abspath(k) for k in pathlist]
-        pathlist = [k.replace("\\","\\\\") for k in pathlist]
-        for n in pathlist:
-            if not os.path.exists(n) or not os.path.isfile(n):
-                self.MessageDialog("Time course file \n%s\ndoes not exist"% n, "Error")
+        os.chdir(self.GetFileDir())
+        pathlist = [os.path.abspath(k) for k in parser.timecourses]
+        #pathlist = [k.replace("\\","\\\\") for k in pathlist] #no longer needed?
+        for filename in pathlist:
+            if not os.path.exists(filename) or not os.path.isfile(filename):
+                self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "Error")
                 return
+
+        #TODO: the following two lists should be owned by the computation object
+        self.write("-------------------------------------------------------")
+        self.timecourseheaders = []
+        timecoursedata = []
+        for filename in pathlist:
+            h,d = stimator_timecourse.readTimeCourseFromFile(filename)
+            if d.shape == (0,0):
+                self.write("file %s does not contain valid time-course data"%(filename))
+            else:
+                self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1], filename))
+                self.timecourseheaders.append(h)
+                timecoursedata.append(d)
         
-        templ = templ.replace("#####filelist#####",            '"%s"'% ('",\n"'.join(pathlist)))
-        pathlist = [os.path.split(k)[1] for k in pathlist]
-        templ = templ.replace("#####filenameslist#####",       '"%s"'% ('",\n"'.join(pathlist)))
-
-        templ = templ.replace("#####parameternames#####",      '"%s"'% ('","'.join([k[0] for k in parser.parameters])))
-        templ = templ.replace("#####varnames#####",            '"%s"'% ('","'.join(parser.variables)))
-        templ = templ.replace("#####constraints_min#####",     ','.join([str(k[1]) for k in parser.parameters]))
-        templ = templ.replace("#####constraints_max#####",     ','.join([str(k[2]) for k in parser.parameters]))
-        templ = templ.replace("#####CalculateDerivatives#####", stimator_drivergen.writeAGEDOCalculateDerivatives(parser))
-
-        self.write("writing C++ driver file...")
-        out = open("stimator_driver.cpp", 'w')
-        out.write(templ)
-        out.close()
-        self.write("OK")
-        #return
-        #compile C++ driver
-
-        self.write(" ")
-        self.write("compiling C++ driver file...")
-        mypath = os.path.split(__file__)[0]
-        cmd = "bcc32 "
-        cmd = cmd + '-I"%s/agedo" ' % mypath
-        cmd = cmd + '-L"%s" ' % mypath
-        cmd = cmd + "-DNDEBUG -O2 -Oi -Ov -Oc -w-8027 "
-        cmd = cmd + "stimator_driver.cpp AGEDOLib.lib"
-
-        fo = os.popen(cmd)
-        for ll in fo:
-            self.write(ll)
-        ret = fo.close()
-        if ret :
-            self.write("Compilation FAILED!\n")
-            return
-        self.write("compilation sucessful!\n")
-        os.remove("stimator_driver.obj")
-        os.remove("stimator_driver.tds")
-        #os.remove("stimator_driver.cpp") # this should be optional
         
-        #execute driver
+        self.write("-------------------------------------------------------")
+        self.write("Solving %s..."%self.GetFileName())
 
-        if os.path.exists("best.dat"):
-           os.remove("best.dat")
-        self.write(" ")
-        self.write("Running driver executable...")
-        self.AGEDOprocess = wx.Process(self)
-        self.AGEDOprocess.Redirect();
-        cmd = "stimator_driver.exe"
-        self.pid = wx.Execute(cmd, wx.EXEC_ASYNC, self.AGEDOprocess)
-        if not self.pid:
-            self.write("Could not start %s"%cmd)
-            self.AGEDOprocess.Destroy()
-            self.AGEDOprocess = None
-            return
-        self.write('process started: "%s" pid: %s\n' % (cmd, self.pid))
+        self.optimizerThread=CalcOptmThread(self)
+        self.optimizerThread.Start(parser)
+        
+    def OnUpdateGeneration(self, evt):
+        self.write("%-4d: %f" % (evt.generation, evt.energy))
 
+    def OnEndComputation(self, evt):
+        if evt.exitCode == -1:
+            self.write("\nOptimization aborted by user!")
+        else:
+            self.write(self.optimizerThread.solver.reportFinalString())
+            self.needRefreshParamsGrid = True
+            self.PostProcessEnded()
+        self.optimizerThread = None
 
-    def OnIdle(self, evt):
-        if self.AGEDOprocess is not None:
-            stream = self.AGEDOprocess.GetInputStream()
-            if stream.CanRead():
-                text = stream.read()
-                self.write(text)
-            return
-        if self.needRefreshParamsGrid:
-           self.needRefreshParamsGrid = False
-           self.PostProcessEnded()
-
-    def OnProcessEnded(self, evt):
-        self.write('AGEDO ended, pid:%s,  exitCode: %s\n' %
-                       (evt.GetPid(), evt.GetExitCode()))
-
-        stream = self.AGEDOprocess.GetInputStream()
-
-        if stream.CanRead():
-            text = stream.read()
-            self.write(text)
-
-        self.AGEDOprocess.Destroy()
-        self.AGEDOprocess = None
-        self.needRefreshParamsGrid = True
+    #def OnIdle(self, evt):
+        #~ if self.needRefreshParamsGrid:
+           #~ self.needRefreshParamsGrid = False
+           #~ self.PostProcessEnded()
 
     def PostProcessEnded(self):
-        self.write("Reading results...")
-        os.chdir(self.GetFileDir())
-        if not os.path.exists("best.dat"):
-           self.write("Results not available!")
-           return
-        #if os.path.exists("generations.dat"):
-           #os.remove("generations.dat")
-        if os.path.exists("stimator_driver.exe"): #this should be optional
-           os.remove("stimator_driver.exe")
-        best = open ("best.dat", 'r')
-        line = best.readline()
-        while not line.startswith("Parameters"):
-              line = best.readline()
-        parlist = []
-        line = best.readline()
-        line = best.readline()
-        tokens = line.split()
-        while len(tokens)>0:
-           parlist.append(tokens)
-           line = best.readline()
-           tokens = line.split()
-        best.close()
+        global timecoursedata, besttimecoursedata
+        solver = self.optimizerThread.solver
+        
+        #write parameters to grid
         self.parametergrid.ClearGrid()
         self.parametergrid.ClearSelection()
-        #self.parametergrid.EnableEditing(0)
-        np = len(parlist)
+        solver = self.optimizerThread.solver
+        np = solver.parameterCount
         nr = self.parametergrid.GetNumberRows()
         if np > nr:
                 self.parametergrid.AppendRows(np-nr)
         for i in range(np):
-            self.parametergrid.SetCellValue(i,0,parlist[i][0])
-            self.parametergrid.SetCellValue(i,1,parlist[i][1])
-            self.parametergrid.SetCellValue(i,2,parlist[i][2])
+            self.parametergrid.SetCellValue(i,0,solver.parser.parameters[i][0])
+            self.parametergrid.SetCellValue(i,1,"%f" % solver.bestSolution[i])
+            self.parametergrid.SetCellValue(i,2,'N/A')
         self.parametergrid.AutoSizeColumns()
-        self.write("Results read.")
-        #self.resNotebook.SetSelection(1)
-
-    def OnAbortButton(self, event):
-        if self.AGEDOprocess is None:
-           self.MessageDialog("Stimator is not performing a computation!", "Error")
-           return
-
-        wx.Kill(self.pid, wx.SIGKILL)
+ 
+        SDLTSH, HTA = besttimecoursedata[0].T
+        t = timecoursedata[0][:,0]
+        f1 = p.figure()
+        p.plot(t, SDLTSH, 'r-', label='SDLTSH')
+        p.plot(t, HTA  , 'b-', label='HTA')
+        p.grid()
+        p.legend(loc='best')
+        p.xlabel('time (s)')
+        p.ylabel('concentrations (mM)')
+        p.title('Example from time course TSH2a.txt')
+        p.show()
+        
 
     def OnGenXLS(self, event):
         os.chdir(self.GetFileDir())

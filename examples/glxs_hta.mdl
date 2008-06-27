@@ -1,4 +1,4 @@
-variables: SDLTSH HTA
+variables SDLTSH HTA
 
 glx1 : HTA -> SDLTSH, rate = V1*HTA/(Km1 + HTA)
 glx2 : SDLTSH -> , rate = V2*SDLTSH/(Km2 + SDLTSH)

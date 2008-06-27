@@ -14,6 +14,7 @@ The parsing loop relies on regular expressions."""
 
 import re
 import math
+from numpy import *
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -62,7 +63,7 @@ realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 
 emptylinepattern  = r"^\s*(?:#.*)?$"
 constdefpattern   = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
-varlistpattern    = r"^\s*variables\s*:\s*(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
+varlistpattern    = r"^\s*variables\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
 finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+identifierpattern+r")\s*in\s*\[\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*\]\s*(?:#.*)?$"
 ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*,\s*rate\s*=\s*(?P<rate>[^#]+)(?:#.*)?$"
 tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
@@ -137,6 +138,8 @@ class StimatorParser:
           self.atdefs      = []
 
           self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
+    
+    
     def parse (self,modeltext):
           "Parses a model definition text line by line"
           
@@ -345,6 +348,51 @@ class StimatorParser:
         entry = tuple([name,flulist[0],flulist[1]])
         self.parameters.append(entry)
 
+    def ODEcalcString(self, scale=1.0):
+        if self.error:
+           return ""
+        nvars = len(self.variables)
+        result = "def calcDerivs(variables,t):\n\tglobal m_Parameters\n"
+        result +="\tderivatives = zeros(%d)\n" % nvars
+
+        #write constants
+        for k in self.constants.keys():
+              vline = "\t%s = %g\n" % (k, self.constants[k])
+              result = result + vline
+
+        #write @ definitions    #TODO!!!
+        #~ for k in parser.atdefs:
+              #~ vline = "\tif(solution_time*scale >= %g) %s = %g;\n" % (k[0], k[1], k[2])
+              #~ result = result + vline
+
+        #write rates
+        for k in self.rates:
+              vline = k['rate']
+              # replace varnames
+              for i in range(nvars):
+                  vline = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, vline)
+              # replace parameters
+              for i in range(len(self.parameters)):
+                  vline = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, vline)
+              # replace constants...become local variables
+              #for (i,k) in enumerate(self.constants.keys()):
+                  #vline = re.sub(r"\b"+ k +r"\b", "m_Constants[%d]"%i, vline)
+              vline = "\tv_%s = %s\n" %(k['name'],vline)
+              result = result + vline
+
+        #write differential equations
+        for k in range(nvars):
+              row = self.stoichmatrixrows[k]
+              eqline = "\tderivatives[%d] = " % k
+              for r in row.keys():
+                  if row[r]>0:
+                      eqline = eqline + "+"
+                  eqline = eqline + ("%g * v_%s " %(float(row[r]), r))
+              result = result + eqline + "\n"
+              
+
+        return result + '\treturn derivatives*%f' % scale
+
 #----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------
@@ -352,6 +400,7 @@ class StimatorParser:
 def printParserResults(parser):
     if parser.error:
          print
+         print "*****************************************"
          print "ERROR in line %d:" % (parser.errorline)
          print parser.errorlinetext
          caretline = [" "]*(len(parser.errorlinetext)+1)
@@ -434,6 +483,23 @@ timecourse anotherfile.txt
 
     parser.parse(textlines)
     printParserResults(parser)
+    sss = parser.ODEcalcString()
+    print 'ODEcalcString:'
+    print '------------------------------------------------'
+    print sss
+    print '------------------------------------------------'
+    cc = compile(sss, 'bof.log','exec')
+    print 'Result from compile:', cc
+    exec cc
+    print 'Result from exec:', calcDerivs
+    
+    m_Parameters = (1,1,1,1,1)
+    Xpoint = (0,0,0)
+    print 'calcDerivs(',Xpoint, ',0) with parameters =', m_Parameters, 'equals',
+    print calcDerivs((0,0,0),0)
+    
+    print '\n======================================================'
+    print 'The following modifications produce errors............'
 
     textlines.insert(12,'pipipi = pois  #this is an error')
 
