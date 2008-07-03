@@ -85,13 +85,17 @@ class DeOdeSolver(DESolver.DESolver):
     
     def externalEnergyFunction(self,trial):
         global m_Parameters, timecoursedata
+        #~ if (trial > self.maxInitialValue).any():
+            #~ return 1.0E300
+        #~ if (trial < self.minInitialValue).any():
+            #~ return 1.0E300
         for par in range(self.parameterCount):
             if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
                 return 1.0E300
         
         m_Parameters = trial
         
-        timecourse_scores = zeros(len(timecoursedata))
+        timecourse_scores = empty(len(timecoursedata))
 
         for (i,data) in enumerate(timecoursedata):
             y0 = copy(self.X0[i])
@@ -239,12 +243,6 @@ class stimatorMainFrame(wx.Frame):
         self.top_pane = wx.Panel(self.mainwindow, -1)
         self.bottom_pane = wx.Panel(self.mainwindow, -1)
 
-        self.bottomwindow = wx.SplitterWindow(self.bottom_pane, -1, style=wx.SP_3D|wx.SP_BORDER)
-        self.bottom_left_pane = wx.Panel(self.bottomwindow, -1)
-        self.bottom_right_pane = wx.Panel(self.bottomwindow, -1)
-
-        self.resNotebook = wx.Notebook(self.bottom_right_pane, -1, style=0)
-
         self.InitVariables()
 
         self.MakeMenus()
@@ -272,7 +270,6 @@ class stimatorMainFrame(wx.Frame):
         self.fileName = None
         self.TCpaths = []
         self.optimizerThread = None
-        self.needRefreshParamsGrid = False
         self.parser = modelparser.StimatorParser()
 
 
@@ -292,12 +289,6 @@ class stimatorMainFrame(wx.Frame):
             self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
         self.maintoolbar.Realize()
 
-        self.parametergrid.CreateGrid(5, 3)
-        #self.parametergrid.EnableEditing(False)
-        self.parametergrid.SetColLabelValue(0, "Name")
-        self.parametergrid.SetColLabelValue(1, "Value")
-        self.parametergrid.SetColLabelValue(2, "SE")
-
         # STC widgets configuration
         # ModelEditor
         self.ModelEditor.SetText(demoText)
@@ -316,35 +307,16 @@ class stimatorMainFrame(wx.Frame):
 
 
     def __do_layout(self):
-        sizer_1 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_2 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_5 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_main = wx.BoxSizer(wx.HORIZONTAL)
         sizer_bottom = wx.BoxSizer(wx.HORIZONTAL)
         sizer_top = wx.BoxSizer(wx.HORIZONTAL)
 
-        #self.resNotebook.AddPage(self.timecoursegrid, "Time courses")
-        self.resNotebook.AddPage(self.parametergrid, "Parameters")
-
-        sizer_5.Add(self.resNotebook, 1, wx.EXPAND, 0)
-        self.bottom_right_pane.SetAutoLayout(True)
-        self.bottom_right_pane.SetSizer(sizer_5)
-        sizer_5.Fit(self.bottom_right_pane)
-        sizer_5.SetSizeHints(self.bottom_right_pane)
 
         sizer_bottom.Add(self.LogText, 1, wx.EXPAND, 0)
-        self.bottom_left_pane.SetAutoLayout(True)
-        self.bottom_left_pane.SetSizer(sizer_bottom)
-        sizer_bottom.Fit(self.bottom_left_pane)
-        sizer_bottom.SetSizeHints(self.bottom_left_pane)
-
-
-        self.bottomwindow.SplitVertically(self.bottom_left_pane, self.bottom_right_pane, sashPosition = -200)
-
-        sizer_2.Add(self.bottomwindow, 1, wx.EXPAND, 0)
         self.bottom_pane.SetAutoLayout(True)
-        self.bottom_pane.SetSizer(sizer_2)
-        sizer_2.Fit(self.bottom_pane)
-        sizer_2.SetSizeHints(self.bottom_pane)
+        self.bottom_pane.SetSizer(sizer_bottom)
+        sizer_bottom.Fit(self.bottom_pane)
+        sizer_bottom.SetSizeHints(self.bottom_pane)
 
         sizer_top.Add(self.ModelEditor, 1, wx.EXPAND, 0)
         self.top_pane.SetAutoLayout(True)
@@ -353,28 +325,22 @@ class stimatorMainFrame(wx.Frame):
         sizer_top.SetSizeHints(self.top_pane)
 
         self.mainwindow.SplitHorizontally(self.top_pane, self.bottom_pane, sashPosition = 450)
-        #self.mainwindow.SplitHorizontally(self.top_pane, self.LogText)
 
-        sizer_1.Add(self.mainwindow, 1, wx.EXPAND, 0)
+        sizer_main.Add(self.mainwindow, 1, wx.EXPAND, 0)
         self.SetAutoLayout(True)
-        self.SetSizer(sizer_1)
+        self.SetSizer(sizer_main)
         self.Layout()
 
         self.mainwindow.SetSashGravity(1.0)
-        self.bottomwindow.SetSashGravity(0.5)
 
 ##------------- Init Subwindows
 
     def MakeStimatorWidgets(self):
         global ID_LT; ID_LT = wx.NewId()
-        self.LogText = SDLeditor(self.bottom_left_pane, ID_LT, self)
+        self.LogText = SDLeditor(self.bottom_pane, ID_LT, self)
 
         global ID_ME; ID_ME = wx.NewId()
         self.ModelEditor = SDLeditor(self.top_pane, ID_ME, self)
-        #global ID_TCGRID; ID_TCGRID = wx.NewId()
-        #self.timecoursegrid = TCGrid(self.resNotebook, ID_TCGRID, self)
-        global ID_PARGRID; ID_PARGRID = wx.NewId()
-        self.parametergrid = ParamGrid(self.resNotebook, ID_PARGRID, self)
 
     def MakeMenus(self):
         self.mainmenu = wx.MenuBar()
@@ -624,9 +590,6 @@ class stimatorMainFrame(wx.Frame):
            return
         self.LogText.Clear()
         self.LogText.Refresh()
-        self.parametergrid.ClearGrid()
-        self.parametergrid.ClearSelection()
-        self.parametergrid.Refresh()
 
         sepre = re.compile(r"\r\n|\n|\r")
         textlines = sepre.split(self.ModelEditor.GetText())
@@ -679,28 +642,12 @@ class stimatorMainFrame(wx.Frame):
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
             self.write("Optimization took %f s"% (time.time()-self.time0))
-            self.needRefreshParamsGrid = True
             self.PostProcessEnded()
         self.optimizerThread = None
 
     def PostProcessEnded(self):
         global besttimecoursedata
-        solver = self.optimizerThread.solver
-        
-        #write parameters to grid
-        self.parametergrid.ClearGrid()
-        self.parametergrid.ClearSelection()
-        solver = self.optimizerThread.solver
-        np = solver.parameterCount
-        nr = self.parametergrid.GetNumberRows()
-        if np > nr:
-                self.parametergrid.AppendRows(np-nr)
-        for i in range(np):
-            self.parametergrid.SetCellValue(i,0,"%s" % self.bestData[0]['data'][i][0])
-            self.parametergrid.SetCellValue(i,1,"%s" % self.bestData[0]['data'][i][1])
-            self.parametergrid.SetCellValue(i,2,'N/A')
-        self.parametergrid.AutoSizeColumns()
-
+        solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
         win.loadBestData(self.parser, self.bestData, besttimecoursedata)
         win.Show(True)
