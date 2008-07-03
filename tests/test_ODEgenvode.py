@@ -1,5 +1,5 @@
 import modelparser
-import stimator_timecourse
+#import stimator_timecourse
 from numpy import *
 import pylab as p
 import time
@@ -34,7 +34,7 @@ V2 = 2.23416e-05
 Km2 = 0.0980973
 m_Parameters = (V1, Km1, V2, Km2)
 
-header, data = stimator_timecourse.readTimeCourseFromFile('../examples/TSH2a.txt')
+header, data = modelparser.readTimeCourseFromFile('../examples/TSH2a.txt')
 
 y0 = copy(data[0, 1:])
 t  = data[:, 0]

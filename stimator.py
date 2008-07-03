@@ -3,24 +3,24 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2008 Antonio Ferreira
+Copyright 2005-2008 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.601"
-stimatorDate = "27 June 2008"
+stimatorVersion = "0.650"
+stimatorDate = "2 July 2008"
 
 import sys
 import os
 import os.path
 import re
 import thread
-#import time
+import time
 import DESolver
 from numpy import *
 import wx
 import wx.lib.newevent
 from   stimatorwidgts import SDLeditor, ParamGrid, TCGrid, readTCinfo
 import modelparser
-import stimator_timecourse
+import resultsframe
 from scipy import integrate
 import pylab as p
 
@@ -75,12 +75,12 @@ class DeOdeSolver(DESolver.DESolver):
             self.times.append(times)
         
         # dump messages to files instead of standard output streams
-        self.msgfile = open("msgs.txt", 'w')
-        self.msgfileerr = open("msgserr.txt", 'w')
-        self.oldstdout = sys.stdout
-        self.oldstderr = sys.stderr
-        sys.stdout = self.msgfile
-        sys.stderr = self.msgfileerr
+        #~ self.msgfile = open("msgs.txt", 'w')
+        #~ self.msgfileerr = open("msgserr.txt", 'w')
+        #~ self.oldstdout = sys.stdout
+        #~ self.oldstderr = sys.stderr
+        #~ sys.stdout = self.msgfile
+        #~ sys.stderr = self.msgfileerr
         
     
     def externalEnergyFunction(self,trial):
@@ -112,30 +112,57 @@ class DeOdeSolver(DESolver.DESolver):
         evt = UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
         wx.PostEvent(self.calcThread.win, evt)
 
+    
     def reportFinal (self):
-        global besttimecoursedata
         if self.exitCode==0: outCode = -1 
         else: 
             outCode = self.exitCode
-            #generate best time-courses
-            besttimecoursedata = []
-            for i in range(len(timecoursedata)):
-                y0 = copy(self.X0[i])
-                t  = self.times[i]
-                Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-                besttimecoursedata.append(Y)
-
-        self.msgfile.close()
-        self.msgfileerr.close()
-        sys.stdout = self.oldstdout
-        sys.stderr = self.oldstderr
+            self.calcThread.win.bestData = self.generateBestData() # bestData is own by main window
+        #~ self.msgfile.close()
+        #~ self.msgfileerr.close()
+        #~ sys.stdout = self.oldstdout
+        #~ sys.stderr = self.oldstderr
         evt = EndComputationEvent(exitCode = outCode)
         wx.PostEvent(self.calcThread.win, evt)
+
+    def generateBestData (self):
+        global timecoursedata, besttimecoursedata
+        bestData = [{'section':"PARAMETERS"}, {'section':"D.E. OPTIMIZATION"}, {'section':"TIMECOURSES"}]
+        bestData[0]['data'] = [(self.parser.parameters[i][0], "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        bestData[0]['format'] = "%s\t%s"
+        bestData[0]['header'] = None
+        
+        bestData[1]['data'] = [('Final Score', "%g"% self.bestEnergy),
+                                ('Generations', "%d"% self.generation),
+                                ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
+        bestData[1]['format'] = "%s\t%s"
+        bestData[1]['header'] = None
+
+        #TODO: Store initial solver parameters?
+
+        #generate best time-courses
+        besttimecoursedata = []
+        bestData[2]['data'] = []
+        for (i,data) in enumerate(timecoursedata):
+            y0 = copy(self.X0[i])
+            t  = self.times[i]
+            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+            besttimecoursedata.append(Y)
+            if infodict['message'] != 'Integration successful.':
+                bestData[2]['data'].append((self.parser.timecourseshortnames[i], self.parser.timecourseshapes[i][0], 1.0E300))
+            else:
+                S = (Y- data[:, 1:])**2
+                score = nansum(S)
+                bestData[2]['data'].append((self.parser.timecourseshortnames[i], self.parser.timecourseshapes[i][0], score))
+        bestData[2]['format'] = "%s\t%d\t%g"
+        bestData[2]['header'] = ['Name', 'Points', 'Score']
+        
+        return bestData
+        
 
 class CalcOptmThread:
     def __init__(self, win):
         self.win = win
-        #self.genNum = 0
         self.computationEnded = False
 
     def Start(self, parser):
@@ -246,14 +273,11 @@ class stimatorMainFrame(wx.Frame):
         self.TCpaths = []
         self.optimizerThread = None
         self.needRefreshParamsGrid = False
-        #self.pid = None
+        self.parser = modelparser.StimatorParser()
+
 
     def __del__(self):
         pass
-        #~ if self.optimizerThread is not None:
-            #~ self.optimizerThread.Detach()
-            #~ self.optimizerThread.CloseOutput()
-            #~ self.optimizerThread = None
 
     def __set_properties(self):
         # main window configuration
@@ -268,15 +292,6 @@ class stimatorMainFrame(wx.Frame):
             self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
         self.maintoolbar.Realize()
 
-        # timecourse and parameter grids configuration
-        #self.timecoursegrid.CreateGrid(5, 3)
-        #self.timecoursegrid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
-        #self.timecoursegrid.SetColLabelValue(0, "File")
-        #self.timecoursegrid.SetColSize(0, 100)
-        #self.timecoursegrid.SetColLabelValue(1, "Comment")
-        #self.timecoursegrid.SetColSize(1, 180)
-        #self.timecoursegrid.SetColLabelValue(2, "Path")
-
         self.parametergrid.CreateGrid(5, 3)
         #self.parametergrid.EnableEditing(False)
         self.parametergrid.SetColLabelValue(0, "Name")
@@ -287,14 +302,10 @@ class stimatorMainFrame(wx.Frame):
         # ModelEditor
         self.ModelEditor.SetText(demoText)
         self.ModelEditor.EmptyUndoBuffer()
-
-        self.ModelEditor.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "size:%d,face:%s" % (pb, face3))
-        self.ModelEditor.StyleClearAll()
-
-        # line numbers in the margin
-        self.ModelEditor.SetMarginType(0, wx.stc.STC_MARGIN_NUMBER)
-        self.ModelEditor.SetMarginWidth(0, 22)
-        self.ModelEditor.StyleSetSpec(wx.stc.STC_STYLE_LINENUMBER, "size:%d,face:%s" % (pb, face1))
+        # Set up the numbers in the margin for margin #1
+        self.ModelEditor.SetMarginType(1, wx.stc.STC_MARGIN_NUMBER)
+        # Reasonable value for, say, 4-5 digits using a mono font (40 pix)
+        self.ModelEditor.SetMarginWidth(1, 40)
 
         # LogText
         self.LogText.SetText(u"")
@@ -327,7 +338,7 @@ class stimatorMainFrame(wx.Frame):
         sizer_bottom.SetSizeHints(self.bottom_left_pane)
 
 
-        self.bottomwindow.SplitVertically(self.bottom_left_pane, self.bottom_right_pane, sashPosition = 800)
+        self.bottomwindow.SplitVertically(self.bottom_left_pane, self.bottom_right_pane, sashPosition = -200)
 
         sizer_2.Add(self.bottomwindow, 1, wx.EXPAND, 0)
         self.bottom_pane.SetAutoLayout(True)
@@ -411,11 +422,11 @@ class stimatorMainFrame(wx.Frame):
         menu.Append(TCMenu, 'Time Courses')
 
         # Results menu
-        ResultsMenu = wx.Menu()
-        self.AddMenuItem(ResultsMenu, 'Save Results As...', 'Save results file as', self.OnSaveResults)
-        if wx.Platform == '__WXMSW__':
-              self.AddMenuItem(ResultsMenu, 'Generate XLS ', 'Generate Excel file form results', self.OnGenXLS)
-        menu.Append(ResultsMenu, 'Results')
+        #~ ResultsMenu = wx.Menu()
+        #~ self.AddMenuItem(ResultsMenu, 'Save Results As...', 'Save results file as', self.OnSaveResults)
+        #~ if wx.Platform == '__WXMSW__':
+              #~ self.AddMenuItem(ResultsMenu, 'Generate XLS ', 'Generate Excel file form results', self.OnGenXLS)
+        #~ menu.Append(ResultsMenu, 'Results')
 
         # Settings menu
         #fileMenu = wx.Menu()
@@ -546,7 +557,7 @@ class stimatorMainFrame(wx.Frame):
     def OnSaveMenu(self, event):
         if self.fileName is None:
             return self.OnSaveAsMenu(event)
-        wx.LogMessage("Saving %s..." % self.fileName)
+        #wx.LogMessage("Saving %s..." % self.fileName)
         if self.SaveFile(self.fileName) is not True:
             self.SaveFileError(self.fileName)
         self.ModelEditor.SetFocus()
@@ -555,7 +566,7 @@ class stimatorMainFrame(wx.Frame):
         fileName = self.SelectFileDialog(False, self.GetFileDir(),self.GetFileName())
         if fileName is not None:
             self.fileName = fileName
-            wx.LogMessage("Saving %s..." % self.fileName)
+            #wx.LogMessage("Saving %s..." % self.fileName)
             if self.SaveFile(self.fileName) is not True:
                 self.SaveFileError(self.fileName)
         self.ModelEditor.SetFocus()
@@ -582,10 +593,6 @@ class stimatorMainFrame(wx.Frame):
                     name = n
                 self.ModelEditor.AddText("timecourse %s"%(name))
                 self.ModelEditor.NewLine()
-
-    def OnSaveResults(self, event):
-        self.write("'SaveResults' not implemented!")
-        event.Skip()
 
     def OnAboutMenu(self, event):
         self.MessageDialog(ABOUT_TEXT, "About S-timator")
@@ -621,45 +628,47 @@ class stimatorMainFrame(wx.Frame):
         self.parametergrid.ClearSelection()
         self.parametergrid.Refresh()
 
-        parser = modelparser.StimatorParser()
         sepre = re.compile(r"\r\n|\n|\r")
         textlines = sepre.split(self.ModelEditor.GetText())
         
-        parser.parse(textlines)
-        if parser.error:
-           self.IndicateError(parser)
+        self.parser.parse(textlines)
+        if self.parser.error:
+           self.IndicateError(self.parser)
            return
 
-        if len(parser.timecourses) == 0 :
+        if len(self.parser.timecourses) == 0 :
            self.MessageDialog("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", "Error")
            return
         os.chdir(self.GetFileDir())
-        pathlist = [os.path.abspath(k) for k in parser.timecourses]
+        pathlist = [os.path.abspath(k) for k in self.parser.timecourses]
         #pathlist = [k.replace("\\","\\\\") for k in pathlist] #no longer needed?
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "Error")
                 return
 
-        #TODO: the following two lists should be owned by the computation object
         self.write("-------------------------------------------------------")
-        self.timecourseheaders = []
+        self.parser.timecourseheaders = []
         timecoursedata = []
         for filename in pathlist:
-            h,d = stimator_timecourse.readTimeCourseFromFile(filename)
+            h,d = modelparser.readTimeCourseFromFile(filename)
             if d.shape == (0,0):
-                self.write("file %s does not contain valid time-course data"%(filename))
+                self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error")
+                return
             else:
                 self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1], filename))
-                self.timecourseheaders.append(h)
+                self.parser.timecourseheaders.append(h)
                 timecoursedata.append(d)
+        self.parser.timecourseshapes = [i.shape for i in timecoursedata]
+        self.parser.timecourseshortnames = [os.path.split(filename)[1] for filename in pathlist]
         
         
         self.write("-------------------------------------------------------")
         self.write("Solving %s..."%self.GetFileName())
+        self.time0 = time.time()
 
         self.optimizerThread=CalcOptmThread(self)
-        self.optimizerThread.Start(parser)
+        self.optimizerThread.Start(self.parser)
         
     def OnUpdateGeneration(self, evt):
         self.write("%-4d: %f" % (evt.generation, evt.energy))
@@ -669,17 +678,13 @@ class stimatorMainFrame(wx.Frame):
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
+            self.write("Optimization took %f s"% (time.time()-self.time0))
             self.needRefreshParamsGrid = True
             self.PostProcessEnded()
         self.optimizerThread = None
 
-    #def OnIdle(self, evt):
-        #~ if self.needRefreshParamsGrid:
-           #~ self.needRefreshParamsGrid = False
-           #~ self.PostProcessEnded()
-
     def PostProcessEnded(self):
-        global timecoursedata, besttimecoursedata
+        global besttimecoursedata
         solver = self.optimizerThread.solver
         
         #write parameters to grid
@@ -691,35 +696,14 @@ class stimatorMainFrame(wx.Frame):
         if np > nr:
                 self.parametergrid.AppendRows(np-nr)
         for i in range(np):
-            self.parametergrid.SetCellValue(i,0,solver.parser.parameters[i][0])
-            self.parametergrid.SetCellValue(i,1,"%f" % solver.bestSolution[i])
+            self.parametergrid.SetCellValue(i,0,"%s" % self.bestData[0]['data'][i][0])
+            self.parametergrid.SetCellValue(i,1,"%s" % self.bestData[0]['data'][i][1])
             self.parametergrid.SetCellValue(i,2,'N/A')
         self.parametergrid.AutoSizeColumns()
- 
-        SDLTSH, HTA = besttimecoursedata[0].T
-        t = timecoursedata[0][:,0]
-        f1 = p.figure()
-        p.plot(t, SDLTSH, 'r-', label='SDLTSH')
-        p.plot(t, HTA  , 'b-', label='HTA')
-        p.grid()
-        p.legend(loc='best')
-        p.xlabel('time (s)')
-        p.ylabel('concentrations (mM)')
-        p.title('Example from time course TSH2a.txt')
-        p.show()
-        
 
-    def OnGenXLS(self, event):
-        os.chdir(self.GetFileDir())
-        if not os.path.exists("best.dat"):
-           self.MessageDialog("best.dat was not found", "Error")
-           return
-        try:
-          import best2xls
-          best2xls.genXLS("best.dat")
-        except:
-           self.MessageDialog("An error ocurred while generating the Excel file", "Error")
-        pass
+        win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
+        win.loadBestData(self.parser, self.bestData, besttimecoursedata)
+        win.Show(True)
 
 
 # end of class stimatorMainFrame

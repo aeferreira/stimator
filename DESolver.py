@@ -15,6 +15,7 @@ class DESolver:
     def __init__(self, parameterCount, populationSize, maxGenerations, minInitialValue, maxInitialValue, deStrategy, diffScale, crossoverProb, cutoffEnergy, useClassRandomNumberMethods):
 
         random.seed(3)
+        numpy.random.seed(3)
 
         self.maxGenerations = maxGenerations
         self.parameterCount = parameterCount

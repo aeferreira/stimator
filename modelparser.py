@@ -102,42 +102,27 @@ dispatchers = [(emptyline, "emptyLineParse"),
 #----------------------------------------------------------------------------
 class StimatorParser:
     def __init__(self):
-          self.error = None       # different of None if an error occurs
-          self.errorlinetext = "" # if error, the text of the offending line
-          self.errorline   = -1   # line number of currently parsed line. If error, the line number of the offending line,
-          self.errorstart  = -1   # if error, the starting position of the offending expression
-          self.errorend    = -1   # if error, one past the ending position of the offending expression
-
-          self.generations = 200  # default differential evolution num of generations
-          self.genomesize  = 10   # default differential evolution population size
-
-          self.rates       = []  # a list of {'name', 'reagents', 'products', 'rate', 'irreversible' and rate locations}
-          self.variables   = []  # a list of names of variables (order matters)
-          self.constants   = {}  # a 'name':value dictionary
-          self.parameters  = []  # a list of (name,min,max)
-          self.timecourses = []  # a list of filenames
-          self.atdefs      = []  # a list of (time,name,newvalue)
-
-          self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
-
+        self.reset()
+    
     def reset(self):
-          self.error = None
-          self.errorlinetext = ""
-          self.errorline   = -1
-          self.errorstart  = -1
-          self.errorend    = -1
+        self.error = None       # different of None if an error occurs
+        self.errorlinetext = "" # if error, the text of the offending line
+        self.errorline   = -1   # line number of currently parsed line. If error, the line number of the offending line,
+        self.errorstart  = -1   # if error, the starting position of the offending expression
+        self.errorend    = -1   # if error, one past the ending position of the offending expression
 
-          self.generations = 200
-          self.genomesize  = 10
+        self.generations = 200  # default differential evolution num of generations
+        self.genomesize  = 10   # default differential evolution population size
 
-          self.rates       = []
-          self.variables   = []
-          self.constants   = {}
-          self.parameters  = []
-          self.timecourses = []
-          self.atdefs      = []
+        self.rates       = []  # a list of {'name', 'reagents', 'products', 'rate', 'irreversible' and rate locations}
+        self.variables   = []  # a list of names of variables (order matters)
+        self.constants   = {}  # a 'name':value dictionary
+        self.parameters  = []  # a list of (name,min,max)
+        self.timecourses = []  # a list of filenames
+        self.atdefs      = []  # a list of (time,name,newvalue)
 
-          self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
+        self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
+
     
     
     def parse (self,modeltext):
@@ -394,6 +379,51 @@ class StimatorParser:
         return result + '\treturn derivatives*%f' % scale
 
 #----------------------------------------------------------------------------
+#         TIME COURSE READING FUNCTION
+#----------------------------------------------------------------------------
+
+def readTimeCourseFromFile(filename):
+    """Reads a time course from file.
+    
+    Returns a header with variable names (possibly empty) and a 2D numpy array with data.
+    """
+    
+    header = []
+    nvars = 0
+    rows = []
+    headerFound = False
+    t0found = False
+    f = open (filename)
+    for line in f:
+        line = line.strip()
+        if len(line) == 0:continue          #empty lines are skipped
+        if line.startswith('#'): continue   #comment lines are skipped
+        
+        items = line.split()
+        
+        if identifier.match(items[0]):
+            if not headerFound and not t0found:
+                header = filter (identifier.match, items)
+                headerFound = True
+            else:
+                continue
+        elif not realnumber.match(items[0]):
+            continue
+        else:
+            if not t0found:
+                nvars = len(items)
+                t0found = True
+            temprow = [nan]*nvars
+            for i in enumerate(items):
+                if realnumber.match(i[1]):
+                    temprow[i[0]] = float(i[1])
+            rows.append(temprow)
+    f.close()
+    
+    return header, array(rows)
+
+
+#----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------
 
@@ -536,6 +566,48 @@ timecourse anotherfile.txt
 
     parser.parse(textlines)
     printParserResults(parser)
+
+
+    print '\n======================================================'
+    print 'Testing reading a time course...........................'
+
+    demodata = """
+#this is demo data with a header
+t x y z
+0       1 0         0
+0.1                  0.1
+
+  0.2 skip 0.2 skip this
+nothing really usefull here
+- 0.3 0.3 this line should be skipped
+#0.4 0.4
+0.5  - 0.5 - -
+0.6 0.6 0.8 0.9
+
+"""
+
+    w = open('bof.txt', 'w')
+    w.write(demodata)
+    w.close()
+    
+    
+    h, d =  readTimeCourseFromFile('bof.txt')   
+    print 'source:\n------------------------------------'
+    print demodata
+    print '------------------------------------'
+    print '\nheader:'
+    print h
+    print '\ndata'
+    print d
+    
+    h, d =  readTimeCourseFromFile('examples\\TSH2b.txt')   
+    print '\n\n================================================'
+    print '\n\nData from TSH2b.txt'
+    print 'header:'
+    print h
+    print '\ndata'
+    print d
+    print 'dimensions are %d by %d'% d.shape
 
     print
     raw_input("Press ENTER to finish...")
