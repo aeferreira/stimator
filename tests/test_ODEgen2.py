@@ -39,6 +39,7 @@ m_Parameters = (V1, Km1, V2, Km2)
 header, data = modelparser.readTimeCourseFromFile('../examples/TSH2a.txt')
 
 y0 = copy(data[0, 1:])
+
 t  = data[:, 0]
 scale = 10.0*(t[-1]-t[0])
 t0 = float(t[0])
@@ -48,16 +49,18 @@ parser = modelparser.StimatorParser()
 textlines = modelText.split("\n")
 
 parser.parse(textlines)
-#modelparser.printParserResults(parser)
-sss = parser.ODEcalcString(scale = scale)
-print 'ODEcalcString:'
+
+
+print 'rate strings:'
 print '------------------------------------------------'
-print sss
+for k in parser.rates:
+    print 'RATE',k['name'], ':'
+    print 'raw:', k['rate']
+    print 'new:', parser.rateCalcString(k['rate'])
 print '------------------------------------------------'
-cc = compile(sss, 'bof.log','exec')
-exec cc
-print 'Result from exec:', calcDerivs
-    
+
+ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
+
 print '\n================================================'
 print ' Example from TSH2a.txt'
 print '================================================\n'
@@ -69,6 +72,46 @@ print
 print 'At time =',t[0]
 for z in zip(var_names, y0):
     print "%-8s= %f" % z
+
+variables = y0
+v = [eval(r) for r in ratebytecode]
+
+for i,k in enumerate(parser.rates):
+    print 'RATE',k['name'], ':', v[i]
+
+N = zeros((len(parser.variables),len(parser.rates)), dtype=float)
+for m, srow in enumerate(parser.stoichmatrixrows):
+    for i,k in enumerate(parser.rates):
+        if srow.has_key(k['name']):
+            N[m,i] = srow[k['name']]
+
+print 'N ='
+Nmat = mat(N)
+print Nmat
+
+v = mat(array(v))
+print 'v ='
+print v
+
+dXdt = v * (Nmat.T)
+
+print 'dXdt = N*v ='
+print dXdt
+
+Nmat = N.T
+nvars = range(len(parser.variables))
+v = empty(len(parser.variables))
+
+def calcDerivs(variables, t):
+    global v
+    for i in nvars:
+        v[i] = scale*eval(ratebytecode[i])
+    return dot(v,Nmat)
+
+print 'calcDerivs((0,0),0)'
+print calcDerivs((0,0),0)
+print 'calcDerivs(y0,0)'
+print calcDerivs(y0,0)
 
 print '\n------------------------------------------------'
 
@@ -93,10 +136,6 @@ print
 print 'At time =',t[-1]
 for z in zip(var_names, Y[-1]):
     print "%-8s= %f" % z
-#~ print '------------------------------------------------'
-#~ print "infodict:"
-#~ for k in infodict.keys():
-    #~ print '%10s: %s' % (k,infodict[k])
 #print Y
 
 print '------------------------------------------------'

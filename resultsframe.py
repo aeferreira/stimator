@@ -48,7 +48,6 @@ class resultsFrame(wx.Frame):
         self.top_pane = wx.Panel(self.mainwindow, -1)
         self.bottom_pane = wx.Panel(self.mainwindow, -1)
 
-        self.InitVariables()
         self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
 
         #self.MakeMenus()
@@ -57,19 +56,7 @@ class resultsFrame(wx.Frame):
         self.ReportEditor = SDLeditor(self.top_pane, ID_RT, self)
         self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
         
-        
         self.figure = Figure(figsize=(4,4), dpi=100)
-        self.axes = self.figure.add_subplot(211)
-        t = arange(0.0,3.0,0.01)
-        s = sin(2*pi*t)
-        
-        self.axes.plot(t,s)
-
-        self.axes = self.figure.add_subplot(212)
-        t = arange(0.0,3.0,0.01)
-        s = cos(2*pi*t)
-        
-        self.axes.plot(t,s)
         self.canvas = FigureCanvas(self.bottom_pane, -1, self.figure)
 
         wx.EVT_PAINT(self, self.OnPaint)        
@@ -84,9 +71,6 @@ class resultsFrame(wx.Frame):
 
 ##------------- Initialization and __del__ functions
 
-    def InitVariables(self):
-        pass
-
     def __del__(self):
         pass
 
@@ -94,11 +78,11 @@ class resultsFrame(wx.Frame):
         """Main initialization function.
         
         Should be called after __init__() but before Show()."""
-        nameOfProblem = '...'
-        self.SetTitle("Results for %s" % nameOfProblem)
 
+        self.SetTitle("Results for %s" % parser.problemname)
+
+        # generate report
         reportText = ""
-        # generate report Text
         for section in bestData:
             reportText += "%-20s --------------------------------\n" % section['section']
             if section['header']:
@@ -108,6 +92,17 @@ class resultsFrame(wx.Frame):
         
         self.ReportEditor.SetText(reportText)
         self.ReportEditor.EmptyUndoBuffer()
+        
+        # plot timecourses
+        self.axes = self.figure.add_subplot(211)
+        t = arange(0.0,3.0,0.01)
+        s = sin(2*pi*t)
+        self.axes.plot(t,s)
+
+        self.axes = self.figure.add_subplot(212)
+        t = arange(0.0,3.0,0.01)
+        s = cos(2*pi*t)
+        self.axes.plot(t,s)
        
         
     def __set_properties(self):
@@ -134,7 +129,6 @@ class resultsFrame(wx.Frame):
         self.bottom_pane.SetSizer(sizer_bottom)
         sizer_bottom.Fit(self.bottom_pane)
         sizer_bottom.SetSizeHints(self.bottom_pane)
-
 
         sizer_top.Add(self.ReportEditor, 1, wx.EXPAND, 0)
         self.top_pane.SetAutoLayout(True)
@@ -212,30 +206,13 @@ class resultsFrame(wx.Frame):
     def OnCloseWindow(self, event):
         self.Destroy()
 
-    def OnNewMenu(self, event):
-        if self.ModelEditor.GetModify():
-            if not self.OkCancelDialog("New file - abandon changes?", "New File"):
-                return
-        self.NewFile()
-        self.ModelEditor.SetFocus()
-
-    def OnOpenMenu(self, event):
-        if self.ModelEditor.GetModify():
-            if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
-                return
-        fileName = self.SelectFileDialog(True, self.GetFileDir())
-        if fileName is not None:
-            if self.OpenFile(fileName) is False:
-                self.OpenFileError(fileName)
-        self.ModelEditor.SetFocus()
-
     def OnSaveMenu(self, event):
         if self.fileName is None:
             return self.OnSaveAsMenu(event)
         #wx.LogMessage("Saving %s..." % self.fileName)
         if self.SaveFile(self.fileName) is not True:
             self.SaveFileError(self.fileName)
-        self.ModelEditor.SetFocus()
+        self.ReportEditor.SetFocus()
 
     def OnSaveAsMenu(self, event):
         fileName = self.SelectFileDialog(False, self.GetFileDir(),self.GetFileName())
@@ -244,19 +221,19 @@ class resultsFrame(wx.Frame):
             #wx.LogMessage("Saving %s..." % self.fileName)
             if self.SaveFile(self.fileName) is not True:
                 self.SaveFileError(self.fileName)
-        self.ModelEditor.SetFocus()
+        self.ReportEditor.SetFocus()
 
     def OnExitMenu(self, event):
         self.Close()
 
     def OnCutSelection(self, event):
-        self.ModelEditor.Cut()
+        self.ReportEditor.Cut()
 
     def OnCopySelection(self, event):
-        self.ModelEditor.Copy()
+        self.ReportEditor.Copy()
 
     def OnPaste(self, event):
-        self.ModelEditor.Paste()
+        self.ReportEditor.Paste()
 
     def OnSaveResults(self, event):
         self.write("'SaveResults' not implemented!")

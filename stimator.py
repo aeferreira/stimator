@@ -624,6 +624,7 @@ class stimatorMainFrame(wx.Frame):
                 timecoursedata.append(d)
         self.parser.timecourseshapes = [i.shape for i in timecoursedata]
         self.parser.timecourseshortnames = [os.path.split(filename)[1] for filename in pathlist]
+        self.parser.problemname = self.GetFileName()
         
         
         self.write("-------------------------------------------------------")

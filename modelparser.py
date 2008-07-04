@@ -105,7 +105,8 @@ class StimatorParser:
         self.reset()
     
     def reset(self):
-        self.error = None       # different of None if an error occurs
+        self.problemname = ""   # the name of the problem
+        self.error = None      # different of None if an error occurs
         self.errorlinetext = "" # if error, the text of the offending line
         self.errorline   = -1   # line number of currently parsed line. If error, the line number of the offending line,
         self.errorstart  = -1   # if error, the starting position of the offending expression
@@ -333,17 +334,28 @@ class StimatorParser:
         entry = tuple([name,flulist[0],flulist[1]])
         self.parameters.append(entry)
 
+    def rateCalcString(self, rateString):
+        if self.error:
+           return ""
+        nvars = len(self.variables)
+        # replace varnames
+        for i in range(nvars):
+          rateString = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, rateString)
+        # replace parameters
+        for i in range(len(self.parameters)):
+          rateString = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, rateString)
+        # replace constants
+        for const in self.constants.keys():
+          rateString = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], rateString)
+        return rateString
+        
+
     def ODEcalcString(self, scale=1.0):
         if self.error:
            return ""
         nvars = len(self.variables)
         result = "def calcDerivs(variables,t):\n\tglobal m_Parameters\n"
-        result +="\tderivatives = zeros(%d)\n" % nvars
-
-        #write constants
-        for k in self.constants.keys():
-              vline = "\t%s = %g\n" % (k, self.constants[k])
-              result = result + vline
+        result +="\tderivatives = empty(%d)\n" % nvars
 
         #write @ definitions    #TODO!!!
         #~ for k in parser.atdefs:
@@ -359,9 +371,9 @@ class StimatorParser:
               # replace parameters
               for i in range(len(self.parameters)):
                   vline = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, vline)
-              # replace constants...become local variables
-              #for (i,k) in enumerate(self.constants.keys()):
-                  #vline = re.sub(r"\b"+ k +r"\b", "m_Constants[%d]"%i, vline)
+              # replace constants
+              for const in self.constants.keys():
+                  vline = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], vline)
               vline = "\tv_%s = %s\n" %(k['name'],vline)
               result = result + vline
 
