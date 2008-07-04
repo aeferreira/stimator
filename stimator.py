@@ -35,6 +35,10 @@ Write your model here...
 timecoursedata = []
 besttimecoursedata = []
 m_Parameters = None
+NT = None
+ratebytecode = None
+nvars =  None
+v = None
 
 ##------------- Computing thread class
 
@@ -45,8 +49,15 @@ m_Parameters = None
 
 class DeOdeSolver(DESolver.DESolver):
 
+    def calcDerivs(self, variables, t):
+        global v, nvars, ratebytecode, NT
+        for i in nvars:
+            v[i] = eval(ratebytecode[i])
+        return dot(v,NT)
+        
     def setup(self, parser, calcThread):
-        global m_Parameters, timecoursedata
+        global m_Parameters, timecoursedata, v, nvars, ratebytecode, NT
+        #global v, nvars, ratebytecode, NT
         self.parser = parser
         self.calcThread = calcThread
         
@@ -56,11 +67,20 @@ class DeOdeSolver(DESolver.DESolver):
         # scale times to maximum time in data
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in timecoursedata]))
         
-        # generate function calcDerivs (with scale)
-        sss = parser.ODEcalcString(scale = scale)
-        cc = compile(sss, 'bof.log','exec')
-        exec cc
-        self.calcDerivs = calcDerivs
+        # compute stoichiometry matrix and transpose
+        N = zeros((len(parser.variables),len(parser.rates)), dtype=float)
+        for m, srow in enumerate(parser.stoichmatrixrows):
+            for i,k in enumerate(parser.rates):
+                if srow.has_key(k['name']):
+                    N[m,i] = scale *srow[k['name']]
+        NT = N.transpose()
+
+        #compile rate laws
+        ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
+        
+        # other globals
+        nvars = range(len(parser.variables))
+        v = empty(len(parser.rates))
 
         # store initial values and (scaled) time points
         self.X0 = []
@@ -73,6 +93,8 @@ class DeOdeSolver(DESolver.DESolver):
             t0 = t[0]
             times = (t-t0)/scale+t0  # this scales time points
             self.times.append(times)
+
+        self.timecourse_scores = empty(len(timecoursedata))
         
         # dump messages to files instead of standard output streams
         #~ self.msgfile = open("msgs.txt", 'w')
@@ -94,28 +116,29 @@ class DeOdeSolver(DESolver.DESolver):
                 return 1.0E300
         
         m_Parameters = trial
-        
-        timecourse_scores = empty(len(timecoursedata))
+        salg=integrate._odepack.odeint
 
-        for (i,data) in enumerate(timecoursedata):
+        for i in range(len(timecoursedata)):
             y0 = copy(self.X0[i])
-            t  = self.times[i]
+            t  = copy(self.times[i])
 
-            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-
-            if infodict['message'] != 'Integration successful.':
-                return (1.0E300)
-            S = (Y- data[:, 1:])**2
+#            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+            output = salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
+                            None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+            if output[-1] < 0: return (1.0E300)
+            #~ if infodict['message'] != 'Integration successful.':
+                #~ return (1.0E300)
+            Y = output[0]
+            S = (Y- timecoursedata[i][:, 1:])**2
             score = nansum(S)
-            timecourse_scores[i]=score
+            self.timecourse_scores[i]=score
         
-        gscore = timecourse_scores.sum()
+        gscore = self.timecourse_scores.sum()
         return gscore
 
     def reportGeneration (self):
         evt = UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
         wx.PostEvent(self.calcThread.win, evt)
-
     
     def reportFinal (self):
         if self.exitCode==0: outCode = -1 

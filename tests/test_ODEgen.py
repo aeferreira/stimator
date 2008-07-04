@@ -72,7 +72,7 @@ for z in zip(var_names, y0):
 
 print '\n------------------------------------------------'
 
-reps = 6000
+reps = 2000
 
 from scipy import integrate
 print 'Integrating...(repeating %d times)' % reps

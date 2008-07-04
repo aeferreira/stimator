@@ -129,7 +129,7 @@ class DESolver:
         
 
         # TODO: this is for performance on non-parallelized hardware
-        if self.generationsWithNoImprovement > 20:
+        if self.generationsWithNoImprovement > 10:
             self.exitCode = 4
             return
                 
@@ -151,7 +151,7 @@ class DESolver:
                     self.bestEnergy = trialEnergy
                     self.bestSolution = numpy.copy(self.population[candidate])
         
-        if (self.popEnergy.ptp()/self.bestEnergy) < 1.0E-5:
+        if (self.popEnergy.ptp()/self.popEnergy.mean()) < 1.0E-2:
             self.exitCode = 5
             return
            

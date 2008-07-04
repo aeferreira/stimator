@@ -59,7 +59,6 @@ for k in parser.rates:
     print 'new:', parser.rateCalcString(k['rate'])
 print '------------------------------------------------'
 
-ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
 
 print '\n================================================'
 print ' Example from TSH2a.txt'
@@ -73,49 +72,51 @@ print 'At time =',t[0]
 for z in zip(var_names, y0):
     print "%-8s= %f" % z
 
-variables = y0
-v = [eval(r) for r in ratebytecode]
+ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
 
-for i,k in enumerate(parser.rates):
-    print 'RATE',k['name'], ':', v[i]
+#~ variables = y0
+#~ v = [eval(r) for r in ratebytecode]
+
+#~ for i,k in enumerate(parser.rates):
+    #~ print 'RATE',k['name'], ':', v[i]
 
 N = zeros((len(parser.variables),len(parser.rates)), dtype=float)
 for m, srow in enumerate(parser.stoichmatrixrows):
     for i,k in enumerate(parser.rates):
         if srow.has_key(k['name']):
-            N[m,i] = srow[k['name']]
+            N[m,i] = scale*srow[k['name']]
 
-print 'N ='
-Nmat = mat(N)
-print Nmat
+#~ print 'N ='
+#~ Nmat = mat(N)
+#~ print Nmat
 
-v = mat(array(v))
-print 'v ='
-print v
+#~ v = mat(array(v))
+#~ print 'v ='
+#~ print v
 
-dXdt = v * (Nmat.T)
+#~ dXdt = v * (Nmat.T)
 
-print 'dXdt = N*v ='
-print dXdt
+#~ print 'dXdt = N*v ='
+#~ print dXdt
 
-Nmat = N.T
+NT = N.transpose()
 nvars = range(len(parser.variables))
 v = empty(len(parser.variables))
 
 def calcDerivs(variables, t):
     global v
     for i in nvars:
-        v[i] = scale*eval(ratebytecode[i])
-    return dot(v,Nmat)
+        v[i] = eval(ratebytecode[i])
+    return dot(v,NT)
 
-print 'calcDerivs((0,0),0)'
-print calcDerivs((0,0),0)
-print 'calcDerivs(y0,0)'
-print calcDerivs(y0,0)
+#~ print 'calcDerivs((0,0),0)'
+#~ print calcDerivs((0,0),0)
+#~ print 'calcDerivs(y0,0)'
+#~ print calcDerivs(y0,0)
 
 print '\n------------------------------------------------'
 
-reps = 6000
+reps = 2000
 
 from scipy import integrate
 print 'Integrating...(repeating %d times)' % reps
