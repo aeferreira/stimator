@@ -5,8 +5,8 @@
 
 Copyright 2005-2008 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.650"
-stimatorDate = "2 July 2008"
+stimatorVersion = "0.70"
+stimatorDate = "31 July 2008"
 
 import sys
 import os
@@ -22,7 +22,6 @@ from   stimatorwidgts import SDLeditor, ParamGrid, TCGrid, readTCinfo
 import modelparser
 import resultsframe
 from scipy import integrate
-import pylab as p
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
@@ -33,11 +32,10 @@ Write your model here...
 
 ##------------- Globals for DeOdeSolver
 timecoursedata = []
-besttimecoursedata = []
 m_Parameters = None
 NT = None
 ratebytecode = None
-nvars =  None
+nrates = None
 v = None
 
 ##------------- Computing thread class
@@ -50,19 +48,18 @@ v = None
 class DeOdeSolver(DESolver.DESolver):
 
     def calcDerivs(self, variables, t):
-        global v, nvars, ratebytecode, NT
-        for i in nvars:
+        global v, nrates, ratebytecode, NT, m_Parameters
+        for i in nrates:
             v[i] = eval(ratebytecode[i])
         return dot(v,NT)
         
     def setup(self, parser, calcThread):
-        global m_Parameters, timecoursedata, v, nvars, ratebytecode, NT
-        #global v, nvars, ratebytecode, NT
+        global m_Parameters, timecoursedata, v, nrates, ratebytecode, NT
         self.parser = parser
         self.calcThread = calcThread
         
         # cutoffEnergy is 0.1% of deviation from data
-        self.cutoffEnergy =  0.000001*sum([nansum(abs(tc[:,1:])) for tc in timecoursedata])
+        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in timecoursedata])
         
         # scale times to maximum time in data
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in timecoursedata]))
@@ -79,7 +76,7 @@ class DeOdeSolver(DESolver.DESolver):
         ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
         
         # other globals
-        nvars = range(len(parser.variables))
+        nrates = range(len(ratebytecode))
         v = empty(len(parser.rates))
 
         # store initial values and (scaled) time points
@@ -153,8 +150,11 @@ class DeOdeSolver(DESolver.DESolver):
         wx.PostEvent(self.calcThread.win, evt)
 
     def generateBestData (self):
-        global timecoursedata, besttimecoursedata
-        bestData = [{'section':"PARAMETERS"}, {'section':"D.E. OPTIMIZATION"}, {'section':"TIMECOURSES"}]
+        global timecoursedata
+        bestData = [{'section':"PARAMETERS"}, 
+                    {'section':"D.E. OPTIMIZATION"}, 
+                    {'section':"TIMECOURSES"},
+                    {'section':"best timecourses"}]
         bestData[0]['data'] = [(self.parser.parameters[i][0], "%g"%value) for (i,value) in enumerate(self.bestSolution)]
         bestData[0]['format'] = "%s\t%s"
         bestData[0]['header'] = None
@@ -168,8 +168,9 @@ class DeOdeSolver(DESolver.DESolver):
         #TODO: Store initial solver parameters?
 
         #generate best time-courses
-        besttimecoursedata = []
         bestData[2]['data'] = []
+        bestData[3]['data'] = []
+        besttimecoursedata = bestData[3]['data']
         for (i,data) in enumerate(timecoursedata):
             y0 = copy(self.X0[i])
             t  = self.times[i]
@@ -202,7 +203,7 @@ class CalcOptmThread:
                                  mins, maxs,              # min and max parameter values
                                  "Best2Exp",              # DE strategy
                                  0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
-                                 False)                   # use class random number methods
+                                 True)                   # use class random number methods
 
         self.solver.setup(parser,self)
         
@@ -222,19 +223,6 @@ class CalcOptmThread:
 
         self.solver.finalize()
         self.running = False
-
-
-##------------- Fonts to be used.
-if wx.Platform == '__WXMSW__':
-    face1 = 'Arial'
-    face2 = 'Times New Roman'
-    face3 = 'Courier New'
-    pb = 10
-else:
-    face1 = 'Helvetica'
-    face2 = 'Times'
-    face3 = 'Courier'
-    pb = 12
 
 ##------------- Log class
 
@@ -324,8 +312,14 @@ class stimatorMainFrame(wx.Frame):
         # LogText
         self.LogText.SetText(u"")
         self.LogText.EmptyUndoBuffer()
+        if wx.Platform == '__WXMSW__':
+            face = 'Courier New'
+            pb = 10
+        else:
+            face = 'Courier'
+            pb = 12
 
-        self.LogText.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "size:%d,face:%s" % (pb, face3))
+        self.LogText.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "size:%d,face:%s" % (pb, face))
         self.LogText.StyleClearAll()
 
 
@@ -410,13 +404,6 @@ class stimatorMainFrame(wx.Frame):
         #self.AddMenuItem(TCMenu, 'Remove All', 'Remove all time courses', self.OnUnloadTCAll)
         menu.Append(TCMenu, 'Time Courses')
 
-        # Results menu
-        #~ ResultsMenu = wx.Menu()
-        #~ self.AddMenuItem(ResultsMenu, 'Save Results As...', 'Save results file as', self.OnSaveResults)
-        #~ if wx.Platform == '__WXMSW__':
-              #~ self.AddMenuItem(ResultsMenu, 'Generate XLS ', 'Generate Excel file form results', self.OnGenXLS)
-        #~ menu.Append(ResultsMenu, 'Results')
-
         # Settings menu
         #fileMenu = wx.Menu()
         #menu.Append(fileMenu, 'Settings')
@@ -477,7 +464,7 @@ class stimatorMainFrame(wx.Frame):
             defaultFile = ""
         if wildCard == None:
             wildCard = "*.*"
-        fileName = None
+        fileNames = None
         fileDialog = wx.FileDialog(self, "Choose some files", defaultDir, defaultFile, wildCard, wx.OPEN|wx.MULTIPLE|wx.FILE_MUST_EXIST)
         result = fileDialog.ShowModal()
         if result == wx.ID_OK:
@@ -635,6 +622,7 @@ class stimatorMainFrame(wx.Frame):
 
         self.write("-------------------------------------------------------")
         self.parser.timecourseheaders = []
+        self.parser.timecoursenans = []
         timecoursedata = []
         for filename in pathlist:
             h,d = modelparser.readTimeCourseFromFile(filename)
@@ -642,9 +630,18 @@ class stimatorMainFrame(wx.Frame):
                 self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error")
                 return
             else:
-                self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1], filename))
+                self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename))
                 self.parser.timecourseheaders.append(h)
                 timecoursedata.append(d)
+        
+        for i,d in enumerate(timecoursedata):
+            if d.shape[1] != len(self.parser.variables)+1:
+                self.MessageDialog("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
+                                   self.parser.timecourses[i],len(self.parser.variables)),"Error in data")
+                return
+
+            
+        
         self.parser.timecourseshapes = [i.shape for i in timecoursedata]
         self.parser.timecourseshortnames = [os.path.split(filename)[1] for filename in pathlist]
         self.parser.problemname = self.GetFileName()
@@ -670,10 +667,10 @@ class stimatorMainFrame(wx.Frame):
         self.optimizerThread = None
 
     def PostProcessEnded(self):
-        global besttimecoursedata
+        global timecoursedata
         solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.parser, self.bestData, besttimecoursedata)
+        win.loadBestData(self.parser, self.bestData, timecoursedata)
         win.Show(True)
 
 

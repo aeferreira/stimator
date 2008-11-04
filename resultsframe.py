@@ -4,36 +4,157 @@
 import sys
 import os
 import os.path
+import math
 import wx
 from   stimatorwidgts import SDLeditor
 import modelparser
 from matplotlib.numerix import arange, sin, pi, cos
 
 import matplotlib
-
-# uncomment the following to use wx rather than wxagg
-#matplotlib.use('WX')
-#from matplotlib.backends.backend_wx import FigureCanvasWx as FigureCanvas
-
-# comment out the following to use wx rather than wxagg
+matplotlib.interactive(False)
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.backends.backend_wx import _load_bitmap
 from matplotlib.figure import Figure
-from matplotlib.numerix.mlab import rand
+
+##------------- Supporting classes for a no flicker wxPanel to draw matplotlib plots
+#~ """
+#~ A demonstration of creating a matlibplot window from within wx.
+#~ A resize only causes a single redraw of the panel.
+#~ The WXAgg backend is used as it is quicker.
+
+#~ Edward Abraham, Datamine, April, 2006
+#~ (works with wxPython 2.6.1, Matplotlib 0.87 and Python 2.4)
+#~ """
 
 
-##------------- Fonts to be used.
-if wx.Platform == '__WXMSW__':
-    face1 = 'Arial'
-    face2 = 'Times New Roman'
-    face3 = 'Courier New'
-    pb = 10
-else:
-    face1 = 'Helvetica'
-    face2 = 'Times'
-    face3 = 'Courier'
-    pb = 12
+class NoRepaintCanvas(FigureCanvas):
+    """We subclass FigureCanvasWxAgg, overriding the _onPaint method, so that
+    the draw method is only called for the first two paint events. After that,
+    the canvas will only be redrawn when it is resized.
+    """
+    def __init__(self, *args, **kwargs):
+        FigureCanvas.__init__(self, *args, **kwargs)
+        self._drawn = 0
+
+    def _onPaint(self, evt):
+        """
+        Called when wxPaintEvt is generated
+        """
+        if not self._isRealized:
+            self.realize()
+        if self._drawn < 2:
+            self.draw(repaint = False)
+            self._drawn += 1
+        self.gui_repaint(drawDC=wx.PaintDC(self))
+
+class PlotPanel(wx.Panel):
+    """
+    The PlotPanel has a Figure and a Canvas. OnSize events simply set a 
+    flag, and the actually redrawing of the
+    figure is triggered by an Idle event.
+    """
+    def __init__(self, parent, id = -1, color = None,\
+        dpi = None, style = wx.NO_FULL_REPAINT_ON_RESIZE, **kwargs):
+        wx.Panel.__init__(self, parent, id = id, style = style, **kwargs)
+        self.figure = Figure(None, dpi)
+        self.canvas = NoRepaintCanvas(self, -1, self.figure)
+        self.SetColor(color)
+        self.Bind(wx.EVT_IDLE, self._onIdle)
+        self.Bind(wx.EVT_SIZE, self._onSize)
+        self._resizeflag = True
+        self._SetSize()
+
+    def SetColor(self, rgbtuple):
+        """Set figure and canvas colours to be the same"""
+        if not rgbtuple:
+            rgbtuple = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE).Get()
+        col = [c/255.0 for c in rgbtuple]
+        self.figure.set_facecolor(col)
+        self.figure.set_edgecolor(col)
+        self.canvas.SetBackgroundColour(wx.Colour(*rgbtuple))
+
+    def _onSize(self, event):
+        self._resizeflag = True
+
+    def _onIdle(self, evt):
+        if self._resizeflag:
+            self._resizeflag = False
+            self._SetSize()
+            self.draw()
+
+    def _SetSize(self, pixels = None):
+        """
+        This method can be called to force the Plot to be a desired size, which defaults to
+        the ClientSize of the panel
+        """
+        if not pixels:
+            pixels = self.GetClientSize()
+        self.canvas.SetSize(pixels)
+        self.figure.set_size_inches(pixels[0]/self.figure.get_dpi(),
+                                    pixels[1]/self.figure.get_dpi())
+
+    def draw(self):
+        """Where the actual drawing happens"""
+        pass
+
+class DemoPlotPanel(PlotPanel):
+    """An example plotting panel. The only method that needs 
+    overriding is the draw method"""
+    def draw(self):
+        #self._SetSize()    #?????
+        if not hasattr(self, 'subplot'):
+            self.subplot = self.figure.add_subplot(111)
+        theta = arange(0, 45*2*pi, 0.02)
+        rad = (0.8*theta/(2*pi)+1)
+        r = rad*(8 + sin(theta*7+rad/1.8))
+        x = r*cos(theta)
+        y = r*sin(theta)
+        #Now draw it
+        self.subplot.plot(x,y, '-b')
+        #Set some plot attributes
+        #self.subplot.set_title("A polar flower (%s points)" % len(x), fontsize = 12)
+        self.subplot.set_title("Results for %s" % self.parser.problemname)
+        self.subplot.set_xlabel("Flower is from  http://www.physics.emory.edu/~weeks/ideas/rose.html")
+        self.subplot.set_xlim([-400, 400])
+        self.subplot.set_ylim([-400, 400])
+
+class BestPlotPanel(PlotPanel):
+    """Plots best data."""
+    #TODO: implement graph settings
+    def draw(self):
+        self._SetSize()    #?????
+        self.figure.clear()
+        #if not hasattr(self, 'tcsubplots'):
+        self.tcsubplots = []
+        ntc = len(self.bestData[3]['data'])
+        besttimecoursedata = self.bestData[3]['data']
+        timecoursedata = self.timecoursedata
+        ncols = int(math.ceil(math.sqrt(ntc)))
+        nrows = int(math.ceil(float(ntc/ncols)))
+        for i in range(ntc):
+            self.tcsubplots.append(self.figure.add_subplot(nrows,ncols,i+1))
+
+        for i in range(ntc):
+            subplot = self.tcsubplots[i]
+            subplot.set_xlabel("time")
+            subplot.set_title("%s %d points %g"% self.bestData[2]['data'][i], fontsize = 12)
+            x = timecoursedata[i][:,0]
+            #~ theta = arange(0, 45*2*pi, 0.02)
+            #~ rad = (0.8*theta/(2*pi)+1)
+            #~ r = rad*(8 + sin(theta*7+rad/1.8))
+            #~ x = r*cos(theta)
+            #~ y = r*sin(theta)
+            #Now draw it
+            yexp = timecoursedata[i][:,1:]
+            ysim = besttimecoursedata[i]
+            subplot.plot(x,yexp, '-b')
+            subplot.plot(x,ysim, '-r')
+            #Set some plot attributes
+            #self.subplot.set_title("Results for %s" % self.parser.problemname)
+            #subplot.set_xlim([-400, 400])
+            #subplot.set_ylim([-400, 400])
+
+
 
 
 ##------------- Results Frame
@@ -43,47 +164,57 @@ class resultsFrame(wx.Frame):
         kwds["style"] = wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, *args, **kwds)
 
-        self.mainwindow = wx.SplitterWindow(self, -1, style=wx.SP_3D|wx.SP_BORDER)
+        self.notebook = wx.Notebook(self, -1, style=0)
 
-        self.top_pane = wx.Panel(self.mainwindow, -1)
-        self.bottom_pane = wx.Panel(self.mainwindow, -1)
+        global ID_RT; ID_RT = wx.NewId()
+        self.ReportEditor = SDLeditor(self.notebook, ID_RT, self)
+        
+        self.plotpanel = BestPlotPanel(self.notebook, color=[255.0]*3)
+        
+        self.notebook.AddPage(self.ReportEditor, "Results")
+        self.notebook.AddPage(self.plotpanel, "Plots") 
 
         self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
 
         #self.MakeMenus()
         #self.MakeToolbar()
-        global ID_RT; ID_RT = wx.NewId()
-        self.ReportEditor = SDLeditor(self.top_pane, ID_RT, self)
-        self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
+
+        #self.SetTitle("Results")
+        self.SetSize((1024, 768))
+        #self.SetBackgroundColour(wx.Colour(229, 229, 229))
         
-        self.figure = Figure(figsize=(4,4), dpi=100)
-        self.canvas = FigureCanvas(self.bottom_pane, -1, self.figure)
 
-        wx.EVT_PAINT(self, self.OnPaint)        
-
-        self.__set_properties()
-        self.__do_layout()
-
-    def OnPaint(self, event):
-        self.canvas.draw()
-        event.Skip()
+        # statusbar configuration
+        self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
+        self.mainstatusbar.SetStatusWidths([-1])
+        mainstatusbar_fields = ["Results frame"]
+        for i in range(len(mainstatusbar_fields)):
+            self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
+        #self.maintoolbar.Realize()
 
 
 ##------------- Initialization and __del__ functions
 
     def __del__(self):
         pass
-
-    def loadBestData(self, parser, bestData, besttimecoursedata):
+    
+    def loadBestData(self, parser, bestData, timecoursedata):
         """Main initialization function.
         
         Should be called after __init__() but before Show()."""
 
+        self.plotpanel.parser = parser
+        self.plotpanel.bestData = bestData
+        self.plotpanel.timecoursedata = timecoursedata
+
+        self.parser = parser
+        self.bestData = bestData
         self.SetTitle("Results for %s" % parser.problemname)
 
         # generate report
         reportText = ""
         for section in bestData:
+            if section['section'] =="best timecourses": continue
             reportText += "%-20s --------------------------------\n" % section['section']
             if section['header']:
                 reportText += '\t'.join(section['header'])+'\n'
@@ -92,59 +223,7 @@ class resultsFrame(wx.Frame):
         
         self.ReportEditor.SetText(reportText)
         self.ReportEditor.EmptyUndoBuffer()
-        
-        # plot timecourses
-        self.axes = self.figure.add_subplot(211)
-        t = arange(0.0,3.0,0.01)
-        s = sin(2*pi*t)
-        self.axes.plot(t,s)
-
-        self.axes = self.figure.add_subplot(212)
-        t = arange(0.0,3.0,0.01)
-        s = cos(2*pi*t)
-        self.axes.plot(t,s)
-       
-        
-    def __set_properties(self):
-        # main window configuration
-        self.SetTitle("Results")
-        self.SetSize((1024, 768))
-        self.SetBackgroundColour(wx.Colour(229, 229, 229))
-
-        # statusbar configuration
-        self.mainstatusbar.SetStatusWidths([-1])
-        mainstatusbar_fields = ["Results frame"]
-        for i in range(len(mainstatusbar_fields)):
-            self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
-        #self.maintoolbar.Realize()
-
-
-    def __do_layout(self):
-        sizer_main = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_bottom = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_top = wx.BoxSizer(wx.HORIZONTAL)
-
-        sizer_bottom.Add(self.canvas, 1, wx.TOP | wx.LEFT | wx.EXPAND)
-        self.bottom_pane.SetAutoLayout(True)
-        self.bottom_pane.SetSizer(sizer_bottom)
-        sizer_bottom.Fit(self.bottom_pane)
-        sizer_bottom.SetSizeHints(self.bottom_pane)
-
-        sizer_top.Add(self.ReportEditor, 1, wx.EXPAND, 0)
-        self.top_pane.SetAutoLayout(True)
-        self.top_pane.SetSizer(sizer_top)
-        sizer_top.Fit(self.top_pane)
-        sizer_top.SetSizeHints(self.top_pane)
-
-        self.mainwindow.SplitVertically(self.top_pane, self.bottom_pane, sashPosition = -400)
-
-        sizer_main.Add(self.mainwindow, 1, wx.EXPAND, 0)
-        self.SetAutoLayout(True)
-        self.SetSizer(sizer_main)
-
-        self.Layout()
-
-        self.mainwindow.SetSashGravity(1.0)
+               
 
 ##------------- Init Subwindows
 

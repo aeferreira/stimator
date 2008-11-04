@@ -107,6 +107,15 @@ class DESolver:
             self.randCounter3 = 0
         return self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize[self.randCounter3]
 
+    def GetRandIntInPars(self):
+        return random.randint(0, self.parameterCount-1)
+
+    def GetRandFloatIn01(self):
+        return random.uniform(0.0, 1.0)
+        
+    def GetRandIntInPop(self):
+        return random.randint(0, self.populationSize-1)
+
 
     # this class might normally be subclassed and this method overridden, or the
     # externalEnergyFunction set and this method used directly
@@ -129,7 +138,7 @@ class DESolver:
         
 
         # TODO: this is for performance on non-parallelized hardware
-        if self.generationsWithNoImprovement > 10:
+        if self.generationsWithNoImprovement > 20:
             self.exitCode = 4
             return
                 
@@ -164,10 +173,6 @@ class DESolver:
             self.calcTrialSolution(candidate)
             trialEnergy, self.atSolution = self.EnergyFunction(self.trialSolution)
             
-            #while trialEnergy >= 1.0E300:
-                #self.calcTrialSolution(candidate)
-                #trialEnergy, self.atSolution = self.EnergyFunction(self.trialSolution)
-
             if trialEnergy < self.popEnergy[candidate]:
                 # New low for this candidate
                 self.popEnergy[candidate] = trialEnergy
@@ -208,18 +213,12 @@ class DESolver:
 
     def Best1Exp(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] - self.population[r2][n])
@@ -229,39 +228,38 @@ class DESolver:
 
     def Rand1Exp(self, candidate):
         r1,r2,r3 = self.SelectSamples(candidate, 3)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
-
+        n = self.GetRandIntInPars()
+        
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] - self.population[r3][n])
             n = (n + 1) % self.parameterCount
             i += 1
-
+    def genIndxOfGenesToXover(self):
+        #TODO this must be some discrete classic distribution random sample
+        n = self.GetRandIntInPars()
+        indx = numpy.zeros(self.parameterCount,dtype=int)
+        for i in range(self.parameterCount):
+            k = self.GetRandFloatIn01()
+            if k >= self.crossOverProbability:
+                break
+            indx[n]=1
+            n = (n + 1) % self.parameterCount
+        return indx
+        
 
     def RandToBest1Exp(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] += self.scale * (self.bestSolution[n] - self.trialSolution[n]) + self.scale * (self.population[r1][n] - self.population[r2][n])
@@ -269,39 +267,35 @@ class DESolver:
             i += 1
 
 
+    #~ def Best2Exp(self, candidate):
+        #~ r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
+        #~ n = self.GetRandIntInPars()
+
+        #~ self.trialSolution = numpy.copy(self.population[candidate])
+        #~ for i in range(self.parameterCount):
+            #~ popn = self.population[:,n]
+            #~ k = self.GetRandFloatIn01()
+            #~ if k >= self.crossOverProbability:
+                #~ break
+            #~ #self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] + self.population[r2][n] - self.population[r3][n] - self.population[r4][n])
+            #~ self.trialSolution[n] = self.bestSolution[n] + self.scale * (popn[r1] + popn[r2] - popn[r3] - popn[r4])
+            #~ n = (n + 1) % self.parameterCount
+
     def Best2Exp(self, candidate):
         r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
-
         self.trialSolution = numpy.copy(self.population[candidate])
-        for i in range(self.parameterCount):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
-            if k >= self.crossOverProbability:
-                break
-            self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] + self.population[r2][n] - self.population[r3][n] - self.population[r4][n])
-            n = (n + 1) % self.parameterCount
-
+        indx = self.genIndxOfGenesToXover()
+        self.trialSolution[indx] = self.bestSolution[indx] + self.scale * (self.population[r1][indx] + self.population[r2][indx] - self.population[r3][indx] - self.population[r4][indx])
+            
 
     def Rand2Exp(self, candidate):
         r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] + self.population[r3][n] - self.population[r4][n] - self.population[r5][n])
@@ -310,18 +304,12 @@ class DESolver:
 
     def Best1Bin(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] - self.population[r2][n])
@@ -331,18 +319,12 @@ class DESolver:
 
     def Rand1Bin(self, candidate):
         r1,r2,r3 = self.SelectSamples(candidate, 3)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] - self.population[r3][n])
@@ -352,18 +334,12 @@ class DESolver:
 
     def RandToBest1Bin(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] += self.scale * (self.bestSolution[n] - self.trialSolution[n]) + self.scale * (self.population[r1][n] - self.population[r2][n])
@@ -373,18 +349,12 @@ class DESolver:
 
     def Best2Bin(self, candidate):
         r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] + self.population[r2][n] - self.population[r3][n] - self.population[r4][n])
@@ -394,18 +364,12 @@ class DESolver:
 
     def Rand2Bin(self, candidate):
         r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
-        if self.useClassRandomNumberMethods:
-            n = self.GetClassRandomIntegerBetweenZeroAndParameterCount()
-        else:
-            n = random.randint(0, self.parameterCount-1)
+        n = self.GetRandIntInPars()
 
         self.trialSolution = numpy.copy(self.population[candidate])
         i = 0
         while(1):
-            if self.useClassRandomNumberMethods:
-                k = self.GetClassRandomFloatBetweenZeroAndOne()
-            else:
-                k = random.uniform(0.0, 1.0)
+            k = self.GetRandFloatIn01()
             if k >= self.crossOverProbability or i == self.parameterCount:
                 break
             self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] + self.population[r3][n] - self.population[r4][n] - self.population[r5][n])
@@ -413,6 +377,8 @@ class DESolver:
             i += 1
 
     def SelectSamples(self, candidate, n):
+        """Select n different members of population which are different from candidate."""
+        
         s = random.sample(xrange(self.populationSize),n)
         while candidate in s:
             s = random.sample(xrange(self.populationSize),n)
