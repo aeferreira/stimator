@@ -239,6 +239,7 @@ class DESolver:
             self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] - self.population[r3][n])
             n = (n + 1) % self.parameterCount
             i += 1
+
     def genIndxOfGenesToXover(self):
         #TODO this must be some discrete classic distribution random sample
         n = self.GetRandIntInPars()
@@ -249,9 +250,26 @@ class DESolver:
                 break
             indx[n]=1
             n = (n + 1) % self.parameterCount
+        print indx
         return indx
         
 
+    def Best2Exp(self, candidate):
+        r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
+        self.trialSolution = numpy.copy(self.population[candidate])
+        n = self.GetRandIntInPars()
+        #~ indx = self.genIndxOfGenesToXover()
+        #~ print self.trialSolution
+        #~ self.trialSolution[indx] = self.bestSolution[indx] + self.scale * (self.population[r1][indx] + self.population[r2][indx] - self.population[r3][indx] - self.population[r4][indx])
+        for i in range(self.parameterCount):
+            #popn = self.population[:,n]
+            k = self.GetRandFloatIn01()
+            if k >= self.crossOverProbability:
+                break
+            self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] + self.population[r2][n] - self.population[r3][n] - self.population[r4][n])
+            #self.trialSolution[n] = self.bestSolution[n] + self.scale * (popn[r1] + popn[r2] - popn[r3] - popn[r4])
+            n = (n + 1) % self.parameterCount
+            
     def RandToBest1Exp(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
         n = self.GetRandIntInPars()
@@ -281,12 +299,6 @@ class DESolver:
             #~ self.trialSolution[n] = self.bestSolution[n] + self.scale * (popn[r1] + popn[r2] - popn[r3] - popn[r4])
             #~ n = (n + 1) % self.parameterCount
 
-    def Best2Exp(self, candidate):
-        r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        self.trialSolution = numpy.copy(self.population[candidate])
-        indx = self.genIndxOfGenesToXover()
-        self.trialSolution[indx] = self.bestSolution[indx] + self.scale * (self.population[r1][indx] + self.population[r2][indx] - self.population[r3][indx] - self.population[r4][indx])
-            
 
     def Rand2Exp(self, candidate):
         r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)

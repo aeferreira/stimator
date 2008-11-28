@@ -447,10 +447,10 @@ class stimatorMainFrame(wx.Frame):
         if wildCard == None:
             wildCard = "*.*"
         osflag = wx.SAVE
-        if IsOpen: osflag = wx.OPEN
+        if IsOpen: osflag = wx.OPEN|wx.FILE_MUST_EXIST
 
         fileName = None
-        fileDialog = wx.FileDialog(self, "Choose a file", defaultDir, defaultFile, wildCard, osflag|wx.FILE_MUST_EXIST)
+        fileDialog = wx.FileDialog(self, "Choose a file", defaultDir, defaultFile, wildCard, osflag)
         result = fileDialog.ShowModal()
         if result == wx.ID_OK:
             fileName = fileDialog.GetPath()

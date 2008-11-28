@@ -8,7 +8,7 @@ import math
 import wx
 from   stimatorwidgts import SDLeditor
 import modelparser
-from matplotlib.numerix import arange, sin, pi, cos
+from matplotlib.numerix import arange, sin, pi, cos, isnan
 
 import matplotlib
 matplotlib.interactive(False)
@@ -130,25 +130,27 @@ class BestPlotPanel(PlotPanel):
         besttimecoursedata = self.bestData[3]['data']
         timecoursedata = self.timecoursedata
         ncols = int(math.ceil(math.sqrt(ntc)))
-        nrows = int(math.ceil(float(ntc/ncols)))
+        nrows = int(math.ceil(float(ntc)/ncols))
+        #print "ncols=",ncols,'nrows=',nrows
         for i in range(ntc):
             self.tcsubplots.append(self.figure.add_subplot(nrows,ncols,i+1))
 
         for i in range(ntc):
             subplot = self.tcsubplots[i]
-            subplot.set_xlabel("time")
-            subplot.set_title("%s %d points %g"% self.bestData[2]['data'][i], fontsize = 12)
+            #subplot.set_xlabel("time")
+            subplot.set_title("%s (%d)%g"% self.bestData[2]['data'][i], fontsize = 12)
             x = timecoursedata[i][:,0]
-            #~ theta = arange(0, 45*2*pi, 0.02)
-            #~ rad = (0.8*theta/(2*pi)+1)
-            #~ r = rad*(8 + sin(theta*7+rad/1.8))
-            #~ x = r*cos(theta)
-            #~ y = r*sin(theta)
-            #Now draw it
-            yexp = timecoursedata[i][:,1:]
-            ysim = besttimecoursedata[i]
-            subplot.plot(x,yexp, '-b')
-            subplot.plot(x,ysim, '-r')
+            nx = len(x)
+            for line in range(1, timecoursedata[i].shape[1]):
+                #count NaN
+                yexp = timecoursedata[i][:,line]
+                nnan = len(yexp[isnan(yexp)])
+                if nnan >= nx-1: continue
+                ysim = besttimecoursedata[i][:,line-1]
+                subplot.plot(x,yexp, '-b')
+                subplot.plot(x,ysim, '-r')
+            #yexp = timecoursedata[i][:,1:]
+            #ysim = besttimecoursedata[i]
             #Set some plot attributes
             #self.subplot.set_title("Results for %s" % self.parser.problemname)
             #subplot.set_xlim([-400, 400])
