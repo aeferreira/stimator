@@ -93,15 +93,14 @@ class DeOdeSolver(DESolver.DESolver):
 
         self.timecourse_scores = empty(len(timecoursedata))
         
-        # dump messages to files instead of standard output streams
-        #~ self.msgfile = open("msgs.txt", 'w')
-        #~ self.msgfileerr = open("msgserr.txt", 'w')
-        #~ self.oldstdout = sys.stdout
-        #~ self.oldstderr = sys.stderr
-        #~ sys.stdout = self.msgfile
-        #~ sys.stderr = self.msgfileerr
-        
-    
+        # open files to write parameter progression
+        self.parfilenames = []
+        self.parfilehandes = []
+        for par in range(self.parameterCount):
+            filename = self.parser.parameters[par][0]+".par"
+            self.parfilenames.append(filename)
+            self.parfilehandes.append(open(filename, 'w'))
+            
     def externalEnergyFunction(self,trial):
         global m_Parameters, timecoursedata
         #~ if (trial > self.maxInitialValue).any():
@@ -136,6 +135,10 @@ class DeOdeSolver(DESolver.DESolver):
     def reportGeneration (self):
         evt = UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
         wx.PostEvent(self.calcThread.win, evt)
+        for par in range(self.parameterCount):
+            parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
+            print >>self.parfilehandes[par], " ".join(parvector)
+            
     
     def reportFinal (self):
         if self.exitCode==0: outCode = -1 
@@ -148,6 +151,8 @@ class DeOdeSolver(DESolver.DESolver):
         #~ sys.stderr = self.oldstderr
         evt = EndComputationEvent(exitCode = outCode)
         wx.PostEvent(self.calcThread.win, evt)
+        for par in range(self.parameterCount):
+            self.parfilehandes[par].close()
 
     def generateBestData (self):
         global timecoursedata

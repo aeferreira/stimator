@@ -72,41 +72,6 @@ class DESolver:
     def reportFinal (self):
         print self.reportFinalString ()
 
-    def SetupClassRandomNumberMethods(self):
-        numpy.random.seed(3) # this yields same results each time Solve() is run
-        self.nonStandardRandomCount = self.populationSize * self.parameterCount * 3
-        if self.nonStandardRandomCount < 523: # set a minimum number of random numbers
-            self.nonStandardRandomCount = 523
-            
-        self.ArrayOfRandomIntegersBetweenZeroAndParameterCount = \
-        numpy.random.random_integers(0, self.parameterCount-1, size=(self.nonStandardRandomCount))
-        self.ArrayOfRandomRandomFloatBetweenZeroAndOne = \
-        numpy.random.uniform(size=(self.nonStandardRandomCount))
-        self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize \
-        = numpy.random.random_integers(0, self.populationSize-1, size=(self.nonStandardRandomCount))
-        self.randCounter1 = 0
-        self.randCounter2 = 0
-        self.randCounter3 = 0
-
-
-    def GetClassRandomIntegerBetweenZeroAndParameterCount(self):
-        self.randCounter1 += 1
-        if self.randCounter1 >= self.nonStandardRandomCount:
-            self.randCounter1 = 0
-        return self.ArrayOfRandomIntegersBetweenZeroAndParameterCount[self.randCounter1]
-
-    def GetClassRandomFloatBetweenZeroAndOne(self):
-        self.randCounter2 += 1
-        if self.randCounter2 >= self.nonStandardRandomCount:
-            self.randCounter2 = 0
-        return self.ArrayOfRandomRandomFloatBetweenZeroAndOne[self.randCounter2]
-        
-    def GetClassRandomIntegerBetweenZeroAndPopulationSize(self):
-        self.randCounter3 += 1
-        if self.randCounter3 >= self.nonStandardRandomCount:
-            self.randCounter3 = 0
-        return self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize[self.randCounter3]
-
     def GetRandIntInPars(self):
         return random.randint(0, self.parameterCount-1)
 
@@ -138,7 +103,7 @@ class DESolver:
         
 
         # TODO: this is for performance on non-parallelized hardware
-        if self.generationsWithNoImprovement > 20:
+        if self.generationsWithNoImprovement > 100:
             self.exitCode = 4
             return
                 
@@ -285,21 +250,6 @@ class DESolver:
             i += 1
 
 
-    #~ def Best2Exp(self, candidate):
-        #~ r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        #~ n = self.GetRandIntInPars()
-
-        #~ self.trialSolution = numpy.copy(self.population[candidate])
-        #~ for i in range(self.parameterCount):
-            #~ popn = self.population[:,n]
-            #~ k = self.GetRandFloatIn01()
-            #~ if k >= self.crossOverProbability:
-                #~ break
-            #~ #self.trialSolution[n] = self.bestSolution[n] + self.scale * (self.population[r1][n] + self.population[r2][n] - self.population[r3][n] - self.population[r4][n])
-            #~ self.trialSolution[n] = self.bestSolution[n] + self.scale * (popn[r1] + popn[r2] - popn[r3] - popn[r4])
-            #~ n = (n + 1) % self.parameterCount
-
-
     def Rand2Exp(self, candidate):
         r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
         n = self.GetRandIntInPars()
@@ -399,4 +349,38 @@ class DESolver:
 #        s = random.sample(universe, n)
         return s
 
+    def SetupClassRandomNumberMethods(self):
+        numpy.random.seed(3) # this yields same results each time Solve() is run
+        self.nonStandardRandomCount = self.populationSize * self.parameterCount * 3
+        if self.nonStandardRandomCount < 523: # set a minimum number of random numbers
+            self.nonStandardRandomCount = 523
+            
+        self.ArrayOfRandomIntegersBetweenZeroAndParameterCount = \
+        numpy.random.random_integers(0, self.parameterCount-1, size=(self.nonStandardRandomCount))
+        self.ArrayOfRandomRandomFloatBetweenZeroAndOne = \
+        numpy.random.uniform(size=(self.nonStandardRandomCount))
+        self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize \
+        = numpy.random.random_integers(0, self.populationSize-1, size=(self.nonStandardRandomCount))
+        self.randCounter1 = 0
+        self.randCounter2 = 0
+        self.randCounter3 = 0
+
+
+    def GetClassRandomIntegerBetweenZeroAndParameterCount(self):
+        self.randCounter1 += 1
+        if self.randCounter1 >= self.nonStandardRandomCount:
+            self.randCounter1 = 0
+        return self.ArrayOfRandomIntegersBetweenZeroAndParameterCount[self.randCounter1]
+
+    def GetClassRandomFloatBetweenZeroAndOne(self):
+        self.randCounter2 += 1
+        if self.randCounter2 >= self.nonStandardRandomCount:
+            self.randCounter2 = 0
+        return self.ArrayOfRandomRandomFloatBetweenZeroAndOne[self.randCounter2]
+        
+    def GetClassRandomIntegerBetweenZeroAndPopulationSize(self):
+        self.randCounter3 += 1
+        if self.randCounter3 >= self.nonStandardRandomCount:
+            self.randCounter3 = 0
+        return self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize[self.randCounter3]
 
