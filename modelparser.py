@@ -350,45 +350,45 @@ class StimatorParser:
         return rateString
         
 
-    def ODEcalcString(self, scale=1.0):
-        if self.error:
-           return ""
-        nvars = len(self.variables)
-        result = "def calcDerivs(variables,t):\n\tglobal m_Parameters\n"
-        result +="\tderivatives = empty(%d)\n" % nvars
+    #~ def ODEcalcString(self, scale=1.0):
+        #~ if self.error:
+           #~ return ""
+        #~ nvars = len(self.variables)
+        #~ result = "def calcDerivs(variables,t):\n\tglobal m_Parameters\n"
+        #~ result +="\tderivatives = empty(%d)\n" % nvars
 
-        #write @ definitions    #TODO!!!
+        #~ #write @ definitions    #TODO!!!
         #~ for k in parser.atdefs:
               #~ vline = "\tif(solution_time*scale >= %g) %s = %g;\n" % (k[0], k[1], k[2])
               #~ result = result + vline
 
-        #write rates
-        for k in self.rates:
-              vline = k['rate']
-              # replace varnames
-              for i in range(nvars):
-                  vline = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, vline)
-              # replace parameters
-              for i in range(len(self.parameters)):
-                  vline = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, vline)
-              # replace constants
-              for const in self.constants.keys():
-                  vline = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], vline)
-              vline = "\tv_%s = %s\n" %(k['name'],vline)
-              result = result + vline
+        #~ #write rates
+        #~ for k in self.rates:
+              #~ vline = k['rate']
+              #~ # replace varnames
+              #~ for i in range(nvars):
+                  #~ vline = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, vline)
+              #~ # replace parameters
+              #~ for i in range(len(self.parameters)):
+                  #~ vline = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, vline)
+              #~ # replace constants
+              #~ for const in self.constants.keys():
+                  #~ vline = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], vline)
+              #~ vline = "\tv_%s = %s\n" %(k['name'],vline)
+              #~ result = result + vline
 
-        #write differential equations
-        for k in range(nvars):
-              row = self.stoichmatrixrows[k]
-              eqline = "\tderivatives[%d] = " % k
-              for r in row.keys():
-                  if row[r]>0:
-                      eqline = eqline + "+"
-                  eqline = eqline + ("%g * v_%s " %(float(row[r]), r))
-              result = result + eqline + "\n"
+        #~ #write differential equations
+        #~ for k in range(nvars):
+              #~ row = self.stoichmatrixrows[k]
+              #~ eqline = "\tderivatives[%d] = " % k
+              #~ for r in row.keys():
+                  #~ if row[r]>0:
+                      #~ eqline = eqline + "+"
+                  #~ eqline = eqline + ("%g * v_%s " %(float(row[r]), r))
+              #~ result = result + eqline + "\n"
               
 
-        return result + '\treturn derivatives*%f' % scale
+        #~ return result + '\treturn derivatives*%f' % scale
 
 #----------------------------------------------------------------------------
 #         TIME COURSE READING FUNCTION

@@ -30,9 +30,6 @@ Write your model here...
 
 """
 
-##------------- Globals for DeOdeSolver
-m_Parameters = None
-
 ##------------- Computing thread class
 
 # NewEvent objects and a EVT binder functions
@@ -41,9 +38,13 @@ m_Parameters = None
 
 
 class DeOdeSolver(DESolver.DESolver):
+    """Overides energy function and report functions.
+    
+    The energy function solves ODEs and computes a least-squares score
+    Report functions post events to the main window (nothing else)."""
 
     def calcDerivs(self, variables, t):
-        global m_Parameters
+        m_Parameters = self.m_Parameters
         ratebytecode = self.ratebytecode
         NT = self.NT
         v = self.v
@@ -51,10 +52,9 @@ class DeOdeSolver(DESolver.DESolver):
             v[i] = eval(r)
         return dot(v,NT)
         
-    def setup(self, parser, calcThread, atimecoursedata):
-        global m_Parameters
+    def setup(self, parser, win, atimecoursedata):
         self.parser = parser
-        self.calcThread = calcThread
+        self.win = win # the widget that receives the notifications
         self.timecoursedata = atimecoursedata
         
         # cutoffEnergy is 0.1% of deviation from data
@@ -92,15 +92,14 @@ class DeOdeSolver(DESolver.DESolver):
         self.timecourse_scores = empty(len(self.timecoursedata))
         
         # open files to write parameter progression
-        self.parfilenames = []
-        self.parfilehandes = []
-        for par in range(self.parameterCount):
-            filename = self.parser.parameters[par][0]+".par"
-            self.parfilenames.append(filename)
-            self.parfilehandes.append(open(filename, 'w'))
+        #~ self.parfilenames = []
+        #~ self.parfilehandes = []
+        #~ for par in range(self.parameterCount):
+            #~ filename = self.parser.parameters[par][0]+".par"
+            #~ self.parfilenames.append(filename)
+            #~ self.parfilehandes.append(open(filename, 'w'))
             
     def externalEnergyFunction(self,trial):
-        global m_Parameters
         #~ if (trial > self.maxInitialValue).any():
             #~ return 1.0E300
         #~ if (trial < self.minInitialValue).any():
@@ -109,7 +108,7 @@ class DeOdeSolver(DESolver.DESolver):
             if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
                 return 1.0E300
         
-        m_Parameters = trial
+        self.m_Parameters = trial
         salg=integrate._odepack.odeint
 
         for i in range(len(self.timecoursedata)):
@@ -132,25 +131,27 @@ class DeOdeSolver(DESolver.DESolver):
 
     def reportGeneration (self):
         evt = UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
-        wx.PostEvent(self.calcThread.win, evt)
-        for par in range(self.parameterCount):
-            parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
-            print >>self.parfilehandes[par], " ".join(parvector)
+        wx.PostEvent(self.win, evt)
+        # write parameter to files
+        #~ for par in range(self.parameterCount):
+            #~ parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
+            #~ print >>self.parfilehandes[par], " ".join(parvector)
             
     
     def reportFinal (self):
         if self.exitCode==0: outCode = -1 
         else: 
             outCode = self.exitCode
-            self.calcThread.win.bestData = self.generateBestData() # bestData is own by main window
+            self.win.bestData = self.generateBestData() # bestData is own by main window
         #~ self.msgfile.close()
         #~ self.msgfileerr.close()
         #~ sys.stdout = self.oldstdout
         #~ sys.stderr = self.oldstderr
         evt = EndComputationEvent(exitCode = outCode)
-        wx.PostEvent(self.calcThread.win, evt)
-        for par in range(self.parameterCount):
-            self.parfilehandes[par].close()
+        wx.PostEvent(self.win, evt)
+        # close parameter files
+        #~ for par in range(self.parameterCount):
+            #~ self.parfilehandes[par].close()
 
     def generateBestData (self):
         timecoursedata = self.timecoursedata
@@ -193,7 +194,7 @@ class DeOdeSolver(DESolver.DESolver):
 
 class CalcOptmThread:
     def __init__(self, win):
-        self.win = win
+        self.win = win 
 
     def Start(self, parser, timecoursedata):
         mins = array([k[1] for k in parser.parameters])
@@ -205,9 +206,9 @@ class CalcOptmThread:
                                  mins, maxs,              # min and max parameter values
                                  "Best2Exp",              # DE strategy
                                  0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
-                                 True)                   # use class random number methods
+                                 True)                    # use class random number methods
 
-        self.solver.setup(parser,self,timecoursedata)
+        self.solver.setup(parser,self.win,timecoursedata)
         
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
@@ -375,6 +376,9 @@ class stimatorMainFrame(wx.Frame):
         buttonId = wx.NewId()
         self.maintoolbar.AddLabelTool(buttonId, "Abort", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
         self.Bind(wx.EVT_TOOL, self.OnAbortButton, id=buttonId)
+        buttonId = wx.NewId()
+        self.maintoolbar.AddLabelTool(buttonId, "Example", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        self.Bind(wx.EVT_TOOL, self.OnExampleButton, id=buttonId)
 
     def AddMenuItem(self, menu, itemText, itemDescription, itemHandler):
         menuId = wx.NewId()
@@ -530,6 +534,18 @@ class stimatorMainFrame(wx.Frame):
         if fileName is not None:
             if self.OpenFile(fileName) is False:
                 self.OpenFileError(fileName)
+        self.ModelEditor.SetFocus()
+
+    def OnExampleButton(self, event):
+        if self.ModelEditor.GetModify():
+            if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
+                return
+        fileName = os.path.join(os.path.dirname(__file__),'examples','glxs_hta.mdl')
+        if not os.path.exists(fileName) or not os.path.isfile(fileName):
+            self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
+            return
+        if self.OpenFile(fileName) is False:
+            self.OpenFileError(fileName)
         self.ModelEditor.SetFocus()
 
     def OnSaveMenu(self, event):
