@@ -103,7 +103,7 @@ class DESolver:
         
 
         # TODO: this is for performance on non-parallelized hardware
-        if self.generationsWithNoImprovement > 100:
+        if self.generationsWithNoImprovement > 20:
             self.exitCode = 4
             return
                 

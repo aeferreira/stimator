@@ -155,18 +155,19 @@ class StimatorParser:
 
           # build stoichiometry matrix row-wise
           nvars = len(self.variables)
+          #self.stoichmatrixrows = [{}]*nvars
           for i in range(nvars):
               self.stoichmatrixrows.append({})
           for v in self.rates:
               fields = [('reagents',-1.0),('products',1.0)]
-              for f, rpf in fields:
-                  for c in v[f]:
-                      coef = c[1]*rpf
+              for rORp, signedunit in fields:
+                  for c in v[rORp]:
+                      coef = c[1]*signedunit
                       var  = c[0]
                       if self.constants.has_key(var):
                             continue # there are no rows for constants in stoich. matrix
                       if not(var in self.variables):
-                            self.setError("variable %s has not been declared anywhere"%var, -1, len(var))
+                            self.setError("variable %s has not been declared anywhere" % var, -1, len(var))
                             return
                       ivariable = self.variables.index(var) # error handling here
                       self.stoichmatrixrows[ivariable][v['name']] = coef
@@ -195,7 +196,6 @@ class StimatorParser:
             undefname = m.group('name')
             pos = self.errorstart + exprtext.find(undefname)
             self.setError(text, pos, pos+len(undefname))
-
 
     def rateDefParse(self, line, match):
         entry={}
@@ -519,7 +519,9 @@ timecourse anotherfile.txt
 #timecourse stillanotherfile.txt
 
 """
-
+    print '------------- test model -----------------------'
+    print modelText
+    print '------------------------------------------------'
     parser = StimatorParser()
     textlines = modelText.split("\n")
 
@@ -622,4 +624,4 @@ nothing really usefull here
     print 'dimensions are %d by %d'% d.shape
 
     print
-    raw_input("Press ENTER to finish...")
+    #raw_input("Press ENTER to finish...")

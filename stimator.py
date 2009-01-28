@@ -5,8 +5,8 @@
 
 Copyright 2005-2008 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.70"
-stimatorDate = "31 July 2008"
+stimatorVersion = "0.71"
+stimatorDate = "27 Jan 2009"
 
 import sys
 import os
@@ -31,12 +31,7 @@ Write your model here...
 """
 
 ##------------- Globals for DeOdeSolver
-timecoursedata = []
 m_Parameters = None
-NT = None
-ratebytecode = None
-nrates = None
-v = None
 
 ##------------- Computing thread class
 
@@ -48,21 +43,25 @@ v = None
 class DeOdeSolver(DESolver.DESolver):
 
     def calcDerivs(self, variables, t):
-        global v, nrates, ratebytecode, NT, m_Parameters
-        for i in nrates:
-            v[i] = eval(ratebytecode[i])
+        global m_Parameters
+        ratebytecode = self.ratebytecode
+        NT = self.NT
+        v = self.v
+        for i,r in enumerate(ratebytecode):
+            v[i] = eval(r)
         return dot(v,NT)
         
-    def setup(self, parser, calcThread):
-        global m_Parameters, timecoursedata, v, nrates, ratebytecode, NT
+    def setup(self, parser, calcThread, atimecoursedata):
+        global m_Parameters
         self.parser = parser
         self.calcThread = calcThread
+        self.timecoursedata = atimecoursedata
         
         # cutoffEnergy is 0.1% of deviation from data
-        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in timecoursedata])
+        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in self.timecoursedata])
         
         # scale times to maximum time in data
-        scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in timecoursedata]))
+        scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
         # compute stoichiometry matrix and transpose
         N = zeros((len(parser.variables),len(parser.rates)), dtype=float)
@@ -70,19 +69,18 @@ class DeOdeSolver(DESolver.DESolver):
             for i,k in enumerate(parser.rates):
                 if srow.has_key(k['name']):
                     N[m,i] = scale *srow[k['name']]
-        NT = N.transpose()
+        self.NT = N.transpose()
 
         #compile rate laws
-        ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
+        self.ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
         
-        # other globals
-        nrates = range(len(ratebytecode))
-        v = empty(len(parser.rates))
+        # create array to hold v's
+        self.v = empty(len(parser.rates))
 
         # store initial values and (scaled) time points
         self.X0 = []
         self.times = []
-        for data in timecoursedata:
+        for data in self.timecoursedata:
             y0 = copy(data[0, 1:]) # variables are in columns 1 to end
             self.X0.append(y0)
             
@@ -91,7 +89,7 @@ class DeOdeSolver(DESolver.DESolver):
             times = (t-t0)/scale+t0  # this scales time points
             self.times.append(times)
 
-        self.timecourse_scores = empty(len(timecoursedata))
+        self.timecourse_scores = empty(len(self.timecoursedata))
         
         # open files to write parameter progression
         self.parfilenames = []
@@ -102,7 +100,7 @@ class DeOdeSolver(DESolver.DESolver):
             self.parfilehandes.append(open(filename, 'w'))
             
     def externalEnergyFunction(self,trial):
-        global m_Parameters, timecoursedata
+        global m_Parameters
         #~ if (trial > self.maxInitialValue).any():
             #~ return 1.0E300
         #~ if (trial < self.minInitialValue).any():
@@ -114,7 +112,7 @@ class DeOdeSolver(DESolver.DESolver):
         m_Parameters = trial
         salg=integrate._odepack.odeint
 
-        for i in range(len(timecoursedata)):
+        for i in range(len(self.timecoursedata)):
             y0 = copy(self.X0[i])
             t  = copy(self.times[i])
 
@@ -125,7 +123,7 @@ class DeOdeSolver(DESolver.DESolver):
             #~ if infodict['message'] != 'Integration successful.':
                 #~ return (1.0E300)
             Y = output[0]
-            S = (Y- timecoursedata[i][:, 1:])**2
+            S = (Y- self.timecoursedata[i][:, 1:])**2
             score = nansum(S)
             self.timecourse_scores[i]=score
         
@@ -155,7 +153,7 @@ class DeOdeSolver(DESolver.DESolver):
             self.parfilehandes[par].close()
 
     def generateBestData (self):
-        global timecoursedata
+        timecoursedata = self.timecoursedata
         bestData = [{'section':"PARAMETERS"}, 
                     {'section':"D.E. OPTIMIZATION"}, 
                     {'section':"TIMECOURSES"},
@@ -196,9 +194,8 @@ class DeOdeSolver(DESolver.DESolver):
 class CalcOptmThread:
     def __init__(self, win):
         self.win = win
-        self.computationEnded = False
 
-    def Start(self, parser):
+    def Start(self, parser, timecoursedata):
         mins = array([k[1] for k in parser.parameters])
         maxs = array([k[2] for k in parser.parameters])
         
@@ -210,7 +207,7 @@ class CalcOptmThread:
                                  0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
                                  True)                   # use class random number methods
 
-        self.solver.setup(parser,self)
+        self.solver.setup(parser,self,timecoursedata)
         
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
@@ -599,7 +596,6 @@ class stimatorMainFrame(wx.Frame):
         self.optimizerThread.Stop()
 
     def OnComputeButton(self, event):
-        global timecoursedata
         if self.optimizerThread is not None:
            self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
            return
@@ -657,7 +653,7 @@ class stimatorMainFrame(wx.Frame):
         self.time0 = time.time()
 
         self.optimizerThread=CalcOptmThread(self)
-        self.optimizerThread.Start(self.parser)
+        self.optimizerThread.Start(self.parser, timecoursedata)
         
     def OnUpdateGeneration(self, evt):
         self.write("%-4d: %f" % (evt.generation, evt.energy))
@@ -672,10 +668,9 @@ class stimatorMainFrame(wx.Frame):
         self.optimizerThread = None
 
     def PostProcessEnded(self):
-        global timecoursedata
         solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.parser, self.bestData, timecoursedata)
+        win.loadBestData(self.parser, self.bestData, solver.timecoursedata)
         win.Show(True)
 
 
