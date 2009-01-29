@@ -3,7 +3,7 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2008 António Ferreira
+Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 stimatorVersion = "0.71"
 stimatorDate = "27 Jan 2009"
@@ -29,6 +29,8 @@ demoText = """\
 Write your model here...
 
 """
+
+DUMP_PARS_2FILES = False
 
 ##------------- Computing thread class
 
@@ -92,18 +94,15 @@ class DeOdeSolver(DESolver.DESolver):
         self.timecourse_scores = empty(len(self.timecoursedata))
         
         # open files to write parameter progression
-        #~ self.parfilenames = []
-        #~ self.parfilehandes = []
-        #~ for par in range(self.parameterCount):
-            #~ filename = self.parser.parameters[par][0]+".par"
-            #~ self.parfilenames.append(filename)
-            #~ self.parfilehandes.append(open(filename, 'w'))
+        if DUMP_PARS_2FILES:
+            self.parfilenames = []
+            self.parfilehandes = []
+            for par in range(self.parameterCount):
+                filename = self.parser.parameters[par][0]+".par"
+                self.parfilenames.append(filename)
+                self.parfilehandes.append(open(filename, 'w'))
             
     def externalEnergyFunction(self,trial):
-        #~ if (trial > self.maxInitialValue).any():
-            #~ return 1.0E300
-        #~ if (trial < self.minInitialValue).any():
-            #~ return 1.0E300
         for par in range(self.parameterCount):
             if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
                 return 1.0E300
@@ -115,7 +114,7 @@ class DeOdeSolver(DESolver.DESolver):
             y0 = copy(self.X0[i])
             t  = copy(self.times[i])
 
-#            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+#           Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
             output = salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
                             None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
             if output[-1] < 0: return (1.0E300)
@@ -132,10 +131,11 @@ class DeOdeSolver(DESolver.DESolver):
     def reportGeneration (self):
         evt = UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
         wx.PostEvent(self.win, evt)
-        # write parameter to files
-        #~ for par in range(self.parameterCount):
-            #~ parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
-            #~ print >>self.parfilehandes[par], " ".join(parvector)
+        # write parameters to files
+        if DUMP_PARS_2FILES:
+            for par in range(self.parameterCount):
+                parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
+                print >>self.parfilehandes[par], " ".join(parvector)
             
     
     def reportFinal (self):
@@ -143,15 +143,12 @@ class DeOdeSolver(DESolver.DESolver):
         else: 
             outCode = self.exitCode
             self.win.bestData = self.generateBestData() # bestData is own by main window
-        #~ self.msgfile.close()
-        #~ self.msgfileerr.close()
-        #~ sys.stdout = self.oldstdout
-        #~ sys.stderr = self.oldstderr
         evt = EndComputationEvent(exitCode = outCode)
         wx.PostEvent(self.win, evt)
         # close parameter files
-        #~ for par in range(self.parameterCount):
-            #~ self.parfilehandes[par].close()
+        if DUMP_PARS_2FILES:
+            for par in range(self.parameterCount):
+                self.parfilehandes[par].close()
 
     def generateBestData (self):
         timecoursedata = self.timecoursedata
@@ -631,7 +628,6 @@ class stimatorMainFrame(wx.Frame):
            return
         os.chdir(self.GetFileDir())
         pathlist = [os.path.abspath(k) for k in self.parser.timecourses]
-        #pathlist = [k.replace("\\","\\\\") for k in pathlist] #no longer needed?
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "Error")
@@ -679,6 +675,7 @@ class stimatorMainFrame(wx.Frame):
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
+            #print >> self, "Optimization took %f s"% (time.time()-self.time0) #this works too!
             self.write("Optimization took %f s"% (time.time()-self.time0))
             self.PostProcessEnded()
         self.optimizerThread = None
