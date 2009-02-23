@@ -1,14 +1,28 @@
+#!/usr/bin/env python
+# -*- coding: ISO-8859-1 -*-
+
+# Module DESolver. A component of
+# S-timator : Time-course parameter estimation using Differential Evolution.
+
+# Copyright 2005-2009 António Ferreira
+# S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows.
+
+# This module is also based on...
 #    PythonEquations is a collection of equations expressed as Python classes
 #    Copyright (C) 2007 James R. Phillips
 #    2548 Vera Cruz Drive
 #    Birmingham, AL 35235 USA
 #    email: zunzun@zunzun.com
 #
-#    Version info: $  $
-#
-#    License: BSD-style (see LICENSE.txt in main source directory)
 
-import scipy.optimize, numpy, random
+"""DESolver : Real-value optimization by Differential evolution
+
+Copyright 2005-2009 António Ferreira
+S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
+
+import random
+import numpy
+import scipy.optimize
 
 class DESolver:
 
@@ -176,6 +190,8 @@ class DESolver:
             self.computeGeneration()
         self.finalize()
 
+    
+    # DE models
     def Best1Exp(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
         n = self.GetRandIntInPars()
