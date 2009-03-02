@@ -173,8 +173,8 @@ class CalcOptmThread:
         maxs = array([k[2] for k in parser.parameters])
         
         self.solver = DeOdeSolver(len(parser.parameters), # number of parameters
-                                 int(parser.genomesize),  # genome size
-                                 int(parser.generations), # max number of generations
+                                 int(parser.optSettings['genomesize']),  # genome size
+                                 int(parser.optSettings['generations']), # max number of generations
                                  mins, maxs,              # min and max parameter values
                                  "Best2Exp",              # DE strategy
                                  0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy

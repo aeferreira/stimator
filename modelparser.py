@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator Parser class
-# Antonio Ferreira may 2006
+# Copyright António Ferreira 2006-2009
 #----------------------------------------------------------------------------
 """This module contains code to parse a model definition text,
 
@@ -15,6 +15,7 @@ The parsing loop relies on regular expressions."""
 import re
 import math
 from numpy import *
+import dictdotlookup
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -106,15 +107,17 @@ class StimatorParser:
     
     def reset(self):
         self.problemname = ""   # the name of the problem
+
         self.error = None      # different of None if an error occurs
-        self.errorlinetext = "" # if error, the text of the offending line
-        self.errorline   = -1   # line number of currently parsed line. If error, the line number of the offending line,
-        self.errorstart  = -1   # if error, the starting position of the offending expression
-        self.errorend    = -1   # if error, one past the ending position of the offending expression
+        self.errorLoc = {
+                "linetext" : "", # if error, the text of the offending line
+                "line"     : -1, # if error, the line number of the offending line,
+                "start"    : -1, # if error, the starting position of the offending expression
+                "end"      : -1} # if error, one past the ending position of the offending expression
 
-        self.generations = 200  # default differential evolution num of generations
-        self.genomesize  = 10   # default differential evolution population size
-
+        # default Differential Evolution num of generations and population size
+        self.optSettings = {'generations':200, 'genomesize' :10}
+        
         self.rates       = []  # a list of {'name', 'reagents', 'products', 'rate', 'irreversible' and rate locations}
         self.variables   = []  # a list of names of variables (order matters)
         self.constants   = {}  # a 'name':value dictionary
@@ -122,8 +125,11 @@ class StimatorParser:
         self.timecourses = []  # a list of filenames
         self.atdefs      = []  # a list of (time,name,newvalue)
 
-        self.stoichmatrixrows = []  #sparse, using reactionname:coef dictionaries
+        self.variablesorder    = []  # a list of names of variables indicating the order of data in timecourses
+        self.intvariablesorder = []
+        self.stoichmatrixrows  = []  #sparse, using reactionname:coef dictionaries
 
+        self.currentline = -1
     
     
     def parse (self,modeltext):
@@ -132,43 +138,52 @@ class StimatorParser:
           self.reset()
 
           #parse the lines of text using matches and dispatch to *Parse functions
-          self.errorline = 0
+          self.currentline = 0
           for line in modeltext:
               matchfound = False
               for d in dispatchers:
                   matchresult = d[0].match(line)
                   if matchresult:
-                     #print line
-                     #print "Dispatcher:", d[1]
                      output_function = getattr(StimatorParser, d[1])
                      output_function(self, line, matchresult)
                      if self.error :
-                         self.errorlinetext = line
+                         self.errorLoc['linetext'] = line
+                         self.errorLoc['line'] = self.currentline
                          return #quit on first error. Needs revision!
                      matchfound = True
                      break #do not try any more patterns
               if not matchfound:
-                  self.errorlinetext = line
+                  self.errorLoc['linetext'] = line
+                  self.errorLoc['line'] = self.currentline
                   self.setError("Invalid syntax", 0, len(line))
                   return
-              self.errorline = self.errorline + 1
+              self.currentline += 1
+
+          # build list of variables
+          for v in self.rates:
+              for rORp in ('reagents','products'):
+                  for c in v[rORp]:
+                      var = c[0]
+                      if self.constants.has_key(var):
+                            continue # this is a constant ("external variable")
+                      if not var in self.variables:
+                          self.variables.append(var)
+
+          # build integer permutation of the order of variables (time is at pos 0)
+          self.intvariablesorder = [self.variables.index(name)+1 for name in self.variablesorder]
+          self.intvariablesorder = [0] + self.intvariablesorder
 
           # build stoichiometry matrix row-wise
           nvars = len(self.variables)
-          #self.stoichmatrixrows = [{}]*nvars
           for i in range(nvars):
               self.stoichmatrixrows.append({})
           for v in self.rates:
               fields = [('reagents',-1.0),('products',1.0)]
               for rORp, signedunit in fields:
                   for c in v[rORp]:
-                      coef = c[1]*signedunit
-                      var  = c[0]
+                      coef, var = (c[1]*signedunit, c[0])
                       if self.constants.has_key(var):
                             continue # there are no rows for constants in stoich. matrix
-                      if not(var in self.variables):
-                            self.setError("variable %s has not been declared anywhere" % var, -1, len(var))
-                            return
                       ivariable = self.variables.index(var) # error handling here
                       self.stoichmatrixrows[ivariable][v['name']] = coef
 
@@ -179,22 +194,23 @@ class StimatorParser:
           for v in self.rates:
               resstring, value = test_with_everything(v['rate'], self.constants, varlist)
               if resstring != "":
-                  self.errorline = v['rateline']
-                  self.errorlinetext = modeltext[self.errorline]
+                  self.errorLoc['line'] = v['rateline']
+                  self.errorLoc['linetext'] = modeltext[v['rateline']]
                   self.setError(resstring, v['ratestart'], v['rateend'])
                   self.setIfNameError(resstring, v['rate'])
                   return
+                  
 
     def setError(self, text, start, end):
         self.error = text
-        self.errorstart = start
-        self.errorend = end
+        self.errorLoc['start'] = start
+        self.errorLoc['end'] = end
 
     def setIfNameError(self, text, exprtext):
         m = nameErrormatch.match(text)
         if m:
             undefname = m.group('name')
-            pos = self.errorstart + exprtext.find(undefname)
+            pos = self.errorLoc['start'] + exprtext.find(undefname)
             self.setError(text, pos, pos+len(undefname))
 
     def rateDefParse(self, line, match):
@@ -214,7 +230,7 @@ class StimatorParser:
 
         #process rate
         entry['rate']     = match.group('rate').strip()
-        entry['rateline'] = self.errorline
+        entry['rateline'] = self.currentline
         entry['ratestart']= match.start('rate')
         entry['rateend']  = match.end('rate')
 
@@ -272,9 +288,9 @@ class StimatorParser:
            return
 
         if name == "generations":
-            self.generations = int(value)
+            self.optSettings['generations'] = int(value)
         elif name == "genomesize":
-            self.genomesize = int(value)
+            self.optSettings['genomesize'] = int(value)
         else:
             self.constants[name]=value
 
@@ -302,13 +318,13 @@ class StimatorParser:
         self.atdefs.append((timevalue,name,value))
 
     def varListParse(self, line, match):
-        if len(self.variables) > 0  :#repeated declaration
+        if len(self.variablesorder) > 0  :#repeated declaration
              self.setError("Repeated declaration", 0, len(line))
              return
 
         names = match.group('names')
         names = names.strip()
-        self.variables = names.split()
+        self.variablesorder = names.split()
 
     def findDefParse(self, line, match):
         name = match.group('name')
@@ -350,51 +366,11 @@ class StimatorParser:
         return rateString
         
 
-    #~ def ODEcalcString(self, scale=1.0):
-        #~ if self.error:
-           #~ return ""
-        #~ nvars = len(self.variables)
-        #~ result = "def calcDerivs(variables,t):\n\tglobal m_Parameters\n"
-        #~ result +="\tderivatives = empty(%d)\n" % nvars
-
-        #~ #write @ definitions    #TODO!!!
-        #~ for k in parser.atdefs:
-              #~ vline = "\tif(solution_time*scale >= %g) %s = %g;\n" % (k[0], k[1], k[2])
-              #~ result = result + vline
-
-        #~ #write rates
-        #~ for k in self.rates:
-              #~ vline = k['rate']
-              #~ # replace varnames
-              #~ for i in range(nvars):
-                  #~ vline = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, vline)
-              #~ # replace parameters
-              #~ for i in range(len(self.parameters)):
-                  #~ vline = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, vline)
-              #~ # replace constants
-              #~ for const in self.constants.keys():
-                  #~ vline = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], vline)
-              #~ vline = "\tv_%s = %s\n" %(k['name'],vline)
-              #~ result = result + vline
-
-        #~ #write differential equations
-        #~ for k in range(nvars):
-              #~ row = self.stoichmatrixrows[k]
-              #~ eqline = "\tderivatives[%d] = " % k
-              #~ for r in row.keys():
-                  #~ if row[r]>0:
-                      #~ eqline = eqline + "+"
-                  #~ eqline = eqline + ("%g * v_%s " %(float(row[r]), r))
-              #~ result = result + eqline + "\n"
-              
-
-        #~ return result + '\treturn derivatives*%f' % scale
-
 #----------------------------------------------------------------------------
 #         TIME COURSE READING FUNCTION
 #----------------------------------------------------------------------------
 
-def readTimeCourseFromFile(filename):
+def readTimeCourseFromFile(file, atindexes=None):
     """Reads a time course from file.
     
     Returns a header with variable names (possibly empty) and a 2D numpy array with data.
@@ -405,7 +381,15 @@ def readTimeCourseFromFile(filename):
     rows = []
     headerFound = False
     t0found = False
-    f = open (filename)
+
+    f = file
+    isname = False
+    try:                                  
+        f = open(f) # could be a name,instead of an open file
+        isname = True
+    except (IOError, OSError, TypeError):            
+        pass                              
+
     for line in f:
         line = line.strip()
         if len(line) == 0:continue          #empty lines are skipped
@@ -426,11 +410,15 @@ def readTimeCourseFromFile(filename):
                 nvars = len(items)
                 t0found = True
             temprow = [nan]*nvars
-            for i in enumerate(items):
-                if realnumber.match(i[1]):
-                    temprow[i[0]] = float(i[1])
+            for (i,num) in enumerate(items):
+                if realnumber.match(num):
+                    if atindexes:
+                        temprow[atindexes[i]] = float(num)
+                    else:
+                        temprow[i] = float(num)
             rows.append(temprow)
-    f.close()
+    if isname:
+        f.close()
     
     return header, array(rows)
 
@@ -440,18 +428,21 @@ def readTimeCourseFromFile(filename):
 #----------------------------------------------------------------------------
 
 def printParserResults(parser):
+    
     if parser.error:
-         print
-         print "*****************************************"
-         print "ERROR in line %d:" % (parser.errorline)
-         print parser.errorlinetext
-         caretline = [" "]*(len(parser.errorlinetext)+1)
-         caretline[parser.errorstart] = "^"
-         caretline[parser.errorend] = "^"
-         caretline = "".join(caretline)
-         print caretline
-         print parser.error
-         return
+        #candy syntax: upgrade dict to dot lookup style dict
+        errorLoc = dictdotlookup.DictDotLookup(parser.errorLoc)
+        print
+        print "*****************************************"
+        print "ERROR in line %d:" % (errorLoc.line)
+        print errorLoc.linetext
+        caretline = [" "]*(len(errorLoc.linetext)+1)
+        caretline[errorLoc.start] = "^"
+        caretline[errorLoc.end] = "^"
+        caretline = "".join(caretline)
+        print caretline
+        print parser.error
+        return
 
     print
     print "the variables are" , parser.variables
@@ -465,6 +456,9 @@ def printParserResults(parser):
           print k[0],"from", k[1], "to", k[2]
     print
     print "the timecourses to load are", parser.timecourses
+    print
+    print "the order of variables in timecourses is", parser.variablesorder
+    print "that is", parser.intvariablesorder
     print
     print "the reactions are"
     for k in parser.rates:
@@ -527,20 +521,6 @@ timecourse anotherfile.txt
 
     parser.parse(textlines)
     printParserResults(parser)
-    sss = parser.ODEcalcString()
-    print 'ODEcalcString:'
-    print '------------------------------------------------'
-    print sss
-    print '------------------------------------------------'
-    cc = compile(sss, 'bof.log','exec')
-    print 'Result from compile:', cc
-    exec cc
-    print 'Result from exec:', calcDerivs
-    
-    m_Parameters = (1,1,1,1,1)
-    Xpoint = (0,0,0)
-    print 'calcDerivs(',Xpoint, ',0) with parameters =', m_Parameters, 'equals',
-    print calcDerivs((0,0,0),0)
     
     print '\n======================================================'
     print 'The following modifications produce errors............'
@@ -576,10 +556,12 @@ timecourse anotherfile.txt
     printParserResults(parser)
 
     del(textlines[5])
-    textlines.insert(5,'bolas !! not good')
+    textlines.insert(5,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
+    textlines.insert(6,'bolas !! not good')
 
     parser.parse(textlines)
     printParserResults(parser)
+    del(textlines[6])
 
 
     print '\n======================================================'
@@ -599,16 +581,21 @@ nothing really usefull here
 0.6 0.6 0.8 0.9
 
 """
+    import StringIO
+    aTC = StringIO.StringIO(demodata)
 
-    w = open('bof.txt', 'w')
-    w.write(demodata)
-    w.close()
-    
-    
-    h, d =  readTimeCourseFromFile('bof.txt')   
+    h, d =  readTimeCourseFromFile(aTC)   
     print 'source:\n------------------------------------'
     print demodata
     print '------------------------------------'
+    print '\nheader:'
+    print h
+    print '\ndata'
+    print d
+    aTC.seek(0) #reset StringIO
+    h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   
+    print
+    print '- atindexes (0,3,1,2) --------------'
     print '\nheader:'
     print h
     print '\ndata'
@@ -623,5 +610,3 @@ nothing really usefull here
     print d
     print 'dimensions are %d by %d'% d.shape
 
-    print
-    #raw_input("Press ENTER to finish...")

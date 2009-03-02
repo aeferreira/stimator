@@ -397,16 +397,16 @@ class stimatorMainFrame(wx.Frame):
         self.MessageDialog(ABOUT_TEXT, "About S-timator")
         pass
 
-    def IndicateError(self, parser):
+    def IndicateError(self, error, errorloc):
        self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
-       msg = "ERROR in line %d:" % (parser.errorline)
-       msg = msg +"\n" +parser.errorlinetext
-       caretline = [" "]*(len(parser.errorlinetext)+1)
-       caretline[parser.errorstart] = "^"
-       caretline[parser.errorend] = "^"
+       msg = "ERROR in line %d:" % (errorloc['line'])
+       msg = msg +"\n" +errorloc['linetext']
+       caretline = [" "]*(len(errorloc['linetext'])+1)
+       caretline[errorloc['start']] = "^"
+       caretline[errorloc['end']] = "^"
        caretline = "".join(caretline)
        msg = msg +"\n" + caretline
-       msg = msg +"\n" + parser.error
+       msg = msg +"\n" + error
        self.write(msg)
 
     def OnAbortButton(self, event):
@@ -428,7 +428,7 @@ class stimatorMainFrame(wx.Frame):
         
         self.parser.parse(textlines)
         if self.parser.error:
-           self.IndicateError(self.parser)
+           self.IndicateError(self.parser.error, self.parser.errorLoc)
            return
 
         if len(self.parser.timecourses) == 0 :
@@ -446,7 +446,7 @@ class stimatorMainFrame(wx.Frame):
         self.parser.timecoursenans = []
         timecoursedata = []
         for filename in pathlist:
-            h,d = modelparser.readTimeCourseFromFile(filename)
+            h,d = modelparser.readTimeCourseFromFile(filename, atindexes=self.parser.intvariablesorder)
             if d.shape == (0,0):
                 self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error")
                 return
