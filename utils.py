@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import pprint
 
+
+#--------- dict dot-style lookup
+
 # CREDIT: code by David Moss, Recipe 576586 from ActiveState Python recipes.
 # http://code.activestate.com/recipes/576586/
 class DictDotLookup(object):

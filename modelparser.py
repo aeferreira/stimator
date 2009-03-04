@@ -15,7 +15,7 @@ The parsing loop relies on regular expressions."""
 import re
 import math
 from numpy import *
-import dictdotlookup
+import utils
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -125,81 +125,84 @@ class StimatorParser:
         self.timecourses = []  # a list of filenames
         self.atdefs      = []  # a list of (time,name,newvalue)
 
-        self.variablesorder    = []  # a list of names of variables indicating the order of data in timecourses
-        self.intvariablesorder = []
-        self.stoichmatrixrows  = []  #sparse, using reactionname:coef dictionaries
+        self.variablesorder    = []   # list of names indicating the order of variables in timecourses
+        self.intvariablesorder = None # list of ints indicating the order of variables in timecourses (time at pos 0)
+        self.stoichmatrixrows  = []   # sparse, using reactionname:coef dictionaries
 
         self.currentline = -1
     
     
     def parse (self,modeltext):
-          "Parses a model definition text line by line"
-          
-          self.reset()
+        "Parses a model definition text line by line"
 
-          #parse the lines of text using matches and dispatch to *Parse functions
-          self.currentline = 0
-          for line in modeltext:
-              matchfound = False
-              for d in dispatchers:
-                  matchresult = d[0].match(line)
-                  if matchresult:
-                     output_function = getattr(StimatorParser, d[1])
-                     output_function(self, line, matchresult)
-                     if self.error :
-                         self.errorLoc['linetext'] = line
-                         self.errorLoc['line'] = self.currentline
-                         return #quit on first error. Needs revision!
-                     matchfound = True
-                     break #do not try any more patterns
-              if not matchfound:
-                  self.errorLoc['linetext'] = line
-                  self.errorLoc['line'] = self.currentline
-                  self.setError("Invalid syntax", 0, len(line))
-                  return
-              self.currentline += 1
+        self.reset()
 
-          # build list of variables
-          for v in self.rates:
-              for rORp in ('reagents','products'):
-                  for c in v[rORp]:
-                      var = c[0]
-                      if self.constants.has_key(var):
-                            continue # this is a constant ("external variable")
-                      if not var in self.variables:
-                          self.variables.append(var)
+        #parse the lines of text using matches and dispatch to *Parse functions
+        self.currentline = 0
+        for line in modeltext:
+            matchfound = False
+            for d in dispatchers:
+                matchresult = d[0].match(line)
+                if matchresult:
+                    output_function = getattr(StimatorParser, d[1])
+                    output_function(self, line, matchresult)
+                    if self.error :
+                        self.errorLoc['linetext'] = line
+                        self.errorLoc['line'] = self.currentline
+                        return #quit on first error. Needs revision!
+                    matchfound = True
+                    break #do not try any more patterns
+            if not matchfound:
+                self.errorLoc['linetext'] = line
+                self.errorLoc['line'] = self.currentline
+                self.setError("Invalid syntax", 0, len(line))
+                return
+            self.currentline += 1
 
-          # build integer permutation of the order of variables (time is at pos 0)
+        # build list of variables
+        for v in self.rates:
+          for rORp in ('reagents','products'):
+              for c in v[rORp]:
+                  var = c[0]
+                  if self.constants.has_key(var):
+                        continue # this is a constant ("external variable")
+                  if not var in self.variables:
+                      self.variables.append(var)
+
+        # build integer permutation of the order of variables (time is at pos 0)
+        if not self.variablesorder:
+          self.intvariablesorder = range(len(self.variables)+1)
+        else:
           self.intvariablesorder = [self.variables.index(name)+1 for name in self.variablesorder]
           self.intvariablesorder = [0] + self.intvariablesorder
 
-          # build stoichiometry matrix row-wise
-          nvars = len(self.variables)
-          for i in range(nvars):
-              self.stoichmatrixrows.append({})
-          for v in self.rates:
-              fields = [('reagents',-1.0),('products',1.0)]
-              for rORp, signedunit in fields:
-                  for c in v[rORp]:
-                      coef, var = (c[1]*signedunit, c[0])
-                      if self.constants.has_key(var):
-                            continue # there are no rows for constants in stoich. matrix
-                      ivariable = self.variables.index(var) # error handling here
-                      self.stoichmatrixrows[ivariable][v['name']] = coef
+        # build stoichiometry matrix row-wise
+        nvars = len(self.variables)
+        for i in range(nvars):
+            self.stoichmatrixrows.append({})
+        for v in self.rates:
+            fields = [('reagents',-1.0),('products',1.0)]
+            for rORp, signedunit in fields:
+                for c in v[rORp]:
+                    coef, var = (c[1]*signedunit, c[0])
+                    if self.constants.has_key(var):
+                        continue # there are no rows for constants in stoich. matrix
+                    ivariable = self.variables.index(var) # error handling here
+                    self.stoichmatrixrows[ivariable][v['name']] = coef
 
-          # check the validity of rate laws
-          varlist=self.variables[:]
-          for i in self.parameters:
-              varlist.append(i[0])
-          for v in self.rates:
-              resstring, value = test_with_everything(v['rate'], self.constants, varlist)
-              if resstring != "":
-                  self.errorLoc['line'] = v['rateline']
-                  self.errorLoc['linetext'] = modeltext[v['rateline']]
-                  self.setError(resstring, v['ratestart'], v['rateend'])
-                  self.setIfNameError(resstring, v['rate'])
-                  return
-                  
+        # check the validity of rate laws
+        varlist = self.variables[:]
+        for i in self.parameters:
+            varlist.append(i[0])
+        for v in self.rates:
+            resstring, value = test_with_everything(v['rate'], self.constants, varlist)
+            if resstring != "":
+                self.errorLoc['line'] = v['rateline']
+                self.errorLoc['linetext'] = modeltext[v['rateline']]
+                self.setError(resstring, v['ratestart'], v['rateend'])
+                self.setIfNameError(resstring, v['rate'])
+                return
+          
 
     def setError(self, text, start, end):
         self.error = text
@@ -219,12 +222,12 @@ class StimatorParser:
         name = match.group('name')
         found = False
         for k in self.rates:
-             if k['name'] == name:
+            if k['name'] == name:
                 found = True
                 break
         if found :#repeated declaration
-             self.setError("Repeated declaration", 0, len(line))
-             return
+            self.setError("Repeated declaration", 0, len(line))
+            return
 
         entry['name'] = name
 
@@ -278,14 +281,14 @@ class StimatorParser:
         valueexpr = match.group('value').rstrip()
 
         if self.constants.has_key(name) :#repeated declaration
-             self.setError("Repeated declaration", 0, len(line))
-             return
+            self.setError("Repeated declaration", 0, len(line))
+            return
 
         resstring, value = test_with_consts(valueexpr, self.constants)
         if resstring != "":
-           self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr) )
-           self.setIfNameError(resstring, valueexpr)
-           return
+            self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr) )
+            self.setIfNameError(resstring, valueexpr)
+            return
 
         if name == "generations":
             self.optSettings['generations'] = int(value)
@@ -300,27 +303,27 @@ class StimatorParser:
         timeexpr = match.group('timevalue').rstrip()
 
         if not self.constants.has_key(name) :#constant has not been defined
-             self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name))
-             return
+            self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name))
+            return
 
         resstring, value = test_with_consts(valueexpr, self.constants)
         if resstring != "":
-           self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr) )
-           self.setIfNameError(resstring, valueexpr)
-           return
+            self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr) )
+            self.setIfNameError(resstring, valueexpr)
+            return
 
         resstring, timevalue = test_with_consts(timeexpr, self.constants)
         if resstring != "":
-           self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr) )
-           self.setIfNameError(resstring, timeexpr)
-           return
+            self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr) )
+            self.setIfNameError(resstring, timeexpr)
+            return
 
         self.atdefs.append((timevalue,name,value))
 
     def varListParse(self, line, match):
-        if len(self.variablesorder) > 0  :#repeated declaration
-             self.setError("Repeated declaration", 0, len(line))
-             return
+        if self.variablesorder: #repeated declaration
+            self.setError("Repeated declaration", 0, len(line))
+            return
 
         names = match.group('names')
         names = names.strip()
@@ -330,12 +333,12 @@ class StimatorParser:
         name = match.group('name')
         found = False
         for k in self.parameters:
-             if k[0] == name:
-                 found = True
-                 break
+            if k[0] == name:
+                found = True
+                break
         if found :#repeated declaration
-             self.setError("Repeated declaration", 0, len(line))
-             return
+            self.setError("Repeated declaration", 0, len(line))
+            return
 
         lulist = ['lower', 'upper']
         flulist = []
@@ -343,86 +346,28 @@ class StimatorParser:
             valueexpr = match.group(k)
             resstring, v = test_with_consts(valueexpr, self.constants)
             if resstring != "":
-               self.setError(resstring, match.start(k), match.end(k))
-               self.setIfNameError(resstring, valueexpr)
-               return
+                self.setError(resstring, match.start(k), match.end(k))
+                self.setIfNameError(resstring, valueexpr)
+                return
             flulist.append(v)
         entry = tuple([name,flulist[0],flulist[1]])
         self.parameters.append(entry)
 
     def rateCalcString(self, rateString):
         if self.error:
-           return ""
+            return ""
         nvars = len(self.variables)
         # replace varnames
         for i in range(nvars):
-          rateString = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, rateString)
+            rateString = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, rateString)
         # replace parameters
         for i in range(len(self.parameters)):
-          rateString = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, rateString)
+            rateString = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, rateString)
         # replace constants
         for const in self.constants.keys():
-          rateString = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], rateString)
+            rateString = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], rateString)
         return rateString
         
-
-#----------------------------------------------------------------------------
-#         TIME COURSE READING FUNCTION
-#----------------------------------------------------------------------------
-
-def readTimeCourseFromFile(file, atindexes=None):
-    """Reads a time course from file.
-    
-    Returns a header with variable names (possibly empty) and a 2D numpy array with data.
-    """
-    
-    header = []
-    nvars = 0
-    rows = []
-    headerFound = False
-    t0found = False
-
-    f = file
-    isname = False
-    try:                                  
-        f = open(f) # could be a name,instead of an open file
-        isname = True
-    except (IOError, OSError, TypeError):            
-        pass                              
-
-    for line in f:
-        line = line.strip()
-        if len(line) == 0:continue          #empty lines are skipped
-        if line.startswith('#'): continue   #comment lines are skipped
-        
-        items = line.split()
-        
-        if identifier.match(items[0]):
-            if not headerFound and not t0found:
-                header = filter (identifier.match, items)
-                headerFound = True
-            else:
-                continue
-        elif not realnumber.match(items[0]):
-            continue
-        else:
-            if not t0found:
-                nvars = len(items)
-                t0found = True
-            temprow = [nan]*nvars
-            for (i,num) in enumerate(items):
-                if realnumber.match(num):
-                    if atindexes:
-                        temprow[atindexes[i]] = float(num)
-                    else:
-                        temprow[i] = float(num)
-            rows.append(temprow)
-    if isname:
-        f.close()
-    
-    return header, array(rows)
-
-
 #----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------
@@ -431,7 +376,7 @@ def printParserResults(parser):
     
     if parser.error:
         #candy syntax: upgrade dict to dot lookup style dict
-        errorLoc = dictdotlookup.DictDotLookup(parser.errorLoc)
+        errorLoc = utils.DictDotLookup(parser.errorLoc)
         print
         print "*****************************************"
         print "ERROR in line %d:" % (errorLoc.line)
@@ -562,51 +507,3 @@ timecourse anotherfile.txt
     parser.parse(textlines)
     printParserResults(parser)
     del(textlines[6])
-
-
-    print '\n======================================================'
-    print 'Testing reading a time course...........................'
-
-    demodata = """
-#this is demo data with a header
-t x y z
-0       1 0         0
-0.1                  0.1
-
-  0.2 skip 0.2 skip this
-nothing really usefull here
-- 0.3 0.3 this line should be skipped
-#0.4 0.4
-0.5  - 0.5 - -
-0.6 0.6 0.8 0.9
-
-"""
-    import StringIO
-    aTC = StringIO.StringIO(demodata)
-
-    h, d =  readTimeCourseFromFile(aTC)   
-    print 'source:\n------------------------------------'
-    print demodata
-    print '------------------------------------'
-    print '\nheader:'
-    print h
-    print '\ndata'
-    print d
-    aTC.seek(0) #reset StringIO
-    h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   
-    print
-    print '- atindexes (0,3,1,2) --------------'
-    print '\nheader:'
-    print h
-    print '\ndata'
-    print d
-    
-    h, d =  readTimeCourseFromFile('examples\\TSH2b.txt')   
-    print '\n\n================================================'
-    print '\n\nData from TSH2b.txt'
-    print 'header:'
-    print h
-    print '\ndata'
-    print d
-    print 'dimensions are %d by %d'% d.shape
-
