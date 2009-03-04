@@ -125,7 +125,7 @@ class StimatorParser:
         self.timecourses = []  # a list of filenames
         self.atdefs      = []  # a list of (time,name,newvalue)
 
-        self.variablesorder    = []   # list of names indicating the order of variables in timecourses
+        self.variablesorder    = None # list of names indicating the order of variables in timecourses
         self.intvariablesorder = None # list of ints indicating the order of variables in timecourses (time at pos 0)
         self.stoichmatrixrows  = []   # sparse, using reactionname:coef dictionaries
 
@@ -145,17 +145,13 @@ class StimatorParser:
                 matchresult = d[0].match(line)
                 if matchresult:
                     output_function = getattr(StimatorParser, d[1])
-                    output_function(self, line, matchresult)
+                    output_function(self, line, self.currentline, matchresult)
                     if self.error :
-                        self.errorLoc['linetext'] = line
-                        self.errorLoc['line'] = self.currentline
                         return #quit on first error. Needs revision!
                     matchfound = True
                     break #do not try any more patterns
             if not matchfound:
-                self.errorLoc['linetext'] = line
-                self.errorLoc['line'] = self.currentline
-                self.setError("Invalid syntax", 0, len(line))
+                self.setError("Invalid syntax", 0, len(line), self.currentline, line)
                 return
             self.currentline += 1
 
@@ -169,12 +165,12 @@ class StimatorParser:
                   if not var in self.variables:
                       self.variables.append(var)
 
-        # build integer permutation of the order of variables (time is at pos 0)
+        # build list of ints with the order of variables (time is at pos 0)
         if not self.variablesorder:
-          self.intvariablesorder = range(len(self.variables)+1)
+            self.intvariablesorder = range(len(self.variables)+1)
         else:
-          self.intvariablesorder = [self.variables.index(name)+1 for name in self.variablesorder]
-          self.intvariablesorder = [0] + self.intvariablesorder
+            self.intvariablesorder = [self.variables.index(name)+1 for name in self.variablesorder]
+            self.intvariablesorder = [0] + self.intvariablesorder
 
         # build stoichiometry matrix row-wise
         nvars = len(self.variables)
@@ -197,17 +193,16 @@ class StimatorParser:
         for v in self.rates:
             resstring, value = test_with_everything(v['rate'], self.constants, varlist)
             if resstring != "":
-                self.errorLoc['line'] = v['rateline']
-                self.errorLoc['linetext'] = modeltext[v['rateline']]
-                self.setError(resstring, v['ratestart'], v['rateend'])
+                self.setError(resstring, v['ratestart'], v['rateend'], v['rateline'], modeltext[v['rateline']])
                 self.setIfNameError(resstring, v['rate'])
                 return
-          
 
-    def setError(self, text, start, end):
+    def setError(self, text, start, end, nline=None, line=None):
         self.error = text
         self.errorLoc['start'] = start
         self.errorLoc['end'] = end
+        if nline != None: self.errorLoc['line'] = nline
+        if line != None:  self.errorLoc['linetext'] = line
 
     def setIfNameError(self, text, exprtext):
         m = nameErrormatch.match(text)
@@ -216,7 +211,7 @@ class StimatorParser:
             pos = self.errorLoc['start'] + exprtext.find(undefname)
             self.setError(text, pos, pos+len(undefname))
 
-    def rateDefParse(self, line, match):
+    def rateDefParse(self, line, nline, match):
         entry={}
         #process name
         name = match.group('name')
@@ -226,7 +221,7 @@ class StimatorParser:
                 found = True
                 break
         if found :#repeated declaration
-            self.setError("Repeated declaration", 0, len(line))
+            self.setError("Repeated declaration", 0, len(line), nline, line)
             return
 
         entry['name'] = name
@@ -262,31 +257,32 @@ class StimatorParser:
 
                    entry[f].append((var,coef))
                 else:
-                   self.setError("'%s' is an invalid stoichiometry expression"%complexesstring, match.start(f), match.end(f) )
+                   self.setError("'%s' is an invalid stoichiometry expression"%complexesstring, 
+                                 match.start(f), match.end(f), nline, line)
                    return
 
 
         #append to list of rates
         self.rates.append(entry)
 
-    def emptyLineParse(self, line, match):
+    def emptyLineParse(self, line, nline, match):
         pass #do nothing
 
-    def tcDefParse(self, line, match):
+    def tcDefParse(self, line, nline, match):
         filename = match.group('filename').strip()
         self.timecourses.append(filename)
 
-    def constDefParse(self, line, match):
+    def constDefParse(self, line, nline, match):
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
         if self.constants.has_key(name) :#repeated declaration
-            self.setError("Repeated declaration", 0, len(line))
+            self.setError("Repeated declaration", 0, len(line), nline, line)
             return
 
         resstring, value = test_with_consts(valueexpr, self.constants)
         if resstring != "":
-            self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr) )
+            self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr), nline, line)
             self.setIfNameError(resstring, valueexpr)
             return
 
@@ -297,39 +293,39 @@ class StimatorParser:
         else:
             self.constants[name]=value
 
-    def atDefParse(self, line, match):
+    def atDefParse(self, line, nline, match):
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
         timeexpr = match.group('timevalue').rstrip()
 
         if not self.constants.has_key(name) :#constant has not been defined
-            self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name))
+            self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name), nline, line)
             return
 
         resstring, value = test_with_consts(valueexpr, self.constants)
         if resstring != "":
-            self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr) )
+            self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr), nline, line)
             self.setIfNameError(resstring, valueexpr)
             return
 
         resstring, timevalue = test_with_consts(timeexpr, self.constants)
         if resstring != "":
-            self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr) )
+            self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr), nline, line)
             self.setIfNameError(resstring, timeexpr)
             return
 
         self.atdefs.append((timevalue,name,value))
 
-    def varListParse(self, line, match):
+    def varListParse(self, line, nline, match):
         if self.variablesorder: #repeated declaration
-            self.setError("Repeated declaration", 0, len(line))
+            self.setError("Repeated declaration", 0, len(line), nline, line)
             return
 
         names = match.group('names')
         names = names.strip()
         self.variablesorder = names.split()
 
-    def findDefParse(self, line, match):
+    def findDefParse(self, line, nline, match):
         name = match.group('name')
         found = False
         for k in self.parameters:
@@ -337,7 +333,7 @@ class StimatorParser:
                 found = True
                 break
         if found :#repeated declaration
-            self.setError("Repeated declaration", 0, len(line))
+            self.setError("Repeated declaration", 0, len(line), nline, line)
             return
 
         lulist = ['lower', 'upper']
@@ -346,7 +342,7 @@ class StimatorParser:
             valueexpr = match.group(k)
             resstring, v = test_with_consts(valueexpr, self.constants)
             if resstring != "":
-                self.setError(resstring, match.start(k), match.end(k))
+                self.setError(resstring, match.start(k), match.end(k), nline, line)
                 self.setIfNameError(resstring, valueexpr)
                 return
             flulist.append(v)
