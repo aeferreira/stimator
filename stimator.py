@@ -15,11 +15,8 @@ import re
 import time
 import wx
 import wx.lib.newevent
-import  os.path
-import  wx
-#import  wx.grid as  gridlib
-import  wx.stc  as  stc
-#import stimatorwidgts
+import wx
+import wx.stc  as  stc
 import modelparser
 import timecourse
 import resultsframe
@@ -90,7 +87,7 @@ class SDLeditor(stc.StyledTextCtrl):
         self.SetMargins(2,2)
 
         # Indentation and tab stuff
-        self.SetIndent(4)               # Proscribed indent size for wx
+        self.SetIndent(4)               # Prescribed indent size for wx
         self.SetIndentationGuides(True) # Show indent guides
         self.SetBackSpaceUnIndents(True)# Backspace unindents rather than delete 1 space
         self.SetTabIndents(True)        # Tab key indents
@@ -212,7 +209,6 @@ class SDLeditor(stc.StyledTextCtrl):
         end = self.GetLineEndPosition(line)
         self.SetSelection(start, end)
 
-
     def OnUpdateUI(self, evt):
         # check for matching braces
         braceAtCaret = -1
@@ -325,7 +321,6 @@ class stimatorMainFrame(wx.Frame):
         self.optimizerThread = None
         self.parser = modelparser.StimatorParser()
 
-
     def __del__(self):
         pass
 
@@ -354,6 +349,7 @@ class stimatorMainFrame(wx.Frame):
         # LogText
         self.LogText.SetText(u"")
         self.LogText.EmptyUndoBuffer()
+        self.LogText.SetIndentationGuides(False)
         if wx.Platform == '__WXMSW__':
             face = 'Courier New'
             pb = 10
@@ -632,14 +628,17 @@ class stimatorMainFrame(wx.Frame):
         pass
 
     def IndicateError(self, error, errorloc):
-       self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
-       msg = "ERROR in line %d:" % (errorloc['line'])
-       msg = msg +"\n" +errorloc['linetext']
-       caretline = [" "]*(len(errorloc['linetext'])+1)
-       caretline[errorloc['start']] = "^"
-       caretline[errorloc['end']] = "^"
-       caretline = "".join(caretline)
-       msg = msg +"\n" + caretline
+       #self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
+       if errorloc['line'] != -1:
+           msg = "ERROR in line %d:" % (errorloc['line']+1)
+           msg = msg +"\n" +errorloc['linetext']
+           caretline = [" "]*(len(errorloc['linetext'])+1)
+           caretline[errorloc['start']] = "^"
+           caretline[errorloc['end']] = "^"
+           caretline = "".join(caretline)
+           msg = msg +"\n" + caretline
+       else:
+           msg = ""
        msg = msg +"\n" + error
        self.write(msg)
 
@@ -665,41 +664,41 @@ class stimatorMainFrame(wx.Frame):
            self.IndicateError(self.parser.error, self.parser.errorLoc)
            return
 
-        if len(self.parser.timecourses) == 0 :
-           self.MessageDialog("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", "Error")
-           return
         os.chdir(self.GetFileDir())
-        pathlist = [os.path.abspath(k) for k in self.parser.timecourses]
+        pathlist = [os.path.abspath(k) for k in self.parser.tc.filenames]
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
-                self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "Error")
+                self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "File error")
                 return
 
         self.write("-------------------------------------------------------")
-        self.parser.timecourseheaders = []
-        self.parser.timecoursenans = []
+
         timecoursedata = []
+
         for filename in pathlist:
             h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.parser.intvariablesorder)
             if d.shape == (0,0):
-                self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error")
+                self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error in data")
                 return
             else:
-                self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename))
-                self.parser.timecourseheaders.append(h)
+                oldout = sys.stdout
+                sys.stdout = self
+                print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
+                #self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename))
+                self.parser.tc.headers.append(h)
                 timecoursedata.append(d)
+                sys.stdout = oldout
         
         for i,d in enumerate(timecoursedata):
             if d.shape[1] != len(self.parser.variables)+1:
                 self.MessageDialog("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
-                                   self.parser.timecourses[i],len(self.parser.variables)),"Error in data")
+                                   self.parser.tc.filenames[i],len(self.parser.variables)),"Error in data")
                 return
-
-            
         
-        self.parser.timecourseshapes = [i.shape for i in timecoursedata]
-        self.parser.timecourseshortnames = [os.path.split(filename)[1] for filename in pathlist]
-        self.parser.problemname = self.GetFileName()
+        self.parser.tc.shapes     = [i.shape for i in timecoursedata]
+        self.parser.tc.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+
+        self.parser.problemname   = self.GetFileName()
         
         
         self.write("-------------------------------------------------------")

@@ -153,11 +153,11 @@ class DeOdeSolver(DESolver.DESolver):
             Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
             besttimecoursedata.append(Y)
             if infodict['message'] != 'Integration successful.':
-                bestData[2]['data'].append((self.parser.timecourseshortnames[i], self.parser.timecourseshapes[i][0], 1.0E300))
+                bestData[2]['data'].append((self.parser.tc.shortnames[i], self.parser.tc.shapes[i][0], 1.0E300))
             else:
                 S = (Y- data[:, 1:])**2
                 score = nansum(S)
-                bestData[2]['data'].append((self.parser.timecourseshortnames[i], self.parser.timecourseshapes[i][0], score))
+                bestData[2]['data'].append((self.parser.tc.shortnames[i], self.parser.tc.shapes[i][0], score))
         bestData[2]['format'] = "%s\t%d\t%g"
         bestData[2]['header'] = ['Name', 'Points', 'Score']
         

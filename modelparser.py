@@ -15,6 +15,7 @@ The parsing loop relies on regular expressions."""
 import re
 import math
 from numpy import *
+import timecourse
 import utils
 
 #----------------------------------------------------------------------------
@@ -122,7 +123,7 @@ class StimatorParser:
         self.variables   = []  # a list of names of variables (order matters)
         self.constants   = {}  # a 'name':value dictionary
         self.parameters  = []  # a list of (name,min,max)
-        self.timecourses = []  # a list of filenames
+        self.tc          = timecourse.TimeCourseCollection()
         self.atdefs      = []  # a list of (time,name,newvalue)
 
         self.variablesorder    = None # list of names indicating the order of variables in timecourses
@@ -197,6 +198,45 @@ class StimatorParser:
                 self.setIfNameError(resstring, v['rate'])
                 return
 
+        if len(self.tc.filenames) == 0 :
+           self.setError("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", -1, -1, -1, "")
+           return
+        #~ os.chdir(self.GetFileDir())
+        #~ pathlist = [os.path.abspath(k) for k in self.parser.timecourses]
+        #~ for filename in pathlist:
+            #~ if not os.path.exists(filename) or not os.path.isfile(filename):
+                #~ self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "File error")
+                #~ return
+
+        #~ self.write("-------------------------------------------------------")
+
+        #~ self.parser.timecourseheaders = []
+        #~ timecoursedata = []
+
+        #~ for filename in pathlist:
+            #~ h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.parser.intvariablesorder)
+            #~ if d.shape == (0,0):
+                #~ self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error in data")
+                #~ return
+            #~ else:
+                #~ oldout = sys.stdout
+                #~ sys.stdout = self
+                #~ print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
+                #~ #self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename))
+                #~ self.parser.timecourseheaders.append(h)
+                #~ timecoursedata.append(d)
+                #~ sys.stdout = oldout
+        
+        #~ for i,d in enumerate(timecoursedata):
+            #~ if d.shape[1] != len(self.parser.variables)+1:
+                #~ self.MessageDialog("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
+                                   #~ self.parser.timecourses[i],len(self.parser.variables)),"Error in data")
+                #~ return
+        
+        #~ self.parser.timecourseshapes     = [i.shape for i in timecoursedata]
+        #~ self.parser.timecourseshortnames = [os.path.split(filename)[1] for filename in pathlist]
+        
+
     def setError(self, text, start, end, nline=None, line=None):
         self.error = text
         self.errorLoc['start'] = start
@@ -270,7 +310,7 @@ class StimatorParser:
 
     def tcDefParse(self, line, nline, match):
         filename = match.group('filename').strip()
-        self.timecourses.append(filename)
+        self.tc.filenames.append(filename)
 
     def constDefParse(self, line, nline, match):
         name      = match.group('name')
@@ -375,13 +415,14 @@ def printParserResults(parser):
         errorLoc = utils.DictDotLookup(parser.errorLoc)
         print
         print "*****************************************"
-        print "ERROR in line %d:" % (errorLoc.line)
-        print errorLoc.linetext
-        caretline = [" "]*(len(errorLoc.linetext)+1)
-        caretline[errorLoc.start] = "^"
-        caretline[errorLoc.end] = "^"
-        caretline = "".join(caretline)
-        print caretline
+        if errorLoc.line != -1:
+            print "ERROR in line %d:" % (errorLoc.line)
+            print errorLoc.linetext
+            caretline = [" "]*(len(errorLoc.linetext)+1)
+            caretline[errorLoc.start] = "^"
+            caretline[errorLoc.end] = "^"
+            caretline = "".join(caretline)
+            print caretline
         print parser.error
         return
 
@@ -396,7 +437,7 @@ def printParserResults(parser):
     for k in parser.parameters:
           print k[0],"from", k[1], "to", k[2]
     print
-    print "the timecourses to load are", parser.timecourses
+    print "the timecourses to load are", parser.tc.filenames
     print
     print "the order of variables in timecourses is", parser.variablesorder
     print "that is", parser.intvariablesorder
@@ -503,3 +544,9 @@ timecourse anotherfile.txt
     parser.parse(textlines)
     printParserResults(parser)
     del(textlines[6])
+
+    del(textlines[25])  # delete timecourse declarations
+    del(textlines[25])
+
+    parser.parse(textlines)
+    printParserResults(parser)

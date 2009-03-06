@@ -6,8 +6,6 @@ import os
 import os.path
 import math
 import wx
-import  wx
-#import  wx.grid as  gridlib
 import  wx.stc  as  stc
 import modelparser
 from matplotlib.numerix import arange, sin, pi, cos, isnan
@@ -43,7 +41,7 @@ class SDLeditor(stc.StyledTextCtrl):
         stc.StyledTextCtrl.__init__(self, parent, ID)
         self.log = log
         self.SetLexer(stc.STC_LEX_PYTHON)
-        self.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction")
+        self.SetKeyWords(0, "TIMECOURSES OPTIMIZATION PARAMETERS")
 
         # Highlight tab/space mixing (shouldn't be any)
         self.SetProperty("tab.timmy.whinge.level", "1")
@@ -52,13 +50,13 @@ class SDLeditor(stc.StyledTextCtrl):
         self.SetMargins(2,2)
 
         # Indentation and tab stuff
-        self.SetIndent(4)               # Proscribed indent size for wx
-        self.SetIndentationGuides(True) # Show indent guides
-        self.SetBackSpaceUnIndents(True)# Backspace unindents rather than delete 1 space
-        self.SetTabIndents(True)        # Tab key indents
-        self.SetTabWidth(4)             # Proscribed tab size for wx
-        self.SetUseTabs(False)          # Use spaces rather than tabs, or
-                                        # TabTimmy will complain!    
+        self.SetIndent(4)                # Proscribed indent size for wx
+        self.SetIndentationGuides(False) # Show indent guides
+        self.SetBackSpaceUnIndents(True) # Backspace unindents rather than delete 1 space
+        self.SetTabIndents(True)         # Tab key indents
+        self.SetTabWidth(4)              # Proscribed tab size for wx
+        self.SetUseTabs(False)           # Use spaces rather than tabs, or
+                                         # TabTimmy will complain!    
         # White space
         self.SetViewWhiteSpace(False)   # Don't view white space
 
@@ -132,11 +130,11 @@ class SDLeditor(stc.StyledTextCtrl):
         self.SetCaretForeground("BLUE")
 
 
-    #def OnDestroy(self, evt):
+    def OnDestroy(self, evt):
         # This is how the clipboard contents can be preserved after
         # the app has exited.
-        #wx.TheClipboard.Flush()
-        #evt.Skip()
+        wx.TheClipboard.Flush()
+        evt.Skip()
 
     def IsModified(self):
         return self.GetModify()
@@ -173,7 +171,6 @@ class SDLeditor(stc.StyledTextCtrl):
         start = self.PositionFromLine(line)
         end = self.GetLineEndPosition(line)
         self.SetSelection(start, end)
-
 
     def OnUpdateUI(self, evt):
         # check for matching braces
@@ -246,7 +243,7 @@ class SDLeditor(stc.StyledTextCtrl):
             #evt.SetPosition(25)             # Can also change position, but I'm not sure why
                                              # you would want to...
 
-##------------- Supporting classes for a no flicker wxPanel to draw matplotlib plots
+##------------- Supporting classes for a "no flicker"-wxPanel to draw matplotlib plots
 #~ """
 #~ A demonstration of creating a matlibplot window from within wx.
 #~ A resize only causes a single redraw of the panel.
@@ -562,7 +559,5 @@ class resultsFrame(wx.Frame):
            self.MessageDialog("An error ocurred while generating the Excel file", "Error")
         pass
 
-
 # end of class resultsFrame
-
 

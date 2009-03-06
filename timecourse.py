@@ -77,6 +77,16 @@ def readTimeCourseFromFile(file, atindexes=None):
     
     return header, array(rows)
 
+class TimeCourseCollection(object):
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        self.data = []
+        self.headers = []
+        self.shapes = []
+        self.shortnames = []
+        self.filenames = []
 
 #----------------------------------------------------------------------------
 #         TESTING CODE
