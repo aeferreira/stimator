@@ -87,6 +87,7 @@ class TimeCourseCollection(object):
         self.shapes = []
         self.shortnames = []
         self.filenames = []
+        self.basedir = None
 
 #----------------------------------------------------------------------------
 #         TESTING CODE

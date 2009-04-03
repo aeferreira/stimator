@@ -12,6 +12,8 @@
 The most important class ('StimatorParser') holds data to represent a valid model.
 The parsing loop relies on regular expressions."""
 
+import os
+import os.path
 import re
 import math
 from numpy import *
@@ -124,6 +126,7 @@ class StimatorParser:
         self.constants   = {}  # a 'name':value dictionary
         self.parameters  = []  # a list of (name,min,max)
         self.tc          = timecourse.TimeCourseCollection()
+        self.tclines     = []
         self.atdefs      = []  # a list of (time,name,newvalue)
 
         self.variablesorder    = None # list of names indicating the order of variables in timecourses
@@ -198,44 +201,38 @@ class StimatorParser:
                 self.setIfNameError(resstring, v['rate'])
                 return
 
+    def loadTimeCourses (self,modeltext,filedir):
+
         if len(self.tc.filenames) == 0 :
            self.setError("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", -1, -1, -1, "")
            return
-        #~ os.chdir(self.GetFileDir())
-        #~ pathlist = [os.path.abspath(k) for k in self.parser.timecourses]
-        #~ for filename in pathlist:
-            #~ if not os.path.exists(filename) or not os.path.isfile(filename):
-                #~ self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "File error")
-                #~ return
-
-        #~ self.write("-------------------------------------------------------")
-
-        #~ self.parser.timecourseheaders = []
-        #~ timecoursedata = []
-
-        #~ for filename in pathlist:
-            #~ h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.parser.intvariablesorder)
-            #~ if d.shape == (0,0):
-                #~ self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error in data")
-                #~ return
-            #~ else:
-                #~ oldout = sys.stdout
-                #~ sys.stdout = self
-                #~ print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
-                #~ #self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename))
-                #~ self.parser.timecourseheaders.append(h)
-                #~ timecoursedata.append(d)
-                #~ sys.stdout = oldout
         
-        #~ for i,d in enumerate(timecoursedata):
-            #~ if d.shape[1] != len(self.parser.variables)+1:
-                #~ self.MessageDialog("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
-                                   #~ self.parser.timecourses[i],len(self.parser.variables)),"Error in data")
-                #~ return
-        
-        #~ self.parser.timecourseshapes     = [i.shape for i in timecoursedata]
-        #~ self.parser.timecourseshortnames = [os.path.split(filename)[1] for filename in pathlist]
-        
+        # check and load timecourses
+        self.tc.basedir = filedir
+        os.chdir(self.tc.basedir)
+        pathlist = [os.path.abspath(k) for k in self.tc.filenames]
+
+        print "-------------------------------------------------------"
+        self.tc.data = []
+        for (i,filename) in zip(self.tclines, pathlist):
+            if not os.path.exists(filename) or not os.path.isfile(filename):
+                self.setError("Time course file \n%s\ndoes not exist"% filename, 0, len(modeltext[i]), i, modeltext[i])
+                return
+            h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.intvariablesorder)
+            if d.shape == (0,0):
+                self.setError("File\n%s\ndoes not contain valid time-course data"% filename, 0, len(modeltext[i]), i, modeltext[i])
+                return
+            else:
+                print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
+                self.tc.headers.append(h)
+                self.tc.data.append(d)
+        for i,d in enumerate(self.tc.data):
+            if d.shape[1] != len(self.variables)+1:
+                self.setError("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
+                               self.tc.filenames[i],len(self.variables)),-1, -1, -1, "")
+                return
+        self.tc.shapes     = [i.shape for i in self.tc.data]
+        self.tc.shortnames = [os.path.split(filename)[1] for filename in pathlist]
 
     def setError(self, text, start, end, nline=None, line=None):
         self.error = text
@@ -310,6 +307,7 @@ class StimatorParser:
 
     def tcDefParse(self, line, nline, match):
         filename = match.group('filename').strip()
+        self.tclines.append(nline)
         self.tc.filenames.append(filename)
 
     def constDefParse(self, line, nline, match):

@@ -659,54 +659,33 @@ class stimatorMainFrame(wx.Frame):
         sepre = re.compile(r"\r\n|\n|\r")
         textlines = sepre.split(self.ModelEditor.GetText())
         
+        oldout = sys.stdout #parser may need to print messages
+        sys.stdout = self
+
         self.parser.parse(textlines)
         if self.parser.error:
            self.IndicateError(self.parser.error, self.parser.errorLoc)
+           sys.stdout = oldout
            return
 
+        self.parser.loadTimeCourses (textlines, self.GetFileDir())
+        if self.parser.error:
+           self.IndicateError(self.parser.error, self.parser.errorLoc)
+           sys.stdout = oldout
+           return
+
+        sys.stdout = oldout
+
         os.chdir(self.GetFileDir())
-        pathlist = [os.path.abspath(k) for k in self.parser.tc.filenames]
-        for filename in pathlist:
-            if not os.path.exists(filename) or not os.path.isfile(filename):
-                self.MessageDialog("Time course file \n%s\ndoes not exist"% filename, "File error")
-                return
-
-        self.write("-------------------------------------------------------")
-
-        timecoursedata = []
-
-        for filename in pathlist:
-            h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.parser.intvariablesorder)
-            if d.shape == (0,0):
-                self.MessageDialog("File\n%s\ndoes not contain valid time-course data"% filename, "Error in data")
-                return
-            else:
-                oldout = sys.stdout
-                sys.stdout = self
-                print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
-                #self.write("%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename))
-                self.parser.tc.headers.append(h)
-                timecoursedata.append(d)
-                sys.stdout = oldout
-        
-        for i,d in enumerate(timecoursedata):
-            if d.shape[1] != len(self.parser.variables)+1:
-                self.MessageDialog("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
-                                   self.parser.tc.filenames[i],len(self.parser.variables)),"Error in data")
-                return
-        
-        self.parser.tc.shapes     = [i.shape for i in timecoursedata]
-        self.parser.tc.shortnames = [os.path.split(filename)[1] for filename in pathlist]
 
         self.parser.problemname   = self.GetFileName()
-        
-        
+
         self.write("-------------------------------------------------------")
         self.write("Solving %s..."%self.GetFileName())
         self.time0 = time.time()
 
         self.optimizerThread=DEThread.CalcOptmThread(self)
-        self.optimizerThread.Start(self.parser, timecoursedata, UpdateGenerationEvent, EndComputationEvent)
+        self.optimizerThread.Start(self.parser, self.parser.tc.data, UpdateGenerationEvent, EndComputationEvent)
         
     def OnUpdateGeneration(self, evt):
         self.write("%-4d: %f" % (evt.generation, evt.energy))
