@@ -403,7 +403,7 @@ class stimatorMainFrame(wx.Frame):
         self.SetMenuBar(self.mainmenu)
 
     def MakeToolbar(self):
-        self.maintoolbar = wx.ToolBar(self, -1, style=wx.TB_HORIZONTAL|wx.TB_TEXT|wx.TB_NOICONS)
+        self.maintoolbar = wx.ToolBar(self, -1, style=wx.TB_HORIZONTAL|wx.TB_TEXT|wx.TB_NOICONS|wx.TB_FLAT)
         self.SetToolBar(self.maintoolbar)
         buttonId = wx.NewId()
         self.maintoolbar.AddLabelTool(buttonId, "Compute", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
