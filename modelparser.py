@@ -126,14 +126,11 @@ class StimatorParser:
         self.constants   = {}  # a 'name':value dictionary
         self.parameters  = []  # a list of (name,min,max)
         self.tc          = timecourse.TimeCourseCollection()
-        self.tclines     = []
         self.atdefs      = []  # a list of (time,name,newvalue)
 
-        self.variablesorder    = None # list of names indicating the order of variables in timecourses
-        self.intvariablesorder = None # list of ints indicating the order of variables in timecourses (time at pos 0)
-        self.stoichmatrixrows  = []   # sparse, using reactionname:coef dictionaries
-
         self.currentline = -1
+        self.tclines     = []  #location of timecourse def lines for error reporting
+        self.rateloc     = []  #location of rate def for error reporting, a list of {'rateline', 'ratestart', 'rateend'}
     
     
     def parse (self,modeltext):
@@ -170,34 +167,21 @@ class StimatorParser:
                       self.variables.append(var)
 
         # build list of ints with the order of variables (time is at pos 0)
-        if not self.variablesorder:
-            self.intvariablesorder = range(len(self.variables)+1)
+        if not self.tc.variablesorder:
+            self.tc.intvarsorder = range(len(self.variables)+1)
         else:
-            self.intvariablesorder = [self.variables.index(name)+1 for name in self.variablesorder]
-            self.intvariablesorder = [0] + self.intvariablesorder
-
-        # build stoichiometry matrix row-wise
-        nvars = len(self.variables)
-        for i in range(nvars):
-            self.stoichmatrixrows.append({})
-        for v in self.rates:
-            fields = [('reagents',-1.0),('products',1.0)]
-            for rORp, signedunit in fields:
-                for c in v[rORp]:
-                    coef, var = (c[1]*signedunit, c[0])
-                    if self.constants.has_key(var):
-                        continue # there are no rows for constants in stoich. matrix
-                    ivariable = self.variables.index(var) # error handling here
-                    self.stoichmatrixrows[ivariable][v['name']] = coef
+            self.tc.intvarsorder = [self.variables.index(name)+1 for name in self.tc.variablesorder]
+            self.tc.intvarsorder = [0] + self.tc.intvarsorder
 
         # check the validity of rate laws
         varlist = self.variables[:]
         for i in self.parameters:
             varlist.append(i[0])
-        for v in self.rates:
+        for i, v in enumerate(self.rates):
             resstring, value = test_with_everything(v['rate'], self.constants, varlist)
             if resstring != "":
-                self.setError(resstring, v['ratestart'], v['rateend'], v['rateline'], modeltext[v['rateline']])
+                errorloc = self.rateloc[i]
+                self.setError(resstring, errorloc['ratestart'], errorloc['rateend'], errorloc['rateline'], modeltext[errorloc['rateline']])
                 self.setIfNameError(resstring, v['rate'])
                 return
 
@@ -218,7 +202,7 @@ class StimatorParser:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 self.setError("Time course file \n%s\ndoes not exist"% filename, 0, len(modeltext[i]), i, modeltext[i])
                 return
-            h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.intvariablesorder)
+            h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.tc.intvarsorder)
             if d.shape == (0,0):
                 self.setError("File\n%s\ndoes not contain valid time-course data"% filename, 0, len(modeltext[i]), i, modeltext[i])
                 return
@@ -250,6 +234,7 @@ class StimatorParser:
 
     def rateDefParse(self, line, nline, match):
         entry={}
+        entryloc = {}
         #process name
         name = match.group('name')
         found = False
@@ -265,9 +250,9 @@ class StimatorParser:
 
         #process rate
         entry['rate']     = match.group('rate').strip()
-        entry['rateline'] = self.currentline
-        entry['ratestart']= match.start('rate')
-        entry['rateend']  = match.end('rate')
+        entryloc['rateline'] = self.currentline
+        entryloc['ratestart']= match.start('rate')
+        entryloc['rateend']  = match.end('rate')
 
         #process irreversible
         irrsign = match.group('irreversible')
@@ -301,6 +286,7 @@ class StimatorParser:
 
         #append to list of rates
         self.rates.append(entry)
+        self.rateloc.append(entryloc)
 
     def emptyLineParse(self, line, nline, match):
         pass #do nothing
@@ -355,13 +341,13 @@ class StimatorParser:
         self.atdefs.append((timevalue,name,value))
 
     def varListParse(self, line, nline, match):
-        if self.variablesorder: #repeated declaration
+        if self.tc.variablesorder: #repeated declaration
             self.setError("Repeated declaration", 0, len(line), nline, line)
             return
 
         names = match.group('names')
         names = names.strip()
-        self.variablesorder = names.split()
+        self.tc.variablesorder = names.split()
 
     def findDefParse(self, line, nline, match):
         name = match.group('name')
@@ -402,6 +388,33 @@ class StimatorParser:
             rateString = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], rateString)
         return rateString
         
+    def genStoichiometrymatrixOLD(self):
+        self.stoichmatrixrows  = []   # sparse, using reactionname:coef dictionaries
+        # build stoichiometry matrix row-wise
+        for i in range(len(self.variables)):
+            self.stoichmatrixrows.append({})
+        for v in self.rates:
+            for rORp, signedunit in [('reagents',-1.0),('products',1.0)]:
+                for c in v[rORp]:
+                    coef, var = (c[1]*signedunit, c[0])
+                    if self.constants.has_key(var):
+                        continue # there are no rows for constants in stoich. matrix
+                    ivariable = self.variables.index(var) # error handling here
+                    self.stoichmatrixrows[ivariable][v['name']] = coef
+
+    def genStoichiometrymatrix(self):
+        N = zeros((len(self.variables),len(self.rates)), dtype=float)
+        for j,v in enumerate(self.rates):
+            for rORp, signedunit in [('reagents',-1.0),('products',1.0)]:
+                for c in v[rORp]:
+                    coef, var = (c[1]*signedunit, c[0])
+                    if self.constants.has_key(var):
+                        continue # there are no rows for constants in stoich. matrix
+                    ivariable = self.variables.index(var) # error handling here
+                    N[ivariable, j] = coef
+                    #self.stoichmatrixrows[ivariable][v['name']] = coef
+        return N
+
 #----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------
@@ -437,8 +450,7 @@ def printParserResults(parser):
     print
     print "the timecourses to load are", parser.tc.filenames
     print
-    print "the order of variables in timecourses is", parser.variablesorder
-    print "that is", parser.intvariablesorder
+    print "the order of variables in timecourses is", parser.tc.variablesorder
     print
     print "the reactions are"
     for k in parser.rates:
@@ -453,13 +465,16 @@ def printParserResults(parser):
     for k in parser.atdefs:
           print "@", k[0], k[1], "=", k[2]
     print
+    parser.genStoichiometrymatrixOLD()
     print "the rows of the stoichiometry matrix are"
-    for k in range(len(parser.variables)):
-          name = parser.variables[k]
+    for k,name in enumerate(parser.variables):
           row = parser.stoichmatrixrows[k]
           print "for", name, ":"
           for r in row.keys():
               print "%g %s" % (row[r], r)
+    print "the stoichiometry matrix as a numpy array is"
+    N = parser.genStoichiometrymatrix()
+    print N
     print
 
 if __name__ == "__main__":

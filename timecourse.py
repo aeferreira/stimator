@@ -7,10 +7,6 @@
 # S-timator timecourse functions
 # Copyright António Ferreira 2006-2009
 #----------------------------------------------------------------------------
-"""This module contains code to parse a model definition text,
-
-The most important class ('StimatorParser') holds data to represent a valid model.
-The parsing loop relies on regular expressions."""
 
 import re
 import math
@@ -88,6 +84,8 @@ class TimeCourseCollection(object):
         self.shortnames = []
         self.filenames = []
         self.basedir = None
+        self.intvarsorder = None
+        self.variablesorder = None # list of names indicating the order of variables in timecourses
 
 #----------------------------------------------------------------------------
 #         TESTING CODE

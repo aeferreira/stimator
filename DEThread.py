@@ -36,16 +36,13 @@ class DeOdeSolver(DESolver.DESolver):
         # scale times to maximum time in data
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
-        # compute stoichiometry matrix and transpose
-        N = zeros((len(parser.variables),len(parser.rates)), dtype=float)
-        for m, srow in enumerate(parser.stoichmatrixrows):
-            for i,k in enumerate(parser.rates):
-                if srow.has_key(k['name']):
-                    N[m,i] = scale *srow[k['name']]
+        # compute stoichiometry matrix, scale and transpose
+        N = parser.genStoichiometrymatrix()
+        N *=scale
         self.NT = N.transpose()
 
         #compile rate laws
-        self.ratebytecode = [compile(parser.rateCalcString(k['rate']), 'bof.log','eval') for k in parser.rates]
+        self.ratebytecode = [compile(parser.rateCalcString(v['rate']), 'bof.log','eval') for v in parser.rates]
         
         # create array to hold v's
         self.v = empty(len(parser.rates))
