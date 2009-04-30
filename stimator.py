@@ -317,9 +317,7 @@ class stimatorMainFrame(wx.Frame):
 
     def InitVariables(self):
         self.fileName = None
-        self.TCpaths = []
         self.optimizerThread = None
-        self.parser = modelparser.StimatorParser()
 
     def __del__(self):
         pass
@@ -658,34 +656,39 @@ class stimatorMainFrame(wx.Frame):
 
         sepre = re.compile(r"\r\n|\n|\r")
         textlines = sepre.split(self.ModelEditor.GetText())
+        parser = modelparser.StimatorParser()
         
         oldout = sys.stdout #parser may need to print messages
         sys.stdout = self
 
-        self.parser.parse(textlines)
-        if self.parser.error:
-           self.IndicateError(self.parser.error, self.parser.errorLoc)
+        parser.parse(textlines)
+        if parser.error:
+           self.IndicateError(parser.error, parser.errorLoc)
            sys.stdout = oldout
            return
 
-        self.parser.loadTimeCourses (textlines, self.GetFileDir())
-        if self.parser.error:
-           self.IndicateError(self.parser.error, self.parser.errorLoc)
+        parser.loadTimeCourses (textlines, self.GetFileDir())
+        if parser.error:
+           self.IndicateError(parser.error, parser.errorLoc)
            sys.stdout = oldout
            return
+        
+        self.model = parser.model
+        self.tc = parser.tc
+        self.optSettings = parser.optSettings
 
         sys.stdout = oldout
 
         os.chdir(self.GetFileDir())
 
-        self.parser.problemname   = self.GetFileName()
+        self.model.problemname   = self.GetFileName()
 
         self.write("-------------------------------------------------------")
         self.write("Solving %s..."%self.GetFileName())
         self.time0 = time.time()
 
         self.optimizerThread=DEThread.CalcOptmThread(self)
-        self.optimizerThread.Start(self.parser, self.parser.tc.data, UpdateGenerationEvent, EndComputationEvent)
+        self.optimizerThread.Start(self.model, self.optSettings, self.tc, UpdateGenerationEvent, EndComputationEvent)
         
     def OnUpdateGeneration(self, evt):
         self.write("%-4d: %f" % (evt.generation, evt.energy))
@@ -703,7 +706,7 @@ class stimatorMainFrame(wx.Frame):
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.parser, self.bestData, solver.timecoursedata)
+        win.loadBestData(self.model, self.bestData, solver.timecoursedata)
         win.Show(True)
 
 

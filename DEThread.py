@@ -23,10 +23,11 @@ class DeOdeSolver(DESolver.DESolver):
     The energy function solves ODEs and computes a least-squares score.
     Report functions post events to the main window (nothing else)."""
 
-    def setup(self, parser, win, atimecoursedata, anUpdateGenerationEvent, anEndComputationEvent):
-        self.parser = parser
+    def setup(self, model, win, atimecoursecollection, anUpdateGenerationEvent, anEndComputationEvent):
+        self.model = model
         self.win = win # the widget that receives the notifications
-        self.timecoursedata = atimecoursedata
+        self.tc = atimecoursecollection
+        self.timecoursedata = self.tc.data
         self.UpdateGenerationEvent = anUpdateGenerationEvent
         self.EndComputationEvent = anEndComputationEvent
         
@@ -37,15 +38,15 @@ class DeOdeSolver(DESolver.DESolver):
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
         # compute stoichiometry matrix, scale and transpose
-        N = parser.genStoichiometrymatrix()
+        N = model.genStoichiometrymatrix()
         N *=scale
         self.NT = N.transpose()
 
         #compile rate laws
-        self.ratebytecode = [compile(parser.rateCalcString(v['rate']), 'bof.log','eval') for v in parser.rates]
+        self.ratebytecode = [compile(model.rateCalcString(v['rate']), 'bof.log','eval') for v in model.rates]
         
         # create array to hold v's
-        self.v = empty(len(parser.rates))
+        self.v = empty(len(model.rates))
 
         # store initial values and (scaled) time points
         self.X0 = []
@@ -63,7 +64,7 @@ class DeOdeSolver(DESolver.DESolver):
         
         # open files to write parameter progression
         if DUMP_PARS_2FILES:
-            self.parfilehandes = [open(par[0]+".par", 'w') for par in self.parser.parameters]
+            self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
             
     def calcDerivs(self, variables, t):
         m_Parameters = self.m_Parameters
@@ -128,7 +129,7 @@ class DeOdeSolver(DESolver.DESolver):
                     {'section':"D.E. OPTIMIZATION"}, 
                     {'section':"TIMECOURSES"},
                     {'section':"best timecourses"}]
-        bestData[0]['data'] = [(self.parser.parameters[i][0], "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        bestData[0]['data'] = [(self.model.parameters[i][0], "%g"%value) for (i,value) in enumerate(self.bestSolution)]
         bestData[0]['format'] = "%s\t%s"
         bestData[0]['header'] = None
         
@@ -150,11 +151,11 @@ class DeOdeSolver(DESolver.DESolver):
             Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
             besttimecoursedata.append(Y)
             if infodict['message'] != 'Integration successful.':
-                bestData[2]['data'].append((self.parser.tc.shortnames[i], self.parser.tc.shapes[i][0], 1.0E300))
+                bestData[2]['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], 1.0E300))
             else:
                 S = (Y- data[:, 1:])**2
                 score = nansum(S)
-                bestData[2]['data'].append((self.parser.tc.shortnames[i], self.parser.tc.shapes[i][0], score))
+                bestData[2]['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
         bestData[2]['format'] = "%s\t%d\t%g"
         bestData[2]['header'] = ['Name', 'Points', 'Score']
         
@@ -165,19 +166,19 @@ class CalcOptmThread:
     def __init__(self, win):
         self.win = win 
 
-    def Start(self, parser, timecoursedata, anUpdateGenerationEvent, anEndComputationEvent):
-        mins = array([k[1] for k in parser.parameters])
-        maxs = array([k[2] for k in parser.parameters])
+    def Start(self, model, optSettings, timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent):
+        mins = array([k[1] for k in model.parameters])
+        maxs = array([k[2] for k in model.parameters])
         
-        self.solver = DeOdeSolver(len(parser.parameters), # number of parameters
-                                 int(parser.optSettings['genomesize']),  # genome size
-                                 int(parser.optSettings['generations']), # max number of generations
+        self.solver = DeOdeSolver(len(model.parameters), # number of parameters
+                                 int(optSettings['genomesize']),  # genome size
+                                 int(optSettings['generations']), # max number of generations
                                  mins, maxs,              # min and max parameter values
                                  "Best2Exp",              # DE strategy
                                  0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
                                  True)                    # use class random number methods
 
-        self.solver.setup(parser,self.win,timecoursedata, anUpdateGenerationEvent, anEndComputationEvent)
+        self.solver.setup(model,self.win,timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent)
         
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())

@@ -6,8 +6,7 @@ import os
 import os.path
 import math
 import wx
-import  wx.stc  as  stc
-import modelparser
+import wx.stc  as  stc
 from matplotlib.numerix import arange, sin, pi, cos, isnan
 
 import matplotlib
@@ -398,7 +397,7 @@ class DemoPlotPanel(PlotPanel):
         self.subplot.plot(x,y, '-b')
         #Set some plot attributes
         #self.subplot.set_title("A polar flower (%s points)" % len(x), fontsize = 12)
-        self.subplot.set_title("Results for %s" % self.parser.problemname)
+        self.subplot.set_title("Results for %s" % self.model.problemname)
         self.subplot.set_xlabel("Flower is from  http://www.physics.emory.edu/~weeks/ideas/rose.html")
         self.subplot.set_xlim([-400, 400])
         self.subplot.set_ylim([-400, 400])
@@ -485,18 +484,18 @@ class resultsFrame(wx.Frame):
     def __del__(self):
         pass
     
-    def loadBestData(self, parser, bestData, timecoursedata):
+    def loadBestData(self, model, bestData, timecoursedata):
         """Main initialization function.
         
         Should be called after __init__() but before Show()."""
 
-        self.plotpanel.parser = parser
+        self.plotpanel.model = model
         self.plotpanel.bestData = bestData
         self.plotpanel.timecoursedata = timecoursedata
 
-        self.parser = parser
-        self.bestData = bestData
-        self.SetTitle("Results for %s" % parser.problemname)
+        #self.parser = parser
+        #self.bestData = bestData
+        self.SetTitle("Results for %s" % model.problemname)
 
         # generate report
         reportText = ""

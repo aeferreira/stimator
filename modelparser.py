@@ -16,7 +16,7 @@ import os
 import os.path
 import re
 import math
-from numpy import *
+import model
 import timecourse
 import utils
 
@@ -119,14 +119,10 @@ class StimatorParser:
                 "end"      : -1} # if error, one past the ending position of the offending expression
 
         # default Differential Evolution num of generations and population size
-        self.optSettings = {'generations':200, 'genomesize' :10}
         
-        self.rates       = []  # a list of {'name', 'reagents', 'products', 'rate', 'irreversible' and rate locations}
-        self.variables   = []  # a list of names of variables (order matters)
-        self.constants   = {}  # a 'name':value dictionary
-        self.parameters  = []  # a list of (name,min,max)
+        self.model = model.Model()
         self.tc          = timecourse.TimeCourseCollection()
-        self.atdefs      = []  # a list of (time,name,newvalue)
+        self.optSettings = {'generations':200, 'genomesize' :10}
 
         self.currentline = -1
         self.tclines     = []  #location of timecourse def lines for error reporting
@@ -157,28 +153,28 @@ class StimatorParser:
             self.currentline += 1
 
         # build list of variables
-        for v in self.rates:
+        for v in self.model.rates:
           for rORp in ('reagents','products'):
               for c in v[rORp]:
                   var = c[0]
-                  if self.constants.has_key(var):
+                  if self.model.constants.has_key(var):
                         continue # this is a constant ("external variable")
-                  if not var in self.variables:
-                      self.variables.append(var)
+                  if not var in self.model.variables:
+                      self.model.variables.append(var)
 
         # build list of ints with the order of variables (time is at pos 0)
         if not self.tc.variablesorder:
-            self.tc.intvarsorder = range(len(self.variables)+1)
+            self.tc.intvarsorder = range(len(self.model.variables)+1)
         else:
-            self.tc.intvarsorder = [self.variables.index(name)+1 for name in self.tc.variablesorder]
+            self.tc.intvarsorder = [self.model.variables.index(name)+1 for name in self.tc.variablesorder]
             self.tc.intvarsorder = [0] + self.tc.intvarsorder
 
         # check the validity of rate laws
-        varlist = self.variables[:]
-        for i in self.parameters:
+        varlist = self.model.variables[:]
+        for i in self.model.parameters:
             varlist.append(i[0])
-        for i, v in enumerate(self.rates):
-            resstring, value = test_with_everything(v['rate'], self.constants, varlist)
+        for i, v in enumerate(self.model.rates):
+            resstring, value = test_with_everything(v['rate'], self.model.constants, varlist)
             if resstring != "":
                 errorloc = self.rateloc[i]
                 self.setError(resstring, errorloc['ratestart'], errorloc['rateend'], errorloc['rateline'], modeltext[errorloc['rateline']])
@@ -211,9 +207,9 @@ class StimatorParser:
                 self.tc.headers.append(h)
                 self.tc.data.append(d)
         for i,d in enumerate(self.tc.data):
-            if d.shape[1] != len(self.variables)+1:
+            if d.shape[1] != len(self.model.variables)+1:
                 self.setError("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
-                               self.tc.filenames[i],len(self.variables)),-1, -1, -1, "")
+                               self.tc.filenames[i],len(self.model.variables)),-1, -1, -1, "")
                 return
         self.tc.shapes     = [i.shape for i in self.tc.data]
         self.tc.shortnames = [os.path.split(filename)[1] for filename in pathlist]
@@ -238,7 +234,7 @@ class StimatorParser:
         #process name
         name = match.group('name')
         found = False
-        for k in self.rates:
+        for k in self.model.rates:
             if k['name'] == name:
                 found = True
                 break
@@ -285,7 +281,7 @@ class StimatorParser:
 
 
         #append to list of rates
-        self.rates.append(entry)
+        self.model.rates.append(entry)
         self.rateloc.append(entryloc)
 
     def emptyLineParse(self, line, nline, match):
@@ -300,11 +296,11 @@ class StimatorParser:
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
-        if self.constants.has_key(name) :#repeated declaration
+        if self.model.constants.has_key(name) :#repeated declaration
             self.setError("Repeated declaration", 0, len(line), nline, line)
             return
 
-        resstring, value = test_with_consts(valueexpr, self.constants)
+        resstring, value = test_with_consts(valueexpr, self.model.constants)
         if resstring != "":
             self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr), nline, line)
             self.setIfNameError(resstring, valueexpr)
@@ -315,30 +311,30 @@ class StimatorParser:
         elif name == "genomesize":
             self.optSettings['genomesize'] = int(value)
         else:
-            self.constants[name]=value
+            self.model.constants[name]=value
 
     def atDefParse(self, line, nline, match):
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
         timeexpr = match.group('timevalue').rstrip()
 
-        if not self.constants.has_key(name) :#constant has not been defined
+        if not self.model.constants.has_key(name) :#constant has not been defined
             self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name), nline, line)
             return
 
-        resstring, value = test_with_consts(valueexpr, self.constants)
+        resstring, value = test_with_consts(valueexpr, self.model.constants)
         if resstring != "":
             self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr), nline, line)
             self.setIfNameError(resstring, valueexpr)
             return
 
-        resstring, timevalue = test_with_consts(timeexpr, self.constants)
+        resstring, timevalue = test_with_consts(timeexpr, self.model.constants)
         if resstring != "":
             self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr), nline, line)
             self.setIfNameError(resstring, timeexpr)
             return
 
-        self.atdefs.append((timevalue,name,value))
+        self.model.atdefs.append((timevalue,name,value))
 
     def varListParse(self, line, nline, match):
         if self.tc.variablesorder: #repeated declaration
@@ -352,7 +348,7 @@ class StimatorParser:
     def findDefParse(self, line, nline, match):
         name = match.group('name')
         found = False
-        for k in self.parameters:
+        for k in self.model.parameters:
             if k[0] == name:
                 found = True
                 break
@@ -364,56 +360,14 @@ class StimatorParser:
         flulist = []
         for k in lulist:
             valueexpr = match.group(k)
-            resstring, v = test_with_consts(valueexpr, self.constants)
+            resstring, v = test_with_consts(valueexpr, self.model.constants)
             if resstring != "":
                 self.setError(resstring, match.start(k), match.end(k), nline, line)
                 self.setIfNameError(resstring, valueexpr)
                 return
             flulist.append(v)
         entry = tuple([name,flulist[0],flulist[1]])
-        self.parameters.append(entry)
-
-    def rateCalcString(self, rateString):
-        if self.error:
-            return ""
-        nvars = len(self.variables)
-        # replace varnames
-        for i in range(nvars):
-            rateString = re.sub(r"\b"+ self.variables[i]+r"\b", "variables[%d]"%i, rateString)
-        # replace parameters
-        for i in range(len(self.parameters)):
-            rateString = re.sub(r"\b"+ self.parameters[i][0]+r"\b", "m_Parameters[%d]"%i, rateString)
-        # replace constants
-        for const in self.constants.keys():
-            rateString = re.sub(r"\b"+ const + r"\b", "%e"% self.constants[const], rateString)
-        return rateString
-        
-    def genStoichiometrymatrixOLD(self):
-        self.stoichmatrixrows  = []   # sparse, using reactionname:coef dictionaries
-        # build stoichiometry matrix row-wise
-        for i in range(len(self.variables)):
-            self.stoichmatrixrows.append({})
-        for v in self.rates:
-            for rORp, signedunit in [('reagents',-1.0),('products',1.0)]:
-                for c in v[rORp]:
-                    coef, var = (c[1]*signedunit, c[0])
-                    if self.constants.has_key(var):
-                        continue # there are no rows for constants in stoich. matrix
-                    ivariable = self.variables.index(var) # error handling here
-                    self.stoichmatrixrows[ivariable][v['name']] = coef
-
-    def genStoichiometrymatrix(self):
-        N = zeros((len(self.variables),len(self.rates)), dtype=float)
-        for j,v in enumerate(self.rates):
-            for rORp, signedunit in [('reagents',-1.0),('products',1.0)]:
-                for c in v[rORp]:
-                    coef, var = (c[1]*signedunit, c[0])
-                    if self.constants.has_key(var):
-                        continue # there are no rows for constants in stoich. matrix
-                    ivariable = self.variables.index(var) # error handling here
-                    N[ivariable, j] = coef
-                    #self.stoichmatrixrows[ivariable][v['name']] = coef
-        return N
+        self.model.parameters.append(entry)
 
 #----------------------------------------------------------------------------
 #         TESTING CODE
@@ -438,14 +392,14 @@ def printParserResults(parser):
         return
 
     print
-    print "the variables are" , parser.variables
+    print "the variables are" , parser.model.variables
     print
     print "the constants are"
-    for k in parser.constants.keys():
-           print "%s = %g" % (k, parser.constants[k])
+    for k in parser.model.constants.keys():
+           print "%s = %g" % (k, parser.model.constants[k])
     print
     print "the parameters to find are"
-    for k in parser.parameters:
+    for k in parser.model.parameters:
           print k[0],"from", k[1], "to", k[2]
     print
     print "the timecourses to load are", parser.tc.filenames
@@ -453,7 +407,7 @@ def printParserResults(parser):
     print "the order of variables in timecourses is", parser.tc.variablesorder
     print
     print "the reactions are"
-    for k in parser.rates:
+    for k in parser.model.rates:
           irrstring = ""
           if k['irreversible']: irrstring = "(irreversible)"
           print k['name'], irrstring, ":"
@@ -462,22 +416,22 @@ def printParserResults(parser):
           print " rate =", k['rate']
     print
     print "the @ definitions are"
-    for k in parser.atdefs:
+    for k in parser.model.atdefs:
           print "@", k[0], k[1], "=", k[2]
     print
-    parser.genStoichiometrymatrixOLD()
+    parser.model.genStoichiometrymatrixOLD()
     print "the rows of the stoichiometry matrix are"
-    for k,name in enumerate(parser.variables):
-          row = parser.stoichmatrixrows[k]
+    for k,name in enumerate(parser.model.variables):
+          row = parser.model.stoichmatrixrows[k]
           print "for", name, ":"
           for r in row.keys():
               print "%g %s" % (row[r], r)
     print "the stoichiometry matrix as a numpy array is"
-    N = parser.genStoichiometrymatrix()
+    N = parser.model.genStoichiometrymatrix()
     print N
     print
 
-if __name__ == "__main__":
+def real_main():
     modelText = """
 #This is an example of a valid model:
 
@@ -563,3 +517,26 @@ timecourse anotherfile.txt
 
     parser.parse(textlines)
     printParserResults(parser)
+
+def profile_main():
+ # This is the main function for profiling 
+ # We've renamed our original main() above to real_main()
+ import cProfile, pstats, StringIO
+ prof = cProfile.Profile()
+ prof = prof.runctx("real_main()", globals(), locals())
+ stream = StringIO.StringIO()
+ stats = pstats.Stats(prof, stream=stream)
+ stats.sort_stats("time")  # Or cumulative
+ stats.print_stats(80)  # 80 = how many to print
+ # The rest is optional.
+ # stats.print_callees()
+ # stats.print_callers()
+ print stream.getvalue()
+ #logging.info("Profile data:\n%s", stream.getvalue())
+
+
+if __name__ == "__main__":
+    real_main()
+ 
+ 
+ 
