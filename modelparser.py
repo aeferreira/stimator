@@ -185,7 +185,7 @@ class StimatorParser:
 
         if len(self.tc.filenames) == 0 :
            self.setError("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", -1, -1, -1, "")
-           return
+           return None
         
         # check and load timecourses
         self.tc.basedir = filedir
@@ -197,11 +197,11 @@ class StimatorParser:
         for (i,filename) in zip(self.tclines, pathlist):
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 self.setError("Time course file \n%s\ndoes not exist"% filename, 0, len(modeltext[i]), i, modeltext[i])
-                return
+                return None
             h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.tc.intvarsorder)
             if d.shape == (0,0):
                 self.setError("File\n%s\ndoes not contain valid time-course data"% filename, 0, len(modeltext[i]), i, modeltext[i])
-                return
+                return None
             else:
                 print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
                 self.tc.headers.append(h)
@@ -210,9 +210,10 @@ class StimatorParser:
             if d.shape[1] != len(self.model.variables)+1:
                 self.setError("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
                                self.tc.filenames[i],len(self.model.variables)),-1, -1, -1, "")
-                return
+                return None
         self.tc.shapes     = [i.shape for i in self.tc.data]
         self.tc.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+        return self.tc
 
     def setError(self, text, start, end, nline=None, line=None):
         self.error = text
@@ -390,46 +391,12 @@ def printParserResults(parser):
             print caretline
         print parser.error
         return
-
-    print
-    print "the variables are" , parser.model.variables
-    print
-    print "the constants are"
-    for k in parser.model.constants.keys():
-           print "%s = %g" % (k, parser.model.constants[k])
-    print
-    print "the parameters to find are"
-    for k in parser.model.parameters:
-          print k[0],"from", k[1], "to", k[2]
-    print
+    parser.model.pprint()
     print "the timecourses to load are", parser.tc.filenames
     print
     print "the order of variables in timecourses is", parser.tc.variablesorder
     print
-    print "the reactions are"
-    for k in parser.model.rates:
-          irrstring = ""
-          if k['irreversible']: irrstring = "(irreversible)"
-          print k['name'], irrstring, ":"
-          print " reagents:", k['reagents']
-          print " products:", k['products']
-          print " rate =", k['rate']
-    print
-    print "the @ definitions are"
-    for k in parser.model.atdefs:
-          print "@", k[0], k[1], "=", k[2]
-    print
-    parser.model.genStoichiometrymatrixOLD()
-    print "the rows of the stoichiometry matrix are"
-    for k,name in enumerate(parser.model.variables):
-          row = parser.model.stoichmatrixrows[k]
-          print "for", name, ":"
-          for r in row.keys():
-              print "%g %s" % (row[r], r)
-    print "the stoichiometry matrix as a numpy array is"
-    N = parser.model.genStoichiometrymatrix()
-    print N
-    print
+    
 
 def real_main():
     modelText = """

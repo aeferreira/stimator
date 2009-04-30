@@ -23,6 +23,43 @@ class Model(object):
         self.parameters  = []  # a list of (name,min,max)
         self.atdefs      = []  # a list of (time,name,newvalue)
 
+    def pprint(self):
+        print
+        print "the variables are" , self.variables
+        print
+        print "the constants are"
+        for k in self.constants.keys():
+               print "%s = %g" % (k, self.constants[k])
+        print
+        print "the parameters to find are"
+        for k in self.parameters:
+              print k[0],"from", k[1], "to", k[2]
+        print
+        print "the reactions are"
+        for k in self.rates:
+              irrstring = ""
+              if k['irreversible']: irrstring = "(irreversible)"
+              print k['name'], irrstring, ":"
+              print " reagents:", k['reagents']
+              print " products:", k['products']
+              print " rate =", k['rate']
+        print
+        print "the @ definitions are"
+        for k in self.atdefs:
+              print "@", k[0], k[1], "=", k[2]
+        print
+        self.genStoichiometrymatrixOLD()
+        print "the rows of the stoichiometry matrix are"
+        for k,name in enumerate(self.variables):
+              row = self.stoichmatrixrows[k]
+              print "for", name, ":"
+              for r in row.keys():
+                  print "%g %s" % (row[r], r)
+        print "the stoichiometry matrix as a numpy array is"
+        N = self.genStoichiometrymatrix()
+        print N
+        print
+        
     def rateCalcString(self, rateString):
         #if self.error:
             #return ""
