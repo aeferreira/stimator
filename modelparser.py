@@ -276,7 +276,7 @@ class StimatorParser:
 
                    entry[f].append((var,coef))
                 else:
-                   self.setError("'%s' is an invalid stoichiometry expression"%complexesstring, 
+                   self.setError("'%s' is an invalid stoichiometry expression"% complexesstring, 
                                  match.start(f), match.end(f), nline, line)
                    return
 
