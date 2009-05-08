@@ -422,14 +422,13 @@ def main():
     #~ print m.v1
 
     print '********** Testing stoichiometry matrix ********************'
-    print '\nStoichiometry matrix:'
+    print 'Stoichiometry matrix:'
     N = m.genStoichiometryMatrix()
     print '  ', '  '.join([v.name for v in m.reactions])
     for i,x in enumerate(m.variables):
         print x.name, N[i, :]
     
     print '********** Testing rate and dXdt generating functions ******'
-    print
     print 'calcstring for v3:\n', m.rateCalcString(m.v3.rate)
     print
     vratesfunc = m.rates_func()
@@ -438,10 +437,10 @@ def main():
     vrates = vratesfunc(vars,pars,0)
     
     print 'with'
-    print dict( (v.name, value)   for v,value in zip(m.variables, vars))
-    print dict( (v.name, value)   for v,value in zip(m.unknown, pars))
-    print dict( (p.name, p.value) for p in m.parameters)
-    print 'then...'
+    print dict((v.name, value)   for v,value in zip(m.variables, vars))
+    print dict((v.name, value)   for v,value in zip(m.unknown, pars))
+    print dict((p.name, p.value) for p in m.parameters)
+    print 'rates are...'
     for v,r in zip(m.reactions, vrates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
@@ -452,7 +451,7 @@ def main():
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
-    print 'testing Model.dXdt_with_pars() ------'
+    print 'testing Model.dXdt_with_pars(pars) ------'
     f = m.dXdt_with_pars(pars)
     dXdt   = f(vars,0)
     for x,r in zip(m.variables, dXdt):
