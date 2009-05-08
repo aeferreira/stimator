@@ -299,23 +299,74 @@ class Model(object):
                         continue # there are no rows for extvariables in stoich. matrix
         return N
 
-    def genRatesFunction(self, scale = 1.0):
+    def rates_func(self, scale = 1.0):
+        """Generate function to compute rate vector for this model.
+        
+           Function has signature f(variables, unknownparameters, t)"""
 
         #compile rate laws
-        self.__ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
-        
+        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
         # create array to hold v's
-        self.__v = empty(len(self.reactions))
+        v = empty(len(self.reactions))
             
-        def calcDerivs(variables, unknownparameters, t):
+        def f(variables, unknownparameters, t):
             m_Parameters = unknownparameters
-            ratebytecode = self.__ratebytecode
-            v = self.__v
+            #ratebytecode = self.__ratebytecode
+            #v = self.__v
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return v
-        return calcDerivs
+        return f
+
+    def dXdt_with_pars(self, unknownparameters, scale = 1.0):
+        """Generate function to compute rhs of SODE for this model.
         
+           Function has signature f(variables, t)
+           This is compatible with scipy.integrate.odeint"""
+
+        #compile rate laws
+        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        # compute stoichiometry matrix, scale and transpose
+        N  = self.genStoichiometryMatrix()
+        N *= scale
+        NT = N.transpose()
+
+        # create array to hold v's
+        v = empty(len(self.reactions))
+
+        def f(variables, t):
+            m_Parameters = unknownparameters
+            for i,r in enumerate(ratebytecode):
+                v[i] = eval(r)
+            return dot(v,NT)
+        return f
+
+    def setTrialPars(self, unknownparameters):
+        self.__m_Parameters = unknownparameters
+    
+    def dXdt(self, scale = 1.0):
+        """Generate function to compute rhs of SODE for this model.
+        
+           Function has signature f(variables, t)
+           This is compatible with scipy.integrate.odeint"""
+
+        #compile rate laws
+        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        # compute stoichiometry matrix, scale and transpose
+        N  = self.genStoichiometryMatrix()
+        N *= scale
+        NT = N.transpose()
+
+        # create array to hold v's
+        v = empty(len(self.reactions))
+        #self.__m_Parameters = unknownparameters
+
+        def f(variables, t):
+            m_Parameters = self.__m_Parameters
+            for i,r in enumerate(ratebytecode):
+                v[i] = eval(r)
+            return dot(v,NT)
+        return f
 
     def __getReactions(self):
         return self.__reactions
@@ -354,48 +405,59 @@ def transf(rate = 0.0):
     return Transformation(rate)
 
 def main():
+    
     m = Model('My first model')
     m.v1 = react("A+B -> C"  , 3)
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   -> "   , "V3 * C / (Km3+ C)")
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.t1 = transf("A*4 + C")
     m.B  = 2.2
     m.myconstant = 4
-    m.V3 = (0.1, 0.9)
+    m.V3 = [0.1, 0.9]
     m.Km3 = 4
+    print '********** Testing model construction **********************'
     print m
     
-    #~ print m.B * m.myconstant
-    #~ print m.varnames()
-    #~ print m.v1, '\nin the sky with', m.A
-    #~ print m.v3.rate
-    #~ print m.t1.rate
+    #~ print m.B * m.myconstant, m.v3.rate
+    #~ print m.v1
+
+    print '********** Testing stoichiometry matrix ********************'
     print '\nStoichiometry matrix:'
     N = m.genStoichiometryMatrix()
     print '  ', '  '.join([v.name for v in m.reactions])
     for i,x in enumerate(m.variables):
         print x.name, N[i, :]
     
+    print '********** Testing rate and dXdt generating functions ******'
     print
-    print 'calcstring of v3:'
-    print m.rateCalcString(m.v3.rate)
+    print 'calcstring for v3:\n', m.rateCalcString(m.v3.rate)
     print
-    vrates = m.genRatesFunction()
-    vars = [0, 1]
+    vratesfunc = m.rates_func()
+    vars = [1.0, 1.0]
     pars = [1.0]
-    result = vrates(vars,pars,0)
+    vrates = vratesfunc(vars,pars,0)
     
     print 'with'
-    for v,value in zip(m.variables, vars):
-        print v.name, '=', value
-    for v,value in zip(m.unknown, pars):
-        print v.name, '=', value
-    for p in m.parameters:
-        print p.name, '=', p.value
+    print dict( (v.name, value)   for v,value in zip(m.variables, vars))
+    print dict( (v.name, value)   for v,value in zip(m.unknown, pars))
+    print dict( (p.name, p.value) for p in m.parameters)
     print 'then...'
-    for v,r in zip(m.reactions, result):
-        print v.name, '=', v.rate, '=', r
-    
+    for v,r in zip(m.reactions, vrates):
+        print "%s = %-20s = %s" % (v.name, v.rate, r)
+
+    print 'testing Model.dXdt() ------'
+    f = m.dXdt()
+    m.setTrialPars(pars)
+    dXdt = f(vars,0)
+    for x,r in zip(m.variables, dXdt):
+        print "d%s/dt = %s" % (x.name, r)
+
+    print 'testing Model.dXdt_with_pars() ------'
+    f = m.dXdt_with_pars(pars)
+    dXdt   = f(vars,0)
+    for x,r in zip(m.variables, dXdt):
+        print "d%s/dt = %s" % (x.name, r)
+
 if __name__ == "__main__":
     main()
  
