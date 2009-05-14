@@ -158,8 +158,20 @@ class Reaction(object):
 class StateArray(list):
     def __init__(self, data, varvalues, name):
         list.__init__(self, data)
-        self.varvalues = varvalues
-        self.name = name
+        self.__dict__['varvalues'] = varvalues
+        self.__dict__['name'] = name
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        if name in self.varvalues:
+            return self.varvalues[name]
+        else:
+            return object.__getattr__(self, name)
+    def __setattr__(self, name, value):
+        if name != 'name' and name != 'varvalues':
+            self.__dict__['varvalues'][name]=value
+        else:
+            object.__setattr__(self, name, value)
     def __str__(self):
         res = "%s:"% self.name
         for x, value in self.varvalues.items():
@@ -357,7 +369,10 @@ class Model(object):
             return v
         return f
 
-    def dXdt_with(self, unknownparameters, scale = 1.0):
+    def set_unknown(self, unknownparameters):
+        self.__m_Parameters = unknownparameters
+    
+    def getdXdt(self):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -370,23 +385,20 @@ class Model(object):
         ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
-        N *= scale
         NT = N.transpose()
 
         # create array to hold v's
         v = empty(len(self.reactions))
+        #self.__m_Parameters = unknownparameters
 
         def f(variables, t):
-            m_Parameters = unknownparameters
+            m_Parameters = self.__m_Parameters
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return dot(v,NT)
         return f
 
-    def set_unknown(self, unknownparameters):
-        self.__m_Parameters = unknownparameters
-    
-    def dXdt(self, scale = 1.0):
+    def scaled_dXdt(self, scale = 1.0):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -413,6 +425,33 @@ class Model(object):
             return dot(v,NT)
         return f
 
+    def dXdt_with(self, unknownparameters, scale = 1.0):
+        """Generate function to compute rhs of SODE for this model.
+        
+           Function has signature f(variables, t)
+           This is compatible with scipy.integrate.odeint"""
+
+        check, msg = self.checkRates()
+        if not check:
+            raise BadRateError, msg
+        #compile rate laws
+        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        # compute stoichiometry matrix, scale and transpose
+        N  = self.genStoichiometryMatrix()
+        N *= scale
+        NT = N.transpose()
+
+        # create array to hold v's
+        v = empty(len(self.reactions))
+
+        def f(variables, t):
+            m_Parameters = unknownparameters
+            for i,r in enumerate(ratebytecode):
+                v[i] = eval(r)
+            return dot(v,NT)
+        return f
+
+
     def __getReactions(self):
         return self.__reactions
     def __getVariables(self):
@@ -432,6 +471,7 @@ class Model(object):
     parameters   = property(__getParameters)
     unknown      = property(__getUnknownParameters)
     transf       = property(__getTransformations)
+    dXdt         = property(getdXdt)
 
 class BadStoichError(Exception):
     """Used to flag a wrong stoichiometry expression"""
@@ -487,34 +527,44 @@ def main():
     print
     print '********** Testing rate and dXdt generating functions ******'
     print 'Operating point:'
-    vars = [1.0, 1.0]
-    pars = [1.0]
-    print 'variables =', dict((v.name, value)   for v,value in zip(m.variables, vars))
-    print 'unknown   =', dict((v.name, value)   for v,value in zip(m.unknown, pars))
-    print 'parameters=', dict((p.name, p) for p in m.parameters)
+    varvalues = [1.0, 1.0]
+    pars      = [1.0]
+    print 'variables =', dict((v.name, value) for v,value in zip(m.variables, varvalues))
+    print 'unknown   =', dict((v.name, value) for v,value in zip(m.unknown, pars))
+    print 'parameters=', dict((p.name, p)     for p in m.parameters)
  
-    print 'rates using Model.rates_func() -------------------------'
+    print '---- rates using Model.rates_func() -------------------------'
     vratesfunc = m.rates_func()
-    vrates = vratesfunc(vars,pars,0)
+    vrates = vratesfunc(varvalues,pars,0)
     for v,r in zip(m.reactions, vrates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
-    print 'dXdt using Model.dXdt() --------------------------------'
-    f = m.dXdt()
+    print '---- dXdt using Model.dXdt() --------------------------------'
+    #f = m.dXdt()
     m.set_unknown(pars)
-    dXdt = f(vars,0)
+    dXdt = m.dXdt(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
-    print 'dXdt using Model.dXdt_with(pars) ------------------------'
+    print '---- dXdt using Model.dXdt_with(pars) ------------------------'
     f = m.dXdt_with(pars)
-    dXdt   = f(vars,0)
+    dXdt   = f(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
-    print 'dXdt using Model.dXdt() with a state argument (m.init) --'
+    print '---- dXdt using Model.dXdt() with a state argument (m.init) --'
     print m.init
-    f = m.dXdt()
+    f = m.dXdt
+    m.set_unknown(pars)
+    print 'dXdt = f(m.init,0)'
+    dXdt = f(m.init,0)
+    for x,r in zip(m.variables, dXdt):
+        print "d%s/dt = %s" % (x.name, r)
+    print '---- same, changing state argument ---------------------------'
+    m.init.A = 2.0
+    print 'after m.init.A = 2.0'
+    print m.init
+    f = m.dXdt
     m.set_unknown(pars)
     print 'dXdt = f(m.init,0)'
     dXdt = f(m.init,0)
