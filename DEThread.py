@@ -37,17 +37,8 @@ class DeOdeSolver(DESolver.DESolver):
         # scale times to maximum time in data
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
-        # compute stoichiometry matrix, scale and transpose
-        N = model.genStoichiometrymatrix()
-        N *=scale
-        self.NT = N.transpose()
-
-        #compile rate laws
-        self.ratebytecode = [compile(model.rateCalcString(v['rate']), 'bof.log','eval') for v in model.rates]
+        self.calcDerivs = model.scaled_dXdt(scale)
         
-        # create array to hold v's
-        self.v = empty(len(model.rates))
-
         # store initial values and (scaled) time points
         self.X0 = []
         self.times = []
@@ -65,22 +56,13 @@ class DeOdeSolver(DESolver.DESolver):
         # open files to write parameter progression
         if DUMP_PARS_2FILES:
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
-            
-    def calcDerivs(self, variables, t):
-        m_Parameters = self.m_Parameters
-        ratebytecode = self.ratebytecode
-        NT = self.NT
-        v = self.v
-        for i,r in enumerate(ratebytecode):
-            v[i] = eval(r)
-        return dot(v,NT)
-        
+                    
     def externalEnergyFunction(self,trial):
         for par in range(self.parameterCount):
             if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
                 return 1.0E300
         
-        self.m_Parameters = trial
+        self.model.set_unknown(trial)
         salg=integrate._odepack.odeint
 
         for i in range(len(self.timecoursedata)):
@@ -129,7 +111,7 @@ class DeOdeSolver(DESolver.DESolver):
                     {'section':"D.E. OPTIMIZATION"}, 
                     {'section':"TIMECOURSES"},
                     {'section':"best timecourses"}]
-        bestData[0]['data'] = [(self.model.parameters[i][0], "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        bestData[0]['data'] = [(self.model.unknown[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
         bestData[0]['format'] = "%s\t%s"
         bestData[0]['header'] = None
         
@@ -167,10 +149,10 @@ class CalcOptmThread:
         self.win = win 
 
     def Start(self, model, optSettings, timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent):
-        mins = array([k[1] for k in model.parameters])
-        maxs = array([k[2] for k in model.parameters])
+        mins = array([u.min for u in model.unknown])
+        maxs = array([u.max for u in model.unknown])
         
-        self.solver = DeOdeSolver(len(model.parameters), # number of parameters
+        self.solver = DeOdeSolver(len(model.unknown), # number of parameters
                                  int(optSettings['genomesize']),  # genome size
                                  int(optSettings['generations']), # max number of generations
                                  mins, maxs,              # min and max parameter values

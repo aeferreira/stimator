@@ -1,4 +1,5 @@
 # Example file for S-timator
+title Glyoxalase system in L. Infantum
 variables SDLTSH HTA  # variables (the order matches the timecourse files)
 
 #reactions (with stoichiometry and rate)

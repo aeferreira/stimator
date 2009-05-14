@@ -78,7 +78,7 @@ class SDLeditor(stc.StyledTextCtrl):
         stc.StyledTextCtrl.__init__(self, parent, ID)
         self.log = log
         self.SetLexer(stc.STC_LEX_PYTHON)
-        self.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction")
+        self.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction title")
 
         # Highlight tab/space mixing (shouldn't be any)
         self.SetProperty("tab.timmy.whinge.level", "1")
@@ -679,11 +679,12 @@ class stimatorMainFrame(wx.Frame):
         sys.stdout = oldout
 
         os.chdir(self.GetFileDir())
-
-        self.model.problemname   = self.GetFileName()
+        
+        if self.model.title == "":
+            self.model.title   = self.GetFileName()
 
         self.write("-------------------------------------------------------")
-        self.write("Solving %s..."%self.GetFileName())
+        self.write("Solving %s..."%self.model.title)
         self.time0 = time.time()
 
         self.optimizerThread=DEThread.CalcOptmThread(self)

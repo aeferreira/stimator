@@ -35,29 +35,6 @@ def test_with_consts(valueexpr, consts={}):
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     return ("", value)
 
-
-def test_with_everything(valueexpr, consts={}, varlist=[]):
-    locs = consts.copy()
-    #part 1: nonpermissive, except for NameError
-    try :
-       value = float(eval(valueexpr, vars(math), locs))
-    except NameError:
-       pass
-    except Exception, e:
-       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
-    #part 2: permissive, with dummy values (1.0) for vars and parameters
-    vardict = {}
-    for i in varlist:
-        vardict[i]=1.0
-    locs.update(vardict)
-    try :
-       value = float(eval(valueexpr, vars(math), locs))
-    except (ArithmeticError, ValueError):
-       pass # might fail but we don't know the values of vars
-    except Exception, e:
-       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
-    return "", value
-
 #----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
 #----------------------------------------------------------------------------
@@ -69,9 +46,11 @@ emptylinepattern  = r"^\s*(?:#.*)?$"
 constdefpattern   = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 varlistpattern    = r"^\s*variables\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
 finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+identifierpattern+r")\s*in\s*\[\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*\]\s*(?:#.*)?$"
-ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*,\s*rate\s*=\s*(?P<rate>[^#]+)(?:#.*)?$"
+#ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*,\s*rate\s*=\s*(?P<rate>[^#]+)(?:#.*)?$"
+ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<stoich>.*\s*(->|<=>)\s*.*)\s*,\s*rate\s*=\s*(?P<rate>[^#]+)(?:#.*)?$"
 tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
+titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
 
 stoichpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
@@ -88,6 +67,7 @@ finddef   = re.compile(finddefpattern,     re.IGNORECASE)
 ratedef   = re.compile(ratedefpattern,     re.IGNORECASE)
 tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
+titledef  = re.compile(titlepattern)
 
 stoichmatch = re.compile(stoichpattern, re.IGNORECASE)
 
@@ -99,7 +79,8 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (finddef,   "findDefParse"),
                (ratedef,   "rateDefParse"),
                (tcdef,     "tcDefParse"),
-               (atdef,     "atDefParse")]
+               (atdef,     "atDefParse"),
+               (titledef,   "titleDefParse")]
 
 #----------------------------------------------------------------------------
 #         The core StimatorParser class
@@ -152,34 +133,19 @@ class StimatorParser:
                 return
             self.currentline += 1
 
-        # build list of variables
-        for v in self.model.rates:
-          for rORp in ('reagents','products'):
-              for c in v[rORp]:
-                  var = c[0]
-                  if self.model.constants.has_key(var):
-                        continue # this is a constant ("external variable")
-                  if not var in self.model.variables:
-                      self.model.variables.append(var)
-
         # build list of ints with the order of variables (time is at pos 0)
         if not self.tc.variablesorder:
             self.tc.intvarsorder = range(len(self.model.variables)+1)
         else:
-            self.tc.intvarsorder = [self.model.variables.index(name)+1 for name in self.tc.variablesorder]
+            varnames = [x.name for x in self.model.variables]
+            self.tc.intvarsorder = [varnames.index(name)+1 for name in self.tc.variablesorder]
             self.tc.intvarsorder = [0] + self.tc.intvarsorder
 
         # check the validity of rate laws
-        varlist = self.model.variables[:]
-        for i in self.model.parameters:
-            varlist.append(i[0])
-        for i, v in enumerate(self.model.rates):
-            resstring, value = test_with_everything(v['rate'], self.model.constants, varlist)
-            if resstring != "":
-                errorloc = self.rateloc[i]
-                self.setError(resstring, errorloc['ratestart'], errorloc['rateend'], errorloc['rateline'], modeltext[errorloc['rateline']])
-                self.setIfNameError(resstring, v['rate'])
-                return
+        check, msg = self.model.checkRates()
+        if not check:
+            self.setError(msg, -1, -1, -1, "")
+            return
 
     def loadTimeCourses (self,modeltext,filedir):
 
@@ -234,55 +200,21 @@ class StimatorParser:
         entryloc = {}
         #process name
         name = match.group('name')
-        found = False
-        for k in self.model.rates:
-            if k['name'] == name:
-                found = True
-                break
-        if found :#repeated declaration
+        if model.findWithName(name, self.model.reactions): #repeated declaration
             self.setError("Repeated declaration", 0, len(line), nline, line)
             return
-
-        entry['name'] = name
-
         #process rate
-        entry['rate']     = match.group('rate').strip()
+        rate = match.group('rate').strip()
+        stoich = match.group('stoich').strip()
         entryloc['rateline'] = self.currentline
         entryloc['ratestart']= match.start('rate')
         entryloc['rateend']  = match.end('rate')
-
-        #process irreversible
-        irrsign = match.group('irreversible')
-        entry['irreversible']= irrsign == "->"
-
-        #process stoichiometry
-        fields = ['reagents','products']
-        for f in fields:
-            entry[f]=[]
-            complexesstring = match.group(f).strip()
-            if len(complexesstring)==0:  #empty complexes allowed
-                continue
-            complexcomps = complexesstring.split("+")
-            for c in complexcomps:
-                m = stoichmatch.match(c)
-                if m:
-                   coef = m.group('coef')
-                   var = m.group('variable')
-                   if coef == "":
-                      coef = 1.0
-                   else:
-                      coef = float(coef)
-                   if coef == 0.0: continue # a coef equal to zero means ignore
-
-                   entry[f].append((var,coef))
-                else:
-                   self.setError("'%s' is an invalid stoichiometry expression"% complexesstring, 
+        try:
+            setattr(self.model, name, model.react(stoich, rate))
+        except model.BadStoichError:
+            self.setError("'%s' is an invalid stoichiometry expression"% stoich, 
                                  match.start(f), match.end(f), nline, line)
-                   return
-
-
-        #append to list of rates
-        self.model.rates.append(entry)
+            return
         self.rateloc.append(entryloc)
 
     def emptyLineParse(self, line, nline, match):
@@ -297,45 +229,48 @@ class StimatorParser:
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
-        if self.model.constants.has_key(name) :#repeated declaration
+        if model.findWithName(name, self.model.parameters): #repeated declaration
             self.setError("Repeated declaration", 0, len(line), nline, line)
             return
+        
+        localsdict = dict([(p.name, p) for p in self.model.parameters])
 
-        resstring, value = test_with_consts(valueexpr, self.model.constants)
+        resstring, value = test_with_consts(valueexpr, localsdict)
         if resstring != "":
             self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr), nline, line)
             self.setIfNameError(resstring, valueexpr)
             return
-
+        
         if name == "generations":
             self.optSettings['generations'] = int(value)
         elif name == "genomesize":
             self.optSettings['genomesize'] = int(value)
         else:
-            self.model.constants[name]=value
-
+            setattr (self.model, name, value)
+        
     def atDefParse(self, line, nline, match):
-        name      = match.group('name')
-        valueexpr = match.group('value').rstrip()
-        timeexpr = match.group('timevalue').rstrip()
+        pass # for now
+        #~ name      = match.group('name')
+        #~ valueexpr = match.group('value').rstrip()
+        #~ timeexpr = match.group('timevalue').rstrip()
 
-        if not self.model.constants.has_key(name) :#constant has not been defined
-            self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name), nline, line)
-            return
+        #~ if not self.model.constants.has_key(name) :#constant has not been defined
+            #~ self.setError("Wrong @: constant %s has not been defined", match.start('name'), len(name), nline, line)
+            #~ return
 
-        resstring, value = test_with_consts(valueexpr, self.model.constants)
-        if resstring != "":
-            self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr), nline, line)
-            self.setIfNameError(resstring, valueexpr)
-            return
+        #~ resstring, value = test_with_consts(valueexpr, self.model.constants)
+        #~ if resstring != "":
+            #~ self.setError(resstring, match.start('value'), match.start('value')+ len(valueexpr), nline, line)
+            #~ self.setIfNameError(resstring, valueexpr)
+            #~ return
 
-        resstring, timevalue = test_with_consts(timeexpr, self.model.constants)
-        if resstring != "":
-            self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr), nline, line)
-            self.setIfNameError(resstring, timeexpr)
-            return
+        #~ resstring, timevalue = test_with_consts(timeexpr, self.model.constants)
+        #~ if resstring != "":
+            #~ self.setError(resstring, match.start('timevalue'), match.start('timevalue')+ len(timeexpr), nline, line)
+            #~ self.setIfNameError(resstring, timeexpr)
+            #~ return
 
-        self.model.atdefs.append((timevalue,name,value))
+        #~ self.model.atdefs.append((timevalue,name,value))
 
     def varListParse(self, line, nline, match):
         if self.tc.variablesorder: #repeated declaration
@@ -349,26 +284,28 @@ class StimatorParser:
     def findDefParse(self, line, nline, match):
         name = match.group('name')
         found = False
-        for k in self.model.parameters:
-            if k[0] == name:
-                found = True
-                break
-        if found :#repeated declaration
+        if model.findWithName(name, self.model.unknown): #repeated declaration
             self.setError("Repeated declaration", 0, len(line), nline, line)
             return
+
+        localsdict = dict([(p.name, p) for p in self.model.parameters])
 
         lulist = ['lower', 'upper']
         flulist = []
         for k in lulist:
             valueexpr = match.group(k)
-            resstring, v = test_with_consts(valueexpr, self.model.constants)
+            resstring, v = test_with_consts(valueexpr, localsdict)
             if resstring != "":
                 self.setError(resstring, match.start(k), match.end(k), nline, line)
                 self.setIfNameError(resstring, valueexpr)
                 return
             flulist.append(v)
-        entry = tuple([name,flulist[0],flulist[1]])
-        self.model.parameters.append(entry)
+        setattr(self.model, name, (flulist[0],flulist[1]))
+
+    def titleDefParse(self, line, nline, match):
+        title = match.group('title')
+        setattr(self.model, 'title', title)
+
 
 #----------------------------------------------------------------------------
 #         TESTING CODE
@@ -391,7 +328,7 @@ def printParserResults(parser):
             print caretline
         print parser.error
         return
-    parser.model.pprint()
+    print parser.model
     print "the timecourses to load are", parser.tc.filenames
     print
     print "the order of variables in timecourses is", parser.tc.variablesorder
@@ -401,7 +338,7 @@ def printParserResults(parser):
 def real_main():
     modelText = """
 #This is an example of a valid model:
-
+title: Glyoxalase system in L. infantum
 variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))

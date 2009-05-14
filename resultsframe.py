@@ -495,7 +495,7 @@ class resultsFrame(wx.Frame):
 
         #self.parser = parser
         #self.bestData = bestData
-        self.SetTitle("Results for %s" % model.problemname)
+        self.SetTitle("Results for %s" % model.title)
 
         # generate report
         reportText = ""
