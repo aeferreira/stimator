@@ -133,7 +133,7 @@ class Reaction(object):
         self.irrversible = irreversible
         self.name = '?'
     def __str__(self):
-        return "\n%s:\n  reagents: %s\n  products: %s\n  rate = %s" % (self.name, str(self.reagents), str(self.products), str(self.rate)) 
+        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self.rate)) 
 
 class StateArray(list):
     def __init__(self, data, varvalues, name):
@@ -153,9 +153,9 @@ class StateArray(list):
         else:
             object.__setattr__(self, name, value)
     def __str__(self):
-        res = "%s:"% self.name
+        res = "%s:\n"% self.name
         for x, value in self.varvalues.items():
-            res += "\n   %s = %s" % (x, str(float(value)))
+            res += "   %s = %s\n" % (x, str(float(value)))
         return res
 
 def state(**varvalues):
@@ -166,7 +166,7 @@ class Transformation(object):
         self.rate = rate
         self.name = '?'
     def __str__(self):
-        return "\n%s:\n  rate = %s" % (self.name, str(self.rate))
+        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
 
 class Constant(float):
     def __init__(self, value = 0.0):
@@ -182,7 +182,7 @@ class PairConstants(object):
         self.max = max
         self.name = '?'
     def __str__(self):
-        return "\n%s = ? (min=%f, max=%f)" % (self.name, self.min, self.max)
+        return "%s = ? (min=%f, max=%f)\n" % (self.name, self.min, self.max)
 
 class Variable(object):
     def __init__(self, name):
@@ -200,7 +200,8 @@ class Model(object):
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__uncertain']         = []
         self.__dict__['_Model__states']            = []
-        self.__dict__['title'] = title
+        self.__dict__['title']                     = title
+        self.__dict__['_Model__m_Parameters']      = None
     
     def __setattr__(self, name, value):
         if isinstance(value, Reaction):
@@ -273,25 +274,20 @@ class Model(object):
         return rateString
 
     def __str__(self):
+        check, msg = self.checkRates()
+        if not check:
+            res ="Problem in rates:\n"
+            res += msg
+            return res
         res = "%s\n"% self.title
+        res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
+        if len(self.__extvariables) > 0:
+            res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
         for collection in (self.__reactions, self.__transf, self.__unknownparameters, self.__states):
             for i in collection:
                 res += str(i)
-            res+='\n'
         for p in self.__parameters:
-            res += p.name +' = '+ str(p)
-            res+='\n'
-        res += "\nVariables: " + " ".join([i.name for i in self.__variables])
-        res+='\n'
-        res += "External variables: " + " ".join([i.name for i in self.__extvariables])
-        res+='\n\n'
-        check, msg = self.checkRates()
-        if not check:
-            res +="Problem in rates:\n"
-            res += msg
-        else:
-            res +='rates are OK'
-
+            res += p.name +' = '+ str(p) + '\n'
         return res
     
     def __refreshVars(self):
@@ -369,7 +365,7 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
         #self.__m_Parameters = unknownparameters
-
+        
         def f(variables, t):
             m_Parameters = self.__m_Parameters
             for i,r in enumerate(ratebytecode):
