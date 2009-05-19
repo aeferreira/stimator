@@ -28,26 +28,23 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init'):
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
     if output[-1] < 0: return (1.0E300)
     Y = output[0]
-    #~ #append times to column 0
-    #~ times = reshape(times, (-1,1))
-    #~ return hstack((times,Y))
     return times, Y.T
 
 
 
 print '---------------- EXAMPLE 1 ------------------'
-m = Model("Glyoxalase system")
-m.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
-m.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
-m.V1  = 2.57594e-05
-m.Km1 = 0.252531
-m.V2  = 2.23416e-05
-m.Km2 = 0.0980973
-m.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+m1 = Model("Glyoxalase system")
+m1.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
+m1.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
+m1.V1  = 2.57594e-05
+m1.Km1 = 0.252531
+m1.V2  = 2.23416e-05
+m1.Km2 = 0.0980973
+m1.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
 
-print m
+print m1
 
-t,solution = solve(m, tf = 4030.0)
+t,solution = solve(m1, tf = 4030.0)
 
 #print t
 #print solution
@@ -55,7 +52,7 @@ t,solution = solve(m, tf = 4030.0)
 
 print '--- Last time point ----'
 print 'At t =', t[-1]
-varnames = [x.name for x in m.variables]
+varnames = [x.name for x in m1.variables]
 for z in zip(varnames, solution[-1]):
     print "%-8s= %f" % z
 
@@ -64,12 +61,12 @@ for z in zip(varnames, solution[-1]):
 f1 = p.figure(1)
 p.subplot(221) 
 for i, colour in enumerate(['r-', 'b-']):
-    p.plot(t, solution[i], colour, label=m.variables[i].name)
+    p.plot(t, solution[i], colour, label=m1.variables[i].name)
 p.grid()
 p.legend(loc='best')
 p.xlabel('')
 p.ylabel('concentrations (mM)')
-p.title(m.title)
+p.title(m1.title)
 
 print '---------------- EXAMPLE 2 ------------------'
 m2 = Model("Branched pathway")
