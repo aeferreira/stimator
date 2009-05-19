@@ -113,15 +113,16 @@ def massActionStr(k = 1.0, reagents = []):
     return res
 
 def findWithName(name, alist):
-    res = None
     for i in alist:
         if i.name == name:
             return i
+    return None
+
 def findWithNameIndex(name, alist):
-    res = -1
-    for i in range(len(alist)):
-        if alist[i].name == name:
+    for i,elem in enumerate(alist):
+        if elem.name == name:
             return i
+    return -1
 #----------------------------------------------------------------------------
 #         Model and Model component classes
 #----------------------------------------------------------------------------
@@ -204,26 +205,32 @@ class Model(object):
         self.__dict__['_Model__m_Parameters']      = None
     
     def __setattr__(self, name, value):
-        if isinstance(value, Reaction):
-            value.name = name
-            self.__dict__['_Model__reactions'].append(value)
-        elif isinstance(value, float) or isinstance(value, int):
-            obj = Constant(float(value))
-            obj.name = name
-            self.__dict__['_Model__parameters'].append(obj)
-        elif isinstance(value, Transformation):
-            value.name = name
-            self.__dict__['_Model__transf'].append(value)
-        elif isinstance(value, StateArray):
-            value.name = name
-            self.__dict__['_Model__states'].append(value)
-        elif (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
-            obj = PairConstants(float(value[0]), float(value[1]))
-            obj.name = name
-            self.__dict__['_Model__unknownparameters'].append(obj)
-        else:
-            object.__setattr__(self, name, value)
-        self.__refreshVars()
+        if isinstance(value, float) or isinstance(value, int):
+            value = Constant(float(value))
+        if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
+            value = PairConstants(float(value[0]), float(value[1]))
+        assoc = ((Reaction,       '_Model__reactions'),
+                 (Constant,       '_Model__parameters'),
+                 (Transformation, '_Model__transf'),
+                 (StateArray,     '_Model__states'),
+                 (PairConstants,  '_Model__unknownparameters'))
+        for t, dictname in assoc:
+            c = findWithNameIndex(name, self.__dict__[dictname])
+            if c > -1:
+                if isinstance(value, t):
+                    value.name = name
+                    self.__dict__[dictname][c] = value
+                    self.__refreshVars()
+                    return
+                else:
+                    raise BadTypeComponent, name+ ' can not be assigned to ' + type(value).__name__
+        for t, dictname in assoc:
+            if isinstance(value, t):
+                value.name = name
+                self.__dict__[dictname].append(value)
+                self.__refreshVars()
+                return
+        object.__setattr__(self, name, value)
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -240,9 +247,12 @@ class Model(object):
         c = findWithName(name, self.__transf)
         if c :
             return c
+        c = findWithName(name, self.__unknownparameters)
+        if c :
+            return c
         i = findWithNameIndex(name, self.__states)
         if i >-1 :
-            #replace StateArray for on with new values as a list
+            #replace StateArray with new values as a list
             prov = self.__states[i]
             newlist = [prov.varvalues.get(var.name,0.0) for var in self.__variables]
             c = StateArray(newlist, prov.varvalues, prov.name)
@@ -256,7 +266,10 @@ class Model(object):
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
             for v in collection:
-                resstring, value = test_with_everything(v.rate, self.__parameters, self.__unknownparameters, self.__variables)
+                resstring, value = test_with_everything(v.rate, 
+                                                        self.__parameters, 
+                                                        self.__unknownparameters, 
+                                                        self.__variables)
                 if resstring != "":
                     return False, resstring + '\nin rate of %s\n(%s)' % (v.name, v.rate)
         return True, 'OK'
@@ -265,10 +278,10 @@ class Model(object):
         # replace varnames
         for i,v in enumerate(self.__variables):
             rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
-        # replace parameters
+        # replace unknown parameters
         for i,u in enumerate(self.__unknownparameters):
             rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
-        # replace constants
+        # replace parameters
         for p in self.__parameters:
             rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString)  #.value, rateString)
         return rateString
@@ -303,6 +316,7 @@ class Model(object):
                             self.__extvariables.append(Variable(name))
                         else:
                             self.__variables.append(Variable(name))
+        #print "DEBUG, vars = ", [x.name for x in self.__variables]
 
 
     def genStoichiometryMatrix(self):
@@ -323,10 +337,10 @@ class Model(object):
                         continue # there are no rows for extvariables in stoich. matrix
         return N
 
-    def rates_func(self, scale = 1.0):
+    def rates_func(self):
         """Generate function to compute rate vector for this model.
         
-           Function has signature f(variables, unknownparameters, t)"""
+           Function has signature f(variables, t)"""
 
         check, msg = self.checkRates()
         if not check:
@@ -337,11 +351,32 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
             
-        def f(variables, unknownparameters, t):
-            m_Parameters = unknownparameters
+        def f(variables, t):
+            m_Parameters = self.__m_Parameters
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return v
+        return f
+
+    def transf_func(self):
+        """Generate function to compute transformations for this model.
+        
+           Function has signature f(variables, t)"""
+
+        check, msg = self.checkRates()
+        if not check:
+            raise BadRateError, msg
+
+        #compile rate laws
+        transfbytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__transf]
+        # create array to hold v's
+        m_Transformations = empty(len(self.transf))
+            
+        def f(variables, t):
+            m_Parameters = self.__m_Parameters
+            for i,r in enumerate(transfbytecode):
+                m_Transformations[i] = eval(r)
+            return m_Transformations
         return f
 
     def set_unknown(self, unknownparameters):
@@ -364,7 +399,6 @@ class Model(object):
 
         # create array to hold v's
         v = empty(len(self.reactions))
-        #self.__m_Parameters = unknownparameters
         
         def f(variables, t):
             m_Parameters = self.__m_Parameters
@@ -381,6 +415,8 @@ class Model(object):
 
         check, msg = self.checkRates()
         if not check:
+            print "vars = "
+            print [x.name for x in self.variables]
             raise BadRateError, msg
         #compile rate laws
         ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
@@ -454,6 +490,10 @@ class BadStoichError(Exception):
 class BadRateError(Exception):
     """Used to flag a wrong stoichiometry expression"""
 
+class BadTypeComponent(Exception):
+    """Used to flag an assignement of a model component to a wrong type object"""
+
+
 def react(stoichiometry, rate = 0.0):
     res = processStoich(stoichiometry)
     if not res:
@@ -474,6 +514,7 @@ def main():
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.t1 = transf("A*4 + C")
+    m.t2 = transf("sqrt(2*A)")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
     m.V3 = [0.1, 0.9]
@@ -485,10 +526,34 @@ def main():
     #~ print m.B * m.myconstant, m.v3.rate
     #~ print m.v1
     print '********** Testing component retrieval *********************'
-    print 'm.K3 =',m.Km3
-    print 'm.K3.name =',m.Km3.name, '(a float with a name attr)'
+    print 'm.K3 :',m.Km3
+    print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
     print m.init
-    print 'm.init[1] =',m.init[1]
+    print 'm.init[1] :',m.init[1]
+
+    print '********** Testing component reassignement *****************'
+    print 'm.myconstant :',m.myconstant
+    print len(m.parameters), 'parameters total'
+    print 'making m.myconstant = 5.0'
+    m.myconstant = 5.0
+    print 'm.myconstant :',m.myconstant
+    print len(m.parameters), 'parameters total'
+
+    print 'making m.myconstant = [5.0, 10.0]'
+    try:
+        m.myconstant = [5.0, 10.0]
+    except BadTypeComponent:
+        print 'Failed! BadTypeComponent was caught.'
+    print 'm.myconstant :',m.myconstant, '(still!)'
+    print len(m.parameters), 'parameters total'
+
+    print m.V3
+    print len(m.unknown), 'unknown parameters total'
+    print 'making m.V3 = [0.1, 0.2]'
+    m.V3 = [0.1, 0.2]
+    print m.V3
+    print len(m.unknown), 'unknown parameters total'
+    print 
 
     print '********** Testing stoichiometry matrix ********************'
     print 'Stoichiometry matrix:'
@@ -504,14 +569,21 @@ def main():
     print 'Operating point:'
     varvalues = [1.0, 1.0]
     pars      = [1.0]
+    m.set_unknown(pars)
     print 'variables =', dict((v.name, value) for v,value in zip(m.variables, varvalues))
     print 'unknown   =', dict((v.name, value) for v,value in zip(m.unknown, pars))
     print 'parameters=', dict((p.name, p)     for p in m.parameters)
  
     print '---- rates using Model.rates_func() -------------------------'
     vratesfunc = m.rates_func()
-    vrates = vratesfunc(varvalues,pars,0)
+    vrates = vratesfunc(varvalues,0)
     for v,r in zip(m.reactions, vrates):
+        print "%s = %-20s = %s" % (v.name, v.rate, r)
+
+    print '---- transformations using Model.transf_func() --------------'
+    tratesfunc = m.transf_func()
+    trates = tratesfunc(varvalues,0)
+    for v,r in zip(m.transf, trates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
     print '---- dXdt using Model.dXdt() --------------------------------'
@@ -546,6 +618,14 @@ def main():
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
+    print '---------------- EXAMPLE 4 ------------------'
+    m4 = Model("Rossler")
+    m4.v1 = react(" -> X1", rate = "X2 - X3")
+    m4.v2 = react(" -> X2", rate = "0.36 * X2 - X1")
+    m4.v3 = react(" -> X3", rate = "X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8")
+    m4.init = state(X1 = 19.0, X2 = 47, X3 = 50)
+
+    print m4
 
 if __name__ == "__main__":
     main()

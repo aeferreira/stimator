@@ -32,6 +32,9 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init'):
     #~ times = reshape(times, (-1,1))
     #~ return hstack((times,Y))
     return times, Y.T
+
+
+
 print '---------------- EXAMPLE 1 ------------------'
 m = Model("Glyoxalase system")
 m.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
@@ -48,6 +51,7 @@ t,solution = solve(m, tf = 4030.0)
 
 #print t
 #print solution
+#print trf
 
 print '--- Last time point ----'
 print 'At t =', t[-1]
@@ -131,17 +135,29 @@ print '---------------- EXAMPLE 4 ------------------'
 m4 = Model("Rossler")
 m4.v1 = react(" -> X1", rate = "X2 - X3")
 m4.v2 = react(" -> X2", rate = "0.36 * X2 - X1")
-m4.v2 = react(" -> X3", rate = "X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8")
+m4.v3 = react(" -> X3", rate = "X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8")
+m4.x3 = transf("X3 -50.0")
+m4.x1 = transf("X1 -18.0")
+m4.x2 = transf("X2 -50.0")
 m4.init = state(X1 = 19.0, X2 = 47, X3 = 50)
 
 print m4
 
 t,solution = solve(m4, tf = 100.0, npoints = 1000)
-#plot results...
+
+#compute transf
+f = m4.transf_func()
+trf = apply_along_axis(f, 0, solution, 0.0)
+
+#~ print len(t)
+#~ print solution.shape
+#~ print trf.shape
+
+#plot results (transformations only)
 
 p.subplot(224) 
 for i, colour in enumerate(['r-', 'b-', 'g-']):
-    p.plot(t, solution[i], colour, label=m4.variables[i].name)
+    p.plot(t, trf[i], colour, label=m4.transf[i].name)
 p.grid()
 p.legend(loc='best')
 p.xlabel('')
