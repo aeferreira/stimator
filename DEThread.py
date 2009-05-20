@@ -17,7 +17,7 @@ DUMP_PARS_2FILES = False
 
 ##------------- Computing thread class
 
-class DeOdeSolver(DESolver.DESolver):
+class DeODESolver(DESolver.DESolver):
     """Overides energy function and report functions.
     
     The energy function solves ODEs and computes a least-squares score.
@@ -152,7 +152,7 @@ class CalcOptmThread:
         mins = array([u.min for u in model.unknown])
         maxs = array([u.max for u in model.unknown])
         
-        self.solver = DeOdeSolver(len(model.unknown), # number of parameters
+        self.solver = DeODESolver(len(model.unknown), # number of parameters
                                  int(optSettings['genomesize']),  # genome size
                                  int(optSettings['generations']), # max number of generations
                                  mins, maxs,              # min and max parameter values

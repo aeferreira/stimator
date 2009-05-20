@@ -18,7 +18,6 @@ import wx.lib.newevent
 import wx
 import wx.stc  as  stc
 import modelparser
-import timecourse
 import resultsframe
 import DEThread
 

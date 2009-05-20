@@ -73,6 +73,20 @@ def readTimeCourseFromFile(file, atindexes=None):
     
     return header, array(rows)
 
+class SolutionTimeCourse(object):
+    def __init__(self, t = array([]), data = array([]), names = []):
+        self.t = t
+        self.data = data
+        self.names = names
+        self.shape = data.shape
+        
+    def __len__(self):
+        return len(t)
+    def __nonzero__(self):
+        return len(t) > 0
+    def __getitem__(self, key):
+        return self.data.__getitem__(key)
+    
 class TimeCourseCollection(object):
     def __init__(self):
         self.reset()
@@ -120,6 +134,10 @@ nothing really usefull here
     print h
     print '\ndata'
     print d
+    
+    sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h)
+    print sol[0]
+    
     aTC.seek(0) #reset StringIO
     h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   
     print
@@ -137,4 +155,5 @@ nothing really usefull here
     print '\ndata'
     print d
     print 'dimensions are %d by %d'% d.shape
+    
 
