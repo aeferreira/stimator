@@ -21,7 +21,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init'):
     m = model
     scale = 1.0
     f = m.scaled_dXdt(scale)
-    y0 = copy(array(m.init))
+    y0 = copy(m.vectorize('init'))
     times = linspace (t0, tf, npoints)
     t  = copy(times)
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 

@@ -137,9 +137,8 @@ class Reaction(object):
     def __str__(self):
         return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self.rate)) 
 
-class StateArray(list):
-    def __init__(self, data, varvalues, name):
-        list.__init__(self, data)
+class StateArray(object):
+    def __init__(self, varvalues, name):
         self.__dict__['varvalues'] = varvalues
         self.__dict__['name'] = name
     def __getattr__(self, name):
@@ -158,7 +157,7 @@ class StateArray(list):
         return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self.varvalues.items()])
 
 def state(**varvalues):
-    return StateArray([], varvalues, '?')
+    return StateArray(varvalues, '?')
 
 class Transformation(object):
     def __init__(self, rate = 0.0):
@@ -232,7 +231,7 @@ class Model(object):
             return self.__dict__[name]
         c = findWithName(name, self.__parameters)
         if c :
-            return c #.value
+            return c
         c = findWithName(name, self.__reactions)
         if c :
             return c
@@ -245,15 +244,19 @@ class Model(object):
         c = findWithName(name, self.__unknownparameters)
         if c :
             return c
-        i = findWithNameIndex(name, self.__states)
-        if i >-1 :
-            #replace StateArray with new values as a list
-            prov = self.__states[i]
-            newlist = [prov.varvalues.get(var.name,0.0) for var in self.__variables]
-            c = StateArray(newlist, prov.varvalues, prov.name)
-            self.__states[i] = c
+        c = findWithName(name, self.__states)
+        if c :
             return c
         raise AttributeError, name + ' is not defined for this model'
+    
+    def vectorize(self, state):
+        if isinstance(state, str) or isinstance(state, unicode):
+            if not hasattr(self, state):
+                raise AttributeError, state + ' is not defined for this model'
+            state = getattr(self, state)
+        newlist = [state.varvalues.get(var.name,0.0) for var in self.__variables]
+        return array(newlist)
+        
     
     def varnames(self):
         return [i.name for i in self.__variables]
@@ -526,7 +529,7 @@ def main():
     print 'm.K3 :',m.Km3
     print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
     print m.init
-    print 'm.init[1] :',m.init[1]
+    print 'm.init.A :',m.init.A
     print
 
     print '********** Testing component reassignment *****************'
@@ -598,11 +601,11 @@ def main():
         print "d%s/dt = %s" % (x.name, r)
 
     print '---- dXdt using Model.dXdt() with a state argument (m.init) --'
-    print m.init
+    print 'm.init:', m.init
     f = m.dXdt
     m.set_unknown(pars)
-    print 'dXdt = f(m.init,0)'
-    dXdt = f(m.init,0)
+    print 'dXdt = f(m.vectorize("init"),0)'
+    dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
     print '---- same, changing state argument ---------------------------'
@@ -611,8 +614,8 @@ def main():
     print 'm.init:', m.init
     f = m.dXdt
     m.set_unknown(pars)
-    print 'dXdt = f(m.init,0)'
-    dXdt = f(m.init,0)
+    print 'dXdt = f(m.vectorize("init"),0)'
+    dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 

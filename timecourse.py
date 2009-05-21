@@ -109,10 +109,12 @@ class SolutionTimeCourse(object):
             y = yl + m *(t-tl)
         else:
             y = self.data[:, ileft]
-        return model.StateArray(y, dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
-    def last_state(self):
-        it = -1
-        return model.StateArray(self.data[:,it], dict([(x, value) for (x, value) in zip(self.names, self.data[:,it])]), '?')
+        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+    def __getLastState(self):
+        y = self.data[:,-1]
+        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
+    last = property(__getLastState)
+
     
 class TimeCourseCollection(object):
     def __init__(self):
@@ -175,8 +177,9 @@ nothing really usefull here
         print sol['x']
         print "sol.names"
         print sol.names
-        print 'Last time point, sol[:,-1]'
+        print 'Last time point, sol[:,-1] returns array'
         print sol[:,-1]
+        print 'The following return model.StateArray objects:'
         print 'sol.state_at(0.2)'
         print sol.state_at(0.2)
         print 'sol.state_at(0.55)'
@@ -185,8 +188,8 @@ nothing really usefull here
         print sol.state_at(0.0)
         print 'sol.state_at(0.6)'
         print sol.state_at(0.6)
-        print 'sol.last_state()'
-        print sol.last_state()
+        print 'sol.last (Last time point the easy way)'
+        print sol.last
         print "sol['k']"
         print sol['k']
     except ValueError, msg:
