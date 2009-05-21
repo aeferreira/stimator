@@ -11,6 +11,7 @@
 import re
 import math
 from numpy import *
+import model
 
 #----------------------------------------------------------------------------
 #         TIME COURSE READING FUNCTION
@@ -85,7 +86,33 @@ class SolutionTimeCourse(object):
     def __nonzero__(self):
         return len(t) > 0
     def __getitem__(self, key):
+        if isinstance(key, str) or isinstance(key, unicode):
+            try:
+                i = self.names.index(key)
+            except ValueError:
+                raise ValueError, "No data for '%s' in timecourse" % str(key)
+            return self.data.__getitem__(i)
         return self.data.__getitem__(key)
+    def state_at(self, t):
+        if t > self.t[-1] or t < self.t[0]:
+            raise ValueError, "No data for time '%s' in timecourse" % str(t)
+        # Interpolate:
+        ileft = self.t.searchsorted(t, side = 'left')
+        iright = self.t.searchsorted(t, side = 'right')
+        if iright == ileft:
+            ileft -= 1
+            tl = self.t[ileft]
+            tr = self.t[iright]
+            yl = self.data[:,ileft]
+            yr = self.data[:,iright]
+            m = (yr-yl)/(tr-tl)
+            y = yl + m *(t-tl)
+        else:
+            y = self.data[:, ileft]
+        return model.StateArray(y, dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+    def last_state(self):
+        it = -1
+        return model.StateArray(self.data[:,it], dict([(x, value) for (x, value) in zip(self.names, self.data[:,it])]), '?')
     
 class TimeCourseCollection(object):
     def __init__(self):
@@ -134,9 +161,37 @@ nothing really usefull here
     print h
     print '\ndata'
     print d
+    print
     
-    sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h)
-    print sol[0]
+    print '--Using a SolutionTimeCourse interface---------'
+    sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h[1:])
+    print 'retrieving components...'
+    try:
+        print 'sol[0] (first var, "x")'
+        print sol[0]
+        print 'sol.t'
+        print sol.t
+        print "sol['x']"
+        print sol['x']
+        print "sol.names"
+        print sol.names
+        print 'Last time point, sol[:,-1]'
+        print sol[:,-1]
+        print 'sol.state_at(0.2)'
+        print sol.state_at(0.2)
+        print 'sol.state_at(0.55)'
+        print sol.state_at(0.55)
+        print 'sol.state_at(0.0)'
+        print sol.state_at(0.0)
+        print 'sol.state_at(0.6)'
+        print sol.state_at(0.6)
+        print 'sol.last_state()'
+        print sol.last_state()
+        print "sol['k']"
+        print sol['k']
+    except ValueError, msg:
+        print msg
+    print
     
     aTC.seek(0) #reset StringIO
     h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   

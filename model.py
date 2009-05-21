@@ -123,6 +123,7 @@ def findWithNameIndex(name, alist):
         if elem.name == name:
             return i
     return -1
+
 #----------------------------------------------------------------------------
 #         Model and Model component classes
 #----------------------------------------------------------------------------
@@ -154,13 +155,10 @@ class StateArray(list):
         else:
             object.__setattr__(self, name, value)
     def __str__(self):
-        res = "%s:\n"% self.name
-        for x, value in self.varvalues.items():
-            res += "   %s = %s\n" % (x, str(float(value)))
-        return res
+        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self.varvalues.items()])
 
 def state(**varvalues):
-    return StateArray([], dict(**varvalues), '?')
+    return StateArray([], varvalues, '?')
 
 class Transformation(object):
     def __init__(self, rate = 0.0):
@@ -172,10 +170,7 @@ class Transformation(object):
 class Constant(float):
     def __init__(self, value = 0.0):
         float.__init__(self,value)
-        #self.value = value
         self.name = '?'
-    #~ def __str__(self):
-        #~ return "\n%s = %f" % (self.name, self) #.value)
 
 class PairConstants(object):
     def __init__(self, min = 0.0, max = 1.0):
@@ -296,9 +291,11 @@ class Model(object):
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
             res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
-        for collection in (self.__reactions, self.__transf, self.__unknownparameters, self.__states):
+        for collection in (self.__reactions, self.__transf, self.__unknownparameters):
             for i in collection:
                 res += str(i)
+        for p in self.__states:
+            res += p.name +': '+ str(p) + '\n'
         for p in self.__parameters:
             res += p.name +' = '+ str(p) + '\n'
         return res
@@ -530,8 +527,9 @@ def main():
     print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
     print m.init
     print 'm.init[1] :',m.init[1]
+    print
 
-    print '********** Testing component reassignement *****************'
+    print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
     print len(m.parameters), 'parameters total'
     print 'making m.myconstant = 5.0'
@@ -610,22 +608,13 @@ def main():
     print '---- same, changing state argument ---------------------------'
     m.init.A = 2.0
     print 'after m.init.A = 2.0'
-    print m.init
+    print 'm.init:', m.init
     f = m.dXdt
     m.set_unknown(pars)
     print 'dXdt = f(m.init,0)'
     dXdt = f(m.init,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
-
-    print '---------------- EXAMPLE 4 ------------------'
-    m4 = Model("Rossler")
-    m4.v1 = react(" -> X1", rate = "X2 - X3")
-    m4.v2 = react(" -> X2", rate = "0.36 * X2 - X1")
-    m4.v3 = react(" -> X3", rate = "X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8")
-    m4.init = state(X1 = 19.0, X2 = 47, X3 = 50)
-
-    print m4
 
 if __name__ == "__main__":
     main()
