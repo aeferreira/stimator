@@ -10,27 +10,35 @@
 from model import *
 from numpy import *
 from scipy import integrate
+import timecourse
 
 #import sys
 #sys.path.append('..')
 import pylab as p
 
 def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init'):
-
     salg=integrate._odepack.odeint
-    m = model
+    names = [x.name for x in model.variables]
     scale = 1.0
-    f = m.scaled_dXdt(scale)
-    y0 = copy(m.vectorize('init'))
+    f = model.scaled_dXdt(scale)
+    y0 = copy(model.vectorize('init'))
     times = linspace (t0, tf, npoints)
     t  = copy(times)
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
     if output[-1] < 0: return (1.0E300)
     Y = output[0]
-    return times, Y.T
+    return timecourse.SolutionTimeCourse (times, Y.T, names)
 
-
+def plot(solution, figure = None, style = None, title=None):
+    colours = ['r-', 'b-', 'g-', 'k-', 'y-']
+    for i in range(len(solution)):
+        p.plot(solution.t, solution[i], colours[i], label=solution.names[i])
+    p.grid()
+    p.legend(loc='best')
+    p.xlabel('')
+    p.ylabel('')
+    p.title(title)
 
 print '---------------- EXAMPLE 1 ------------------'
 m1 = Model("Glyoxalase system")
@@ -44,31 +52,23 @@ m1.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 print m1
 
-t,solution = solve(m1, tf = 4030.0)
+solution = solve(m1, tf = 4030.0)
 
 #print t
 #print solution
 #print trf
 
 print '--- Last time point ----'
-print 'At t =', t[-1]
-varnames = [x.name for x in m1.variables]
-for z in zip(varnames, solution[-1]):
-    print "%-8s= %f" % z
+print 'At t =', solution.t[-1]
+for x,value in solution.last.varvalues.items():
+    print "%-8s= %f" % (x, value)
 
 #plot results...
-
 f1 = p.figure(1)
 p.subplot(221) 
-for i, colour in enumerate(['r-', 'b-']):
-    p.plot(t, solution[i], colour, label=m1.variables[i].name)
-p.grid()
-p.legend(loc='best')
-p.xlabel('')
-p.ylabel('concentrations (mM)')
-p.title(m1.title)
+plot(solution, title = m1.title)
 
-print '---------------- EXAMPLE 2 ------------------'
+#print '---------------- EXAMPLE 2 ------------------'
 m2 = Model("Branched pathway")
 m2.v1 = react("A -> B", rate = "k1*A")
 m2.k1 = 10
@@ -85,21 +85,13 @@ m2.k6 = 5
 m2.A  = 0.5
 m2.init = state(B = 2, C = 0.25, D = 0.64, E = 0.64)
 
-print m2
+#print m2
 
-t,solution = solve(m2, tf = 10.0)
-#plot results...
-
+solution = solve(m2, tf = 10.0)
 p.subplot(222) 
-for i, colour in enumerate(['r-', 'b-', 'g-', 'k-']):
-    p.plot(t, solution[i], colour, label=m2.variables[i].name)
-p.grid()
-p.legend(loc='best')
-p.xlabel('')
-p.ylabel('X')
-p.title(m2.title)
+plot(solution, title = m2.title)
 
-print '---------------- EXAMPLE 3 ------------------'
+#print '---------------- EXAMPLE 3 ------------------'
 m3 = Model("Calcium Spikes")
 m3.v0 = react(" -> Ca", rate = "k0")
 m3.k0 = 1
@@ -114,19 +106,11 @@ m3.v2 = react("Ca -> CaComp", rate = "65 * Ca**2 / (1+Ca**2)")
 m3.v3 = react("CaComp -> Ca", rate = "500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)")
 m3.init = state(Ca = 0.1, CaComp = 0.63655)
 
-print m3
+#print m3
 
-t,solution = solve(m3, tf = 8.0)
-#plot results...
-
+solution = solve(m3, tf = 8.0, npoints = 2000)
 p.subplot(223) 
-for i, colour in enumerate(['r-', 'b-']):
-    p.plot(t, solution[i], colour, label=m3.variables[i].name)
-p.grid()
-p.legend(loc='best')
-p.xlabel('')
-p.ylabel('X')
-p.title(m3.title)
+plot(solution, title = m3.title)
 
 print '---------------- EXAMPLE 4 ------------------'
 m4 = Model("Rossler")
@@ -140,25 +124,16 @@ m4.init = state(X1 = 19.0, X2 = 47, X3 = 50)
 
 print m4
 
-t,solution = solve(m4, tf = 100.0, npoints = 1000)
+solution = solve(m4, tf = 100.0, npoints = 2000)
 
 #compute transf
-f = m4.transf_func()
-trf = apply_along_axis(f, 0, solution, 0.0)
-
-#~ print len(t)
-#~ print solution.shape
-#~ print trf.shape
+f     = m4.transf_func()
+names = [x.name for x in m4.transf]
+trf   = apply_along_axis(f, 0, solution.data, 0.0)
+solution = timecourse.SolutionTimeCourse (solution.t, trf, names)
 
 #plot results (transformations only)
-
 p.subplot(224) 
-for i, colour in enumerate(['r-', 'b-', 'g-']):
-    p.plot(t, trf[i], colour, label=m4.transf[i].name)
-p.grid()
-p.legend(loc='best')
-p.xlabel('')
-p.ylabel('X')
-p.title(m4.title)
+plot(solution, title = m4.title)
 
 p.show()

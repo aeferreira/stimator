@@ -82,7 +82,7 @@ class SolutionTimeCourse(object):
         self.shape = data.shape
         
     def __len__(self):
-        return len(t)
+        return self.data.shape[0]
     def __nonzero__(self):
         return len(t) > 0
     def __getitem__(self, key):
@@ -190,6 +190,8 @@ nothing really usefull here
         print sol.state_at(0.6)
         print 'sol.last (Last time point the easy way)'
         print sol.last
+        print 'sol.last.x'
+        print sol.last.x
         print "sol['k']"
         print sol['k']
     except ValueError, msg:
