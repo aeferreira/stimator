@@ -37,7 +37,7 @@ class DeODESolver(DESolver.DESolver):
         # scale times to maximum time in data
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
-        self.calcDerivs = model.scaled_dXdt(scale)
+        self.calcDerivs = model.scaled_dXdt(scale, with_uncertain=True)
         
         # store initial values and (scaled) time points
         self.X0 = []
@@ -62,7 +62,7 @@ class DeODESolver(DESolver.DESolver):
             if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
                 return 1.0E300
         
-        self.model.set_unknown(trial)
+        self.model.set_uncertain(trial)
         salg=integrate._odepack.odeint
 
         for i in range(len(self.timecoursedata)):
@@ -111,7 +111,7 @@ class DeODESolver(DESolver.DESolver):
                     {'section':"D.E. OPTIMIZATION"}, 
                     {'section':"TIMECOURSES"},
                     {'section':"best timecourses"}]
-        bestData[0]['data'] = [(self.model.unknown[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        bestData[0]['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
         bestData[0]['format'] = "%s\t%s"
         bestData[0]['header'] = None
         
@@ -149,10 +149,11 @@ class CalcOptmThread:
         self.win = win 
 
     def Start(self, model, optSettings, timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent):
-        mins = array([u.min for u in model.unknown])
-        maxs = array([u.max for u in model.unknown])
+        pars = model.uncertain
+        mins = array([u.min for u in pars])
+        maxs = array([u.max for u in pars])
         
-        self.solver = DeODESolver(len(model.unknown), # number of parameters
+        self.solver = DeODESolver(len(pars), # number of parameters
                                  int(optSettings['genomesize']),  # genome size
                                  int(optSettings['generations']), # max number of generations
                                  mins, maxs,              # min and max parameter values

@@ -19,7 +19,7 @@ from numpy import *
 #         Functions to check the validity of math expressions
 #----------------------------------------------------------------------------
 
-def test_with_everything(valueexpr, parameters, unknown, varlist):
+def test_with_everything(valueexpr, parameters, varlist): 
     locs = {}
     for p in parameters:
         locs[p.name] = p #.value
@@ -31,11 +31,9 @@ def test_with_everything(valueexpr, parameters, unknown, varlist):
        pass
     except Exception, e:
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
-    #part 2: permissive, with dummy values (1.0) for vars and unknown parameters
+    #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
     for i in varlist:
-        vardict[i.name]=1.0
-    for i in unknown:
         vardict[i.name]=1.0
     locs.update(vardict)
     try :
@@ -52,12 +50,8 @@ def test_with_everything(valueexpr, parameters, unknown, varlist):
 stoichiompattern   = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
 chemcomplexpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
-nameErrorpattern = r"NameError : name '(?P<name>\S+)' is not defined"
-
 stoichiom  = re.compile(stoichiompattern,    re.IGNORECASE)
 chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
-
-nameErrormatch = re.compile(nameErrorpattern)
 
 #----------------------------------------------------------------------------
 #         Utility functions
@@ -155,6 +149,8 @@ class StateArray(object):
             object.__setattr__(self, name, value)
     def __str__(self):
         return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self.varvalues.items()])
+    def __iter__(self):
+        return iter(self.varvalues.items())
 
 def state(**varvalues):
     return StateArray(varvalues, '?')
@@ -166,18 +162,19 @@ class Transformation(object):
     def __str__(self):
         return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
 
-class Constant(float):
+class ConstValue(float):
     def __init__(self, value = 0.0):
         float.__init__(self,value)
         self.name = '?'
+        self.bounds = None
 
-class PairConstants(object):
+class Bounds(object):
     def __init__(self, min = 0.0, max = 1.0):
         self.min = min
         self.max = max
         self.name = '?'
     def __str__(self):
-        return "%s = ? (min=%f, max=%f)\n" % (self.name, self.min, self.max)
+        return "(min=%f, max=%f)" % (self.min, self.max)
 
 class Variable(object):
     def __init__(self, name):
@@ -191,29 +188,29 @@ class Model(object):
         self.__dict__['_Model__variables']         = []
         self.__dict__['_Model__extvariables']      = []
         self.__dict__['_Model__parameters']        = []
-        self.__dict__['_Model__unknownparameters'] = []
         self.__dict__['_Model__transf']            = []
-        self.__dict__['_Model__uncertain']         = []
         self.__dict__['_Model__states']            = []
         self.__dict__['title']                     = title
         self.__dict__['_Model__m_Parameters']      = None
     
     def __setattr__(self, name, value):
         if isinstance(value, float) or isinstance(value, int):
-            value = Constant(float(value))
+            value = ConstValue(float(value))
         if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
-            value = PairConstants(float(value[0]), float(value[1]))
+            value = Bounds(float(value[0]), float(value[1]))
         assoc = ((Reaction,       '_Model__reactions'),
-                 (Constant,       '_Model__parameters'),
+                 (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
-                 (StateArray,     '_Model__states'),
-                 (PairConstants,  '_Model__unknownparameters'))
+                 (StateArray,     '_Model__states'))
         for t, dictname in assoc:
             c = findWithNameIndex(name, self.__dict__[dictname])
             if c > -1:
-                if isinstance(value, t):
+                if isinstance(value, t) or (isinstance(value, Bounds) and dictname == '_Model__parameters'):
                     value.name = name
-                    self.__dict__[dictname][c] = value
+                    if isinstance(value, Bounds):
+                        self.__dict__[dictname][c].bounds = value
+                    else:
+                        self.__dict__[dictname][c] = value
                     self.__refreshVars()
                     return
                 else:
@@ -224,6 +221,14 @@ class Model(object):
                 self.__dict__[dictname].append(value)
                 self.__refreshVars()
                 return
+        if isinstance (value, Bounds):
+            value.name = name
+            newvalue = ConstValue((float(value.min)+float(value.max))/2.0)
+            newvalue.name = name
+            newvalue.bounds = value
+            self.__dict__['_Model__parameters'].append(newvalue)
+            self.__refreshVars()
+            return
         object.__setattr__(self, name, value)
 
     def __getattr__(self, name):
@@ -239,9 +244,6 @@ class Model(object):
         if c :
             return c.name
         c = findWithName(name, self.__transf)
-        if c :
-            return c
-        c = findWithName(name, self.__unknownparameters)
         if c :
             return c
         c = findWithName(name, self.__states)
@@ -266,23 +268,10 @@ class Model(object):
             for v in collection:
                 resstring, value = test_with_everything(v.rate, 
                                                         self.__parameters, 
-                                                        self.__unknownparameters, 
                                                         self.__variables)
                 if resstring != "":
                     return False, resstring + '\nin rate of %s\n(%s)' % (v.name, v.rate)
         return True, 'OK'
-
-    def rateCalcString(self, rateString):
-        # replace varnames
-        for i,v in enumerate(self.__variables):
-            rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
-        # replace unknown parameters
-        for i,u in enumerate(self.__unknownparameters):
-            rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
-        # replace parameters
-        for p in self.__parameters:
-            rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString)  #.value, rateString)
-        return rateString
 
     def __str__(self):
         check, msg = self.checkRates()
@@ -294,13 +283,16 @@ class Model(object):
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
             res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
-        for collection in (self.__reactions, self.__transf, self.__unknownparameters):
+        for collection in (self.__reactions, self.__transf):
             for i in collection:
                 res += str(i)
         for p in self.__states:
             res += p.name +': '+ str(p) + '\n'
         for p in self.__parameters:
-            res += p.name +' = '+ str(p) + '\n'
+            res += p.name +' = '+ str(p)
+            if p.bounds:
+                res += " ? (min = %f, max = %f)" % (p.bounds.min, p.bounds.max)
+            res += '\n'
         return res
     
     def __refreshVars(self):
@@ -316,7 +308,6 @@ class Model(object):
                             self.__extvariables.append(Variable(name))
                         else:
                             self.__variables.append(Variable(name))
-        #print "DEBUG, vars = ", [x.name for x in self.__variables]
 
 
     def genStoichiometryMatrix(self):
@@ -337,7 +328,22 @@ class Model(object):
                         continue # there are no rows for extvariables in stoich. matrix
         return N
 
-    def rates_func(self):
+    def rateCalcString(self, rateString, with_uncertain = False):
+        # replace varnames
+        for i,v in enumerate(self.variables):
+            rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
+        # replace uncertain parameters
+        if with_uncertain:
+            for i,u in enumerate(self.uncertain):
+                rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
+        # replace parameters
+        for p in self.parameters:
+            if p.bounds and with_uncertain:
+                continue
+            rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString) 
+        return rateString
+
+    def rates_func(self, with_uncertain = False):
         """Generate function to compute rate vector for this model.
         
            Function has signature f(variables, t)"""
@@ -347,18 +353,26 @@ class Model(object):
             raise BadRateError, msg
 
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), 'bof.log','eval') for v in self.__reactions]
         # create array to hold v's
         v = empty(len(self.reactions))
             
         def f(variables, t):
+            for i,r in enumerate(ratebytecode):
+                v[i] = eval(r)
+            return v
+        def f2(variables, t):
             m_Parameters = self.__m_Parameters
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return v
-        return f
 
-    def transf_func(self):
+        if with_uncertain:
+            return f2
+        else:
+            return f
+
+    def transf_func(self, with_uncertain = False):
         """Generate function to compute transformations for this model.
         
            Function has signature f(variables, t)"""
@@ -368,21 +382,29 @@ class Model(object):
             raise BadRateError, msg
 
         #compile rate laws
-        transfbytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__transf]
+        transfbytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), 'bof.log','eval') for v in self.__transf]
         # create array to hold v's
         m_Transformations = empty(len(self.transf))
             
         def f(variables, t):
+            for i,r in enumerate(transfbytecode):
+                m_Transformations[i] = eval(r)
+            return m_Transformations
+        def f2(variables, t):
             m_Parameters = self.__m_Parameters
             for i,r in enumerate(transfbytecode):
                 m_Transformations[i] = eval(r)
             return m_Transformations
-        return f
 
-    def set_unknown(self, unknownparameters):
-        self.__m_Parameters = unknownparameters
+        if with_uncertain:
+            return f2
+        else:
+            return f
+
+    def set_uncertain(self, uncertainparameters):
+        self.__m_Parameters = uncertainparameters
     
-    def getdXdt(self):
+    def getdXdt(self, with_uncertain = False):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -392,7 +414,7 @@ class Model(object):
         if not check:
             raise BadRateError, msg
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), 'bof.log','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
         NT = N.transpose()
@@ -401,13 +423,22 @@ class Model(object):
         v = empty(len(self.reactions))
         
         def f(variables, t):
+            for i,r in enumerate(ratebytecode):
+                v[i] = eval(r)
+            return dot(v,NT)
+
+        def f2(variables, t):
             m_Parameters = self.__m_Parameters
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return dot(v,NT)
-        return f
+        
+        if with_uncertain:
+            return f2
+        else:
+            return f
 
-    def scaled_dXdt(self, scale = 1.0):
+    def scaled_dXdt(self, scale = 1.0, with_uncertain = False):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -419,7 +450,7 @@ class Model(object):
             print [x.name for x in self.variables]
             raise BadRateError, msg
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), 'bof.log','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
         N *= scale
@@ -427,16 +458,22 @@ class Model(object):
 
         # create array to hold v's
         v = empty(len(self.reactions))
-        #self.__m_Parameters = unknownparameters
 
         def f(variables, t):
+            for i,r in enumerate(ratebytecode):
+                v[i] = eval(r)
+            return dot(v,NT)
+        def f2(variables, t):
             m_Parameters = self.__m_Parameters
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return dot(v,NT)
-        return f
+        if with_uncertain:
+            return f2
+        else:
+            return f
 
-    def dXdt_with(self, unknownparameters, scale = 1.0):
+    def dXdt_with(self, uncertainparameters, scale = 1.0):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -446,7 +483,7 @@ class Model(object):
         if not check:
             raise BadRateError, msg
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = True), 'bof.log','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
         N *= scale
@@ -456,7 +493,7 @@ class Model(object):
         v = empty(len(self.reactions))
 
         def f(variables, t):
-            m_Parameters = unknownparameters
+            m_Parameters = uncertainparameters
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return dot(v,NT)
@@ -471,18 +508,24 @@ class Model(object):
         return self.__extvariables
     def __getParameters(self):
         return self.__parameters
-    def __getUnknownParameters(self):
-        return self.__unknownparameters
     def __getTransformations(self):
         return self.__transf
     
+    def __getUncertainValues(self):
+        return list(getUncertainties(self)) #generator of uncertain values
+
     variables    = property(__getVariables)
     extvariables = property(__getExtVariables)
     reactions    = property(__getReactions)
     parameters   = property(__getParameters)
-    unknown      = property(__getUnknownParameters)
+    uncertain    = property(__getUncertainValues)
     transf       = property(__getTransformations)
     dXdt         = property(getdXdt)
+
+def getUncertainties(model):
+    for p in model.parameters:
+        if p.bounds:
+            yield p.bounds
 
 class BadStoichError(Exception):
     """Used to flag a wrong stoichiometry expression"""
@@ -507,7 +550,7 @@ def transf(rate = 0.0):
         rate = str(rate)
     return Transformation(rate)
 
-def main():
+def test():
     
     m = Model('My first model')
     m.v1 = react("A+B -> C"  , 3)
@@ -517,19 +560,22 @@ def main():
     m.t2 = transf("sqrt(2*A)")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
-    m.V3 = [0.1, 0.9]
+    m.V3 = 0.5
+    m.V3 = [0.1, 1.0]
     m.Km3 = 4
     m.init = state(A = 1.0, C = 1.0)
+    
     print '********** Testing model construction and printing **********'
     print m
     
-    #~ print m.B * m.myconstant, m.v3.rate
-    #~ print m.v1
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
     print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
-    print m.init
+    print 'm.init:',m.init
     print 'm.init.A :',m.init.A
+    print 'iterating m.init'
+    for name, x in m.init:
+        print '\t', name, '=', x
     print
 
     print '********** Testing component reassignment *****************'
@@ -540,20 +586,30 @@ def main():
     print 'm.myconstant :',m.myconstant
     print len(m.parameters), 'parameters total'
 
-    print 'making m.myconstant = [5.0, 10.0]'
+    print 'making m.myconstant = react("A+B -> C"  , 3)'
     try:
-        m.myconstant = [5.0, 10.0]
+        m.myconstant = react("A+B -> C"  , 3)
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.myconstant :',m.myconstant, '(still!)'
     print len(m.parameters), 'parameters total'
-
-    print m.V3
-    print len(m.unknown), 'unknown parameters total'
+    print
+    print 'm.V3 :', m.V3
+    print 'm.V3.bounds:' , m.V3.bounds
+    print len(m.uncertain), 'uncertain parameters total'
     print 'making m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
-    print m.V3
-    print len(m.unknown), 'unknown parameters total'
+    print 'm.V3 :', m.V3
+    print 'm.V3.bounds:' ,m.V3.bounds
+    print len(m.uncertain), 'uncertain parameters total'
+    print 'making m.V4 = [0.1, 0.2]'
+    m.V4 = [0.1, 0.6]
+    print 'm.V4 :', m.V4
+    print 'm.V4.bounds:' ,m.V4.bounds
+    print len(m.uncertain), 'uncertain parameters total'
+    print 'iterating m.uncertain'
+    for x in m.uncertain:
+        print '\t', x.name, 'in (', x.min, ',', x.max, ')'
     print 
 
     print '********** Testing stoichiometry matrix ********************'
@@ -563,17 +619,19 @@ def main():
     for i,x in enumerate(m.variables):
         print x.name, N[i, :]
     print
-    print '********** Testing rateCalcString ******'
+    print '********** Testing rateCalcString **************************'
     print 'calcstring for v3:\n', m.rateCalcString(m.v3.rate)
     print
+    print 'calcstring for v3 with uncertain parameters:\n', m.rateCalcString(m.v3.rate, True)
+    print
+
     print '********** Testing rate and dXdt generating functions ******'
     print 'Operating point:'
     varvalues = [1.0, 1.0]
     pars      = [1.0]
-    m.set_unknown(pars)
-    print 'variables =', dict((v.name, value) for v,value in zip(m.variables, varvalues))
-    print 'unknown   =', dict((v.name, value) for v,value in zip(m.unknown, pars))
-    print 'parameters=', dict((p.name, p)     for p in m.parameters)
+
+    print 'variables  =', dict((v.name, value) for v,value in zip(m.variables, varvalues))
+    print 'parameters =', dict((p.name, p)     for p in m.parameters)
  
     print '---- rates using Model.rates_func() -------------------------'
     vratesfunc = m.rates_func()
@@ -588,13 +646,23 @@ def main():
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
     print '---- dXdt using Model.dXdt() --------------------------------'
-    #f = m.dXdt()
-    m.set_unknown(pars)
+    #f = m.getdXdt()
     dXdt = m.dXdt(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
+    print '---- dXdt using Model.dXdt() setting uncertain parameters ---'
+    print 'f = m.getdXdt(with_uncertain = True)'
+    f = m.getdXdt(with_uncertain = True)
+    print 'setting uncertain as', dict((v.name, value) for v,value in zip(m.uncertain, pars))
+    print 'm.set_uncertain(pars)'
+    m.set_uncertain(pars)
+    dXdt = f(varvalues,0)
+    for x,r in zip(m.variables, dXdt):
+        print "d%s/dt = %s" % (x.name, r)
+
     print '---- dXdt using Model.dXdt_with(pars) ------------------------'
+    print 'f = m.dXdt_with(pars)'
     f = m.dXdt_with(pars)
     dXdt   = f(varvalues,0)
     for x,r in zip(m.variables, dXdt):
@@ -602,8 +670,12 @@ def main():
 
     print '---- dXdt using Model.dXdt() with a state argument (m.init) --'
     print 'm.init:', m.init
+    print 'making m.V3 = 1.0'
+    m.V3 = 1.0
+    print 'm.V3 :', m.V3
+    print
+    print 'f = m.dXdt'
     f = m.dXdt
-    m.set_unknown(pars)
     print 'dXdt = f(m.vectorize("init"),0)'
     dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
@@ -612,13 +684,14 @@ def main():
     m.init.A = 2.0
     print 'after m.init.A = 2.0'
     print 'm.init:', m.init
+    print
+    print 'f = m.dXdt'
     f = m.dXdt
-    m.set_unknown(pars)
     print 'dXdt = f(m.vectorize("init"),0)'
     dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
 if __name__ == "__main__":
-    main()
+    test()
  

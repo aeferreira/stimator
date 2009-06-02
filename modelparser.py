@@ -9,7 +9,8 @@
 #----------------------------------------------------------------------------
 """This module contains code to parse a model definition text,
 
-The most important class ('StimatorParser') holds data to represent a valid model.
+The class ('StimatorParser') parses text representing a valid model.
+The result is a Model object. 
 The parsing loop relies on regular expressions."""
 
 import os
@@ -284,9 +285,9 @@ class StimatorParser:
     def findDefParse(self, line, nline, match):
         name = match.group('name')
         found = False
-        if model.findWithName(name, self.model.unknown): #repeated declaration
-            self.setError("Repeated declaration", 0, len(line), nline, line)
-            return
+        #~ if model.findWithName(name, self.model.unknown): #repeated declaration
+            #~ self.setError("Repeated declaration", 0, len(line), nline, line)
+            #~ return
 
         localsdict = dict([(p.name, p) for p in self.model.parameters])
 
@@ -335,7 +336,7 @@ def printParserResults(parser):
     print
     
 
-def real_main():
+def test():
     modelText = """
 #This is an example of a valid model:
 title: Glyoxalase system in L. infantum
@@ -349,6 +350,7 @@ pi   = 3.1416
 pi2  = 2*pi
 pipi = pi**2  #this is pi square
 
+Vmax1 = 0.0001
 find Vmax1 in [1e-9, 1e-3]
 find   KmMG  in [1e-5, 1]
 find KmTSH2 in [1e-5, pi/pi]
@@ -427,7 +429,7 @@ def profile_main():
  # We've renamed our original main() above to real_main()
  import cProfile, pstats, StringIO
  prof = cProfile.Profile()
- prof = prof.runctx("real_main()", globals(), locals())
+ prof = prof.runctx("test()", globals(), locals())
  stream = StringIO.StringIO()
  stats = pstats.Stats(prof, stream=stream)
  stats.sort_stats("time")  # Or cumulative
@@ -440,7 +442,7 @@ def profile_main():
 
 
 if __name__ == "__main__":
-    real_main()
+    test()
  
  
  
