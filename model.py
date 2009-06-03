@@ -133,8 +133,10 @@ class Reaction(object):
 
 class StateArray(object):
     def __init__(self, varvalues, name):
-        self.__dict__['varvalues'] = varvalues
         self.__dict__['name'] = name
+        for k,v in varvalues.items():
+            varvalues[k] = constValue(value = v, name = k)
+        self.__dict__['varvalues'] = varvalues
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
@@ -144,6 +146,7 @@ class StateArray(object):
             return object.__getattr__(self, name)
     def __setattr__(self, name, value):
         if name != 'name' and name != 'varvalues':
+            value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
             self.__dict__['varvalues'][name]=value
         else:
             object.__setattr__(self, name, value)
@@ -163,10 +166,33 @@ class Transformation(object):
         return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
 
 class ConstValue(float):
-    def __init__(self, value = 0.0):
+    def __init__(self, value):
         float.__init__(self,value)
         self.name = '?'
         self.bounds = None
+            
+def constValue(value = None, name = None, into = None):
+    if isinstance(value, float) or isinstance(value, int):
+        v = float(value)
+        res = ConstValue(v)
+        if into:
+            res.name = into.name
+            res.bounds = into.bounds
+    if isinstance(value,tuple):
+        bounds = Bounds(float(value[0]), float(value[1]))
+        v = (bounds.min + bounds.max)/2.0
+        if into:
+            res = ConstValue(into)
+            res.name = into.name
+        else:
+            res = ContsValue(v)
+        res.bounds = bounds
+    if name:
+        res.name = name
+    if res.bounds:
+        res.bounds.name = res.name        
+    return res
+        
 
 class Bounds(object):
     def __init__(self, min = 0.0, max = 1.0):
@@ -563,7 +589,7 @@ def test():
     m.V3 = 0.5
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
-    m.init = state(A = 1.0, C = 1.0)
+    m.init = state(A = 1.0, C = 1)
     
     print '********** Testing model construction and printing **********'
     print m
@@ -610,6 +636,30 @@ def test():
     print 'iterating m.uncertain'
     for x in m.uncertain:
         print '\t', x.name, 'in (', x.min, ',', x.max, ')'
+    print 'making m.init.A = 5.0'
+    m.init.A = 5.0
+    print 'iterating m.init'
+    for name, x in m.init:
+        extra = ""
+        if x.bounds:
+            extra = "? (min = %f, max=%f)" % (x.bounds.min, x.bounds.max)
+        print '\t', name, '=', x, extra
+    print 'flagging init.A as uncertain m.init.A = (0.5, 2.5)'
+    m.init.A = (0.5, 2.5)
+    print 'iterating m.init'
+    for name, x in m.init:
+        extra = ""
+        if x.bounds:
+            extra = "? (min = %f, max=%f)" % (x.bounds.min, x.bounds.max)
+        print '\t', name, '=', x, extra
+    print 'making m.init.A back to 1.0'
+    m.init.A = 1.0
+    print 'iterating m.init'
+    for name, x in m.init:
+        extra = ""
+        if x.bounds:
+            extra = "? (min = %f, max=%f)"%(x.bounds.min, x.bounds.max)
+        print '\t', name, '=', x, extra
     print 
 
     print '********** Testing stoichiometry matrix ********************'
