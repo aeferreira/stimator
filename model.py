@@ -143,7 +143,7 @@ class StateArray(object):
         if name in self.varvalues:
             return self.varvalues[name]
         else:
-            return object.__getattr__(self, name)
+            raise AttributeError, name + ' is not a member of state'+ self.__dict__['name']
     def __setattr__(self, name, value):
         if name != 'name' and name != 'varvalues':
             value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
@@ -170,6 +170,20 @@ class ConstValue(float):
         float.__init__(self,value)
         self.name = '?'
         self.bounds = None
+    def uncertainty(self, *pars):
+        if len(pars) == 0 or pars[0]==None:
+            self.bounds = None
+            return
+        if len(pars) != 2:
+            return #TODO raise exception
+        self.bounds = Bounds(float(pars[0]), float(pars[1]))
+        self.bounds.name = self.name
+    def pprint(self):
+        res = float.__str__(self)
+        if self.bounds:
+            res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
+        return res
+
             
 def constValue(value = None, name = None, into = None):
     if isinstance(value, float) or isinstance(value, int):
@@ -178,7 +192,7 @@ def constValue(value = None, name = None, into = None):
         if into:
             res.name = into.name
             res.bounds = into.bounds
-    if isinstance(value,tuple):
+    elif (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
         bounds = Bounds(float(value[0]), float(value[1]))
         v = (bounds.min + bounds.max)/2.0
         if into:
@@ -187,6 +201,8 @@ def constValue(value = None, name = None, into = None):
         else:
             res = ContsValue(v)
         res.bounds = bounds
+    else:
+        raise TypeError, value + ' is not a float or pair of floats'
     if name:
         res.name = name
     if res.bounds:
@@ -315,10 +331,7 @@ class Model(object):
         for p in self.__states:
             res += p.name +': '+ str(p) + '\n'
         for p in self.__parameters:
-            res += p.name +' = '+ str(p)
-            if p.bounds:
-                res += " ? (min = %f, max = %f)" % (p.bounds.min, p.bounds.max)
-            res += '\n'
+            res += p.name +' = '+ p.pprint() + '\n'
         return res
     
     def __refreshVars(self):
@@ -552,6 +565,12 @@ def getUncertainties(model):
     for p in model.parameters:
         if p.bounds:
             yield p.bounds
+    for s in model._Model__states:
+        for name, value in s:
+            if value.bounds:
+                ret = Bounds(value.bounds.min, value.bounds.max)
+                ret.name = s.name + '.' + value.name
+                yield ret
 
 class BadStoichError(Exception):
     """Used to flag a wrong stoichiometry expression"""
@@ -590,6 +609,8 @@ def test():
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
     m.init = state(A = 1.0, C = 1)
+    m.afterwards = state(A = 1.0, C = 2)
+    m.afterwards.C.uncertainty(1,3)
     
     print '********** Testing model construction and printing **********'
     print m
@@ -622,13 +643,16 @@ def test():
     print
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' , m.V3.bounds
+    print 'iterating m.uncertain'
+    for x in m.uncertain:
+        print '\t', x.name, 'in (', x.min, ',', x.max, ')'
     print len(m.uncertain), 'uncertain parameters total'
     print 'making m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' ,m.V3.bounds
     print len(m.uncertain), 'uncertain parameters total'
-    print 'making m.V4 = [0.1, 0.2]'
+    print 'making m.V4 = [0.1, 0.6]'
     m.V4 = [0.1, 0.6]
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
@@ -640,26 +664,27 @@ def test():
     m.init.A = 5.0
     print 'iterating m.init'
     for name, x in m.init:
-        extra = ""
-        if x.bounds:
-            extra = "? (min = %f, max=%f)" % (x.bounds.min, x.bounds.max)
-        print '\t', name, '=', x, extra
-    print 'flagging init.A as uncertain m.init.A = (0.5, 2.5)'
+        print '\t', name, '=', x.pprint()
+    print 'flagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
     m.init.A = (0.5, 2.5)
     print 'iterating m.init'
     for name, x in m.init:
-        extra = ""
-        if x.bounds:
-            extra = "? (min = %f, max=%f)" % (x.bounds.min, x.bounds.max)
-        print '\t', name, '=', x, extra
+        print '\t', name, '=', x.pprint()
+    print 'calling    m.init.A.uncertainy(0.5,3.0)'
+    m.init.A.uncertainty(0.5,3.0)
+    print 'iterating m.init'
+    for name, x in m.init:
+        print '\t', name, '=', x.pprint()
+    print 'calling    m.init.A.uncertainy(None)'
+    m.init.A.uncertainty(None)
+    print 'iterating m.init'
+    for name, x in m.init:
+        print '\t', name, '=', x.pprint()
     print 'making m.init.A back to 1.0'
     m.init.A = 1.0
     print 'iterating m.init'
     for name, x in m.init:
-        extra = ""
-        if x.bounds:
-            extra = "? (min = %f, max=%f)"%(x.bounds.min, x.bounds.max)
-        print '\t', name, '=', x, extra
+        print '\t', name, '=', x.pprint()
     print 
 
     print '********** Testing stoichiometry matrix ********************'
