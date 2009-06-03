@@ -7,7 +7,7 @@
 # S-timator timecourse functions
 # Copyright António Ferreira 2006-2009
 #----------------------------------------------------------------------------
-
+import os.path
 import re
 import math
 from numpy import *
@@ -129,6 +129,41 @@ class TimeCourseCollection(object):
         self.basedir = None
         self.intvarsorder = None
         self.variablesorder = None # list of names indicating the order of variables in timecourses
+
+    def loadTimeCourses (self,filedir):
+
+        if len(self.filenames) == 0 :
+           print "No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'"
+           return 0
+        
+        # check and load timecourses
+        self.basedir = filedir
+        os.chdir(self.basedir)
+        pathlist = [os.path.abspath(k) for k in self.filenames]
+
+        print "-------------------------------------------------------"
+        self.data = []
+        for filename in pathlist:
+            if not os.path.exists(filename) or not os.path.isfile(filename):
+                print "Time course file \n%s\ndoes not exist"% filename
+                return 0
+            h,d = readTimeCourseFromFile(filename, atindexes=self.intvarsorder)
+            if d.shape == (0,0):
+                print "File\n%s\ndoes not contain valid time-course data"% filename
+                return 0
+            else:
+                print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
+                self.headers.append(h)
+                self.data.append(d)
+        #~ for i,d in enumerate(self.data):
+            #~ if d.shape[1] != len(self.model.variables)+1:
+                #~ print "There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
+                               #~ self.tc.filenames[i],len(self.model.variables))
+                #~ return None
+        self.shapes     = [i.shape for i in self.data]
+        self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+        return len(pathlist)
+
 
 #----------------------------------------------------------------------------
 #         TESTING CODE

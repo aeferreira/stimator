@@ -666,15 +666,16 @@ class stimatorMainFrame(wx.Frame):
            sys.stdout = oldout
            return
 
-        self.tc = parser.loadTimeCourses (textlines, self.GetFileDir())
-        if not self.tc:
-           self.IndicateError(parser.error, parser.errorLoc)
+        self.model       = parser.model
+        self.optSettings = parser.optSettings
+        self.tc          = parser.tc
+
+        ntcread = self.tc.loadTimeCourses (self.GetFileDir())
+        if ntcread == 0:
+           #self.IndicateError(parser.error, parser.errorLoc)
            sys.stdout = oldout
            return
         
-        self.model = parser.model
-        self.optSettings = parser.optSettings
-
         sys.stdout = oldout
 
         os.chdir(self.GetFileDir())

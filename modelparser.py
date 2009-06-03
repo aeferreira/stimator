@@ -81,7 +81,7 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (ratedef,   "rateDefParse"),
                (tcdef,     "tcDefParse"),
                (atdef,     "atDefParse"),
-               (titledef,   "titleDefParse")]
+               (titledef,  "titleDefParse")]
 
 #----------------------------------------------------------------------------
 #         The core StimatorParser class
@@ -102,7 +102,7 @@ class StimatorParser:
 
         # default Differential Evolution num of generations and population size
         
-        self.model = model.Model()
+        self.model       = model.Model()
         self.tc          = timecourse.TimeCourseCollection()
         self.optSettings = {'generations':200, 'genomesize' :10}
 
@@ -147,40 +147,6 @@ class StimatorParser:
         if not check:
             self.setError(msg, -1, -1, -1, "")
             return
-
-    def loadTimeCourses (self,modeltext,filedir):
-
-        if len(self.tc.filenames) == 0 :
-           self.setError("No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'", -1, -1, -1, "")
-           return None
-        
-        # check and load timecourses
-        self.tc.basedir = filedir
-        os.chdir(self.tc.basedir)
-        pathlist = [os.path.abspath(k) for k in self.tc.filenames]
-
-        print "-------------------------------------------------------"
-        self.tc.data = []
-        for (i,filename) in zip(self.tclines, pathlist):
-            if not os.path.exists(filename) or not os.path.isfile(filename):
-                self.setError("Time course file \n%s\ndoes not exist"% filename, 0, len(modeltext[i]), i, modeltext[i])
-                return None
-            h,d = timecourse.readTimeCourseFromFile(filename, atindexes=self.tc.intvarsorder)
-            if d.shape == (0,0):
-                self.setError("File\n%s\ndoes not contain valid time-course data"% filename, 0, len(modeltext[i]), i, modeltext[i])
-                return None
-            else:
-                print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
-                self.tc.headers.append(h)
-                self.tc.data.append(d)
-        for i,d in enumerate(self.tc.data):
-            if d.shape[1] != len(self.model.variables)+1:
-                self.setError("There are %i initial values in time course %s but model has %i variables"%(d.shape[1]-1,
-                               self.tc.filenames[i],len(self.model.variables)),-1, -1, -1, "")
-                return None
-        self.tc.shapes     = [i.shape for i in self.tc.data]
-        self.tc.shortnames = [os.path.split(filename)[1] for filename in pathlist]
-        return self.tc
 
     def setError(self, text, start, end, nline=None, line=None):
         self.error = text
@@ -418,8 +384,8 @@ timecourse anotherfile.txt
     printParserResults(parser)
     del(textlines[6])
 
-    del(textlines[25])  # delete timecourse declarations
-    del(textlines[25])
+    del(textlines[26])  # delete timecourse declarations
+    del(textlines[26])
 
     parser.parse(textlines)
     printParserResults(parser)
