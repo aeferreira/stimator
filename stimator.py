@@ -713,6 +713,13 @@ class stimatorMainFrame(wx.Frame):
 
 
 # end of class stimatorMainFrame
+def generationTick(win, generation, energy):
+        evt = UpdateGenerationEvent(generation = generation, energy = energy)
+        wx.PostEvent(win, evt)
+
+def finalTick(win, exitCode):
+        evt = EndComputationEvent(exitCode = exitCode)
+        wx.PostEvent(win, evt)
 
 class CalcOptmThread:
     def __init__(self, win):
