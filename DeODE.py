@@ -6,13 +6,18 @@
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
+from time import time
 import DE
 from numpy import *
 from scipy import integrate
+from model import *
+import timecourse
 
 DUMP_PARS_2FILES = False
 
-##------------- Computing class
+#----------------------------------------------------------------------------
+#         Class to perform DE optimization for ODE systems
+#----------------------------------------------------------------------------
 
 class DeODESolver(DE.DESolver):
     """Overides energy function and report functions.
@@ -93,7 +98,10 @@ class DeODESolver(DE.DESolver):
         return gscore
 
     def reportGeneration (self):
-        self.generationTicker(self.generation, float(self.bestEnergy))
+        if not self.generationTicker:
+            print self.reportGenerationString()
+        else:
+            self.generationTicker(self.generation, float(self.bestEnergy))
         if DUMP_PARS_2FILES:
             for par in range(self.parameterCount):
                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
@@ -104,46 +112,96 @@ class DeODESolver(DE.DESolver):
         if self.exitCode==0: outCode = -1 
         else: 
             outCode = self.exitCode
-            optimum = self.generateOptimumData()
-        self.endTicker(outCode, optimum)
+            self.optimum = self.generateOptimumData()
+            #reportstring = self.reportFinalString()
+        if not self.endTicker:
+            print self.reportFinalString()
+        else:
+            self.endTicker(outCode)
         if DUMP_PARS_2FILES:
             for par in self.parfilehandes:
                 par.close()
 
     def generateOptimumData (self):
         timecoursedata = self.timecoursedata
-        bestData = [{'section':"PARAMETERS"}, 
-                    {'section':"D.E. OPTIMIZATION"}, 
-                    {'section':"TIMECOURSES"},
-                    {'section':"best timecourses"}]
-        bestData[0]['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
-        bestData[0]['format'] = "%s\t%s"
-        bestData[0]['header'] = None
+        bestData = {'parameters'       : {'name':"parameters"}, 
+                    'optimization'     : {'name':"D.E. optimization"}, 
+                    'timecourses'      : {'name':"timecourses"},
+                    'best timecourses' : {'name':"best timecourses"}}
+        bestData['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        bestData['parameters']['format'] = "%s\t%s"
+        bestData['parameters']['header'] = None
         
-        bestData[1]['data'] = [('Final Score', "%g"% self.bestEnergy),
+        bestData['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),
                                 ('Generations', "%d"% self.generation),
                                 ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
-        bestData[1]['format'] = "%s\t%s"
-        bestData[1]['header'] = None
+        bestData['optimization']['format'] = "%s\t%s"
+        bestData['optimization']['header'] = None
 
         #TODO: Store initial solver parameters?
 
         #generate best time-courses
-        bestData[2]['data'] = []
-        bestData[3]['data'] = []
-        besttimecoursedata = bestData[3]['data']
+        bestData['timecourses']['data'] = []
+        bestData['best timecourses']['data'] = []
+        besttimecoursedata = bestData['best timecourses']['data']
         for (i,data) in enumerate(timecoursedata):
             y0 = copy(self.X0[i])
             t  = self.times[i]
             Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
             besttimecoursedata.append(Y)
             if infodict['message'] != 'Integration successful.':
-                bestData[2]['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], 1.0E300))
+                bestData['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], 1.0E300))
             else:
                 S = (Y- data[:, 1:])**2
                 score = nansum(S)
-                bestData[2]['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
-        bestData[2]['format'] = "%s\t%d\t%g"
-        bestData[2]['header'] = ['Name', 'Points', 'Score']
+                bestData['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
+        bestData['timecourses']['format'] = "%s\t%d\t%g"
+        bestData['timecourses']['header'] = ['Name', 'Points', 'Score']
         
         return bestData
+
+def test():
+    m1 = Model("Glyoxalase system in L.infantum")
+    m1.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
+    m1.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
+    m1.V1  = 2.57594e-05
+    m1.V1.uncertainty(0.00001, 0.0001)
+    m1.Km1 = 0.252531
+    m1.Km1.uncertainty(0.01, 1)
+    m1.V2  = 2.23416e-05
+    m1.V2.uncertainty(0.00001, 0.0001)
+    m1.Km2 = 0.0980973
+    m1.Km2.uncertainty(0.01, 1)
+    m1.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+    #print m1
+    
+    optSettings={'genomesize':80, 'generations':200}
+    timecourses = timecourse.readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], 'examples', (0,2,1))
+    
+    solver = DeODESolver(m1,optSettings, timecourses, None, None)
+    
+    time0 = time()
+    
+    solver.Solve()
+    
+    print "Optimization took %f s"% (time()-time0)
+
+
+    print
+    print '---------------------------------------------------------'
+    print "Results for %s" % m1.title
+
+    # generate report
+    reportText = ""
+    sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
+    for section in sections:
+        reportText += "%-20s --------------------------------\n" % section['name'].upper()
+        if section['header']:
+            reportText += '\t'.join(section['header'])+'\n'
+        reportText += "\n".join([section['format'] % i for i in section['data']])
+        reportText += '\n\n'
+    print reportText
+
+
+if __name__ == "__main__":
+    test()

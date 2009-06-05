@@ -164,7 +164,14 @@ class TimeCourseCollection(object):
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
         return len(pathlist)
 
+def readTimeCourses(filenames, filedir, intvarsorder):
+    tc = TimeCourseCollection()
+    tc.filenames = filenames
+    tc.intvarsorder = intvarsorder
+    nread = tc.loadTimeCourses(filedir)
+    return tc
 
+    
 #----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------

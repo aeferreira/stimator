@@ -702,22 +702,22 @@ class stimatorMainFrame(wx.Frame):
             self.write(self.optimizerThread.solver.reportFinalString())
             #print >> self, "Optimization took %f s"% (time.time()-self.time0) #this works too!
             self.write("Optimization took %f s"% (time.time()-self.time0))
-            self.bestData = evt.bestData
+            #self.bestData = evt.bestData
             self.PostProcessEnded()
         self.optimizerThread = None
 
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.model, self.bestData, solver.timecoursedata)
+        win.loadBestData(self.model, solver.optimum, solver.timecoursedata)
         win.Show(True)
     
     def generationTick(self, generation, energy):
         evt = UpdateGenerationEvent(generation = generation, energy = energy)
         wx.PostEvent(self, evt)
     
-    def finalTick(self, exitCode, bestData):
-        evt = EndComputationEvent(exitCode = exitCode, bestData=bestData)
+    def finalTick(self, exitCode):
+        evt = EndComputationEvent(exitCode = exitCode)
         wx.PostEvent(self, evt)
 # end of class stimatorMainFrame
 

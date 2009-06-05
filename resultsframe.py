@@ -410,8 +410,8 @@ class BestPlotPanel(PlotPanel):
         self.figure.clear()
         #if not hasattr(self, 'tcsubplots'):
         self.tcsubplots = []
-        ntc = len(self.bestData[3]['data'])
-        besttimecoursedata = self.bestData[3]['data']
+        ntc = len(self.bestData['best timecourses']['data'])
+        besttimecoursedata = self.bestData['best timecourses']['data']
         timecoursedata = self.timecoursedata
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
@@ -422,7 +422,7 @@ class BestPlotPanel(PlotPanel):
         for i in range(ntc):
             subplot = self.tcsubplots[i]
             #subplot.set_xlabel("time")
-            subplot.set_title("%s (%d)%g"% self.bestData[2]['data'][i], fontsize = 12)
+            subplot.set_title("%s (%d)%g"% self.bestData['timecourses']['data'][i], fontsize = 12)
             x = timecoursedata[i][:,0]
             nx = len(x)
             for line in range(1, timecoursedata[i].shape[1]):
@@ -433,15 +433,6 @@ class BestPlotPanel(PlotPanel):
                 ysim = besttimecoursedata[i][:,line-1]
                 subplot.plot(x,yexp, '-b')
                 subplot.plot(x,ysim, '-r')
-            #yexp = timecoursedata[i][:,1:]
-            #ysim = besttimecoursedata[i]
-            #Set some plot attributes
-            #self.subplot.set_title("Results for %s" % self.parser.problemname)
-            #subplot.set_xlim([-400, 400])
-            #subplot.set_ylim([-400, 400])
-
-
-
 
 ##------------- Results Frame
 
@@ -493,15 +484,13 @@ class resultsFrame(wx.Frame):
         self.plotpanel.bestData = bestData
         self.plotpanel.timecoursedata = timecoursedata
 
-        #self.parser = parser
-        #self.bestData = bestData
         self.SetTitle("Results for %s" % model.title)
 
         # generate report
         reportText = ""
-        for section in bestData:
-            if section['section'] =="best timecourses": continue
-            reportText += "%-20s --------------------------------\n" % section['section']
+        sections = [bestData[s] for s in ['parameters', 'optimization', 'timecourses']]
+        for section in sections:
+            reportText += "%-20s --------------------------------\n" % section['name'].upper()
             if section['header']:
                 reportText += '\t'.join(section['header'])+'\n'
             reportText += "\n".join([section['format'] % i for i in section['data']])

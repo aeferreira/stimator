@@ -73,8 +73,9 @@ class DESolver:
     "Solution found by convergence criterium")
 
     def reportGenerationString (self):
-        return "generation %d: best energy = %f\nbest solution: %s" \
-        % (self.generation, self.bestEnergy, self.bestSolution)
+        return "%-4d: %f" % (self.generation, self.bestEnergy)
+        #~ return "generation %d: best energy = %f\nbest solution: %s" \
+        #~ % (self.generation, self.bestEnergy, self.bestSolution)
 
     def reportFinalString (self):
         return "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
