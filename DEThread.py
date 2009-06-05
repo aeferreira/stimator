@@ -6,30 +6,27 @@
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
-import thread
-import time
 import DESolver
-import wx
 from numpy import *
 from scipy import integrate
 
 DUMP_PARS_2FILES = False
 
-##------------- Computing thread class
+##------------- Computing class
 
 class DeODESolver(DESolver.DESolver):
     """Overides energy function and report functions.
     
     The energy function solves ODEs and computes a least-squares score.
-    Report functions post events to the main window (nothing else)."""
+    Ticker functions are called on generation completion and when optimization finishes.
+    """
 
-    def setup(self, model, win, atimecoursecollection, anUpdateGenerationEvent, anEndComputationEvent):
+    def setup(self, model, atimecoursecollection, aGenerationTickerFunction, anEndComputationTickerFunction):
         self.model = model
-        self.win = win # the widget that receives the notifications
-        self.tc = atimecoursecollection
-        self.timecoursedata = self.tc.data
-        self.UpdateGenerationEvent = anUpdateGenerationEvent
-        self.EndComputationEvent = anEndComputationEvent
+        self.tc    = atimecoursecollection
+        self.timecoursedata   = self.tc.data
+        self.generationTicker = aGenerationTickerFunction
+        self.endTicker        = anEndComputationTickerFunction
         
         # cutoffEnergy is 0.1% of deviation from data
         self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in self.timecoursedata])
@@ -84,9 +81,7 @@ class DeODESolver(DESolver.DESolver):
         return gscore
 
     def reportGeneration (self):
-        evt = self.UpdateGenerationEvent(generation = self.generation, energy = float(self.bestEnergy))
-        wx.PostEvent(self.win, evt)
-        # write parameters to files
+        self.generationTicker(self.generation, float(self.bestEnergy))
         if DUMP_PARS_2FILES:
             for par in range(self.parameterCount):
                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
@@ -97,15 +92,13 @@ class DeODESolver(DESolver.DESolver):
         if self.exitCode==0: outCode = -1 
         else: 
             outCode = self.exitCode
-            self.win.bestData = self.generateBestData() # bestData is own by main window
-        evt = self.EndComputationEvent(exitCode = outCode)
-        wx.PostEvent(self.win, evt)
-        # close parameter files
+            optimum = self.generateOptimumData()
+        self.endTicker(outCode, optimum)
         if DUMP_PARS_2FILES:
             for par in self.parfilehandes:
                 par.close()
 
-    def generateBestData (self):
+    def generateOptimumData (self):
         timecoursedata = self.timecoursedata
         bestData = [{'section':"PARAMETERS"}, 
                     {'section':"D.E. OPTIMIZATION"}, 

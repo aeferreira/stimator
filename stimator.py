@@ -690,7 +690,7 @@ class stimatorMainFrame(wx.Frame):
         self.time0 = time.time()
 
         self.optimizerThread=CalcOptmThread(self)
-        self.optimizerThread.Start(self.model, self.optSettings, self.tc, UpdateGenerationEvent, EndComputationEvent)
+        self.optimizerThread.Start(self.model, self.optSettings, self.tc, self.generationTick, self.finalTick)
         
     def OnUpdateGeneration(self, evt):
         self.write("%-4d: %f" % (evt.generation, evt.energy))
@@ -702,6 +702,7 @@ class stimatorMainFrame(wx.Frame):
             self.write(self.optimizerThread.solver.reportFinalString())
             #print >> self, "Optimization took %f s"% (time.time()-self.time0) #this works too!
             self.write("Optimization took %f s"% (time.time()-self.time0))
+            self.bestData = evt.bestData
             self.PostProcessEnded()
         self.optimizerThread = None
 
@@ -710,16 +711,16 @@ class stimatorMainFrame(wx.Frame):
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
         win.loadBestData(self.model, self.bestData, solver.timecoursedata)
         win.Show(True)
-
-
-# end of class stimatorMainFrame
-def generationTick(win, generation, energy):
+    
+    def generationTick(self, generation, energy):
         evt = UpdateGenerationEvent(generation = generation, energy = energy)
-        wx.PostEvent(win, evt)
+        wx.PostEvent(self, evt)
+    
+    def finalTick(self, exitCode, bestData):
+        evt = EndComputationEvent(exitCode = exitCode, bestData=bestData)
+        wx.PostEvent(self, evt)
+# end of class stimatorMainFrame
 
-def finalTick(win, exitCode):
-        evt = EndComputationEvent(exitCode = exitCode)
-        wx.PostEvent(win, evt)
 
 class CalcOptmThread:
     def __init__(self, win):
@@ -738,7 +739,7 @@ class CalcOptmThread:
                                  0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
                                  True)                    # use class random number methods
 
-        self.solver.setup(model,self.win,timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent)
+        self.solver.setup(model,timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent)
         
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
