@@ -5,8 +5,8 @@
 
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.75"
-stimatorDate = "23 Fev 2009"
+stimatorVersion = "0.85"
+stimatorDate = "5 Jun 2009"
 
 import sys
 import os
@@ -21,7 +21,7 @@ import wx
 import wx.stc  as  stc
 import modelparser
 import resultsframe
-import DEThread
+import DeODE
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
@@ -689,7 +689,7 @@ class stimatorMainFrame(wx.Frame):
         self.write("Solving %s..."%self.model.title)
         self.time0 = time.time()
 
-        self.optimizerThread=CalcOptmThread(self)
+        self.optimizerThread=CalcOptmThread()
         self.optimizerThread.Start(self.model, self.optSettings, self.tc, self.generationTick, self.finalTick)
         
     def OnUpdateGeneration(self, evt):
@@ -723,24 +723,9 @@ class stimatorMainFrame(wx.Frame):
 
 
 class CalcOptmThread:
-    def __init__(self, win):
-        self.win = win 
 
-    def Start(self, model, optSettings, timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent):
-        pars = model.uncertain
-        mins = array([u.min for u in pars])
-        maxs = array([u.max for u in pars])
-        
-        self.solver = DEThread.DeODESolver(len(pars), # number of parameters
-                                 int(optSettings['genomesize']),  # genome size
-                                 int(optSettings['generations']), # max number of generations
-                                 mins, maxs,              # min and max parameter values
-                                 "Best2Exp",              # DE strategy
-                                 0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
-                                 True)                    # use class random number methods
-
-        self.solver.setup(model,timecoursecollection, anUpdateGenerationEvent, anEndComputationEvent)
-        
+    def Start(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
+        self.solver = DeODE.DeODESolver(model,optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker)
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
 

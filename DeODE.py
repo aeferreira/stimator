@@ -6,7 +6,7 @@
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
-import DESolver
+import DE
 from numpy import *
 from scipy import integrate
 
@@ -14,20 +14,32 @@ DUMP_PARS_2FILES = False
 
 ##------------- Computing class
 
-class DeODESolver(DESolver.DESolver):
+class DeODESolver(DE.DESolver):
     """Overides energy function and report functions.
     
     The energy function solves ODEs and computes a least-squares score.
     Ticker functions are called on generation completion and when optimization finishes.
     """
-
-    def setup(self, model, atimecoursecollection, aGenerationTickerFunction, anEndComputationTickerFunction):
+    
+    def __init__(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
         self.model = model
-        self.tc    = atimecoursecollection
+        self.tc    = timecoursecollection
         self.timecoursedata   = self.tc.data
-        self.generationTicker = aGenerationTickerFunction
-        self.endTicker        = anEndComputationTickerFunction
+        self.generationTicker = aGenerationTicker
+        self.endTicker        = anEndComputationTicker
+
+        pars = model.uncertain
+        mins = array([u.min for u in pars])
+        maxs = array([u.max for u in pars])
         
+        DE.DESolver.__init__(self, len(pars), # number of parameters
+                             int(optSettings['genomesize']),  # genome size
+                             int(optSettings['generations']), # max number of generations
+                             mins, maxs,              # min and max parameter values
+                             "Best2Exp",              # DE strategy
+                             0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
+                             True)                    # use class random number methods
+
         # cutoffEnergy is 0.1% of deviation from data
         self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in self.timecoursedata])
         
@@ -53,7 +65,7 @@ class DeODESolver(DESolver.DESolver):
         # open files to write parameter progression
         if DUMP_PARS_2FILES:
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
-                    
+
     def externalEnergyFunction(self,trial):
         for par in range(self.parameterCount):
             if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:

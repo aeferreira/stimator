@@ -15,7 +15,7 @@
 #    email: zunzun@zunzun.com
 #
 
-"""DESolver : Real-value optimization by Differential evolution
+"""DE : Real-value optimization by Differential evolution
 
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
