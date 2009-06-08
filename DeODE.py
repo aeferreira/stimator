@@ -13,8 +13,6 @@ from scipy import integrate
 from model import *
 import timecourse
 
-DUMP_PARS_2FILES = False
-
 #----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
 #----------------------------------------------------------------------------
@@ -26,12 +24,15 @@ class DeODESolver(DE.DESolver):
     Ticker functions are called on generation completion and when optimization finishes.
     """
     
-    def __init__(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
+    def __init__(self, model, optSettings, timecoursecollection, 
+                    aGenerationTicker=None, anEndComputationTicker=None, 
+                    dump_pars=False):
         self.model = model
         self.tc    = timecoursecollection
         self.timecoursedata   = self.tc.data
         self.generationTicker = aGenerationTicker
         self.endTicker        = anEndComputationTicker
+        self.dump_pars        = dump_pars
 
         pars = model.uncertain
         mins = array([u.min for u in pars])
@@ -45,7 +46,7 @@ class DeODESolver(DE.DESolver):
                              0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
                              True)                    # use class random number methods
 
-        # cutoffEnergy is 0.1% of deviation from data
+        # cutoffEnergy is 1e-6 of deviation from data
         self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in self.timecoursedata])
         
         # scale times to maximum time in data
@@ -59,6 +60,15 @@ class DeODESolver(DE.DESolver):
         for data in self.timecoursedata:
             y0 = copy(data[0, 1:]) # variables are in columns 1 to end
             self.X0.append(y0)
+
+            # find uncertain initial values
+            self.mapinit2trial = []
+            for iu, u in enumerate(self.model.uncertain):
+                if u.name.startswith('init'):
+                    varname = u.name.split('.')[-1]
+                    ix = findWithNameIndex(varname, self.model.variables)
+                    self.mapinit2trial.append((ix,iu))
+                    #y0[ix] = trial[iu]
             
             t  = data[:, 0]        # times are in columns 0
             t0 = t[0]
@@ -68,19 +78,24 @@ class DeODESolver(DE.DESolver):
         self.timecourse_scores = empty(len(self.timecoursedata))
         
         # open files to write parameter progression
-        if DUMP_PARS_2FILES:
+        if self.dump_pars:
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
 
     def externalEnergyFunction(self,trial):
-        for par in range(self.parameterCount):
-            if trial[par] > self.maxInitialValue[par] or trial[par] < self.minInitialValue[par]:
+        #if out of bounds flag with error energy
+        for trialpar, minInitialValue, maxInitialValue in zip(trial, self.minInitialValue, self.maxInitialValue):
+            if trialpar > maxInitialValue or trialpar < minInitialValue:
                 return 1.0E300
-        
+       
         self.model.set_uncertain(trial)
         salg=integrate._odepack.odeint
 
         for i in range(len(self.timecoursedata)):
             y0 = copy(self.X0[i])
+            # fill uncertain initial values
+            for varindex, trialindex in self.mapinit2trial:
+                y0[varindex] = trial[trialindex]
+                
             t  = copy(self.times[i])
 
 #           Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
@@ -102,7 +117,7 @@ class DeODESolver(DE.DESolver):
             print self.reportGenerationString()
         else:
             self.generationTicker(self.generation, float(self.bestEnergy))
-        if DUMP_PARS_2FILES:
+        if self.dump_pars:
             for par in range(self.parameterCount):
                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
                 print >>self.parfilehandes[par], " ".join(parvector)
@@ -112,53 +127,62 @@ class DeODESolver(DE.DESolver):
         if self.exitCode==0: outCode = -1 
         else: 
             outCode = self.exitCode
-            self.optimum = self.generateOptimumData()
-            #reportstring = self.reportFinalString()
+            self.generateOptimumData()
         if not self.endTicker:
             print self.reportFinalString()
         else:
             self.endTicker(outCode)
-        if DUMP_PARS_2FILES:
+        if self.dump_pars:
             for par in self.parfilehandes:
                 par.close()
 
     def generateOptimumData (self):
-        timecoursedata = self.timecoursedata
-        bestData = {'parameters'       : {'name':"parameters"}, 
+        best = {'parameters'       : {'name':"parameters"}, 
                     'optimization'     : {'name':"D.E. optimization"}, 
                     'timecourses'      : {'name':"timecourses"},
                     'best timecourses' : {'name':"best timecourses"}}
-        bestData['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
-        bestData['parameters']['format'] = "%s\t%s"
-        bestData['parameters']['header'] = None
+        best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        best['parameters']['format'] = "%s\t%s"
+        best['parameters']['header'] = None
         
-        bestData['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),
+        best['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),
                                 ('Generations', "%d"% self.generation),
                                 ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
-        bestData['optimization']['format'] = "%s\t%s"
-        bestData['optimization']['header'] = None
+        best['optimization']['format'] = "%s\t%s"
+        best['optimization']['header'] = None
 
         #TODO: Store initial solver parameters?
 
         #generate best time-courses
-        bestData['timecourses']['data'] = []
-        bestData['best timecourses']['data'] = []
-        besttimecoursedata = bestData['best timecourses']['data']
-        for (i,data) in enumerate(timecoursedata):
+        best['timecourses']['data'] = []
+        best['best timecourses']['data'] = []
+        for (i,data) in enumerate(self.timecoursedata):
             y0 = copy(self.X0[i])
             t  = self.times[i]
             Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-            besttimecoursedata.append(Y)
+            best['best timecourses']['data'].append(Y)
             if infodict['message'] != 'Integration successful.':
-                bestData['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], 1.0E300))
+                score = 1.0E300
             else:
                 S = (Y- data[:, 1:])**2
                 score = nansum(S)
-                bestData['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
-        bestData['timecourses']['format'] = "%s\t%d\t%g"
-        bestData['timecourses']['header'] = ['Name', 'Points', 'Score']
+            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
+        best['timecourses']['format'] = "%s\t%d\t%g"
+        best['timecourses']['header'] = ['Name', 'Points', 'Score']
         
-        return bestData
+        self.optimum = best
+
+def reportResults(solver):
+    reportText = ""
+    sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
+    for section in sections:
+        reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
+        if section['header']:
+            reportText += '\t\t'.join(section['header'])+'\n'
+        reportText += "\n".join([section['format'] % i for i in section['data']])
+        reportText += '\n\n'
+    return reportText
+
 
 def test():
     m1 = Model("Glyoxalase system in L.infantum")
@@ -178,7 +202,7 @@ def test():
     optSettings={'genomesize':80, 'generations':200}
     timecourses = timecourse.readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], 'examples', (0,2,1))
     
-    solver = DeODESolver(m1,optSettings, timecourses, None, None)
+    solver = DeODESolver(m1,optSettings, timecourses)
     
     time0 = time()
     
@@ -186,22 +210,40 @@ def test():
     
     print "Optimization took %f s"% (time()-time0)
 
+    print
+    print '---------------------------------------------------------'
+    print "Results for %s\n" % m1.title
+    print reportResults(solver)
+
+    #--- an example with unknown initial values --------------------
+    
+    m2 = m1.clone()
+    
+    # Now, assume init.HTA is uncertain
+    m2.init.HTA.uncertainty(0.05,0.25)
+    # do not estimate Km1 and Km2 to help the analysis
+    m2.Km1.uncertainty(None)
+    m2.Km2.uncertainty(None)
+    
+    optSettings={'genomesize':60, 'generations':200}
+    
+    ## VERY IMPORTANT:
+    ## only one time course can be used: 
+    ## cannot fit one uncertain initial value to several timecourses!!!
+    timecourses = timecourse.readTimeCourses(['TSH2a.txt'], 'examples', (0,2,1))
+    
+    solver = DeODESolver(m2,optSettings, timecourses)
+    
+    time0 = time()
+    
+    solver.Solve()
+    
+    print "Optimization took %f s"% (time()-time0)
 
     print
     print '---------------------------------------------------------'
-    print "Results for %s" % m1.title
-
-    # generate report
-    reportText = ""
-    sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-    for section in sections:
-        reportText += "%-20s --------------------------------\n" % section['name'].upper()
-        if section['header']:
-            reportText += '\t'.join(section['header'])+'\n'
-        reportText += "\n".join([section['format'] % i for i in section['data']])
-        reportText += '\n\n'
-    print reportText
-
+    print "Results for %s\n" % m2.title
+    print reportResults(solver)
 
 if __name__ == "__main__":
     test()

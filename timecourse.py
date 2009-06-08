@@ -138,6 +138,7 @@ class TimeCourseCollection(object):
         
         # check and load timecourses
         self.basedir = filedir
+        cwd = os.getcwdu()
         os.chdir(self.basedir)
         pathlist = [os.path.abspath(k) for k in self.filenames]
 
@@ -146,10 +147,12 @@ class TimeCourseCollection(object):
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 print "Time course file \n%s\ndoes not exist"% filename
+                os.chdir(cwd)
                 return 0
             h,d = readTimeCourseFromFile(filename, atindexes=self.intvarsorder)
             if d.shape == (0,0):
                 print "File\n%s\ndoes not contain valid time-course data"% filename
+                os.chdir(cwd)
                 return 0
             else:
                 print "%d time points for %d variables read from file %s" % (d.shape[0], d.shape[1]-1, filename)
@@ -162,6 +165,7 @@ class TimeCourseCollection(object):
                 #~ return None
         self.shapes     = [i.shape for i in self.data]
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+        os.chdir(cwd)
         return len(pathlist)
 
 def readTimeCourses(filenames, filedir, intvarsorder):

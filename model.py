@@ -126,7 +126,7 @@ class Reaction(object):
         self.reagents = reagents
         self.products = products
         self.rate = rate
-        self.irrversible = irreversible
+        self.irreversible = irreversible
         self.name = '?'
     def __str__(self):
         return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self.rate)) 
@@ -331,8 +331,34 @@ class Model(object):
         for p in self.__states:
             res += p.name +': '+ str(p) + '\n'
         for p in self.__parameters:
-            res += p.name +' = '+ p.pprint() + '\n'
+            res += p.name +' = '+ str(p) + '\n'
+        for u in self.uncertain:
+            res += u.name + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
         return res
+    
+    def clone(self):
+        m = Model(self.title)
+        for r in self.reactions:
+            setattr(m, r.name, Reaction(r.reagents, r.products, r.rate, r.irreversible))
+        for p in self.parameters:
+            setattr(m, p.name, ConstValue(p))
+        for t in self.transf:
+            setattr(m, t.name, Transformation(t.rate))
+        for s in self.__states:
+            newdict= {}
+            for i in s:
+                newdict[i[0]]=i[1]
+            setattr(m, s.name, StateArray(newdict, s.name))
+        #handle uncertainties
+        for u in self.uncertain:
+            loc = u.name.split('.')
+            if len(loc) >1:
+                s = getattr(m,loc[0])
+                var = getattr(s,loc[1])
+                var.uncertainty(u.min, u.max)
+            else:
+                getattr(m, loc[0]).uncertainty(u.min, u.max)
+        return m
     
     def __refreshVars(self):
         del(self.__variables[:]) #can't use self.__variables= [] : Triggers __setattr__
@@ -613,7 +639,12 @@ def test():
     m.afterwards.C.uncertainty(1,3)
     
     print '********** Testing model construction and printing **********'
+    print '------- result of model construction:\n'
     print m
+    m2 = m.clone()
+    print
+    print '------- result of CLONING the model:\n'
+    print m2
     
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
