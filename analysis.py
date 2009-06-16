@@ -12,23 +12,34 @@ from numpy import *
 from scipy import integrate
 import timecourse
 
-#import sys
-#sys.path.append('..')
 import pylab as p
 
-def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init'):
+def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, transform=False):
     salg=integrate._odepack.odeint
     names = [x.name for x in model.variables]
     scale = 1.0
     f = model.scaled_dXdt(scale)
-    y0 = copy(model.vectorize('init'))
-    times = linspace (t0, tf, npoints)
+    if isinstance(initial, str) or isinstance(initial, State):
+        y0 = copy(model.vectorize(initial))
+    else:
+        y0 = copy(initial)
+    if not times:
+        times = linspace (t0, tf, npoints)
     t  = copy(times)
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
-    if output[-1] < 0: return (1.0E300)
+    if output[-1] < 0: return None
     Y = output[0]
-    return timecourse.SolutionTimeCourse (times, Y.T, names)
+    sol = timecourse.SolutionTimeCourse (times, Y.T, names)
+    if not transform:
+        return sol
+    else:
+        #compute transf
+        f     = model.transf_func()
+        names = [x.name for x in model.transf]
+        trf   = apply_along_axis(f, 0, sol.data, 0.0)
+        return timecourse.SolutionTimeCourse (sol.t, trf, names)
+
 
 def plot(solution, figure = None, style = None, title=None):
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
@@ -94,18 +105,15 @@ def test():
 
     #print '---------------- EXAMPLE 3 ------------------'
     m3 = Model("Calcium Spikes")
-    m3.v0 = react(" -> Ca", rate = "k0")
-    m3.k0 = 1
+    m3.v0 = react(" -> Ca", 1)
     m3.v1 = react(" -> Ca", rate = "B*k1")
     m3.k1 = 7.3
     m3.B  = 0.4
-    m3.export = react(" Ca -> ", rate = "k*Ca")
-    m3.k = 10
-    m3.leak = react("CaComp -> Ca", rate = "kf * CaComp")
-    m3.kf = 1
-    m3.v2 = react("Ca -> CaComp", rate = "65 * Ca**2 / (1+Ca**2)")
-    m3.v3 = react("CaComp -> Ca", rate = "500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)")
-    m3.init = state(Ca = 0.1, CaComp = 0.63655)
+    m3.export = react(" Ca -> ", 10)
+    m3.leak   = react("CaComp -> Ca", 1)
+    m3.v2     = react("Ca -> CaComp", rate = "65 * Ca**2 / (1+Ca**2)")
+    m3.v3     = react("CaComp -> Ca", rate = "500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)")
+    m3.init   = state(Ca = 0.1, CaComp = 0.63655)
 
     #print m3
 
@@ -125,13 +133,7 @@ def test():
 
     print m4
 
-    solution = solve(m4, tf = 100.0, npoints = 2000)
-
-    #compute transf
-    f     = m4.transf_func()
-    names = [x.name for x in m4.transf]
-    trf   = apply_along_axis(f, 0, solution.data, 0.0)
-    solution = timecourse.SolutionTimeCourse (solution.t, trf, names)
+    solution = solve(m4, tf = 100.0, npoints = 2000, transform=True)
 
     #plot results (transformations only)
     p.subplot(224) 

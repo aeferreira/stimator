@@ -11,8 +11,6 @@ import os
 import os.path
 import re
 import math
-import timecourse
-import utils
 from numpy import *
 
 #----------------------------------------------------------------------------
@@ -91,7 +89,7 @@ def processStoich(expr):
     return reagents, products, irreversible
 
 def massActionStr(k = 1.0, reagents = []):
-    res = str(k)
+    res = str(float(k))
     factors = []
     for var, coef in reagents:
         if coef == 0.0:
@@ -655,6 +653,32 @@ def test():
     for name, x in m.init:
         print '\t', name, '=', x
     print
+    print '********** Testing iteration of components *****************'
+    print 'iterating m.reactions'
+    for v in m.reactions:
+        print v.name, ':', v.rate, '|', v.reagents, '->', v.products
+    print 'iterating m.transf'
+    for v in m.transf:
+        print v.name, ':', v.rate
+    print 'iterating m.variables'
+    for x in m.variables:
+        print x.name
+    print 'iterating m.extvariables'
+    for x in m.extvariables:
+        print x.name
+    print 'iterating m.parameters'
+    for p in m.parameters:
+        print p.name , '=',  p, 'bounds=', p.bounds
+    print 'iterating m.uncertain'
+    for x in m.uncertain:
+        print '\t', x.name, 'in (', x.min, ',', x.max, ')'
+
+    
+    print 'iterating m.init'
+    for name, x in m.init:
+        print '\t', name, '=', x
+    print
+
 
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant

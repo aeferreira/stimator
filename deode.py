@@ -7,7 +7,7 @@ Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from time import time
-import DE
+import de
 from numpy import *
 from scipy import integrate
 from model import *
@@ -17,7 +17,7 @@ import timecourse
 #         Class to perform DE optimization for ODE systems
 #----------------------------------------------------------------------------
 
-class DeODESolver(DE.DESolver):
+class DeODESolver(de.DESolver):
     """Overides energy function and report functions.
     
     The energy function solves ODEs and computes a least-squares score.
@@ -38,7 +38,7 @@ class DeODESolver(DE.DESolver):
         mins = array([u.min for u in pars])
         maxs = array([u.max for u in pars])
         
-        DE.DESolver.__init__(self, len(pars), # number of parameters
+        de.DESolver.__init__(self, len(pars), # number of parameters
                              int(optSettings['genomesize']),  # genome size
                              int(optSettings['generations']), # max number of generations
                              mins, maxs,              # min and max parameter values

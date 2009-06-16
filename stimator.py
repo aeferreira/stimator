@@ -19,9 +19,9 @@ import wx
 import wx.lib.newevent
 import wx
 import wx.stc  as  stc
-import modelparser
 import resultsframe
-import DeODE
+import modelparser
+import deode
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
@@ -725,7 +725,7 @@ class stimatorMainFrame(wx.Frame):
 class CalcOptmThread:
 
     def Start(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
-        self.solver = DeODE.DeODESolver(model,optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker)
+        self.solver = deode.DeODESolver(model,optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker)
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
 
