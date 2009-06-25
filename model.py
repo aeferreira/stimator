@@ -17,9 +17,9 @@ from numpy import *
 #         Functions to check the validity of math expressions
 #----------------------------------------------------------------------------
 
-def test_with_everything(valueexpr, parameters, varlist): 
+def test_with_everything(valueexpr, model): 
     locs = {}
-    for p in parameters:
+    for p in model.parameters:
         locs[p.name] = p #.value
     
     #part 1: nonpermissive, except for NameError
@@ -31,7 +31,10 @@ def test_with_everything(valueexpr, parameters, varlist):
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
-    for i in varlist:
+    for i in model.variables:
+        vardict[i.name]=1.0
+    locs.update(vardict)
+    for i in model.forcing:
         vardict[i.name]=1.0
     locs.update(vardict)
     try :
@@ -187,7 +190,7 @@ class Forcing(object):
             data = []
             for a in argnames:
                 if a == 't':
-                    data.append('time', 0)
+                    data.append(('time', 0))
                     continue
                 i, collection = model.findComponent(a)
                 if collection == 'parameters':
@@ -213,7 +216,7 @@ class Forcing(object):
         if callable(f):
             self.func = retf
         else:
-            self.finc = reteval
+            self.func = reteval
 
 
 def forcing(rate):
@@ -221,8 +224,6 @@ def forcing(rate):
         return Forcing(rate)
     else:
         raise ValueError('Bad forcing function')
-
-
 
 
 class Transformation(object):
@@ -404,9 +405,7 @@ class Model(object):
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
             for v in collection:
-                resstring, value = test_with_everything(v.rate, 
-                                                        self.__parameters, 
-                                                        self.__variables)
+                resstring, value = test_with_everything(v.rate,self)
                 if resstring != "":
                     return False, resstring + '\nin rate of %s\n(%s)' % (v.name, v.rate)
         for t in self.__forcing:
@@ -416,9 +415,7 @@ class Model(object):
     def __str__(self):
         check, msg = self.checkRates()
         if not check:
-            res ="Problem in rates:\n"
-            res += msg
-            return res
+            raise BadRateError(msg)
         res = "%s\n"% self.title
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
@@ -524,13 +521,19 @@ class Model(object):
         ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__reactions]
         # create array to hold v's
         v = empty(len(self.reactions))
+        # create array to hold forcing functions
+        forcing_function = empty(len(self.forcing))
             
         def f(variables, t):
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return v
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(ratebytecode):
                 v[i] = eval(r)
             return v
@@ -553,13 +556,19 @@ class Model(object):
         transfbytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__transf]
         # create array to hold v's
         m_Transformations = empty(len(self.transf))
+        # create array to hold forcing functions
+        forcing_function = empty(len(self.forcing))
             
         def f(variables, t):
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(transfbytecode):
                 m_Transformations[i] = eval(r)
             return m_Transformations
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(transfbytecode):
                 m_Transformations[i] = eval(r)
             return m_Transformations
@@ -589,6 +598,8 @@ class Model(object):
                 data.append((collection, compile(self.rateCalcString(self.transf[i].rate), '<string>','eval')))
             elif collection == 'reactions':
                 data.append((collection, compile(self.rateCalcString(self.reactions[i].rate), '<string>','eval')))
+            elif collection == 'forcing':
+                data.append((collection, self.forcing[i].func))
             else:
                 raise AttributeError, a + ' is not a component in this model'
 
@@ -599,6 +610,8 @@ class Model(object):
                     args.append(d)
                 elif c == 'variables':
                     args.append(variables[d])
+                elif c == 'forcing':
+                    args.append(d(variables,t))
                 else:
                     args.append(eval(d))
             return f(*args)
@@ -609,6 +622,8 @@ class Model(object):
                     args.append(d)
                 elif c == 'variables':
                     args.append(variables[d])
+                elif c == 'forcing':
+                    args.append(d(variables,t))
                 else:
                     args.append(eval(d))
             return args
@@ -639,14 +654,20 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
         en = list(enumerate(ratebytecode))
+        # create array to hold forcing functions
+        forcing_function = empty(len(self.forcing))
         
         def f(variables, t):
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
 
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
@@ -676,13 +697,19 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
         en = list(enumerate(ratebytecode))
+        # create array to hold forcing functions
+        forcing_function = empty(len(self.forcing))
 
         def f(variables, t):
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             #~ v = [eval(r) for r in ratebytecode]
@@ -711,8 +738,12 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
         en = list(enumerate(ratebytecode))
+        # create array to hold forcing functions
+        forcing_function = empty(len(self.forcing))
 
         def f(variables, t):
+            for i,fi in enumerate(self.forcing):
+                forcing_function[i] = fi.func(variables,t)
             m_Parameters = uncertainparameters
             for i,r in en:
                 v[i] = eval(r)
@@ -766,10 +797,13 @@ class BadTypeComponent(Exception):
 
 def test():
     
+    def force(A, t):
+        return t*A
     m = Model('My first model')
     m.v1 = react("A+B -> C"  , 3)
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = react("B   ->  "  , "2*input1")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.B  = 2.2
@@ -780,7 +814,7 @@ def test():
     m.init = state(A = 1.0, C = 1)
     m.afterwards = state(A = 1.0, C = 2)
     m.afterwards.C.uncertainty(1,3)
-    m.forcing1 = forcing("t * A")
+    m.input1 = forcing(force)
     
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'
@@ -911,13 +945,13 @@ def test():
  
     print '---- rates using Model.rates_func() -------------------------'
     vratesfunc = m.rates_func()
-    vrates = vratesfunc(varvalues,0)
+    vrates = vratesfunc(varvalues,2.0)
     for v,r in zip(m.reactions, vrates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
     print '---- transformations using Model.transf_func() --------------'
     tratesfunc = m.transf_func()
-    trates = tratesfunc(varvalues,0)
+    trates = tratesfunc(varvalues,2.0)
     for v,r in zip(m.transf, trates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 

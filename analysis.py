@@ -38,12 +38,16 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     elif outputs is True:
         #compute transf
         f     = model.transf_func()
+        def newf(newdata,f):
+            return f(newdata[1:], newdata[0])
         names = [x.name for x in model.transf]
-        trf   = apply_along_axis(f, 0, sol.data, 0.0)
+        trf   = apply_along_axis(newf, 0, vstack((sol.t,sol.data)), f)
         return SolutionTimeCourse (sol.t, trf, names, title)
     elif isinstance(outputs, str) or callable(outputs):
         f = model.genTransformationFunction(outputs)
-        trf   = apply_along_axis(f, 0, sol.data, 0.0)
+        def newf(newdata,f):
+            return f(newdata[1:], newdata[0])
+        trf   = apply_along_axis(newf, 0, vstack((sol.t,sol.data)), f)
         if not callable(outputs):
             names = outputs.split()
         else:
@@ -94,7 +98,7 @@ class SolutionTimeCourse(object):
             y = yl + m *(t-tl)
         else:
             y = self.data[:, ileft]
-        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+        return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
     def __getLastState(self):
         """Retrieves state_at last timepoint"""
         y = self.data[:,-1]

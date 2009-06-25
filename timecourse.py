@@ -11,6 +11,7 @@ import os.path
 import re
 import math
 from numpy import *
+from analysis import *
 import model
 
 #----------------------------------------------------------------------------
