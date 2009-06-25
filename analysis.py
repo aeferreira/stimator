@@ -56,6 +56,8 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
             else:
                 names = ['transf%d'% i for i in range(trf.shape[0])]
         return SolutionTimeCourse (sol.t, trf, names, title)
+    else:
+        raise TypeError('outputs parameter is of the wrong type')
 
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
@@ -138,7 +140,7 @@ class Solutions(object):
         return self.__iadd__(other)
 
 
-def plot(solutions, figure = None, style = None, titles=None):
+def plot(solutions, figure = None, style = None, titles=None, ynormalize = False):
     p.figure()
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
     ntc = len(solutions)

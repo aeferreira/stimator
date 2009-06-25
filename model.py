@@ -180,35 +180,39 @@ class Forcing(object):
         f = self.rate
         if not callable(f):
             if not isinstance(f,str):
-                    raise TypeError, 'rate must be a string or a callable.'
+                    raise TypeError( 'rate must be a string or a callable.')
             ratebytecode = compile(model.rateCalcString(f, with_uncertain=False), '<string>','eval')
         
         else:
             cc = f.func_code
             nargs = cc.co_argcount
             argnames = cc.co_varnames[:nargs]
-            data = []
+            codes = []
             for a in argnames:
                 if a == 't':
-                    data.append(('time', 0))
+                    codes.append(('t', 0))
                     continue
                 i, collection = model.findComponent(a)
                 if collection == 'parameters':
-                    data.append((collection, getattr(model, a)))
+                    codes.append(('p', getattr(model, a)))
                 elif collection == 'variables':
-                    data.append((collection, i))
+                    codes.append(('v', i))
                 else:
                     raise AttributeError( a + ' is not a component in of the model')
+            args = [0.0] * nargs
+            en = [(i, c,d) for (i,(c,d)) in enumerate(codes)]
+            for i,c,d in en:
+                if c == 'p':
+                    args[i]=d
 
         def retf(variables, t):
-            args = []
-            for c,d in data:
-                if c == 'parameters':
-                    args.append(d)
-                elif c == 'variables':
-                    args.append(variables[d])
+            for i,c,d in en:
+                if c == 't':
+                    args[i] = t
+                elif c == 'v':
+                    args[i] = variables[d]
                 else:
-                    args.append(t)
+                    continue
             return f(*args)
         def reteval(variables, t):
             return eval(ratebytecode)
@@ -258,7 +262,7 @@ class ConstValue(float):
             res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
         return res
 
-            
+
 def constValue(value = None, name = None, into = None):
     if isinstance(value, float) or isinstance(value, int):
         v = float(value)
@@ -521,20 +525,22 @@ class Model(object):
         ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__reactions]
         # create array to hold v's
         v = empty(len(self.reactions))
+        en = list(enumerate(ratebytecode))
         # create array to hold forcing functions
         forcing_function = empty(len(self.forcing))
+        enf = list(enumerate(self.forcing))
             
         def f(variables, t):
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
             return v
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
             return v
 
@@ -558,16 +564,17 @@ class Model(object):
         m_Transformations = empty(len(self.transf))
         # create array to hold forcing functions
         forcing_function = empty(len(self.forcing))
+        enf = list(enumerate(self.forcing))
             
         def f(variables, t):
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(transfbytecode):
                 m_Transformations[i] = eval(r)
             return m_Transformations
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(transfbytecode):
                 m_Transformations[i] = eval(r)
@@ -583,6 +590,7 @@ class Model(object):
             if not isinstance(f,str):
                 raise TypeError, 'argument must be a string or a callable.'
             argnames = f.split()
+            nargs = len(argnames)
         else:
             cc = f.func_code
             nargs = cc.co_argcount
@@ -591,41 +599,44 @@ class Model(object):
         for a in argnames:
             i, collection = self.findComponent(a)
             if collection == 'parameters':
-                data.append((collection, getattr(self, a)))
+                data.append(('p', getattr(self, a)))
             elif collection == 'variables':
-                data.append((collection, i))
+                data.append(('v', i))
             elif collection == 'transf':
-                data.append((collection, compile(self.rateCalcString(self.transf[i].rate), '<string>','eval')))
+                data.append(('t', compile(self.rateCalcString(self.transf[i].rate), '<string>','eval')))
             elif collection == 'reactions':
-                data.append((collection, compile(self.rateCalcString(self.reactions[i].rate), '<string>','eval')))
+                data.append(('r', compile(self.rateCalcString(self.reactions[i].rate), '<string>','eval')))
             elif collection == 'forcing':
-                data.append((collection, self.forcing[i].func))
+                data.append(('f', self.forcing[i].func))
             else:
                 raise AttributeError, a + ' is not a component in this model'
+        args = [0.0]*nargs
+        en = [(i,c,d) for (i, (c,d)) in enumerate(data)]
+        for i,c,d in en:
+            if c == 'p':
+                args[i] =d
 
         def retf(variables, t):
-            args = []
-            for c,d in data:
-                if c == 'parameters':
-                    args.append(d)
-                elif c == 'variables':
-                    args.append(variables[d])
-                elif c == 'forcing':
-                    args.append(d(variables,t))
+            for i,c,d in en:
+                if c == 'p':
+                    continue
+                elif c == 'v':
+                    args[i] = variables[d]
+                elif c == 'f':
+                    args[i] = d(variables,t)
                 else:
-                    args.append(eval(d))
+                    args[i] = eval(d)
             return f(*args)
         def retargs(variables, t):
-            args = []
-            for c,d in data:
-                if c == 'parameters':
-                    args.append(d)
-                elif c == 'variables':
-                    args.append(variables[d])
-                elif c == 'forcing':
-                    args.append(d(variables,t))
+            for i,c,d in en:
+                if c == 'p':
+                    continue
+                elif c == 'v':
+                    args[i] = variables[d]
+                elif c == 'f':
+                    args[i] = d(variables,t)
                 else:
-                    args.append(eval(d))
+                    args[i] = eval(d)
             return args
                 
         if callable(f):
@@ -656,9 +667,10 @@ class Model(object):
         en = list(enumerate(ratebytecode))
         # create array to hold forcing functions
         forcing_function = empty(len(self.forcing))
+        enf = list(enumerate(self.forcing))
         
         def f(variables, t):
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
@@ -666,7 +678,7 @@ class Model(object):
 
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
@@ -699,20 +711,20 @@ class Model(object):
         en = list(enumerate(ratebytecode))
         # create array to hold forcing functions
         forcing_function = empty(len(self.forcing))
-
+        enf = list(enumerate(self.forcing))
+        
         def f(variables, t):
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
-            #~ v = [eval(r) for r in ratebytecode]
             return dot(v,NT)
         if with_uncertain:
             return f2
@@ -740,9 +752,10 @@ class Model(object):
         en = list(enumerate(ratebytecode))
         # create array to hold forcing functions
         forcing_function = empty(len(self.forcing))
+        enf = list(enumerate(self.forcing))
 
         def f(variables, t):
-            for i,fi in enumerate(self.forcing):
+            for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             m_Parameters = uncertainparameters
             for i,r in en:
