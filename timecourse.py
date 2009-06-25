@@ -74,48 +74,8 @@ def readTimeCourseFromFile(file, atindexes=None):
     
     return header, array(rows)
 
-class SolutionTimeCourse(object):
-    def __init__(self, t = array([]), data = array([]), names = []):
-        self.t = t
-        self.data = data
-        self.names = names
-        self.shape = data.shape
-        
-    def __len__(self):
-        return self.data.shape[0]
-    def __nonzero__(self):
-        return len(t) > 0
-    def __getitem__(self, key):
-        if isinstance(key, str) or isinstance(key, unicode):
-            try:
-                i = self.names.index(key)
-            except ValueError:
-                raise ValueError, "No data for '%s' in timecourse" % str(key)
-            return self.data.__getitem__(i)
-        return self.data.__getitem__(key)
-    def state_at(self, t):
-        if t > self.t[-1] or t < self.t[0]:
-            raise ValueError, "No data for time '%s' in timecourse" % str(t)
-        # Interpolate:
-        ileft = self.t.searchsorted(t, side = 'left')
-        iright = self.t.searchsorted(t, side = 'right')
-        if iright == ileft:
-            ileft -= 1
-            tl = self.t[ileft]
-            tr = self.t[iright]
-            yl = self.data[:,ileft]
-            yr = self.data[:,iright]
-            m = (yr-yl)/(tr-tl)
-            y = yl + m *(t-tl)
-        else:
-            y = self.data[:, ileft]
-        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
-    def __getLastState(self):
-        y = self.data[:,-1]
-        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
-    last = property(__getLastState)
 
-    
+
 class TimeCourseCollection(object):
     def __init__(self):
         self.reset()

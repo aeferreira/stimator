@@ -4,17 +4,17 @@
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
-# S-timator Model related classes
+# S-timator Model analysis classes
 # Copyright António Ferreira 2006-2009
 #----------------------------------------------------------------------------
+import math
 from model import *
 from numpy import *
 from scipy import integrate
-import timecourse
 
 import pylab as p
 
-def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, transform=False):
+def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None):
     salg=integrate._odepack.odeint
     names = [x.name for x in model.variables]
     scale = 1.0
@@ -23,33 +23,137 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         y0 = copy(model.vectorize(initial))
     else:
         y0 = copy(initial)
-    if not times:
+    if times is None:
         times = linspace (t0, tf, npoints)
     t  = copy(times)
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
     if output[-1] < 0: return None
     Y = output[0]
-    sol = timecourse.SolutionTimeCourse (times, Y.T, names)
-    if not transform:
+    if title is None:
+        title = model.title
+    sol = SolutionTimeCourse (times, Y.T, names, title)
+    if outputs is False:
         return sol
-    else:
+    elif outputs is True:
         #compute transf
         f     = model.transf_func()
         names = [x.name for x in model.transf]
         trf   = apply_along_axis(f, 0, sol.data, 0.0)
-        return timecourse.SolutionTimeCourse (sol.t, trf, names)
+        return SolutionTimeCourse (sol.t, trf, names, title)
+    elif isinstance(outputs, str) or callable(outputs):
+        f = model.genTransformationFunction(outputs)
+        trf   = apply_along_axis(f, 0, sol.data, 0.0)
+        if not callable(outputs):
+            names = outputs.split()
+        else:
+            if hasattr(outputs, 'names'):
+                names = outputs.names
+            else:
+                names = ['transf%d'% i for i in range(trf.shape[0])]
+        return SolutionTimeCourse (sol.t, trf, names, title)
+
+class SolutionTimeCourse(object):
+    """Holds a timecourse created by ODE solvers"""
+    def __init__(self, t = array([]), data = array([]), names = [], title = ""):
+        self.t = t         #values of time points
+        self.data = data   # table of solution points: series in rows, times in cols
+        self.names = names # names of the series
+        self.shape = data.shape
+        self.title = title # a title for the solution
+        
+    def __len__(self):
+        return self.data.shape[0]
+    def __nonzero__(self):
+        return len(t) > 0
+    def __getitem__(self, key):
+        """retrieves a series by name or index"""
+        if isinstance(key, str) or isinstance(key, unicode):
+            try:
+                i = self.names.index(key)
+            except ValueError:
+                raise ValueError, "No data for '%s' in timecourse" % str(key)
+            return self.data.__getitem__(i)
+        return self.data.__getitem__(key)
+    def state_at(self, t):
+        """Retrieves a State object with values at a time point.
+        
+           May have to interpolate."""
+        if t > self.t[-1] or t < self.t[0]:
+            raise ValueError, "No data for time '%s' in timecourse" % str(t)
+        # Interpolate:
+        ileft = self.t.searchsorted(t, side = 'left')
+        iright = self.t.searchsorted(t, side = 'right')
+        if iright == ileft:
+            ileft -= 1
+            tl = self.t[ileft]
+            tr = self.t[iright]
+            yl = self.data[:,ileft]
+            yr = self.data[:,iright]
+            m = (yr-yl)/(tr-tl)
+            y = yl + m *(t-tl)
+        else:
+            y = self.data[:, ileft]
+        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+    def __getLastState(self):
+        """Retrieves state_at last timepoint"""
+        y = self.data[:,-1]
+        return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
+    last = property(__getLastState) #'last' is a synonymous, used as 'sol.last'
+
+    
+class Solutions(object):
+    """Holds a colection of objects of class SolutionTimeCourse"""
+    def __init__(self, title = ""):
+        self.title = title
+        self.solutions = []
+    
+    def __getitem__(self, key):
+        """retrieves a series by index"""
+        return self.solutions.__getitem__(key)
+    def __len__(self):
+        return len(self.solutions)
+    def __nonzero__(self):
+        return len(self.solutions) > 0
+    def __iadd__(self,other):
+        if isinstance(other, Solutions):
+            self.solutions.extend(other.solutions)
+        elif isinstance(other, list) or isinstance(other, tuple):
+            for s in other:
+                if not isinstance(s, SolutionTimeCourse): 
+                    raise TypeError, "Must add a solutions or collection of solutions"
+            self.solutions.extend(list(other))
+        elif isinstance(other, SolutionTimeCourse):
+            self.solutions.append(other)
+        else:
+            raise TypeError, "Must add a solutions or collection of solutions"
+        return self
+    def __iter__(self):
+        return iter(self.solutions)
+    def append(self, other):
+        return self.__iadd__(other)
 
 
-def plot(solution, figure = None, style = None, title=None):
+def plot(solutions, figure = None, style = None, titles=None):
+    p.figure()
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
-    for i in range(len(solution)):
-        p.plot(solution.t, solution[i], colours[i], label=solution.names[i])
-    p.grid()
-    p.legend(loc='best')
-    p.xlabel('')
-    p.ylabel('')
-    p.title(title)
+    ntc = len(solutions)
+    ncols = int(math.ceil(math.sqrt(ntc)))
+    nrows = int(math.ceil(float(ntc)/ncols))
+
+    for isolution,solution in enumerate(solutions):
+        p.subplot(nrows,ncols,isolution+1)
+        for i in range(len(solution)):
+            p.plot(solution.t, solution[i], colours[i], label=solution.names[i])
+        p.grid()
+        p.legend(loc='best')
+        p.xlabel('')
+        p.ylabel('')
+        if titles is not None:
+            p.title(titles[isolution])
+        else:
+            p.title(solution.title)
+    p.show()
 
 def test():
     print '---------------- EXAMPLE 1 ------------------'
@@ -64,21 +168,21 @@ def test():
 
     print m1
 
-    solution = solve(m1, tf = 4030.0)
+    solution1 = solve(m1, tf = 4030.0)
 
     #print t
     #print solution
     #print trf
 
     print '--- Last time point ----'
-    print 'At t =', solution.t[-1]
-    for x,value in solution.last:
+    print 'At t =', solution1.t[-1]
+    for x,value in solution1.last:
         print "%-8s= %f" % (x, value)
 
     #plot results...
-    f1 = p.figure(1)
-    p.subplot(221) 
-    plot(solution, title = m1.title)
+    #~ f1 = p.figure(1)
+    #~ p.subplot(221) 
+    #~ plot(solution, title = m1.title)
 
     #print '---------------- EXAMPLE 2 ------------------'
     m2 = Model("Branched pathway")
@@ -98,10 +202,11 @@ def test():
     m2.init = state(B = 2, C = 0.25, D = 0.64, E = 0.64)
 
     #print m2
+    times = append(linspace(0.0,5.0,500),linspace(5.0,10.0, 500))
 
-    solution = solve(m2, tf = 10.0)
-    p.subplot(222) 
-    plot(solution, title = m2.title)
+    solution2 = solve(m2, tf = 10.0, times=times)
+    #~ p.subplot(222) 
+    #~ plot(solution, title = m2.title)
 
     #print '---------------- EXAMPLE 3 ------------------'
     m3 = Model("Calcium Spikes")
@@ -117,9 +222,9 @@ def test():
 
     #print m3
 
-    solution = solve(m3, tf = 8.0, npoints = 2000)
-    p.subplot(223) 
-    plot(solution, title = m3.title)
+    solution3 = solve(m3, tf = 8.0, npoints = 2000)
+    #~ p.subplot(223) 
+    #~ plot(solution, title = m3.title)
 
     print '---------------- EXAMPLE 4 ------------------'
     m4 = Model("Rossler")
@@ -133,13 +238,9 @@ def test():
 
     print m4
 
-    solution = solve(m4, tf = 100.0, npoints = 2000, transform=True)
+    solution4 = solve(m4, tf = 100.0, npoints = 2000, outputs="x1 x2 x3")
 
-    #plot results (transformations only)
-    p.subplot(224) 
-    plot(solution, title = m4.title)
-
-    p.show()
+    plot ([solution1, solution2, solution3, solution4])
 
 if __name__ == "__main__":
     test()

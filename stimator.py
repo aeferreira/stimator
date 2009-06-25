@@ -5,8 +5,8 @@
 
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.85"
-stimatorDate = "5 Jun 2009"
+stimatorVersion = "0.86"
+stimatorDate = "17 Jun 2009"
 
 import sys
 import os
@@ -14,10 +14,8 @@ import os.path
 import re
 import time
 import thread
-from numpy import *
 import wx
 import wx.lib.newevent
-import wx
 import wx.stc  as  stc
 import resultsframe
 import modelparser

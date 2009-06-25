@@ -129,6 +129,15 @@ class Reaction(object):
     def __str__(self):
         return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self.rate)) 
 
+def react(stoichiometry, rate = 0.0):
+    res = processStoich(stoichiometry)
+    if not res:
+        raise BadStoichError, "Bad stoichiometry definition:\n"+ stoichiometry
+    if isinstance(rate, float) or isinstance(rate, int):
+        rate = massActionStr(rate, res[0])
+    return Reaction(res[0], res[1], rate, res[2])
+
+
 class StateArray(object):
     def __init__(self, varvalues, name):
         self.__dict__['name'] = name
@@ -156,12 +165,78 @@ class StateArray(object):
 def state(**varvalues):
     return StateArray(varvalues, '?')
 
+
+class Forcing(object):
+    def __init__(self, rate):
+        self.rate = rate
+        self.name = '?'
+    def __str__(self):
+        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
+
+    def genForcingFunction(self, model):
+        f = self.rate
+        if not callable(f):
+            if not isinstance(f,str):
+                    raise TypeError, 'rate must be a string or a callable.'
+            ratebytecode = compile(model.rateCalcString(f, with_uncertain=False), '<string>','eval')
+        
+        else:
+            cc = f.func_code
+            nargs = cc.co_argcount
+            argnames = cc.co_varnames[:nargs]
+            data = []
+            for a in argnames:
+                if a == 't':
+                    data.append('time', 0)
+                    continue
+                i, collection = model.findComponent(a)
+                if collection == 'parameters':
+                    data.append((collection, getattr(model, a)))
+                elif collection == 'variables':
+                    data.append((collection, i))
+                else:
+                    raise AttributeError( a + ' is not a component in of the model')
+
+        def retf(variables, t):
+            args = []
+            for c,d in data:
+                if c == 'parameters':
+                    args.append(d)
+                elif c == 'variables':
+                    args.append(variables[d])
+                else:
+                    args.append(t)
+            return f(*args)
+        def reteval(variables, t):
+            return eval(ratebytecode)
+                
+        if callable(f):
+            self.func = retf
+        else:
+            self.finc = reteval
+
+
+def forcing(rate):
+    if isinstance(rate, str) or callable(rate):
+        return Forcing(rate)
+    else:
+        raise ValueError('Bad forcing function')
+
+
+
+
 class Transformation(object):
     def __init__(self, rate = 0.0):
         self.rate = rate
         self.name = '?'
     def __str__(self):
         return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
+
+def transf(rate = 0.0):
+    if isinstance(rate, float) or isinstance(rate, int):
+        rate = str(rate)
+    return Transformation(rate)
+
 
 class ConstValue(float):
     def __init__(self, value):
@@ -230,6 +305,7 @@ class Model(object):
         self.__dict__['_Model__parameters']        = []
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__states']            = []
+        self.__dict__['_Model__forcing']           = []
         self.__dict__['title']                     = title
         self.__dict__['_Model__m_Parameters']      = None
     
@@ -241,7 +317,8 @@ class Model(object):
         assoc = ((Reaction,       '_Model__reactions'),
                  (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
-                 (StateArray,     '_Model__states'))
+                 (StateArray,     '_Model__states'),
+                 (Forcing,        '_Model__forcing'))
         for t, dictname in assoc:
             c = findWithNameIndex(name, self.__dict__[dictname])
             if c > -1:
@@ -274,9 +351,9 @@ class Model(object):
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
-        c = findWithName(name, self.__parameters)
-        if c :
-            return c
+        c = findWithNameIndex(name, self.__parameters)
+        if c >=0:
+            return self.__parameters[c]
         c = findWithName(name, self.__reactions)
         if c :
             return c
@@ -289,8 +366,29 @@ class Model(object):
         c = findWithName(name, self.__states)
         if c :
             return c
+        c = findWithName(name, self.__forcing)
+        if c :
+            return c
         raise AttributeError, name + ' is not defined for this model'
-    
+
+    def findComponent(self, name):
+        c = findWithNameIndex(name, self.__parameters)
+        if c>=0 :
+            return c, 'parameters'
+        c = findWithNameIndex(name, self.__reactions)
+        if c>=0 :
+            return c, 'reactions'
+        c = findWithNameIndex(name, self.__variables)
+        if c>=0 :
+            return c, 'variables'
+        c = findWithNameIndex(name, self.__transf)
+        if c>=0 :
+            return c, 'transf'
+        c = findWithNameIndex(name, self.__forcing)
+        if c>=0 :
+            return c, 'forcing'
+        raise AttributeError, name + ' is not a component in this model'
+
     def vectorize(self, state):
         if isinstance(state, str) or isinstance(state, unicode):
             if not hasattr(self, state):
@@ -311,6 +409,8 @@ class Model(object):
                                                         self.__variables)
                 if resstring != "":
                     return False, resstring + '\nin rate of %s\n(%s)' % (v.name, v.rate)
+        for t in self.__forcing:
+            t.genForcingFunction(self)
         return True, 'OK'
 
     def __str__(self):
@@ -323,7 +423,7 @@ class Model(object):
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
             res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
-        for collection in (self.__reactions, self.__transf):
+        for collection in (self.__reactions, self.__transf, self.__forcing):
             for i in collection:
                 res += str(i)
         for p in self.__states:
@@ -342,6 +442,8 @@ class Model(object):
             setattr(m, p.name, ConstValue(p))
         for t in self.transf:
             setattr(m, t.name, Transformation(t.rate))
+        for f in self.forcing:
+            setattr(m, f.name, Forcing(f.rate))
         for s in self.__states:
             newdict= {}
             for i in s:
@@ -395,6 +497,9 @@ class Model(object):
         # replace varnames
         for i,v in enumerate(self.variables):
             rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
+        # replace forcing functions
+        for i,v in enumerate(self.forcing):
+            rateString = re.sub(r"\b"+ v.name+r"\b", "forcing_function[%d]"%i, rateString)
         # replace uncertain parameters
         if with_uncertain:
             for i,u in enumerate(self.uncertain):
@@ -416,7 +521,7 @@ class Model(object):
             raise BadRateError, msg
 
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__reactions]
         # create array to hold v's
         v = empty(len(self.reactions))
             
@@ -445,7 +550,7 @@ class Model(object):
             raise BadRateError, msg
 
         #compile rate laws
-        transfbytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), 'bof.log','eval') for v in self.__transf]
+        transfbytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__transf]
         # create array to hold v's
         m_Transformations = empty(len(self.transf))
             
@@ -464,6 +569,55 @@ class Model(object):
         else:
             return f
 
+    def genTransformationFunction(self, f):
+        if not callable(f):
+            if not isinstance(f,str):
+                raise TypeError, 'argument must be a string or a callable.'
+            argnames = f.split()
+        else:
+            cc = f.func_code
+            nargs = cc.co_argcount
+            argnames = cc.co_varnames[:nargs]
+        data = []
+        for a in argnames:
+            i, collection = self.findComponent(a)
+            if collection == 'parameters':
+                data.append((collection, getattr(self, a)))
+            elif collection == 'variables':
+                data.append((collection, i))
+            elif collection == 'transf':
+                data.append((collection, compile(self.rateCalcString(self.transf[i].rate), '<string>','eval')))
+            elif collection == 'reactions':
+                data.append((collection, compile(self.rateCalcString(self.reactions[i].rate), '<string>','eval')))
+            else:
+                raise AttributeError, a + ' is not a component in this model'
+
+        def retf(variables, t):
+            args = []
+            for c,d in data:
+                if c == 'parameters':
+                    args.append(d)
+                elif c == 'variables':
+                    args.append(variables[d])
+                else:
+                    args.append(eval(d))
+            return f(*args)
+        def retargs(variables, t):
+            args = []
+            for c,d in data:
+                if c == 'parameters':
+                    args.append(d)
+                elif c == 'variables':
+                    args.append(variables[d])
+                else:
+                    args.append(eval(d))
+            return args
+                
+        if callable(f):
+            return retf
+        else:
+            return retargs
+
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
     
@@ -477,22 +631,23 @@ class Model(object):
         if not check:
             raise BadRateError, msg
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), '<string>','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
         NT = N.transpose()
 
         # create array to hold v's
         v = empty(len(self.reactions))
+        en = list(enumerate(ratebytecode))
         
         def f(variables, t):
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
 
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
         
@@ -513,23 +668,24 @@ class Model(object):
             print [x.name for x in self.variables]
             raise BadRateError, msg
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), '<string>','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
         N *= scale
         NT = N.transpose()
-
         # create array to hold v's
         v = empty(len(self.reactions))
+        en = list(enumerate(ratebytecode))
 
         def f(variables, t):
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
+            #~ v = [eval(r) for r in ratebytecode]
             return dot(v,NT)
         if with_uncertain:
             return f2
@@ -546,7 +702,7 @@ class Model(object):
         if not check:
             raise BadRateError, msg
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = True), 'bof.log','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = True), '<string>','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
         N *= scale
@@ -554,14 +710,14 @@ class Model(object):
 
         # create array to hold v's
         v = empty(len(self.reactions))
+        en = list(enumerate(ratebytecode))
 
         def f(variables, t):
             m_Parameters = uncertainparameters
-            for i,r in enumerate(ratebytecode):
+            for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
         return f
-
 
     def __getReactions(self):
         return self.__reactions
@@ -573,6 +729,8 @@ class Model(object):
         return self.__parameters
     def __getTransformations(self):
         return self.__transf
+    def __getForcing(self):
+        return self.__forcing
     
     def __getUncertainValues(self):
         return list(getUncertainties(self)) #generator of uncertain values
@@ -583,6 +741,7 @@ class Model(object):
     parameters   = property(__getParameters)
     uncertain    = property(__getUncertainValues)
     transf       = property(__getTransformations)
+    forcing      = property(__getForcing)
     dXdt         = property(getdXdt)
 
 def getUncertainties(model):
@@ -605,20 +764,6 @@ class BadRateError(Exception):
 class BadTypeComponent(Exception):
     """Used to flag an assignement of a model component to a wrong type object"""
 
-
-def react(stoichiometry, rate = 0.0):
-    res = processStoich(stoichiometry)
-    if not res:
-        raise BadStoichError, "Bad stoichiometry definition:\n"+ stoichiometry
-    if isinstance(rate, float) or isinstance(rate, int):
-        rate = massActionStr(rate, res[0])
-    return Reaction(res[0], res[1], rate, res[2])
-
-def transf(rate = 0.0):
-    if isinstance(rate, float) or isinstance(rate, int):
-        rate = str(rate)
-    return Transformation(rate)
-
 def test():
     
     m = Model('My first model')
@@ -635,6 +780,7 @@ def test():
     m.init = state(A = 1.0, C = 1)
     m.afterwards = state(A = 1.0, C = 2)
     m.afterwards.C.uncertainty(1,3)
+    m.forcing1 = forcing("t * A")
     
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'
@@ -644,14 +790,6 @@ def test():
     print '------- result of CLONING the model:\n'
     print m2
     
-    print '********** Testing component retrieval *********************'
-    print 'm.K3 :',m.Km3
-    print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
-    print 'm.init:',m.init
-    print 'm.init.A :',m.init.A
-    print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x
     print
     print '********** Testing iteration of components *****************'
     print 'iterating m.reactions'
@@ -672,12 +810,20 @@ def test():
     print 'iterating m.uncertain'
     for x in m.uncertain:
         print '\t', x.name, 'in (', x.min, ',', x.max, ')'
-
     
     print 'iterating m.init'
     for name, x in m.init:
         print '\t', name, '=', x
     print
+
+    print '********** Testing component retrieval *********************'
+    print 'm.K3 :',m.Km3
+    print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
+    print 'm.init:',m.init
+    print 'm.init.A :',m.init.A
+    print 'iterating m.init'
+    for name, x in m.init:
+        print '\t', name, '=', x
 
 
     print '********** Testing component reassignment *****************'
