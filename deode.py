@@ -52,7 +52,7 @@ class DeODESolver(de.DESolver):
         # scale times to maximum time in data
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
-        self.calcDerivs = model.scaled_dXdt(scale, with_uncertain=True)
+        self.calcDerivs = model.getdXdt(scale=scale, with_uncertain=True)
         
         # store initial values and (scaled) time points
         self.X0 = []

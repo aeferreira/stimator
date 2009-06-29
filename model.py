@@ -418,8 +418,7 @@ class Model(object):
             state = getattr(self, state)
         newlist = [state.varvalues.get(var.name,0.0) for var in self.__variables]
         return array(newlist)
-        
-    
+
     def varnames(self):
         return [i.name for i in self.__variables]
     
@@ -665,49 +664,7 @@ class Model(object):
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
     
-    def getdXdt(self, with_uncertain = False):
-        """Generate function to compute rhs of SODE for this model.
-        
-           Function has signature f(variables, t)
-           This is compatible with scipy.integrate.odeint"""
-
-        check, msg = self.checkRates()
-        if not check:
-            raise BadRateError, msg
-        #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), '<string>','eval') for v in self.__reactions]
-        # compute stoichiometry matrix, scale and transpose
-        N  = self.genStoichiometryMatrix()
-        NT = N.transpose()
-
-        # create array to hold v's
-        v = empty(len(self.reactions))
-        en = list(enumerate(ratebytecode))
-        # create array to hold forcing functions
-        forcing_function = empty(len(self.forcing))
-        enf = list(enumerate(self.forcing))
-        
-        def f(variables, t):
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
-            for i,r in en:
-                v[i] = eval(r)
-            return dot(v,NT)
-
-        def f2(variables, t):
-            m_Parameters = self.__m_Parameters
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
-            for i,r in en:
-                v[i] = eval(r)
-            return dot(v,NT)
-        
-        if with_uncertain:
-            return f2
-        else:
-            return f
-
-    def scaled_dXdt(self, scale = 1.0, with_uncertain = False):
+    def getdXdt(self, with_uncertain = False, scale = 1.0):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)

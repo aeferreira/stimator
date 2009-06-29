@@ -18,7 +18,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     salg=integrate._odepack.odeint
     names = [x.name for x in model.variables]
     scale = 1.0
-    f = model.scaled_dXdt(scale)
+    f = model.getdXdt(scale)
     if isinstance(initial, str) or isinstance(initial, State):
         y0 = copy(model.vectorize(initial))
     else:
