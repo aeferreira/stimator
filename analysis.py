@@ -146,7 +146,8 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
     ntc = len(solutions)
     ncols = int(math.ceil(math.sqrt(ntc)))
     nrows = int(math.ceil(float(ntc)/ncols))
-
+    first = True
+    
     for isolution,solution in enumerate(solutions):
         p.subplot(nrows,ncols,isolution+1)
         for i in range(len(solution)):
@@ -159,6 +160,17 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
             p.title(titles[isolution])
         else:
             p.title(solution.title)
+        yscale = p.ylim()
+        if first:
+            yscale_all = list(yscale)
+            first = False
+        else:
+            if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
+            if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
+    if ynormalize:
+        for isolution in range(ntc):
+            p.subplot(nrows,ncols,isolution+1)
+            p.ylim(yscale_all)
     p.show()
 
 def test():
