@@ -141,6 +141,18 @@ def react(stoichiometry, rate = 0.0):
     return Reaction(res[0], res[1], rate, res[2])
 
 
+class Variable_dXdt(object):
+    def __init__(self, rate = 0.0):
+        self.rate = rate
+        self.name = '?'
+    def __str__(self):
+        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
+
+def variable(rate = 0.0):
+    if isinstance(rate, float) or isinstance(rate, int):
+        rate = str(rate)
+    return Variable_dXdt(rate)
+
 class StateArray(object):
     def __init__(self, varvalues, name):
         self.__dict__['name'] = name
@@ -319,6 +331,11 @@ class Model(object):
             value = ConstValue(float(value))
         if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
             value = Bounds(float(value[0]), float(value[1]))
+        if isinstance(value,Variable_dXdt):
+            react_name = 'd_%s_dt'% name
+            stoich = ' -> %s'% name
+            name = react_name # hope this works...
+            value = react(stoich, value.rate)
         assoc = ((Reaction,       '_Model__reactions'),
                  (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
@@ -471,7 +488,8 @@ class Model(object):
                         continue
                     else:
                         if findWithName(name, self.__parameters):
-                            self.__extvariables.append(Variable(name))
+                            if not findWithName(name, self.__extvariables):
+                                self.__extvariables.append(Variable(name))
                         else:
                             self.__variables.append(Variable(name))
 
@@ -819,13 +837,14 @@ def test():
     m.v4 = react("B   ->  "  , "2*input1")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
+    m.D  = variable("-2 * D")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
     m.V3 = 0.5
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
-    m.init = state(A = 1.0, C = 1)
-    m.afterwards = state(A = 1.0, C = 2)
+    m.init = state(A = 1.0, C = 1, D = 1)
+    m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
     m.input1 = forcing(force)
     
@@ -950,7 +969,7 @@ def test():
 
     print '********** Testing rate and dXdt generating functions ******'
     print 'Operating point:'
-    varvalues = [1.0, 1.0]
+    varvalues = [1.0, 1.0, 1.0]
     pars      = [1.0]
 
     print 'variables  =', dict((v.name, value) for v,value in zip(m.variables, varvalues))

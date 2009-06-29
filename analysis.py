@@ -188,19 +188,10 @@ def test():
 
     solution1 = solve(m1, tf = 4030.0)
 
-    #print t
-    #print solution
-    #print trf
-
     print '--- Last time point ----'
     print 'At t =', solution1.t[-1]
     for x,value in solution1.last:
         print "%-8s= %f" % (x, value)
-
-    #plot results...
-    #~ f1 = p.figure(1)
-    #~ p.subplot(221) 
-    #~ plot(solution, title = m1.title)
 
     #print '---------------- EXAMPLE 2 ------------------'
     m2 = Model("Branched pathway")
@@ -223,8 +214,6 @@ def test():
     times = append(linspace(0.0,5.0,500),linspace(5.0,10.0, 500))
 
     solution2 = solve(m2, tf = 10.0, times=times)
-    #~ p.subplot(222) 
-    #~ plot(solution, title = m2.title)
 
     #print '---------------- EXAMPLE 3 ------------------'
     m3 = Model("Calcium Spikes")
@@ -241,14 +230,12 @@ def test():
     #print m3
 
     solution3 = solve(m3, tf = 8.0, npoints = 2000)
-    #~ p.subplot(223) 
-    #~ plot(solution, title = m3.title)
 
     print '---------------- EXAMPLE 4 ------------------'
     m4 = Model("Rossler")
-    m4.v1 = react(" -> X1", rate = "X2 - X3")
-    m4.v2 = react(" -> X2", rate = "0.36 * X2 - X1")
-    m4.v3 = react(" -> X3", rate = "X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8")
+    m4.X1 = variable("X2 - X3")
+    m4.X2 = variable("0.36 * X2 - X1")
+    m4.X3 = variable("X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8")
     m4.x3 = transf("X3 -50.0")
     m4.x1 = transf("X1 -18.0")
     m4.x2 = transf("X2 -50.0")
