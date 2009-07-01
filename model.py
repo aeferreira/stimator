@@ -528,6 +528,43 @@ class Model(object):
                 continue
             rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString) 
         return rateString
+    
+    def rates_strings(self):
+        check, msg = self.checkRates()
+        if not check:
+            raise BadRateError, msg
+
+        return tuple([(v.name, v.rate) for v in self.__reactions])
+
+    def dXdt_strings(self):
+        check, msg = self.checkRates()
+        if not check:
+            raise BadRateError, msg
+        N = self.genStoichiometryMatrix()
+        res = []
+        for i,x in enumerate(self.variables):
+            name = x.name
+            dXdtstring = ''
+            for j,v in enumerate(self.reactions):
+                coef = N[i,j]
+                if coef == 0.0: continue
+                ratestring = '(%s)'% v.rate
+                if coef == 1.0:
+                    ratestring = '+'+ratestring
+                else:
+                    ratestring = "%g*%s" % (coef,ratestring)
+                    if coef > 0.0:
+                        ratestring = '%s%s'%('+', ratestring)
+                dXdtstring += ratestring
+            res.append((name, dXdtstring))
+        return tuple(res)
+            
+
+        for x in self.variables:
+            name = x.name
+            dXdtstring = ''
+        return tuple([(v.name, v.rate) for v in self.__reactions])
+    
 
     def rates_func(self, with_uncertain = False):
         """Generate function to compute rate vector for this model.
@@ -911,6 +948,14 @@ def test():
         print '\t', name, '=', x.pprint()
     print 
 
+    print '********** Testing rate and dXdt strings *******************'
+    print 'rates_strings(): -------------------------'
+    for v in m.rates_strings():
+        print v
+    print '\ndXdt_strings(): -------------------------'
+    for dxdt in m.dXdt_strings():
+        print dxdt
+    print
     print '********** Testing stoichiometry matrix ********************'
     print 'Stoichiometry matrix:'
     N = m.genStoichiometryMatrix()
