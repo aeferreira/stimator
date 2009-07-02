@@ -123,10 +123,10 @@ def findWithNameIndex(name, alist):
 #         Model and Model component classes
 #----------------------------------------------------------------------------
 class Reaction(object):
-    def __init__(self, reagents, products, rate = 0.0, irreversible = False):
+    def __init__(self, reagents, products, rate, irreversible = False):
         self.reagents = reagents
         self.products = products
-        self.rate = rate
+        self.rate = rate.strip()
         self.irreversible = irreversible
         self.name = '?'
     def __str__(self):
@@ -135,7 +135,7 @@ class Reaction(object):
 def react(stoichiometry, rate = 0.0):
     res = processStoich(stoichiometry)
     if not res:
-        raise BadStoichError, "Bad stoichiometry definition:\n"+ stoichiometry
+        raise BadStoichError( "Bad stoichiometry definition:\n"+ stoichiometry)
     if isinstance(rate, float) or isinstance(rate, int):
         rate = massActionStr(rate, res[0])
     return Reaction(res[0], res[1], rate, res[2])
@@ -165,7 +165,7 @@ class StateArray(object):
         if name in self.varvalues:
             return self.varvalues[name]
         else:
-            raise AttributeError, name + ' is not a member of state'+ self.__dict__['name']
+            raise AttributeError( name + ' is not a member of state'+ self.__dict__['name'])
     def __setattr__(self, name, value):
         if name != 'name' and name != 'varvalues':
             value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
@@ -243,15 +243,15 @@ def forcing(rate):
 
 
 class Transformation(object):
-    def __init__(self, rate = 0.0):
-        self.rate = rate
+    def __init__(self, rate):
+        self.rate = rate.strip()
         self.name = '?'
     def __str__(self):
         return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
 
 def transf(rate = 0.0):
     if isinstance(rate, float) or isinstance(rate, int):
-        rate = str(rate)
+        rate = str(float(rate))
     return Transformation(rate)
 
 
@@ -292,7 +292,7 @@ def constValue(value = None, name = None, into = None):
             res = ContsValue(v)
         res.bounds = bounds
     else:
-        raise TypeError, value + ' is not a float or pair of floats'
+        raise TypeError( value + ' is not a float or pair of floats')
     if name:
         res.name = name
     if res.bounds:
@@ -353,7 +353,7 @@ class Model(object):
                     self.__refreshVars()
                     return
                 else:
-                    raise BadTypeComponent, name+ ' can not be assigned to ' + type(value).__name__
+                    raise BadTypeComponent( name+ ' can not be assigned to ' + type(value).__name__)
         for t, dictname in assoc:
             if isinstance(value, t):
                 value.name = name
@@ -391,7 +391,7 @@ class Model(object):
         c = findWithName(name, self.__forcing)
         if c :
             return c
-        raise AttributeError, name + ' is not defined for this model'
+        raise AttributeError( name + ' is not defined for this model')
 
     def findComponent(self, name):
         c = findWithNameIndex(name, self.__parameters)
@@ -409,12 +409,12 @@ class Model(object):
         c = findWithNameIndex(name, self.__forcing)
         if c>=0 :
             return c, 'forcing'
-        raise AttributeError, name + ' is not a component in this model'
+        raise AttributeError( name + ' is not a component in this model')
 
     def vectorize(self, state):
         if isinstance(state, str) or isinstance(state, unicode):
             if not hasattr(self, state):
-                raise AttributeError, state + ' is not defined for this model'
+                raise AttributeError( state + ' is not defined for this model')
             state = getattr(self, state)
         newlist = [state.varvalues.get(var.name,0.0) for var in self.__variables]
         return array(newlist)
@@ -496,7 +496,7 @@ class Model(object):
     def genStoichiometryMatrix(self):
         check, msg = self.checkRates()
         if not check:
-            raise BadRateError, msg
+            raise BadRateError(msg)
 
         varnames = self.varnames()
         N = zeros((len(self.__variables),len(self.__reactions)), dtype=float)
@@ -532,14 +532,14 @@ class Model(object):
     def rates_strings(self):
         check, msg = self.checkRates()
         if not check:
-            raise BadRateError, msg
+            raise BadRateError(msg)
 
         return tuple([(v.name, v.rate) for v in self.__reactions])
 
     def dXdt_strings(self):
         check, msg = self.checkRates()
         if not check:
-            raise BadRateError, msg
+            raise BadRateError(msg)
         N = self.genStoichiometryMatrix()
         res = []
         for i,x in enumerate(self.variables):
@@ -573,7 +573,7 @@ class Model(object):
 
         check, msg = self.checkRates()
         if not check:
-            raise BadRateError, msg
+            raise BadRateError(msg)
 
         #compile rate laws
         ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__reactions]
@@ -610,7 +610,7 @@ class Model(object):
 
         check, msg = self.checkRates()
         if not check:
-            raise BadRateError, msg
+            raise BadRateError(msg)
 
         #compile rate laws
         transfbytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__transf]
@@ -642,7 +642,7 @@ class Model(object):
     def genTransformationFunction(self, f):
         if not callable(f):
             if not isinstance(f,str):
-                raise TypeError, 'argument must be a string or a callable.'
+                raise TypeError('argument must be a string or a callable.')
             argnames = f.split()
             nargs = len(argnames)
         else:
@@ -663,7 +663,7 @@ class Model(object):
             elif collection == 'forcing':
                 data.append(('f', self.forcing[i].func))
             else:
-                raise AttributeError, a + ' is not a component in this model'
+                raise AttributeError(a + ' is not a component in this model')
         args = [0.0]*nargs
         en = [(i,c,d) for (i, (c,d)) in enumerate(data)]
         for i,c,d in en:
@@ -711,7 +711,7 @@ class Model(object):
         if not check:
             print "vars = "
             print [x.name for x in self.variables]
-            raise BadRateError, msg
+            raise BadRateError(msg)
         #compile rate laws
         ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), '<string>','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
@@ -751,7 +751,7 @@ class Model(object):
 
         check, msg = self.checkRates()
         if not check:
-            raise BadRateError, msg
+            raise BadRateError(msg)
         #compile rate laws
         ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = True), '<string>','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose

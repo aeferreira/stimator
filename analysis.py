@@ -78,7 +78,7 @@ class SolutionTimeCourse(object):
             try:
                 i = self.names.index(key)
             except ValueError:
-                raise ValueError, "No data for '%s' in timecourse" % str(key)
+                raise ValueError( "No data for '%s' in timecourse" % str(key))
             return self.data.__getitem__(i)
         return self.data.__getitem__(key)
     def state_at(self, t):
@@ -86,7 +86,7 @@ class SolutionTimeCourse(object):
         
            May have to interpolate."""
         if t > self.t[-1] or t < self.t[0]:
-            raise ValueError, "No data for time '%s' in timecourse" % str(t)
+            raise ValueError( "No data for time '%s' in timecourse" % str(t) )
         # Interpolate:
         ileft = self.t.searchsorted(t, side = 'left')
         iright = self.t.searchsorted(t, side = 'right')
@@ -127,12 +127,12 @@ class Solutions(object):
         elif isinstance(other, list) or isinstance(other, tuple):
             for s in other:
                 if not isinstance(s, SolutionTimeCourse): 
-                    raise TypeError, "Must add a solutions or collection of solutions"
+                    raise TypeError( "Must add a solutions or collection of solutions")
             self.solutions.extend(list(other))
         elif isinstance(other, SolutionTimeCourse):
             self.solutions.append(other)
         else:
-            raise TypeError, "Must add a solutions or collection of solutions"
+            raise TypeError( "Must add a solutions or collection of solutions")
         return self
     def __iter__(self):
         return iter(self.solutions)
