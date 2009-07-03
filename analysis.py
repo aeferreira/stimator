@@ -19,7 +19,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     names = [x.name for x in model.variables]
     scale = 1.0
     f = model.getdXdt(scale)
-    if isinstance(initial, str) or isinstance(initial, State):
+    if isinstance(initial, str) or isinstance(initial, StateArray):
         y0 = copy(model.vectorize(initial))
     else:
         y0 = copy(initial)

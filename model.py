@@ -17,7 +17,7 @@ from numpy import *
 #         Functions to check the validity of math expressions
 #----------------------------------------------------------------------------
 
-def test_with_everything(valueexpr, model): 
+def _test_with_everything(valueexpr, model): 
     locs = {}
     for p in model.parameters:
         locs[p.name] = p #.value
@@ -425,7 +425,7 @@ class Model(object):
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
             for v in collection:
-                resstring, value = test_with_everything(v.rate,self)
+                resstring, value = _test_with_everything(v.rate,self)
                 if resstring != "":
                     return False, resstring + '\nin rate of %s\n(%s)' % (v.name, v.rate)
         for t in self.__forcing:
