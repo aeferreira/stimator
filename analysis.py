@@ -36,18 +36,14 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     if outputs is False:
         return sol
     elif outputs is True:
-        #compute transf
+        #compute model transformations
         f     = model.transf_func()
-        def newf(newdata,f):
-            return f(newdata[1:], newdata[0])
         names = [x.name for x in model.transf]
-        trf   = apply_along_axis(newf, 0, vstack((sol.t,sol.data)), f)
-        return SolutionTimeCourse (sol.t, trf, names, title)
+        sol.apply_transf(f,names)
+        return sol
     elif isinstance(outputs, str) or callable(outputs):
+        #filter names or apply external function
         f = model.genTransformationFunction(outputs)
-        def newf(newdata,f):
-            return f(newdata[1:], newdata[0])
-        trf   = apply_along_axis(newf, 0, vstack((sol.t,sol.data)), f)
         if not callable(outputs):
             names = outputs.split()
         else:
@@ -55,9 +51,10 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
                 names = outputs.names
             else:
                 names = ['transf%d'% i for i in range(trf.shape[0])]
-        return SolutionTimeCourse (sol.t, trf, names, title)
+        sol.apply_transf(f,names)
+        return sol
     else:
-        raise TypeError('outputs parameter is of the wrong type')
+        raise TypeError("'outputs' parameter is of the wrong type")
 
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
@@ -106,7 +103,22 @@ class SolutionTimeCourse(object):
         y = self.data[:,-1]
         return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
     last = property(__getLastState) #'last' is a synonymous, used as 'sol.last'
-
+    
+    def apply_transf(self,f, newnames=None):
+        """Applies a transformation to time series.
+        
+           f is the transformation function, with signature
+           f(variables,t). variables is an array, list or tuple, t is a scalar.
+           This function must return an array with the same size as 'variables'.
+           newnames is a list of names of the transformed variables.
+           results are kept 'in place': data is substituted."""
+           
+        def newf(newdata,f):
+            return f(newdata[1:], newdata[0])
+        trf   = apply_along_axis(newf, 0, vstack((self.t,self.data)), f)
+        if newnames is not None:
+            self.names = newnames
+        self.data = trf
     
 class Solutions(object):
     """Holds a colection of objects of class SolutionTimeCourse"""
@@ -264,6 +276,14 @@ def test():
     print m4
 
     solution4 = solve(m4, tf = 100.0, npoints = 2000, outputs="x1 x2 x3")
+    
+    def transformation(vars,t):
+        if t > 40.0:
+            return (vars[0]-5.0, vars[1], vars[2])
+        else:
+            return (-5.0, vars[1], vars[2])
+
+    solution4.apply_transf(transformation)
 
     plot ([solution1, solution2, solution3, solution4])
 
