@@ -234,7 +234,6 @@ class Forcing(object):
         else:
             self.func = reteval
 
-
 def forcing(rate):
     if isinstance(rate, str) or callable(rate):
         return Forcing(rate)
@@ -314,6 +313,33 @@ class Variable(object):
     def __str__(self):
         return self.name
 
+def isPairOfNums(value):
+    if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
+        for numtype in (float,int,long):
+            if isinstance(value[0], numtype) and isinstance(value[1], numtype):
+                return True
+    return False
+
+def ConvertPair2Reaction(value):
+    if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
+        if isinstance(value[0], str):
+            good2nd = False
+            for numtype in (str, float,int,long):
+                if isinstance(value[1], numtype):
+                    good2nd = True
+                    break
+            if not good2nd:
+                return False
+            res = processStoich(value[0])
+            if not res:
+                raise BadStoichError( "Bad stoichiometry definition:\n"+ value[0])
+            rate = value[1]
+            for numtype in (float,int,long):
+                if isinstance(rate, numtype):
+                    rate = massActionStr(rate, res[0])
+            return Reaction(res[0], res[1], rate, res[2])
+    return False
+
 class Model(object):
     def __init__(self, title = ""):
         self.__dict__['_Model__reactions']         = []
@@ -327,15 +353,19 @@ class Model(object):
         self.__dict__['_Model__m_Parameters']      = None
     
     def __setattr__(self, name, value):
-        if isinstance(value, float) or isinstance(value, int):
-            value = ConstValue(float(value))
-        if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
+        for numtype in (float,int,long):
+            if isinstance(value, numtype):
+                value = ConstValue(float(value))
+        if isPairOfNums(value):
             value = Bounds(float(value[0]), float(value[1]))
         if isinstance(value,Variable_dXdt):
             react_name = 'd_%s_dt'% name
             stoich = ' -> %s'% name
             name = react_name # hope this works...
             value = react(stoich, value.rate)
+        r = ConvertPair2Reaction(value)
+        if r:
+            value = r
         assoc = ((Reaction,       '_Model__reactions'),
                  (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
@@ -825,10 +855,10 @@ def test():
     def force(A, t):
         return t*A
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
+    m.v1 = "A+B -> C", 3
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*input1")
+    m.v4 = "B   ->  "  , "2*input1"
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
@@ -837,6 +867,7 @@ def test():
     m.V3 = 0.5
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
+    m.Km3 = 1,6
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
@@ -947,6 +978,7 @@ def test():
     for name, x in m.init:
         print '\t', name, '=', x.pprint()
     print 
+    m.Km3.uncertainty(None)
 
     print '********** Testing rate and dXdt strings *******************'
     print 'rates_strings(): -------------------------'

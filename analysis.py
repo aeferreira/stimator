@@ -249,14 +249,14 @@ def test():
 
     #print '---------------- EXAMPLE 3 ------------------'
     m3 = Model("Calcium Spikes")
-    m3.v0 = react(" -> Ca", 1)
+    m3.v0 = " -> Ca", 1
     m3.v1 = react(" -> Ca", rate = "B*k1")
     m3.k1 = 7.3
     m3.B  = 0.4
-    m3.export = react(" Ca -> ", 10)
-    m3.leak   = react("CaComp -> Ca", 1)
-    m3.v2     = react("Ca -> CaComp", rate = "65 * Ca**2 / (1+Ca**2)")
-    m3.v3     = react("CaComp -> Ca", rate = "500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)")
+    m3.export = " Ca -> ", 10
+    m3.leak   = "CaComp -> Ca", 1
+    m3.v2     = "Ca -> CaComp", "65 * Ca**2 / (1+Ca**2)"
+    m3.v3     = "CaComp -> Ca", "500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)"
     m3.init   = state(Ca = 0.1, CaComp = 0.63655)
 
     #print m3
