@@ -57,25 +57,38 @@ class DeODESolver(de.DESolver):
         # store initial values and (scaled) time points
         self.X0 = []
         self.times = []
+        self.varindexes = []
+        self.ydata = []
         for data in self.timecoursedata:
             y0 = copy(data[0, 1:]) # variables are in columns 1 to end
             self.X0.append(y0)
+            self.ydata.append(data[:, 1:])
 
-            # find uncertain initial values
-            self.mapinit2trial = []
-            for iu, u in enumerate(self.model.uncertain):
-                if u.name.startswith('init'):
-                    varname = u.name.split('.')[-1]
-                    ix = findWithNameIndex(varname, self.model.variables)
-                    self.mapinit2trial.append((ix,iu))
-                    #y0[ix] = trial[iu]
             
             t  = data[:, 0]        # times are in columns 0
             t0 = t[0]
             times = (t-t0)/scale+t0  # this scales time points
             self.times.append(times)
+            
+            nt = len(t)
+            varindexes = []
+
+            for ivar in range(data.shape[1]-1):
+                #count NaN
+                yexp = self.ydata[-1][:,ivar]
+                nnan = len(yexp[isnan(yexp)])
+                if nnan >= nt-1: continue
+                varindexes.append(ivar)
+            self.varindexes.append(array(varindexes, int))
 
         self.timecourse_scores = empty(len(self.timecoursedata))
+        # find uncertain initial values
+        self.mapinit2trial = []
+        for iu, u in enumerate(self.model.uncertain):
+            if u.name.startswith('init'):
+                varname = u.name.split('.')[-1]
+                ix = findWithNameIndex(varname, self.model.variables)
+                self.mapinit2trial.append((ix,iu))
         
         # open files to write parameter progression
         if self.dump_pars:
@@ -105,8 +118,12 @@ class DeODESolver(de.DESolver):
             #~ if infodict['message'] != 'Integration successful.':
                 #~ return (1.0E300)
             Y = output[0]
-            S = (Y- self.timecoursedata[i][:, 1:])**2
-            score = nansum(S)
+            #~ S = (Y- self.ydata[i])**2
+            #~ score = nansum(S)
+            S = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])
+            score = sum(S*S)
+            #~ S = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])**2
+            #~ score = sum(S)
             self.timecourse_scores[i]=score
         
         gscore = self.timecourse_scores.sum()
