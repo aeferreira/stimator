@@ -12,6 +12,7 @@ from numpy import *
 from scipy import integrate
 from model import *
 import timecourse
+import dyncriteria
 
 #----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
@@ -120,11 +121,8 @@ class DeODESolver(de.DESolver):
             Y = output[0]
             #~ S = (Y- self.ydata[i])**2
             #~ score = nansum(S)
-            S = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])
-            score = sum(S*S)
-            #~ S = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])**2
-            #~ score = sum(S)
-            self.timecourse_scores[i]=score
+            diff = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])
+            self.timecourse_scores[i]=dyncriteria.simpleSSD(diff)
         
         gscore = self.timecourse_scores.sum()
         return gscore
