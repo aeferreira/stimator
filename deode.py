@@ -71,17 +71,7 @@ class DeODESolver(de.DESolver):
             times = (t-t0)/scale+t0  # this scales time points
             self.times.append(times)
             
-            nt = len(t)
-            varindexes = []
-
-            for ivar in range(data.shape[1]-1):
-                #count NaN
-                yexp = self.ydata[-1][:,ivar]
-                nnan = len(yexp[isnan(yexp)])
-                if nnan >= nt-1: continue
-                varindexes.append(ivar)
-            self.varindexes.append(array(varindexes, int))
-        self.criterium_func = dyncriteria.getCriteriumFunc(weights, self.ydata)
+        self.criterium = dyncriteria.getCriteriumFunction(weights, self.ydata)
 
         self.timecourse_scores = empty(len(self.timecoursedata))
         # find uncertain initial values
@@ -120,13 +110,10 @@ class DeODESolver(de.DESolver):
             #~ if infodict['message'] != 'Integration successful.':
                 #~ return (1.0E300)
             Y = output[0]
-            #~ S = (Y- self.ydata[i])**2
-            #~ score = nansum(S)
-            d = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])
-            self.timecourse_scores[i]=self.criterium_func(d)
+            self.timecourse_scores[i]=self.criterium(Y, i)
         
-        gscore = self.timecourse_scores.sum()
-        return gscore
+        globalscore = self.timecourse_scores.sum()
+        return globalscore
 
     def reportGeneration (self):
         if not self.generationTicker:
