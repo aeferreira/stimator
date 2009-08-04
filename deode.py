@@ -25,7 +25,7 @@ class DeODESolver(de.DESolver):
     Ticker functions are called on generation completion and when optimization finishes.
     """
     
-    def __init__(self, model, optSettings, timecoursecollection, 
+    def __init__(self, model, optSettings, timecoursecollection, weights = None,
                     aGenerationTicker=None, anEndComputationTicker=None, 
                     dump_pars=False):
         self.model = model
@@ -64,7 +64,7 @@ class DeODESolver(de.DESolver):
             y0 = copy(data[0, 1:]) # variables are in columns 1 to end
             self.X0.append(y0)
             self.ydata.append(data[:, 1:])
-
+            #~ self.W.append(gen_weights(self.ydata[-1]))
             
             t  = data[:, 0]        # times are in columns 0
             t0 = t[0]
@@ -81,6 +81,7 @@ class DeODESolver(de.DESolver):
                 if nnan >= nt-1: continue
                 varindexes.append(ivar)
             self.varindexes.append(array(varindexes, int))
+        self.criterium_func = dyncriteria.getCriteriumFunc(weights, self.ydata)
 
         self.timecourse_scores = empty(len(self.timecoursedata))
         # find uncertain initial values
@@ -121,8 +122,8 @@ class DeODESolver(de.DESolver):
             Y = output[0]
             #~ S = (Y- self.ydata[i])**2
             #~ score = nansum(S)
-            diff = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])
-            self.timecourse_scores[i]=dyncriteria.simpleSSD(diff)
+            d = (Y[:,self.varindexes[i]]- self.ydata[i][:, self.varindexes[i]])
+            self.timecourse_scores[i]=self.criterium_func(d)
         
         gscore = self.timecourse_scores.sum()
         return gscore

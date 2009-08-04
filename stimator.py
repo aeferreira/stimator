@@ -723,7 +723,7 @@ class stimatorMainFrame(wx.Frame):
 class CalcOptmThread:
 
     def Start(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
-        self.solver = deode.DeODESolver(model,optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker)
+        self.solver = deode.DeODESolver(model,optSettings, timecoursecollection, None, aGenerationTicker, anEndComputationTicker)
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
 
