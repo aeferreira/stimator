@@ -54,6 +54,12 @@ chemcomplexpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 stoichiom  = re.compile(stoichiompattern,    re.IGNORECASE)
 chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
 
+identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
+
+def identifiersInExpr(_expr):
+    iterator = identifier.finditer(_expr)
+    return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
+
 #----------------------------------------------------------------------------
 #         Utility functions
 #----------------------------------------------------------------------------
@@ -560,6 +566,11 @@ class Model(object):
         return rateString
     
     def rates_strings(self):
+        """Generate a tuple of tuples of
+           (name, rate) where
+           'name' is the name of a reaction
+           'rhs' is the string of the rate of the reaction.
+        """
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
@@ -567,6 +578,12 @@ class Model(object):
         return tuple([(v.name, v.rate) for v in self.__reactions])
 
     def dXdt_strings(self):
+        """Generate a tuple of tuples of
+           (name, rhs) where
+           'name' is the name of a variable
+           'rhs' is the string of the rhs of that variable
+           in the SODE for this model.
+        """
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
@@ -588,14 +605,94 @@ class Model(object):
                 dXdtstring += ratestring
             res.append((name, dXdtstring))
         return tuple(res)
+
+    def Jacobian_strings(self, _scale = 1.0):
+        """Generate a matrix (list of lists) of strings
+           to compute the jacobian for this model.
+        
+           IMPORTANT: sympy module must be installed!"""
+
+        check, msg = self.checkRates()
+        if not check:
+            raise BadRateError(msg)
+        try:
+            import sympy
+        except:
+            print 'ERROR: sympy module must be installed to generate Jacobian strings'
+            raise
+        _dxdtstrings = self.dXdt_strings()
+        _symbs = {}
+        for x in self.__variables:
+            _symbs[x.name] = sympy.Symbol(x.name)
+        for p in self.__parameters:
+            _symbs[p.name] = sympy.Symbol(p.name)
+        for f in self.__forcing:
+            _symbs[f.name] = sympy.Symbol(f.name)
+        _nvars = len(self.__variables)
+        _jfuncs = []
+        for _i in range(_nvars):
+            _jfuncs.append([])
+            _ids = identifiersInExpr(_dxdtstrings[_i][1])
+            if len(_ids) == 0:
+                for _j in range(_nvars):
+                    _jfuncs[_i].append('0.0')
+            else:
             
+                for _j in range(_nvars):
+                    _res = eval(_dxdtstrings[_i][1], None, _symbs)
+                    _res = _res * _scale
+                    _dres = str(sympy.diff(_res, _symbs[self.__variables[_j].name]))
+                    if _dres == '0':
+                        _dres = '0.0'
+                    _jfuncs[_i].append(_dres)
+                    #~ print _jfuncs
+        return _jfuncs
+        
+    def dfdp_strings(self, _parnames, _scale = 1.0):
+        """Generate a matrix (list of lists) of strings
+           to compute the partial derivatives of rhs o SODE
+           with respect to a list of parameters.
+           _parnems is a list of parameter names.
+        
+           IMPORTANT: sympy module must be installed!"""
 
-        for x in self.variables:
-            name = x.name
-            dXdtstring = ''
-        return tuple([(v.name, v.rate) for v in self.__reactions])
-    
-
+        check, msg = self.checkRates()
+        if not check:
+            raise BadRateError(msg)
+        try:
+            import sympy
+        except:
+            print 'ERROR: sympy module must be installed to generate partial derivative strings'
+            raise
+        _dxdtstrings = self.dXdt_strings()
+        _symbs = {}
+        for x in self.__variables:
+            _symbs[x.name] = sympy.Symbol(x.name)
+        for p in self.__parameters:
+            _symbs[p.name] = sympy.Symbol(p.name)
+        for f in self.__forcing:
+            _symbs[f.name] = sympy.Symbol(f.name)
+        _nvars = len(self.__variables)
+        _npars = len(_parnames)
+        _jfuncs = []
+        for _i in range(_nvars):
+            _jfuncs.append([])
+            _ids = identifiersInExpr(_dxdtstrings[_i][1])
+            if len(_ids) == 0:
+                for _j in range(_npars):
+                    _jfuncs[_i].append('0.0')
+            else:
+            
+                for _j in range(_npars):
+                    _res = eval(_dxdtstrings[_i][1], None, _symbs)
+                    _res = _res * _scale
+                    _dres = str(sympy.diff(_res, _symbs[_parnames[_j]]))
+                    if _dres == '0':
+                        _dres = '0.0'
+                    _jfuncs[_i].append(_dres)
+                    #~ print _jfuncs
+        return _jfuncs
+        
     def rates_func(self, with_uncertain = False):
         """Generate function to compute rate vector for this model.
         
@@ -804,6 +901,45 @@ class Model(object):
                 v[i] = eval(r)
             return dot(v,NT)
         return f
+
+    def getJacobian(self, with_uncertain = False, scale = 1.0):
+        """Generate function to compute the jacobian for this model.
+        
+           Function has signature J(variables, t)
+           and returns an nvars x nvars numpy array
+           IMPORTANT: sympy module must be installed!"""
+
+        Jstrings = self.Jacobian_strings(_scale = scale)
+        nvars = len(Jstrings)
+        
+        #compile rate laws
+        ratebytecode = [[compile(self.rateCalcString(col, with_uncertain = with_uncertain), '<string>','eval') for col in line] for line in Jstrings]
+
+        forcing_function = empty(len(self.forcing))
+        enf = list(enumerate(self.forcing))
+        
+        def J(variables, t):
+            Jarray = empty((nvars,nvars), float)
+            for i,fi in enf:
+                forcing_function[i] = fi.func(variables,t)
+            for i in range(nvars):
+                for j in range(nvars):
+                    Jarray[i,j] = eval(ratebytecode[i][j])
+            return Jarray
+        def J2(variables, t):
+            m_Parameters = self.__m_Parameters
+            Jarray = empty((nvars,nvars), float)
+            for i,fi in enf:
+                forcing_function[i] = fi.func(variables,t)
+            for i in range(nvars):
+                for j in range(nvars):
+                    Jarray[i,j] = eval(ratebytecode[i][j])
+            return Jarray
+        if with_uncertain:
+            return J2
+        else:
+            return J
+
 
     def __getReactions(self):
         return self.__reactions

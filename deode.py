@@ -54,6 +54,7 @@ class DeODESolver(de.DESolver):
         scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
         
         self.calcDerivs = model.getdXdt(scale=scale, with_uncertain=True)
+        self.salg=integrate._odepack.odeint
         
         # store initial values and (scaled) time points
         self.X0 = []
@@ -86,31 +87,38 @@ class DeODESolver(de.DESolver):
         if self.dump_pars:
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
 
+    def computeSolution(self,i,trial):
+        y0 = copy(self.X0[i])
+        # fill uncertain initial values
+        for varindex, trialindex in self.mapinit2trial:
+            y0[varindex] = trial[trialindex]
+            
+        t  = copy(self.times[i])
+
+        #~ Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+        output = self.salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
+                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+        if output[-1] < 0: return None
+        #~ if infodict['message'] != 'Integration successful.':
+            #~ return (1.0E300)
+        return output[0]
+        
+
     def externalEnergyFunction(self,trial):
         #if out of bounds flag with error energy
         for trialpar, minInitialValue, maxInitialValue in zip(trial, self.minInitialValue, self.maxInitialValue):
             if trialpar > maxInitialValue or trialpar < minInitialValue:
                 return 1.0E300
-       
+        #set parameter values from trial
         self.model.set_uncertain(trial)
-        salg=integrate._odepack.odeint
-
+        
+        #compute solutions and scores
         for i in range(len(self.timecoursedata)):
-            y0 = copy(self.X0[i])
-            # fill uncertain initial values
-            for varindex, trialindex in self.mapinit2trial:
-                y0[varindex] = trial[trialindex]
-                
-            t  = copy(self.times[i])
-
-#           Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-            output = salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
-                            None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
-            if output[-1] < 0: return (1.0E300)
-            #~ if infodict['message'] != 'Integration successful.':
-                #~ return (1.0E300)
-            Y = output[0]
-            self.timecourse_scores[i]=self.criterium(Y, i)
+            Y = self.computeSolution(i,trial)
+            if Y is not None:
+                self.timecourse_scores[i]=self.criterium(Y, i)
+            else:
+                return (1.0E300)
         
         globalscore = self.timecourse_scores.sum()
         return globalscore
@@ -159,16 +167,15 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best['timecourses']['data'] = []
         best['best timecourses']['data'] = []
+        self.model.set_uncertain(self.bestSolution)
+
         for (i,data) in enumerate(self.timecoursedata):
-            y0 = copy(self.X0[i])
-            t  = self.times[i]
-            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-            best['best timecourses']['data'].append(Y)
-            if infodict['message'] != 'Integration successful.':
-                score = 1.0E300
+            Y = self.computeSolution(i,self.bestSolution)
+            if Y is not None:
+                score =self.criterium(Y, i)
             else:
-                S = (Y- data[:, 1:])**2
-                score = nansum(S)
+                score = 1.0E300
+            best['best timecourses']['data'].append(Y)
             best['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
         best['timecourses']['format'] = "%s\t%d\t%g"
         best['timecourses']['header'] = ['Name', 'Points', 'Score']
