@@ -181,8 +181,12 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
     else:
         for isolution,solution in enumerate(solutions):
             p.subplot(nrows,ncols,isolution+1)
+            icolour = 0
             for i in range(len(solution)):
-                p.plot(solution.t, solution[i], colours[i], label=solution.names[i])
+                p.plot(solution.t, solution[i], colours[icolour], label=solution.names[i])
+                icolour += 1
+                if icolour == len(colours):
+                    icolour = 0 
             p.grid()
             p.legend(loc='best')
             p.xlabel('')
