@@ -19,6 +19,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     names = [x.name for x in model.variables]
     scale = 1.0
     f = model.getdXdt(scale)
+    #get initial values, possibly from a state in the model
     if isinstance(initial, str) or isinstance(initial, StateArray):
         y0 = copy(model.vectorize(initial))
     else:
@@ -32,29 +33,24 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     Y = output[0]
     if title is None:
         title = model.title
+    
     sol = SolutionTimeCourse (times, Y.T, names, title)
-    if outputs is False:
-        return sol
-    elif outputs is True:
+    
+    #get outputs
+    if outputs is False: # variables are output
+        pass
+    elif outputs is True: #transformations are output
         #compute model transformations
         f     = model.transf_func()
         names = [x.name for x in model.transf]
         sol.apply_transf(f,names)
-        return sol
-    elif isinstance(outputs, str) or callable(outputs):
-        #filter names or apply external function
+    elif isinstance(outputs, str) or callable(outputs): 
+        #a filter string or transformation function
         f = model.genTransformationFunction(outputs)
-        if not callable(outputs):
-            names = outputs.split()
-        else:
-            if hasattr(outputs, 'names'):
-                names = outputs.names
-            else:
-                names = ['transf%d'% i for i in range(trf.shape[0])]
-        sol.apply_transf(f,names)
-        return sol
+        sol.apply_transf(f, f.names)
     else:
         raise TypeError("'outputs' parameter is of the wrong type")
+    return sol
 
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
@@ -98,11 +94,34 @@ class SolutionTimeCourse(object):
         else:
             y = self.data[:, ileft]
         return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+
+    def i_time(self,t):
+        """Retrieves the closest index for time t."""
+        if t > self.t[-1] or t < self.t[0]:
+            raise ValueError( "No data for time '%s' in timecourse" % str(t) )
+        # Find closest:
+        ileft  = self.t.searchsorted(t, side = 'left')
+        iright = self.t.searchsorted(t, side = 'right')
+        if iright == ileft:
+            ileft -= 1
+            tl = self.t[ileft]
+            tr = self.t[iright]
+            if (t-tl) <= (tr-t):
+                return ileft
+            else:
+                return iright
+        else:
+            return ileft
+        
     def __getLastState(self):
         """Retrieves state_at last timepoint"""
         y = self.data[:,-1]
         return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
     last = property(__getLastState) #'last' is a synonymous, used as 'sol.last'
+    def __getNumberOfTimes(self):
+        """Retrieves the number of time points"""
+        return self.data.shape[1]
+    ntimes = property(__getNumberOfTimes)
     
     def apply_transf(self,f, newnames=None):
         """Applies a transformation to time series.
@@ -119,7 +138,14 @@ class SolutionTimeCourse(object):
         if newnames is not None:
             self.names = newnames
         self.data = trf
+
+def transform(solution, f, outputs=False, title = None):
+    pass
+    #~ times = copy(solution.t)
     
+    #~ sol = SolutionTimeCourse (times, Y.T, names, title)
+
+
 class Solutions(object):
     """Holds a colection of objects of class SolutionTimeCourse"""
     def __init__(self, title = ""):
@@ -162,13 +188,17 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
     
     if superimpose:
         p.subplot(1,1,1)
-        icolour = 0
+        icolour = 0                
         for isolution,solution in enumerate(solutions):
-            for i in range(len(solution)):
+            rangelines = range(len(solution))
+            names = ['n/a' for i in rangelines]
+            for i, name in enumerate(solution.names):
+                names[i] = name
+            for i in rangelines:
                 if len(solution) == 1:
                     label = "%s"%(solution.title)
                 else:
-                    label = "%s, %s"%(solution.names[i], solution.title)
+                    label = "%s, %s"%(names[i], solution.title)
                 p.plot(solution.t, solution[i], colours[icolour], label = label)
                 icolour +=1
                 if icolour == len(colours):
@@ -182,8 +212,12 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
         for isolution,solution in enumerate(solutions):
             p.subplot(nrows,ncols,isolution+1)
             icolour = 0
-            for i in range(len(solution)):
-                p.plot(solution.t, solution[i], colours[icolour], label=solution.names[i])
+            rangelines = range(len(solution))
+            names = ['n/a' for i in rangelines]
+            for i, name in enumerate(solution.names):
+                names[i] = name
+            for i in rangelines:
+                p.plot(solution.t, solution[i], colours[icolour], label=names[i])
                 icolour += 1
                 if icolour == len(colours):
                     icolour = 0 

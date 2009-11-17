@@ -38,7 +38,7 @@ def readTimeCourseFromFile(file, atindexes=None):
     f = file
     isname = False
     try:                                  
-        f = open(f) # could be a name,instead of an open file
+        f = open(f, "rU") # could be a name,instead of an open file
         isname = True
     except (IOError, OSError, TypeError):            
         pass                              
@@ -176,6 +176,10 @@ nothing really usefull here
     sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h[1:])
     print 'retrieving components...'
     try:
+        print 'len(sol)'
+        print len(sol)
+        print 'sol.ntimes'
+        print sol.ntimes
         print 'sol[0] (first var, "x")'
         print sol[0]
         print 'sol.t'

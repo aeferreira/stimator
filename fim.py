@@ -9,6 +9,8 @@ S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 from numpy import *
 from model import *
 from analysis import *
+#from numpy import linalg as LA
+
 
 def add_dSdt_to_model(m, pars):
     """Add sensitivity ODS to model, according to formula:
@@ -22,7 +24,6 @@ def add_dSdt_to_model(m, pars):
     dfdpstrs = m.dfdp_strings(pars)
     nvars = len(J)
     npars = len(pars)
-    tempOUT = []
     
     try:
         import sympy
@@ -61,7 +62,6 @@ def add_dSdt_to_model(m, pars):
                 _dres = '0.0'
             setattr(m, Smatrix[i][j], variable(_dres))
             setattr(m.init, Smatrix[i][j], 0.0)
-            #~ tempOUT.append((Smatrix[i][j], _dres))
     
 
 def test():
@@ -81,58 +81,84 @@ def test():
     m.V3     = 500
     m.init   = state(Ca = 0.1, CaComp = 0.63655)
 
-    print m
+    #print m
 
-    #~ solution3 = solve(m3, tf = 8.0, npoints = 2000)
-        
-    #~ print '\nJacobian ----------------------------------------'
-    #~ dxdtstrings = m.dXdt_strings()
-    #~ for d in dxdtstrings:
-        #~ print d
-    #~ print
-    #~ J = m.Jacobian_strings()
-    #~ nvars = len(m.variables)
-    #~ for i in range(nvars):
-        #~ for j in range(nvars):
-            #~ print (m.variables[i].name, m.variables[j].name),
-            #~ print '\t', J[i][j]
-    
-    #~ print '\nJacobian evaluation -----------------------------'
-    #~ J = m.getJacobian()
-    #~ t = 0.0
-    #~ x = array([0.1, 0.63655])
-    #~ print 'with t =', t
-    #~ print 'and x =', x
-    #~ print 'Jacobian:'
-    #~ res = J(x,t)
-    #~ print res
-
-    #~ print '\nMatrix dfdp -------------------------------------'
-    #~ dxdtstrings = m.dXdt_strings()
-    #~ for d in dxdtstrings:
-        #~ print d
-    #~ print
-    #~ pars = ["B", "k1", "V3"]
-    #~ print 'parameters are', pars
-    #~ J = m.dfdp_strings(pars)
-    #~ nvars = len(m.variables)
-    #~ for i in range(nvars):
-        #~ for j in range(len(pars)):
-            #~ print (m.variables[i].name, pars[j]),
-            #~ print '\t', J[i][j]
     
     print '\nAdding sensitivity ODEs -------------------------'
     pars = ["B", "k1", "K3"]
+    npars = len(pars)
+    print 'npars =', npars
+    nvars = len(m.variables)
+    print 'nvars =', nvars
+    nsens = npars * nvars
+    print 'nsens =', nsens
+    
     add_dSdt_to_model(m, pars)
-    print m
+    #print m
     
-    plot_vars = solve(m, tf = 3.0, npoints = 900, title = 'X', outputs = "Ca CaComp")
-    plot_dXdB = solve(m, tf = 3.0, npoints = 2700, title = 'dX/dB', outputs = 'd_Ca_d_B d_CaComp_d_B') #TODO: solutions should be 'clonable'.
-    plot_dXdk1 = solve(m, tf = 3.0, npoints = 2700, title = 'dX/dk1', outputs = 'd_Ca_d_k1 d_CaComp_d_k1') #TODO: solutions should be 'clonable'.
-    plot_dXdK3 = solve(m, tf = 3.0, npoints = 2700, title = 'dX/dK3', outputs = 'd_Ca_d_K3 d_CaComp_d_K3') #TODO: solutions should be 'clonable'.
+    print '\nSolving with sensitivities ----------------------'
+    plots = [solve(m, tf = 3.0, npoints = 2700, title = 'X', outputs = "Ca CaComp")]
+    for p in pars:
+        plots.append(solve(m, tf = 3.0, 
+                              npoints = 2700, 
+                              title = 'dX/d'+p , 
+                              outputs = 'd_Ca_d_%s d_CaComp_d_%s'%(p,p)))
+    i1point2 = plots[0].i_time(1.2)
+    print i1point2
+    
+    #THIS WILL BE PART OF FIM    
+    print '\nSensitivities at t = 1.2 ----------------------'
+    sol = solve(m, tf = 3.0, npoints = 2700, title = 'all')
+    h = (sol.t[1] - sol.t[0])
+    
+    svec = sol.data[-nsens : , i1point2]
+    for i,x in enumerate(m.variables[-nsens:]):
+        print x.name, svec[i]
+    print '\nSensitivities at t = 1.2 as a matrix ----------'
+    smatrix = matrix(svec.reshape((nvars, npars)))
+    print smatrix
 
-    plot([plot_vars,plot_dXdB,plot_dXdk1,plot_dXdK3])
+    print '\n diagonal 0.01 var-covar matrix of measurements ----------'
+    xvec = sol.data[ : nvars, i1point2]
+    for i,x in enumerate(m.variables[: nvars]):
+        print x.name, xvec[i]
+    MV = matrix(diag([0.01,0.01]))
+    MVINV = linalg.inv(MV)
+    print MVINV
+    print '\nContribution to FIM at t = 1.2 ----------------------'
+    ST = matrix(smatrix.T)
     
+    print "FIM (1.2) ="
+    FIM1point2 = h * ST * MVINV *smatrix
+    print FIM1point2
+    
+    print '\nWhole timecourse ------------------------------------'
+    ntimes = sol.data.shape[1]
+    FIM = zeros((npars,npars))
+    for i in range(ntimes):
+        # S matrix
+        svec = sol.data[-nsens : , i]
+        smatrix = matrix(svec.reshape((nvars, npars)))
+
+        # 1% var-covar matrix of measurements
+        xvec = sol.data[ : nvars, i]
+        MV = matrix(diag([0.01,0.01]))
+        
+        #conpute contribution at point i
+        ST = matrix(smatrix.T)
+        MVINV = linalg.inv(MV)
+        FIMpoint = h * ST * MVINV * smatrix
+        
+        #add to INVFIM
+        FIM += FIMpoint
+    print "FIM ="
+    print FIM
+    INVFIM = linalg.inv(FIM)
+    print "\nFIM-1 ="
+    print INVFIM
+    print "\nFIM-1 * FIM ="
+    print dot(INVFIM, FIM)
+    plot(plots)
 
 
 if __name__ == "__main__":

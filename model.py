@@ -771,11 +771,15 @@ class Model(object):
             if not isinstance(f,str):
                 raise TypeError('argument must be a string or a callable.')
             argnames = f.split()
+            names = argnames
             nargs = len(argnames)
         else:
             cc = f.func_code
             nargs = cc.co_argcount
             argnames = cc.co_varnames[:nargs]
+            names = list(argnames[:])
+            if hasattr(f, 'names'):
+                names[:len(f.names)] = f.names
         data = []
         for a in argnames:
             i, collection = self.findComponent(a)
@@ -821,9 +825,13 @@ class Model(object):
             return args
                 
         if callable(f):
-            return retf
+            result = retf
+            result.names = names
+            return result
         else:
-            return retargs
+            result = retargs
+            result.names = names
+            return result
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters

@@ -65,7 +65,6 @@ class DeODESolver(de.DESolver):
             y0 = copy(data[0, 1:]) # variables are in columns 1 to end
             self.X0.append(y0)
             self.ydata.append(data[:, 1:])
-            #~ self.W.append(gen_weights(self.ydata[-1]))
             
             t  = data[:, 0]        # times are in columns 0
             t0 = t[0]
