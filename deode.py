@@ -87,6 +87,8 @@ class DeODESolver(de.DESolver):
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
 
     def computeSolution(self,i,trial):
+        """Computes solution for timecourse i, given parameters trial."""
+        
         y0 = copy(self.X0[i])
         # fill uncertain initial values
         for varindex, trialindex in self.mapinit2trial:
@@ -148,16 +150,16 @@ class DeODESolver(de.DESolver):
 
     def generateOptimumData (self):
         best = {'parameters'       : {'name':"parameters"}, 
-                    'optimization'     : {'name':"D.E. optimization"}, 
-                    'timecourses'      : {'name':"timecourses"},
-                    'best timecourses' : {'name':"best timecourses"}}
+                'optimization'     : {'name':"D.E. optimization"}, 
+                'timecourses'      : {'name':"timecourses"},
+                'best timecourses' : {'name':"best timecourses"}}
         best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
         best['parameters']['format'] = "%s\t%s"
         best['parameters']['header'] = None
         
         best['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),
-                                ('Generations', "%d"% self.generation),
-                                ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
+                                        ('Generations', "%d"% self.generation),
+                                        ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
         best['optimization']['format'] = "%s\t%s"
         best['optimization']['header'] = None
 
@@ -169,7 +171,7 @@ class DeODESolver(de.DESolver):
         self.model.set_uncertain(self.bestSolution)
 
         for (i,data) in enumerate(self.timecoursedata):
-            Y = self.computeSolution(i,self.bestSolution)
+            Y = self.computeSolution(i, self.bestSolution)
             if Y is not None:
                 score =self.criterium(Y, i)
             else:
