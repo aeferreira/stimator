@@ -26,7 +26,7 @@ realnumber = re.compile(realnumberpattern, re.IGNORECASE)
 def readTimeCourseFromFile(file, atindexes=None):
     """Reads a time course from file.
     
-    Returns a header with variable names (possibly empty) and a 2D numpy array with data.
+    Returns a header with variable names (possibly absent in file) and a 2D numpy array with data.
     """
     
     header = []
@@ -72,8 +72,14 @@ def readTimeCourseFromFile(file, atindexes=None):
             rows.append(temprow)
     if isname:
         f.close()
-    
-    return header, array(rows)
+    rows = array(rows)
+    #create default names "t, x1, x2, x3,..."
+    if len(header) == 0:
+        header = ['t']
+        for i in range(1, rows.shape[1]):
+            header.append('x%d'%i)
+
+    return header, rows
 
 
 
@@ -82,13 +88,13 @@ class TimeCourseCollection(object):
         self.reset()
     
     def reset(self):
-        self.data = []
-        self.headers = []
-        self.shapes = []
-        self.shortnames = []
-        self.filenames = []
-        self.basedir = None
-        self.intvarsorder = None
+        self.data           = []
+        self.headers        = []
+        self.shapes         = []
+        self.shortnames     = []
+        self.filenames      = []
+        self.basedir        = None
+        self.intvarsorder   = None
         self.variablesorder = None # list of names indicating the order of variables in timecourses
 
     def loadTimeCourses (self,filedir):
@@ -227,4 +233,12 @@ nothing really usefull here
     print d
     print 'dimensions are %d by %d'% d.shape
     
+    #~ h, d =  readTimeCourseFromFile('examples\\TSH2a.txt')   
+    #~ print '\n\n====Parsing timecourse from file =============='
+    #~ print '\n\nData from TSH2a.txt'
+    #~ print 'header:'
+    #~ print h
+    #~ print '\ndata'
+    #~ print d
+    #~ print 'dimensions are %d by %d'% d.shape
 

@@ -623,11 +623,11 @@ class Model(object):
         _dxdtstrings = self.dXdt_strings()
         _symbs = {}
         for x in self.__variables:
-            _symbs[x.name] = sympy.Symbol(x.name)
+            _symbs[x.name] = sympy.Symbol(str(x.name))
         for p in self.__parameters:
-            _symbs[p.name] = sympy.Symbol(p.name)
+            _symbs[p.name] = sympy.Symbol(str(p.name))
         for f in self.__forcing:
-            _symbs[f.name] = sympy.Symbol(f.name)
+            _symbs[f.name] = sympy.Symbol(str(f.name))
         _nvars = len(self.__variables)
         _jfuncs = []
         for _i in range(_nvars):
@@ -667,11 +667,11 @@ class Model(object):
         _dxdtstrings = self.dXdt_strings()
         _symbs = {}
         for x in self.__variables:
-            _symbs[x.name] = sympy.Symbol(x.name)
+            _symbs[x.name] = sympy.Symbol(str(x.name))
         for p in self.__parameters:
-            _symbs[p.name] = sympy.Symbol(p.name)
+            _symbs[p.name] = sympy.Symbol(str(p.name))
         for f in self.__forcing:
-            _symbs[f.name] = sympy.Symbol(f.name)
+            _symbs[f.name] = sympy.Symbol(str(f.name))
         _nvars = len(self.__variables)
         _npars = len(_parnames)
         _jfuncs = []
