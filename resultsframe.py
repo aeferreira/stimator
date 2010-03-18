@@ -7,7 +7,7 @@ import os.path
 import math
 import wx
 import wx.stc  as  stc
-from matplotlib.numerix import arange, sin, pi, cos, isnan
+from numpy import arange, sin, pi, cos, isnan
 
 import matplotlib
 matplotlib.interactive(True)
