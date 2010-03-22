@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: ISO-8859-1 -*-
+# -*- coding:latin1 -*-
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
@@ -11,6 +11,8 @@ import de
 from numpy import *
 from scipy import integrate
 from model import *
+from analysis import *
+import fim
 import timecourse
 import dyncriteria
 
@@ -149,12 +151,71 @@ class DeODESolver(de.DESolver):
                 par.close()
 
     def generateOptimumData (self):
+        #compute parameter standard errors, based on FIM-1
+        #generate TC solutions
+        varnames = [x.name for x in self.model.variables]
+        pars = [self.model.uncertain[i].name for i in range(len(self.bestSolution))]
+        parvalues = [value for value in self.bestSolution]
+        parsdict = dict (zip(pars, parvalues))
+        self.model.set_uncertain(self.bestSolution)
+        
+        sols = Solutions()
+        
+        errorestim = 0.0
+
+        for (i,data) in enumerate(self.timecoursedata):
+            Y = self.computeSolution(i, self.bestSolution)
+            if Y is not None:
+                score =self.criterium(Y, i)
+            else:
+                score = 1.0E300
+            #best['best timecourses']['data'].append(Y)
+            nx = len(data[:,0].T)
+            errorestim += score / float(nx)
+            sols += SolutionTimeCourse (data[:,0].T, Y.T, varnames)
+            
+            varnames = []
+            varindexes=[]
+            for line in range(1, data.shape[1]):
+                #count NaN
+                yexp = data[:,line]
+                nnan = len(yexp[isnan(yexp)])
+                if nnan >= nx-1: continue
+                varnames.append(str(self.model.variables[line-1].name))
+                varindexes.append(line)
+        
+        consterror = [0.0 for i in range(len(varnames))]
+        for ix, x in enumerate(varnames):
+            for (i,data) in enumerate(self.timecoursedata):    
+                yexp = data[:,varindexes[ix]]
+                tpe = (max(yexp) - min(yexp))
+                if tpe > consterror[ix]:
+                    consterror[ix] = tpe
+        
+        consterror = [r * 0.05 for r in consterror] #assumung 5% error
+        errorestim = errorestim**0.5
+        
+        #print varnames
+        #print consterror
+        #print errorestim
+        FIM1, invFIM1 = fim.computeFIM(self.model, parsdict, varnames, sols, consterror)#errorestim)
+        #print "compute FIM concluded"
+        STDerrors = []
+        for i,p in enumerate(parsdict.keys()):
+            STDerrors.append((p,invFIM1[i,i]**0.5))    
+        perrors =[]
+        for p in pars:
+            for p2,v in STDerrors:
+                if p2 == p:
+                    perrors.append(v)
+                    break
+        
         best = {'parameters'       : {'name':"parameters"}, 
                 'optimization'     : {'name':"D.E. optimization"}, 
                 'timecourses'      : {'name':"timecourses"},
                 'best timecourses' : {'name':"best timecourses"}}
-        best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
-        best['parameters']['format'] = "%s\t%s"
+        best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%perrors[i]) for (i,value) in enumerate(self.bestSolution)]
+        best['parameters']['format'] = "%s\t%12s +- %s"
         best['parameters']['header'] = None
         
         best['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),

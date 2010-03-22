@@ -19,8 +19,30 @@ def add_dSdt_to_model(m, pars):
     m is a model object
     pars are a list of parameter names
     """
+    #Change par names to legal identifiers
+    newpars = []
+    init_of = []
+    for p in pars:
+        if '.' in p:
+            init_of.append(p.split('.')[1])
+            newpars.append(p.replace('.','_'))
+        else:
+            init_of.append(None)
+            newpars.append(p)
+    pars = newpars
+
     J = m.Jacobian_strings()
     dfdpstrs = m.dfdp_strings(pars)
+            
+    #~ print '************************'
+    #~ print 'PARAMETERS'
+    #~ print pars
+    #~ print '************************'
+    #~ print 'dfdp_strings(pars)'
+    #~ for i,x in enumerate(m.variables):
+        #~ for j,p in enumerate(pars):
+            #~ print "d(%s, %s) = %s"%(x.name, p, dfdpstrs[i][j])
+    #~ print '************************'
     nvars = len(J)
     npars = len(pars)
     
@@ -31,38 +53,61 @@ def add_dSdt_to_model(m, pars):
         raise
     _symbs = {}
     for x in m.variables:
-        _symbs[x.name] = sympy.Symbol(x.name)
+        _symbs[x.name] = sympy.Symbol(str(x.name))
     for p in m.parameters:
-        _symbs[p.name] = sympy.Symbol(p.name)
+        _symbs[p.name] = sympy.Symbol(str(p.name))
     for f in m.forcing:
-        _symbs[f.name] = sympy.Symbol(f.name)
-    
+        _symbs[f.name] = sympy.Symbol(str(f.name))
+    for p in pars:
+        if not _symbs.has_key(p):
+            _symbs[p] = sympy.Symbol(str(p))
+
     #create symbols for sensitivities
     Smatrix = []
     for i in range(nvars):
         Smatrix.append([])
         for j in range(npars):
             Sname = "d_%s_d_%s" % (m.variables[i].name, pars[j])
-            _symbs[Sname] = sympy.Symbol(Sname)
+            _symbs[Sname] = sympy.Symbol(str(Sname))
             Smatrix[i].append(Sname)
+    #~ print '************************'
+    #~ print 'SYMBOLS'
+    #~ for k,v in _symbs.items():
+        #~ print "%-18s:"%k, v
+    #~ print '************************'
 
+    #print '************************'
+    #print "SENSITIVITIES ODE's"
     for i in range(nvars):
+        vname = m.variables[i].name
         for j in range(npars):
-            #compute string for dx/dt
-            resstr = dfdpstrs[i][j]
+            #compute string for dS/dt
+            if init_of[j] is None:
+                resstr = dfdpstrs[i][j]
+            else:
+                resstr = ''
             for k in range(nvars):
                 resstr = resstr+ "+(%s)*(%s)"%(J[i][k], Smatrix[k][j])
-            #~ print Smatrix[i][j]
-            #~ print resstr
-            #~ print type(resstr)
             _res = eval(resstr, None, _symbs)
             _dres = str(_res)
             if _dres == '0':
                 _dres = '0.0'
+            Smatrix[i][j] = str(Smatrix[i][j])
+            #print Smatrix[i][j], '=', _dres
             setattr(m, Smatrix[i][j], variable(_dres))
-            setattr(m.init, Smatrix[i][j], 0.0)
+            if init_of[j] is None:
+                setattr(m.init, Smatrix[i][j], 0.0)
+                #print Smatrix[i][j], '(0) =', 0.0
+            else:
+                if init_of[j] == vname:
+                    setattr(m.init, Smatrix[i][j], 1.0)
+                    #print Smatrix[i][j], '(0) =', 1.0
+                else:
+                    setattr(m.init, Smatrix[i][j], 0.0)
+                    #print Smatrix[i][j], '(0) =', 0.0
+    #print '************************'
 
-def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
+def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
     
     """Computes FIM normalized by parameter values.
     
@@ -73,8 +118,8 @@ def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
         
     vars is a list of names of variables to be considered in the timecourses
     
-    timecoursecollection is a TimeCourseCollection object 
-       (initial values and parameters are read from these)
+    timecoursecollection is a Solutions or TimeCourseCollection object 
+       (initial values are read from these)
     
     expCOV is an experimental variance-covariance matrix of variables.
         NOTE: only a constant error for all the variables is now possible:
@@ -83,17 +128,20 @@ def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
     """
     m  = model.clone()
     
+    #ensure m has init attr
+    inits = {}
+    for x in m.variables:
+        inits[str(x.name)] = 0.0
+    setattr(m, 'init', state(**inits))
+    
     for p in pars:
         setattr(m, p, pars[p])  #TODO: verify existence of each p
-
     # Adding sensitivity ODEs
     npars = len(pars)
     nvars = len(vars)
     nsens = npars * nvars
     add_dSdt_to_model(m, pars.keys())
-    
-    #sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h[1:])
-    
+
     if (isinstance(timecoursecollection, timecourse.TimeCourseCollection)):
         # change to SolutionTimeCourse interface
         timecoursedata = Solutions()
@@ -102,56 +150,30 @@ def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
             
     else:
         timecoursedata = timecoursecollection
-
-    scale = float(max([ (s.t[-1]-s.t[0]) for s in timecoursedata]))
     
-    calcDerivs = model.getdXdt(scale=scale, with_uncertain=False)
-    salg=integrate._odepack.odeint
-    names = [x.name for x in m.variables]
-
-    X0 = []
-    times = []
-    varindexes = []
-    for d in timecoursedata:
-        y0 = copy(d.data[:, 0]) # 1st col are initial values
-        X0.append(y0)
-        
-        t  = d.t 
-        t0 = t[0]
-        tts = (t-t0)/scale+t0  # scale time points
-        times.append(tts)
-
-    #Computes solution for timecourse i, given parameters trial.
+    #scale = float(max([ (s.t[-1]-s.t[0]) for s in timecoursedata]))
+    
     sols = Solutions()
-    for i in range(len(timecoursedata)):
-        y0 = copy(X0[i])
-        # fill uncertain initial values
-            
-        t  = copy(times[i])
+    for tc in timecoursedata:
+        #set init and solve
+        for n,v in tc.state_at(0.0): #TODO: may not start at zero
+            setattr(m.init, n, v)
+        sols += solve(m, tf = tc.t[-1])#, scale = scale)
+    
+    
+    #compute P and MVINV
 
-        #~ Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-        output = salg(calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
-                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
-        #if output[-1] < 0: return None
-        Y = output[0]
-        title = "timecourse %d"%i
-        s = SolutionTimeCourse (t, Y.T, names, title)
-        sols+=s
-    
-    plot( sols )
-    return
-    
-    #compute P
     # P is the diagonal matrix of parameter values
-    parvalues = [getattr(m, p) for p in pars]
-    P = matrix(diag(parvalues))
-    
-    #compute MVINV
+    P = matrix(diag([pars[p] for p in pars]))
+
     # MVINV is the inverse of measurement COV matrix
-    # RIGHT NOW, IT ONLY WORKS FOR A SINGLE CONSTANT VALUE
-    error_x = expCOV
-    errorvar = error_x**2
-    errorvec = [errorvar for i in range(nvars)]
+    # RIGHT NOW, IT ONLY WORKS FOR A CONSTANT VALUES
+    # if COV is a scalar, transform in vector of constants
+    if isinstance(expCOV, float) or isinstance(expCOV, int): #constant for all variables
+        error_x = array([expCOV for i in range(nvars)], dtype=float)
+    else:
+        error_x = array(expCOV, dtype=float)
+    errorvec = error_x**2
     MV = matrix(diag(errorvec))
     MVINV = linalg.inv(MV)
     
@@ -169,9 +191,9 @@ def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
     tcFIM = []
     for sol in sols:
         #timestep (assumed constant)
-        h = (sol.t[1] - sol.t[0]) *scale
+        h = (sol.t[1] - sol.t[0]) #*scale
         #compute integral of ST * MVINV * S
-        ntimes = sol.data.shape[1]
+        ntimes = len(sol.t) #sol.data.shape[1]
         FIM = zeros((npars,npars))
         for i in range(ntimes):
             #compute S matrix
@@ -185,7 +207,7 @@ def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
             FIM += FIMpoint
         tcFIM.append(FIM)
     
-    sumFIM = zeros((npars,npars))
+    sumFIM = zeros((npars,npars))  #TODO use numpy tensor and 1 dimension sum?
     for f in tcFIM:
         sumFIM += f
     
@@ -193,67 +215,19 @@ def __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV):
 
 
 
-def __computeNormalizedFIM(model, pars, vars, tf, expCOV):
-    m = model.clone()
-
-    # Adding sensitivity ODEs
-    npars = len(pars)
-    nvars = len(vars)
-    nsens = npars * nvars
-    add_dSdt_to_model(m, pars)
+def __computeNormalizedFIM4SingleTC(model, pars, vars, tf, expCOV):
     
-    #solve complete model
-    sol = solve(m, tf = tf)
-
-    #timestep (assumed constant)
-    h = (sol.t[1] - sol.t[0])
+    sols = Solutions()
     
-    #compute P
-    # P is the diagonal matrix of parameter values
-    parvalues = [getattr(m, p) for p in pars]
-    P = matrix(diag(parvalues))
-    
-    #compute MVINV
-    # MVINV is the inverse of measurement COV matrix
-    # RIGHT NOW, IT ONLY WORKS FOR A SINGLE CONSTANT VALUE
-    error_x = expCOV
-    errorvar = error_x**2
-    errorvec = [errorvar for i in range(nvars)]
-    MV = matrix(diag(errorvec))
-    MVINV = linalg.inv(MV)
-    
-    #compute indexes of sensitivities
-    # search pattern d_<var name>_d_<parname> in variable names
-    indexes = []
-    for vname in vars:
-        for i,y in enumerate(m.variables):
-            dnames = y.name.split('_')
-            if len(dnames) < 3: continue
-            if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':
-                indexes.append(i)
-    indexes = array(indexes)
-    
-    #compute integral of ST * MVINV * S
-    ntimes = sol.data.shape[1]
-    FIM = zeros((npars,npars))
-    for i in range(ntimes):
-        #compute S matrix
-        svec = sol.data[indexes , i]
-        S = matrix(svec.reshape((nvars, npars)))
-        S = S * P # scale with par values
-        ST = matrix(S.T)
-
-        #compute contribution at point i and add to FIM
-        FIMpoint = h * ST * MVINV * S
-        FIM += FIMpoint
-    
+    sols += solve(model, tf)
+    FIM, P = __computeNormalizedFIM(model, pars, vars, sols, expCOV)
     return FIM, P
-    
-def computeFIM(model, pars, vars, tf, expCOV):
-    FIM, P = __computeNormalizedFIM(model, pars, vars, tf, expCOV)
+        
+def computeFIM4SingleTC(model, pars, vars, tf, COV):
+    FIM, P = __computeNormalizedFIM4SingleTC(model, pars, vars, tf, COV)
     # compute inverse of P to "descale"
     PINV = linalg.inv(P)
-    # compute FIM and its inverse (lower bounds for parmeter COV matrix)
+    # compute FIM and its inverse (lower bounds for parameter COV matrix)
     realFIM = PINV * FIM * PINV
     INVFIM = linalg.inv(FIM)
     INVFIM = P * INVFIM * P
@@ -262,17 +236,16 @@ def computeFIM(model, pars, vars, tf, expCOV):
     
     return realFIM, INVFIM
 
-def computeFIM4TCs(model, pars, vars, timecoursecollection, expCOV):
-    FIM, P = __computeScaledFIM(model, pars, vars, timecoursecollection, expCOV)
+def computeFIM(model, pars, vars, TCs, COV):
+    FIM, P = __computeNormalizedFIM(model, pars, vars, TCs, COV)
     # compute inverse of P to "descale"
     PINV = linalg.inv(P)
-    # compute FIM and its inverse (lower bounds for parmeter COV matrix)
+    # compute FIM and its inverse (lower bounds for parameter COV matrix)
     realFIM = PINV * FIM * PINV
     INVFIM = linalg.inv(FIM)
     INVFIM = P * INVFIM * P
     check = dot(INVFIM, realFIM)
     #TODO: MAKE THIS CHECK USEFUL
-    
     return realFIM, INVFIM
 
 def test():
@@ -288,58 +261,53 @@ def test():
     
     pars = "V1 Km1".split()
     parvalues = [getattr(m, p) for p in pars]
-
-
-    print '\n--------- Example 1 ------------------'
-    print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
-    print 'Timecourse with HTA and SDLTSH'
-    print
-    FIM1, invFIM1 = computeFIM(m, pars, "HTA SDLTSH".split(), 4030.0, 0.001)
-    print "FIM ="
-    print FIM1
-    print 'FIM-1 ='
-    print invFIM1
-    print '\nParameters ---------------------------'
-    for i in range(len((pars))):
-        print "%7s = %.5e +- %.5e" %(pars[i], parvalues[i], invFIM1[i,i]**0.5)
-    print '\n--------- Example 2 ------------------'
-    print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
-    print 'Timecourse with SDLTSH only'
-    print
-    FIM1, invFIM1 = computeFIM(m, pars, "SDLTSH".split(), 4030.0, 0.001)
-    print "FIM ="
-    print FIM1
-    print 'FIM-1 ='
-    print invFIM1
-    print '\nParameters ---------------------------'
-    for i in range(len((pars))):
-        print "%7s = %.5e +- %.5e" %(pars[i], parvalues[i], invFIM1[i,i]**0.5)
-    
-    print '------------------------------------------------'
-    print '|    Using new interface                       |'
-    print '------------------------------------------------'
-    print '\n--------- Example 1 ------------------'
-    print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
-    print 'Timecourse with HTA and SDLTSH'
-    print
     
     sols = Solutions()
     sols += solve(m, tf = 4030.0) 
-
+    
     pars = "V1 Km1".split()
     parvalues = [getattr(m, p) for p in pars]
-    pars = dict (zip(pars, parvalues))
+    parsdict = dict (zip(pars, parvalues))
 
-    FIM1, invFIM1 = computeFIM4TCs(m, pars, "HTA SDLTSH".split(), sols, 0.001)
-    print "FIM ="
-    print FIM1
-    print 'FIM-1 ='
-    print invFIM1
+    print '\n------------------------------------------------'
+    print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
+    print 'Timecourse with HTA and SDLTSH'
+    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, (0.01,0.001))
     print '\nParameters ---------------------------'
-    for i in range(len((pars))):
-        print "%7s = %.5e +- %.5e" %(pars[i], parvalues[i], invFIM1[i,i]**0.5)    
+    for i,p in enumerate(parsdict.keys()):
+        print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
+    print '\n------------------------------------------------'
+    print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
+    print 'Timecourse with SDLTSH only'
+    FIM1, invFIM1 = computeFIM(m, parsdict, "SDLTSH".split(), sols, 0.001)
+    print '\nParameters ---------------------------'
+    for i,p in enumerate(parsdict.keys()):
+        print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
     
 
+    print '\n------------------------------------------------'
+    print 'Glyoxalase model, 2 timecourses, parameters V1 and Km1'
+    print 'Timecourses with HTA and SDLTSH'
+
+    #generate 2nd timecourse
+    m.init.SDLTSH = 0.001246154
+    m.init.HTA = 0.2688
+    sols += solve(m, tf = 5190.0)
+
+    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, (0.01,0.001))
+    print '\nParameters ---------------------------'
+    for i,p in enumerate(parsdict.keys()):
+        print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
+    
+    print '\n------------------------------------------------'
+    print 'Glyoxalase model, 2 timecourses, parameters V1 and Km1'
+    print 'Timecourses with SDLTSH only'
+    
+    FIM1, invFIM1 = computeFIM(m, parsdict, ["SDLTSH"], sols, 0.001)
+    print '\nParameters ---------------------------'
+    for i,p in enumerate(parsdict.keys()):
+        print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
+    
 
 if __name__ == "__main__":
     test()

@@ -629,6 +629,7 @@ class Model(object):
         for f in self.__forcing:
             _symbs[f.name] = sympy.Symbol(str(f.name))
         _nvars = len(self.__variables)
+        _nvars = len(self.__variables)
         _jfuncs = []
         for _i in range(_nvars):
             _jfuncs.append([])
@@ -652,7 +653,7 @@ class Model(object):
         """Generate a matrix (list of lists) of strings
            to compute the partial derivatives of rhs o SODE
            with respect to a list of parameters.
-           _parnems is a list of parameter names.
+           _parnames is a list of parameter names.
         
            IMPORTANT: sympy module must be installed!"""
 
@@ -686,7 +687,10 @@ class Model(object):
                 for _j in range(_npars):
                     _res = eval(_dxdtstrings[_i][1], None, _symbs)
                     _res = _res * _scale
-                    _dres = str(sympy.diff(_res, _symbs[_parnames[_j]]))
+                    if not _symbs.has_key(_parnames[_j]):
+                        _dres = '0.0'
+                    else:
+                        _dres = str(sympy.diff(_res, _symbs[_parnames[_j]]))
                     if _dres == '0':
                         _dres = '0.0'
                     _jfuncs[_i].append(_dres)
