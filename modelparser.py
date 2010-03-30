@@ -47,11 +47,12 @@ emptylinepattern  = r"^\s*(?:#.*)?$"
 constdefpattern   = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 varlistpattern    = r"^\s*variables\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
 finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+identifierpattern+r")\s*in\s*\[\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*\]\s*(?:#.*)?$"
-#ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*,\s*rate\s*=\s*(?P<rate>[^#]+)(?:#.*)?$"
-ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<stoich>.*\s*(->|<=>)\s*.*)\s*,\s*rate\s*=\s*(?P<rate>[^#]+)(?:#.*)?$"
+#ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*:\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*,(?:\s*rate\s*=)?\s*(?P<rate>[^#]+)(?:#.*)?$"
+ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*(:|=)\s*(?P<stoich>.*\s*(->|<=>)\s*.*)\s*,(?:\s*rate\s*=)?\s*(?P<rate>[^#]+)(?:#.*)?$"
 tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
+statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
 
 stoichpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
@@ -75,10 +76,10 @@ stoichmatch = re.compile(stoichpattern, re.IGNORECASE)
 nameErrormatch = re.compile(nameErrorpattern)
 
 dispatchers = [(emptyline, "emptyLineParse"),
+               (ratedef,   "rateDefParse"),
                (constdef,  "constDefParse"),
                (varlist,   "varListParse"),
                (finddef,   "findDefParse"),
-               (ratedef,   "rateDefParse"),
                (tcdef,     "tcDefParse"),
                (atdef,     "atDefParse"),
                (titledef,  "titleDefParse")]
@@ -310,7 +311,7 @@ variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 
-reaction Glx2 : SDLTSH ->  , rate = Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
+reaction Glx2 : SDLTSH ->  ,  Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
 
 pi   = 3.1416
 pi2  = 2*pi

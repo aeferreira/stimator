@@ -377,23 +377,33 @@ class Model(object):
                  (Transformation, '_Model__transf'),
                  (StateArray,     '_Model__states'),
                  (Forcing,        '_Model__forcing'))
-        for t, dictname in assoc:
-            c = findWithNameIndex(name, self.__dict__[dictname])
+        # find existing model object
+        for t, listname in assoc:
+            c = findWithNameIndex(name, self.__dict__[listname])
             if c > -1:
-                if isinstance(value, t) or (isinstance(value, Bounds) and dictname == '_Model__parameters'):
+                if isinstance(value, t) or (isinstance(value, Bounds) and listname == '_Model__parameters'):
                     value.name = name
                     if isinstance(value, Bounds):
-                        self.__dict__[dictname][c].bounds = value
+                        self.__dict__[listname][c].bounds = value
                     else:
-                        self.__dict__[dictname][c] = value
+                        self.__dict__[listname][c] = value
                     self.__refreshVars()
                     return
+                elif (isinstance(value, Forcing) and listname == '_Model__parameters'):
+                    #delete the constant parameter. It is going to be substituted by a Forcing object
+                    del (self.__dict__['_Model__parameters'][c])
+                    break
+                elif (isinstance(value, ConstValue) and listname == '_Model__forcing'):
+                    #delete the forcing function. It is going to be substituted by constant parameter
+                    del (self.__dict__['_Model__forcing'][c])
+                    break
                 else:
-                    raise BadTypeComponent( name+ ' can not be assigned to ' + type(value).__name__)
-        for t, dictname in assoc:
+                    raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
+        # append new object to proper list
+        for t, listname in assoc:
             if isinstance(value, t):
                 value.name = name
-                self.__dict__[dictname].append(value)
+                self.__dict__[listname].append(value)
                 self.__refreshVars()
                 return
         if isinstance (value, Bounds):
