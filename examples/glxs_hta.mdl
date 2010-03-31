@@ -4,7 +4,8 @@ variables SDLTSH HTA  # variables (the order matches the timecourse files)
 
 #reactions (with stoichiometry and rate)
 glx1 : HTA -> SDLTSH, rate = V1*HTA/(Km1 + HTA)
-glx2 : SDLTSH ->,            V2*SDLTSH/(Km2 + SDLTSH)
+glx2 : SDLTSH ->,            \
+   V2*SDLTSH/(Km2 + SDLTSH)
 
 find V1  in [0.00001, 0.0001]   # parameters to find and bounding intervals
 find Km1 in [0.01, 1]

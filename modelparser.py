@@ -84,6 +84,29 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (atdef,     "atDefParse"),
                (titledef,  "titleDefParse")]
 
+hascontpattern  = r"^.*\\$"
+hascontinuation = re.compile(hascontpattern)
+
+def logicalLines(textlines):
+    """generator that parses logical lines n input.
+    The backslash is a continuation character
+    """
+    linenum = -1
+    continuing = False
+    for line in textlines:
+        print 'physical line ----->',line
+        if not continuing:
+            linenum += 1
+            logline = line
+        else:
+            logline += line
+        if hascontinuation.match(line):
+            continuing = True
+            continue
+        else:
+            yield (logline, linenum)
+            continuing = False
+    return
 #----------------------------------------------------------------------------
 #         The core StimatorParser class
 #----------------------------------------------------------------------------
@@ -304,6 +327,48 @@ def printParserResults(parser):
     
 
 def test():
+    modelText2 = """
+
+#This is an example of a valid model:
+
+title: Glyoxalase system in L. infantum
+variables: SDLTSH TSH2 MG
+
+Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
+
+reaction Glx2 : SDLTSH ->  ,  \
+Vmax2*SDLTSH / (Km2 + SDLTSH) \
+#reaction 2
+
+pi   = 3.1416
+pi2  = 2*pi
+pipi = pi**2  #this is pi square
+
+Vmax1 = 0.0001
+find Vmax1 in [1e-9, 1e-3]
+find   KmMG  in [1e-5, 1]
+find KmTSH2 in [1e-5, pi/pi]
+
+find Km2   in [1e-5, 1]
+find Vmax2 in [1e-9, 1e-3]
+
+@ 3.4 pi = 2*pi
+
+genomesize = 50 #should be enough
+generations = 400
+
+timecourse my file.txt  # this is a timecourse filename
+timecourse anotherfile.txt
+#timecourse stillanotherfile.txt
+
+"""
+    #~ textlines = modelText2.split("\n")
+    #~ print textlines
+
+    #~ for l,n in logicalLines(textlines):
+        #~ print n, ':', l
+    #~ print '#####################################################################'
+    
     modelText = """
 #This is an example of a valid model:
 title: Glyoxalase system in L. infantum
@@ -311,7 +376,8 @@ variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 
-reaction Glx2 : SDLTSH ->  ,  Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
+reaction Glx2 : SDLTSH ->  ,  \
+    Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
 
 pi   = 3.1416
 pi2  = 2*pi
