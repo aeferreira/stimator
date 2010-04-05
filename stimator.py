@@ -653,8 +653,12 @@ class stimatorMainFrame(wx.Frame):
         self.LogText.Clear()
         self.LogText.Refresh()
 
-        sepre = re.compile(r"\r\n|\n|\r")
-        textlines = sepre.split(self.ModelEditor.GetText())
+        textlines = []
+        lcount = self.ModelEditor.GetLineCount()
+        for i in range (0, lcount):
+            textlines.append(self.ModelEditor.GetLine(i))
+        #~ print textlines
+        #~ return
         parser = modelparser.StimatorParser()
         
         oldout = sys.stdout #parser may need to print messages

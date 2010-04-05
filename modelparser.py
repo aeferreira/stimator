@@ -15,6 +15,7 @@ The parsing loop relies on regular expressions."""
 
 import os
 import os.path
+import StringIO
 import re
 import math
 import model
@@ -92,21 +93,39 @@ def logicalLines(textlines):
     The backslash is a continuation character
     """
     linenum = -1
+    currloc = 0
+    llen = 0
+
     continuing = False
     for line in textlines:
-        print 'physical line ----->',line
+        llen += len(line)
+        #~ print 'physical line ----->',line, '|<-------'
+        line = line.rstrip()
+        tocontinue = False
+        if hascontinuation.match(line):
+            line = line[:-1]
+            tocontinue = True
         if not continuing:
+            start = currloc
             linenum += 1
             logline = line
         else:
             logline += line
-        if hascontinuation.match(line):
+        if tocontinue:
             continuing = True
-            continue
         else:
-            yield (logline, linenum)
+            end = currloc + llen
+            llen = 0
+            currloc = end
+            yield (logline, linenum, start, end)
             continuing = False
     return
+
+class lineloc(object):
+    def __init__(self, nline, start, end):
+        self.nline = nline
+        self.start = start
+        self.end   = end
 #----------------------------------------------------------------------------
 #         The core StimatorParser class
 #----------------------------------------------------------------------------
@@ -115,22 +134,18 @@ class StimatorParser:
         self.reset()
     
     def reset(self):
+        self.modeltext = None
         self.problemname = ""   # the name of the problem
 
         self.error = None      # different of None if an error occurs
-        self.errorLoc = {
-                "linetext" : "", # if error, the text of the offending line
-                "line"     : -1, # if error, the line number of the offending line,
-                "start"    : -1, # if error, the starting position of the offending expression
-                "end"      : -1} # if error, one past the ending position of the offending expression
-
-        # default Differential Evolution num of generations and population size
+        self.errorlineloc = None
+        self.errorloc = None
         
+        # default Differential Evolution num of generations and population size
         self.model       = model.Model()
         self.tc          = timecourse.TimeCourseCollection()
         self.optSettings = {'generations':200, 'genomesize' :10}
 
-        self.currentline = -1
         self.tclines     = []  #location of timecourse def lines for error reporting
         self.rateloc     = []  #location of rate def for error reporting, a list of {'rateline', 'ratestart', 'rateend'}
     
@@ -139,24 +154,27 @@ class StimatorParser:
         "Parses a model definition text line by line"
 
         self.reset()
+        
+        self.modeltext = modeltext
 
         #parse the lines of text using matches and dispatch to *Parse functions
-        self.currentline = 0
-        for line in modeltext:
+        for (line, nline,start,end) in logicalLines(modeltext):
+            #package lineloc
+            loc = lineloc(nline, start, end)
+                     
             matchfound = False
             for d in dispatchers:
                 matchresult = d[0].match(line)
                 if matchresult:
                     output_function = getattr(StimatorParser, d[1])
-                    output_function(self, line, self.currentline, matchresult)
+                    output_function(self, line, loc, matchresult)
                     if self.error :
                         return #quit on first error. Needs revision!
                     matchfound = True
                     break #do not try any more patterns
             if not matchfound:
-                self.setError("Invalid syntax", 0, len(line), self.currentline, line)
+                self.setError("Invalid syntax", loc)
                 return
-            self.currentline += 1
 
         # build list of ints with the order of variables (time is at pos 0)
         if not self.tc.variablesorder:
@@ -169,67 +187,70 @@ class StimatorParser:
         # check the validity of rate laws
         check, msg = self.model.checkRates()
         if not check:
-            self.setError(msg, -1, -1, -1, "")
+            self.setError(msg, lineloc(-1,-1,-1))
             return
 
-    def setError(self, text, start, end, nline=None, line=None):
+    def setError(self, text, errorlineloc, errorloc = None):
         self.error = text
-        self.errorLoc['start'] = start
-        self.errorLoc['end'] = end
-        if nline != None: self.errorLoc['line'] = nline
-        if line != None:  self.errorLoc['linetext'] = line
+        self.errorlineloc = errorlineloc
+        if errorloc is None:
+            self.errorloc = lineloc(errorlineloc.nline, 0, errorlineloc.end-errorlineloc.start)
+        else:
+            self.errorloc = errorloc
+            
 
-    def setIfNameError(self, text, exprtext):
+    def setIfNameError(self, text, exprtext,loc):
         m = nameErrormatch.match(text)
         if m:
             undefname = m.group('name')
-            pos = self.errorLoc['start'] + exprtext.find(undefname)
-            self.setError(text, pos, pos+len(undefname))
+            #~ print "*********", self.errorloc
+            pos = self.errorloc.start + exprtext.find(undefname)
+            self.setError(text, loc, lineloc(loc.nline, pos, pos+len(undefname)))
 
-    def rateDefParse(self, line, nline, match):
+    def rateDefParse(self, line, loc, match):
         entry={}
         entryloc = {}
         #process name
         name = match.group('name')
         if model.findWithName(name, self.model.reactions): #repeated declaration
-            self.setError("Repeated declaration", 0, len(line), nline, line)
+            self.setError("Repeated declaration", loc)
             return
         #process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
-        entryloc['rateline'] = self.currentline
-        entryloc['ratestart']= match.start('rate')
-        entryloc['rateend']  = match.end('rate')
+        entryloc['rateline']  = line
+        entryloc['ratestart'] = match.start('rate')
+        entryloc['rateend']   = match.end('rate')
         try:
             setattr(self.model, name, model.react(stoich, rate))
         except model.BadStoichError:
-            self.setError("'%s' is an invalid stoichiometry expression"% stoich, 
-                                 match.start(f), match.end(f), nline, line)
+            self.setError("'%s' is an invalid stoichiometry expression"% stoich, loc,
+                                 lineloc(loc.nline, match.start(f), match.end(f)))
             return
         self.rateloc.append(entryloc)
 
-    def emptyLineParse(self, line, nline, match):
+    def emptyLineParse(self, line, loc, match):
         pass #do nothing
 
-    def tcDefParse(self, line, nline, match):
+    def tcDefParse(self, line, loc, match):
         filename = match.group('filename').strip()
-        self.tclines.append(nline)
+        self.tclines.append(loc.nline)
         self.tc.filenames.append(filename)
 
-    def constDefParse(self, line, nline, match):
+    def constDefParse(self, line, loc, match):
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
         if model.findWithName(name, self.model.parameters): #repeated declaration
-            self.setError("Repeated declaration", 0, len(line), nline, line)
+            self.setError("Repeated declaration", loc)
             return
         
         localsdict = dict([(p.name, p) for p in self.model.parameters])
 
         resstring, value = test_with_consts(valueexpr, localsdict)
         if resstring != "":
-            self.setError(resstring, match.start('value'), match.start('value')+len(valueexpr), nline, line)
-            self.setIfNameError(resstring, valueexpr)
+            self.setError(resstring, loc, lineloc(loc.nline, match.start('value'), match.start('value')+len(valueexpr)))
+            self.setIfNameError(resstring, valueexpr, loc)
             return
         
         if name == "generations":
@@ -263,16 +284,16 @@ class StimatorParser:
 
         #~ self.model.atdefs.append((timevalue,name,value))
 
-    def varListParse(self, line, nline, match):
+    def varListParse(self, line, loc, match):
         if self.tc.variablesorder: #repeated declaration
-            self.setError("Repeated declaration", 0, len(line), nline, line)
+            self.setError("Repeated declaration", loc)
             return
 
         names = match.group('names')
         names = names.strip()
         self.tc.variablesorder = names.split()
 
-    def findDefParse(self, line, nline, match):
+    def findDefParse(self, line, loc, match):
         name = match.group('name')
         found = False
         #~ if model.findWithName(name, self.model.unknown): #repeated declaration
@@ -288,12 +309,12 @@ class StimatorParser:
             resstring, v = test_with_consts(valueexpr, localsdict)
             if resstring != "":
                 self.setError(resstring, match.start(k), match.end(k), nline, line)
-                self.setIfNameError(resstring, valueexpr)
+                self.setIfNameError(resstring, valueexpr, loc)
                 return
             flulist.append(v)
         setattr(self.model, name, (flulist[0],flulist[1]))
 
-    def titleDefParse(self, line, nline, match):
+    def titleDefParse(self, line, loc, match):
         title = match.group('title')
         setattr(self.model, 'title', title)
 
@@ -305,16 +326,24 @@ class StimatorParser:
 def printParserResults(parser):
     
     if parser.error:
-        #candy syntax: upgrade dict to dot lookup style dict
-        errorLoc = utils.DictDotLookup(parser.errorLoc)
+        errorloc = parser.errorloc
+        errorlineloc = parser.errorlineloc
+        #~ print errorloc.nline
+        #~ print errorloc.start
+        #~ print errorloc.end
+        #~ print errorlineloc.nline
+        #~ print errorlineloc.start
+        #~ print errorlineloc.end
+        errorlinetext = parser.modeltext[errorlineloc.nline]
         print
         print "*****************************************"
-        if errorLoc.line != -1:
-            print "ERROR in line %d:" % (errorLoc.line)
-            print errorLoc.linetext
-            caretline = [" "]*(len(errorLoc.linetext)+1)
-            caretline[errorLoc.start] = "^"
-            caretline[errorLoc.end] = "^"
+        if errorloc.nline != -1:
+            print parser.error
+            print "ERROR in line %d:" % (errorloc.nline)
+            print errorlinetext
+            caretline = [" "]*(len(errorlinetext)+1)
+            caretline[errorloc.start] = "^"
+            caretline[errorloc.end] = "^"
             caretline = "".join(caretline)
             print caretline
         print parser.error
@@ -325,48 +354,52 @@ def printParserResults(parser):
     print "the order of variables in timecourses is", parser.tc.variablesorder
     print
     
+def parseModel(text):
+    parser = StimatorParser()
+    textlines = StringIO.StringIO(text)
+    parser.parse(textlines)
+    printParserResults(parser)
 
 def test():
-    modelText2 = """
+    #~ modelText2 = """
 
-#This is an example of a valid model:
+#~ #This is an example of a valid model:
 
-title: Glyoxalase system in L. infantum
-variables: SDLTSH TSH2 MG
+#~ title: Glyoxalase system in L. infantum
+#~ variables: SDLTSH TSH2 MG
 
-Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
+#~ Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 
-reaction Glx2 : SDLTSH ->  ,  \
-Vmax2*SDLTSH / (Km2 + SDLTSH) \
-#reaction 2
+#~ reaction Glx2 : SDLTSH ->  ,  \\
+#~ Vmax2*SDLTSH / (Km2 + SDLTSH) \
+#~ #reaction 2
 
-pi   = 3.1416
-pi2  = 2*pi
-pipi = pi**2  #this is pi square
+#~ pi   = 3.1416
+#~ pi2  = 2*pi
+    #~ pipi = pi**2  #this is pi square
 
-Vmax1 = 0.0001
-find Vmax1 in [1e-9, 1e-3]
-find   KmMG  in [1e-5, 1]
-find KmTSH2 in [1e-5, pi/pi]
+#~ Vmax1 = 0.0001
+#~ find Vmax1 in [1e-9, 1e-3]
+#~ find   KmMG  in [1e-5, 1]
+#~ find KmTSH2 in [1e-5, pi/pi]
 
-find Km2   in [1e-5, 1]
-find Vmax2 in [1e-9, 1e-3]
+#~ find Km2   in [1e-5, 1]
+#~ find Vmax2 in [1e-9, 1e-3]
 
-@ 3.4 pi = 2*pi
+#~ genomesize = 50 #should be enough
+#~ generations = 400
 
-genomesize = 50 #should be enough
-generations = 400
+#~ timecourse my file.txt  # this is a timecourse filename
+#~ timecourse anotherfile.txt
+#~ #timecourse stillanotherfile.txt
 
-timecourse my file.txt  # this is a timecourse filename
-timecourse anotherfile.txt
-#timecourse stillanotherfile.txt
+#~ """
+    #~ #textlines = modelText2.split("\n")
+    #~ f = StringIO.StringIO(modelText2)
 
-"""
-    #~ textlines = modelText2.split("\n")
-    #~ print textlines
-
-    #~ for l,n in logicalLines(textlines):
-        #~ print n, ':', l
+    #~ for l,n, st, nd in logicalLines(f):
+        #~ print '%d (%d,%d):'%(n,st,nd), l
+        #~ print modelText2[st:nd].rstrip()
     #~ print '#####################################################################'
     
     modelText = """
@@ -376,7 +409,7 @@ variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 
-reaction Glx2 : SDLTSH ->  ,  \
+reaction Glx2 : SDLTSH ->  ,  \\
     Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
 
 pi   = 3.1416
@@ -404,58 +437,55 @@ timecourse anotherfile.txt
     print '------------- test model -----------------------'
     print modelText
     print '------------------------------------------------'
-    parser = StimatorParser()
-    textlines = modelText.split("\n")
 
-    parser.parse(textlines)
-    printParserResults(parser)
+    parseModel (modelText)
     
-    print '\n======================================================'
-    print 'The following modifications produce errors............'
+    #~ print '\n======================================================'
+    #~ print 'The following modifications produce errors............'
 
-    textlines.insert(12,'pipipi = pois  #this is an error')
+    #~ textlines.insert(12,'pipipi = pois  #this is an error')
+    
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
 
-    parser.parse(textlines)
-    printParserResults(parser)
+    #~ del(textlines[12])
+    #~ textlines.insert(6,'find pois in [1e-5, 2 + kkk]  #this is an error')
 
-    del(textlines[12])
-    textlines.insert(6,'find pois in [1e-5, 2 + kkk]  #this is an error')
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
 
-    parser.parse(textlines)
-    printParserResults(parser)
+    #~ del(textlines[6])
+    #~ textlines.insert(6,'pipipi = pi*1e100**10000  #this is an overflow')
 
-    del(textlines[6])
-    textlines.insert(6,'pipipi = pi*1e100**10000  #this is an overflow')
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
 
-    parser.parse(textlines)
-    printParserResults(parser)
+    #~ del(textlines[6])
+    #~ textlines.insert(12,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
 
-    del(textlines[6])
-    textlines.insert(12,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
 
-    parser.parse(textlines)
-    printParserResults(parser)
+    #~ del(textlines[12])
+    #~ del(textlines[5])
+    #~ textlines.insert(5,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG2)*(KmTSH2+TSH2))')
 
-    del(textlines[12])
-    del(textlines[5])
-    textlines.insert(5,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG2)*(KmTSH2+TSH2))')
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
 
-    parser.parse(textlines)
-    printParserResults(parser)
+    #~ del(textlines[5])
+    #~ textlines.insert(5,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
+    #~ textlines.insert(6,'bolas !! not good')
 
-    del(textlines[5])
-    textlines.insert(5,'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
-    textlines.insert(6,'bolas !! not good')
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
+    #~ del(textlines[6])
 
-    parser.parse(textlines)
-    printParserResults(parser)
-    del(textlines[6])
+    #~ del(textlines[26])  # delete timecourse declarations
+    #~ del(textlines[26])
 
-    del(textlines[26])  # delete timecourse declarations
-    del(textlines[26])
-
-    parser.parse(textlines)
-    printParserResults(parser)
+    #~ parser.parse(textlines)
+    #~ printParserResults(parser)
 
 def profile_main():
  # This is the main function for profiling 
