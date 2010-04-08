@@ -164,6 +164,7 @@ class SDLeditor(stc.StyledTextCtrl):
         self.StyleSetSpec(stc.STC_P_STRINGEOL, "fore:#000000,face:%(mono)s,back:#E0C0E0,eol,size:%(size)d" % faces)
 
         self.SetCaretForeground("BLUE")
+        self.SetSelBackground(True, 'PLUM')
 
 
     #def OnDestroy(self, evt):
@@ -624,20 +625,15 @@ class stimatorMainFrame(wx.Frame):
         self.MessageDialog(ABOUT_TEXT, "About S-timator")
         pass
 
-    def IndicateError(self, error, errorloc):
-       #self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
-       if errorloc['line'] != -1:
-           msg = "ERROR in line %d:" % (errorloc['line']+1)
-           msg = msg +"\n" +errorloc['linetext']
-           caretline = [" "]*(len(errorloc['linetext'])+1)
-           caretline[errorloc['start']] = "^"
-           caretline[errorloc['end']] = "^"
-           caretline = "".join(caretline)
-           msg = msg +"\n" + caretline
-       else:
-           msg = ""
-       msg = msg +"\n" + error
-       self.write(msg)
+    def IndicateError(self, expt):
+        #self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
+        if expt.physloc.nstartline == expt.physloc.nendline:
+            locmsg = "Error in line %d of model definition" % (expt.physloc.nendline+1)
+        else:
+            locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline+1,expt.physloc.nendline+1)
+        self.write(locmsg)
+        self.write(str(expt))
+        self.ModelEditor.SetSelection(expt.physloc.start, expt.physloc.end)
 
     def OnAbortButton(self, event):
         if self.optimizerThread is None:
@@ -653,26 +649,16 @@ class stimatorMainFrame(wx.Frame):
         self.LogText.Clear()
         self.LogText.Refresh()
 
-        textlines = []
-        lcount = self.ModelEditor.GetLineCount()
-        for i in range (0, lcount):
-            textlines.append(self.ModelEditor.GetLine(i))
-        #~ print textlines
-        #~ return
-        parser = modelparser.StimatorParser()
+        textlines = [self.ModelEditor.GetLine(i) for i in range(self.ModelEditor.GetLineCount())]
         
         oldout = sys.stdout #parser may need to print messages
         sys.stdout = self
-
-        parser.parse(textlines)
-        if parser.error:
-           self.IndicateError(parser.error, parser.errorLoc)
-           sys.stdout = oldout
-           return
-
-        self.model       = parser.model
-        self.optSettings = parser.optSettings
-        self.tc          = parser.tc
+        try:
+            self.model, self.tc, self.optSettings = modelparser.read_model(textlines, True)
+        except modelparser.StimatorParserError, expt:
+                self.IndicateError(expt)
+                sys.stdout = oldout
+                return
 
         ntcread = self.tc.loadTimeCourses (self.GetFileDir())
         if ntcread == 0:
@@ -685,7 +671,7 @@ class stimatorMainFrame(wx.Frame):
         os.chdir(self.GetFileDir())
         
         if self.model.title == "":
-            self.model.title   = self.GetFileName()
+           self.model.title   = self.GetFileName()
 
         self.write("-------------------------------------------------------")
         self.write("Solving %s..."%self.model.title)
