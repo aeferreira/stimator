@@ -57,7 +57,8 @@ statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state
 stoichpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
 nameErrorpattern = r"NameError : name '(?P<name>\S+)' is not defined"
-inRateErrorpattern = r".*in rate of (?P<name>\S+)\s*"
+inRateErrorpattern = r".*in rate of (?P<name>\w+):"
+syntaxErrorpattern = r"SyntaxError.*(?P<inrate>in rate of.*)"
 
 identifier = re.compile(identifierpattern, re.IGNORECASE)
 fracnumber = re.compile(fracnumberpattern, re.IGNORECASE)
@@ -76,6 +77,7 @@ stoichmatch = re.compile(stoichpattern, re.IGNORECASE)
 
 nameErrormatch   = re.compile(nameErrorpattern)
 inRateErrormatch = re.compile(inRateErrorpattern, re.DOTALL)
+syntaxErrormatch = re.compile(syntaxErrorpattern, re.DOTALL)
 
 dispatchers = [(emptyline, "emptyLineParse"),
                (ratedef,   "rateDefParse"),
@@ -292,6 +294,10 @@ class StimatorParser:
         # check the validity of rate laws
         check, msg = self.model.checkRates()
         if not check:
+            m = syntaxErrormatch.match(msg)
+            if m:
+                inrate = m.group('inrate')
+                msg = "Syntax Error: bad math expression \n%s" % inrate
             #get name of transformation with offending rate
             m = inRateErrormatch.match(msg)
             if m:
@@ -299,7 +305,6 @@ class StimatorParser:
                 indx = self.vname.index(vn)
                 self.setError(msg, self.rateloc[indx])
                 expr = getattr(self.model, vn).rate
-                #~ print 'expr =',expr
                 self.setIfNameError(msg, expr, self.errorloc)
                 return
 

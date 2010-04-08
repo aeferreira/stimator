@@ -473,7 +473,7 @@ class Model(object):
             for v in collection:
                 resstring, value = _test_with_everything(v.rate,self)
                 if resstring != "":
-                    return False, resstring + '\nin rate of %s\n(%s)' % (v.name, v.rate)
+                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v.rate)
         for t in self.__forcing:
             t.genForcingFunction(self)
         return True, 'OK'
