@@ -224,7 +224,7 @@ nothing really usefull here
     print '\ndata'
     print d
     
-    h, d =  readTimeCourseFromFile('examples\\TSH2b.txt')   
+    h, d =  readTimeCourseFromFile('../models/TSH2b.txt')   
     print '\n\n====Parsing timecourse from file =============='
     print '\n\nData from TSH2b.txt'
     print 'header:'
@@ -233,7 +233,7 @@ nothing really usefull here
     print d
     print 'dimensions are %d by %d'% d.shape
     
-    #~ h, d =  readTimeCourseFromFile('examples\\TSH2a.txt')   
+    #~ h, d =  readTimeCourseFromFile(''../models/TSH2a.txt')   
     #~ print '\n\n====Parsing timecourse from file =============='
     #~ print '\n\nData from TSH2a.txt'
     #~ print 'header:'

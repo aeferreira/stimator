@@ -581,7 +581,7 @@ timecourse anotherfile.txt
 
     #~ modelText = '\n'.join(textlines)
     
-    filename = "examples/ca.txt"
+    filename = "../models/ca.txt"
     try2read_model(filename)
 
 

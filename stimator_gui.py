@@ -18,8 +18,8 @@ import wx
 import wx.lib.newevent
 import wx.stc  as  stc
 import resultsframe
-import modelparser
-import deode
+import stimator.modelparser
+import stimator.deode
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
@@ -573,7 +573,7 @@ class stimatorMainFrame(wx.Frame):
         if self.ModelEditor.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
                 return
-        fileName = os.path.join(os.path.dirname(__file__),'examples','glxs_hta.mdl')
+        fileName = os.path.join(os.path.dirname(__file__),'models','glxs_hta.mdl')
         if not os.path.exists(fileName) or not os.path.isfile(fileName):
             self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
             return
@@ -654,8 +654,8 @@ class stimatorMainFrame(wx.Frame):
         oldout = sys.stdout #parser may need to print messages
         sys.stdout = self
         try:
-            self.model, self.tc, self.optSettings = modelparser.read_model(textlines, True)
-        except modelparser.StimatorParserError, expt:
+            self.model, self.tc, self.optSettings = stimator.modelparser.read_model(textlines, True)
+        except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout
                 return
@@ -713,7 +713,7 @@ class stimatorMainFrame(wx.Frame):
 class CalcOptmThread:
 
     def Start(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
-        self.solver = deode.DeODESolver(model,optSettings, timecoursecollection, None, aGenerationTicker, anEndComputationTicker)
+        self.solver = stimator.deode.DeODESolver(model,optSettings, timecoursecollection, None, aGenerationTicker, anEndComputationTicker)
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
 
@@ -742,5 +742,5 @@ class stimatorApp(wx.App):
 # end of class stimatorApp
 
 if __name__ == "__main__":
-    stimator = stimatorApp(0)
-    stimator.MainLoop()
+    stimator_gui = stimatorApp(0)
+    stimator_gui.MainLoop()

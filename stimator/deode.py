@@ -272,7 +272,7 @@ def test():
     #print m1
     
     optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], 'examples', (0,2,1))
+    timecourses = timecourse.readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], '../models', (0,2,1))
     
     solver = DeODESolver(m1,optSettings, timecourses)
     
@@ -302,7 +302,7 @@ def test():
     ## VERY IMPORTANT:
     ## only one time course can be used: 
     ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTimeCourses(['TSH2a.txt'], 'examples', (0,2,1))
+    timecourses = timecourse.readTimeCourses(['TSH2a.txt'], '../models', (0,2,1))
     
     solver = DeODESolver(m2,optSettings, timecourses)
     
