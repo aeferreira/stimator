@@ -69,6 +69,7 @@ constdef  = re.compile(constdefpattern,    re.IGNORECASE)
 varlist   = re.compile(varlistpattern,     re.IGNORECASE)
 finddef   = re.compile(finddefpattern,     re.IGNORECASE)
 ratedef   = re.compile(ratedefpattern,     re.IGNORECASE)
+statedef  = re.compile(statepattern,       re.IGNORECASE)
 tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
 titledef  = re.compile(titlepattern)
@@ -81,11 +82,12 @@ syntaxErrormatch = re.compile(syntaxErrorpattern, re.DOTALL)
 
 dispatchers = [(emptyline, "emptyLineParse"),
                (ratedef,   "rateDefParse"),
-               (constdef,  "constDefParse"),
                (varlist,   "varListParse"),
                (finddef,   "findDefParse"),
                (tcdef,     "tcDefParse"),
                (atdef,     "atDefParse"),
+               (statedef,  "stateDefParse"),
+               (constdef,  "constDefParse"),
                (titledef,  "titleDefParse")]
 
 hascontpattern  = r"^.*\\$"
@@ -196,6 +198,7 @@ def read_model(text, otherdata = False):
 def try2read_model(text):
     try:
         m, tc, os = read_model(text, True)
+        print '-------- Mode sucessfuly read ------------------'
         print m
         print "the timecourses to load are", tc.filenames
         print
@@ -333,11 +336,26 @@ class StimatorParser:
         #process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
+        
+        if rate.endswith('..'):
+            rate = rate[:-2]
+            localsdict = dict([(p.name, p) for p in self.model.parameters])
+
+            resstring, value = test_with_consts(rate, localsdict)
+            if resstring != "":
+                loc.start = match.start('rate')
+                loc.end   = match.start('rate')+len(rate)
+                self.setError(resstring, loc)
+                self.setIfNameError(resstring, rate, loc)
+                return
+            else:
+                rate = float(value) # it will be a float and mass action kinetics will be assumed
+            
         try:
             setattr(self.model, name, model.react(stoich, rate))
         except model.BadStoichError:
-            loc.start = match.start(f)
-            loc.end   = match.end(f)
+            loc.start = match.start('stoich')
+            loc.end   = match.end('stoich')
             self.setError("'%s' is an invalid stoichiometry expression"% stoich, loc)
             return
         loc.start = match.start('rate')
@@ -346,12 +364,26 @@ class StimatorParser:
         self.vname.append(name)
 
     def emptyLineParse(self, line, loc, match):
-        pass #do nothing
+        pass
 
     def tcDefParse(self, line, loc, match):
         filename = match.group('filename').strip()
         self.tclines.append(loc.nline)
         self.tc.filenames.append(filename)
+    
+    def stateDefParse(self, line, loc, match):
+        name = match.group('name')
+        if model.findWithName(name, self.model.reactions): #repeated declaration
+            self.setError("Repeated declaration", loc)
+            return
+        state = match.group('value')
+        state = "model.%s"%state
+        try:
+            value = eval(state)
+            setattr(self.model, name, value)
+        except Exception, e:
+           self.setError("Bad '%s' state definition"%name, loc) 
+           return
 
     def constDefParse(self, line, loc, match):
         name      = match.group('name')
@@ -426,7 +458,7 @@ title: Glyoxalase system in L. infantum
 variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
-
+leak : MG -> , 10 ..
 reaction Glx2 : SDLTSH ->  ,  \\
     Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
 
@@ -443,6 +475,8 @@ find Km2   in [1e-5, 1]
 find Vmax2 in [1e-9, 1e-3]
 
 @ 3.4 pi = 2*pi
+
+init  = state(TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0)
 
 genomesize = 50 #should be enough
 generations = 400
@@ -524,6 +558,7 @@ timecourse anotherfile.txt
     #~ del(textlines[27])
 
     #~ modelText = '\n'.join(textlines)
+
 
 def profile_main():
  # This is the main function for profiling 
