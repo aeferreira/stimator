@@ -1,0 +1,244 @@
+#!/usr/bin/env python
+# -*- coding: ISO-8859-1 -*-
+
+"""S-timator : Time-course parameter estimation using Differential Evolution.
+
+Copyright 2005-2009 António Ferreira
+S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
+
+import sys
+import os.path
+
+#append parent directory to sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
+
+from time import time
+import stimator.de
+from numpy import *
+from scipy import integrate
+from stimator import *
+import stimator.timecourse
+
+#----------------------------------------------------------------------------
+#         Class to perform DE optimization for ODE systems
+#----------------------------------------------------------------------------
+
+class DeODESolver(de.DESolver):
+    """Overides energy function and report functions.
+    
+    The energy function solves ODEs and computes a least-squares score.
+    Ticker functions are called on generation completion and when optimization finishes.
+    """
+    
+    def __init__(self, model, optSettings, timecoursecollection, 
+                    aGenerationTicker=None, anEndComputationTicker=None, 
+                    dump_pars=False):
+        self.model = model
+        self.tc    = timecoursecollection
+        self.timecoursedata   = self.tc.data
+        self.generationTicker = aGenerationTicker
+        self.endTicker        = anEndComputationTicker
+        self.dump_pars        = dump_pars
+
+        pars = model.uncertain
+        mins = array([u.min for u in pars])
+        maxs = array([u.max for u in pars])
+        
+        de.DESolver.__init__(self, len(pars), # number of parameters
+                             int(optSettings['genomesize']),  # genome size
+                             int(optSettings['generations']), # max number of generations
+                             mins, maxs,              # min and max parameter values
+                             "Best2Exp",              # DE strategy
+                             0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
+                             True)                    # use class random number methods
+
+        # cutoffEnergy is 1e-6 of deviation from data
+        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in self.timecoursedata])
+        
+        # scale times to maximum time in data
+        scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
+        
+        self.calcDerivs = model.getdXdt(scale = scale, with_uncertain=True)
+        
+        # store initial values and (scaled) time points
+        self.X0 = []
+        self.times = []
+        for data in self.timecoursedata:
+            y0 = copy(data[0, 1:]) # variables are in columns 1 to end
+            self.X0.append(y0)
+
+            # find uncertain initial values
+            self.mapinit2trial = []
+            for iu, u in enumerate(self.model.uncertain):
+                if u.name.startswith('init'):
+                    varname = u.name.split('.')[-1]
+                    ix = findWithNameIndex(varname, self.model.variables)
+                    self.mapinit2trial.append((ix,iu))
+                    #y0[ix] = trial[iu]
+            
+            t  = data[:, 0]        # times are in columns 0
+            t0 = t[0]
+            times = (t-t0)/scale+t0  # this scales time points
+            self.times.append(times)
+
+        self.timecourse_scores = empty(len(self.timecoursedata))
+        
+        # open files to write parameter progression
+        if self.dump_pars:
+            self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
+
+    def externalEnergyFunction(self,trial):
+        #if out of bounds flag with error energy
+        for trialpar, minInitialValue, maxInitialValue in zip(trial, self.minInitialValue, self.maxInitialValue):
+            if trialpar > maxInitialValue or trialpar < minInitialValue:
+                return 1.0E300
+       
+        self.model.set_uncertain(trial)
+        salg=integrate._odepack.odeint
+
+        for i in range(len(self.timecoursedata)):
+            y0 = copy(self.X0[i])
+            # fill uncertain initial values
+            for varindex, trialindex in self.mapinit2trial:
+                y0[varindex] = trial[trialindex]
+                
+            t  = copy(self.times[i])
+
+#           Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+            output = salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
+                            None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+            if output[-1] < 0: return (1.0E300)
+            #~ if infodict['message'] != 'Integration successful.':
+                #~ return (1.0E300)
+            Y = output[0]
+            S = (Y- self.timecoursedata[i][:, 1:])**2
+            score = nansum(S)
+            self.timecourse_scores[i]=score
+        
+        gscore = self.timecourse_scores.sum()
+        return gscore
+
+    def reportGeneration (self):
+        if not self.generationTicker:
+            print self.reportGenerationString()
+        else:
+            self.generationTicker(self.generation, float(self.bestEnergy))
+        if self.dump_pars:
+            for par in range(self.parameterCount):
+                parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
+                print >>self.parfilehandes[par], " ".join(parvector)
+            
+    
+    def reportFinal (self):
+        if self.exitCode==0: outCode = -1 
+        else: 
+            outCode = self.exitCode
+            self.generateOptimumData()
+        if not self.endTicker:
+            print self.reportFinalString()
+        else:
+            self.endTicker(outCode)
+        if self.dump_pars:
+            for par in self.parfilehandes:
+                par.close()
+
+    def generateOptimumData (self):
+        best = {'parameters'       : {'name':"parameters"}, 
+                    'optimization'     : {'name':"D.E. optimization"}, 
+                    'timecourses'      : {'name':"timecourses"},
+                    'best timecourses' : {'name':"best timecourses"}}
+        best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value) for (i,value) in enumerate(self.bestSolution)]
+        best['parameters']['format'] = "%s\t%s"
+        best['parameters']['header'] = None
+        
+        best['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),
+                                ('Generations', "%d"% self.generation),
+                                ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
+        best['optimization']['format'] = "%s\t%s"
+        best['optimization']['header'] = None
+
+        #TODO: Store initial solver parameters?
+
+        #generate best time-courses
+        best['timecourses']['data'] = []
+        best['best timecourses']['data'] = []
+        for (i,data) in enumerate(self.timecoursedata):
+            y0 = copy(self.X0[i])
+            t  = self.times[i]
+            Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+            best['best timecourses']['data'].append(Y)
+            if infodict['message'] != 'Integration successful.':
+                score = 1.0E300
+            else:
+                S = (Y- data[:, 1:])**2
+                score = nansum(S)
+            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
+        best['timecourses']['format'] = "%s\t%d\t%g"
+        best['timecourses']['header'] = ['Name', 'Points', 'Score']
+        
+        self.optimum = best
+
+def reportResults(solver):
+    reportText = ""
+    sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
+    for section in sections:
+        reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
+        if section['header']:
+            reportText += '\t\t'.join(section['header'])+'\n'
+        reportText += "\n".join([section['format'] % i for i in section['data']])
+        reportText += '\n\n'
+    return reportText
+
+
+def test():
+    m1 = Model("Glyoxalase system in L.infantum")
+    m1.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
+    m1.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
+    m1.V1  = 2.57594e-05
+    m1.V1.uncertainty(0.00001, 0.0001)
+    m1.Km1 = 0.252531
+    m1.Km1.uncertainty(0.01, 1)
+    m1.V2  = 2.23416e-05
+    m1.V2.uncertainty(0.00001, 0.0001)
+    m1.Km2 = 0.0980973
+    m1.Km2.uncertainty(0.01, 1)
+    m1.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+    #print m1
+    
+    optSettings={'genomesize':80, 'generations':200}
+    timecourses = stimator.timecourse.readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], '..\models', (0,2,1))
+    
+    solver = DeODESolver(m1,optSettings, timecourses)
+    
+    time0 = time()
+    
+    solver.Solve()
+    
+    print "Optimization took %f s"% (time()-time0)
+
+    print
+    print '---------------------------------------------------------'
+    print "Results for %s\n" % m1.title
+    print reportResults(solver)
+
+
+def profile_test():
+ # This is the main function for profiling 
+ import cProfile, pstats, StringIO
+ prof = cProfile.Profile()
+ prof = prof.runctx("test()", globals(), locals())
+ stream = StringIO.StringIO()
+ stats = pstats.Stats(prof, stream=stream)
+ stats.sort_stats("time")  # Or cumulative
+ stats.print_stats(40)  # 40 = how many to print
+ # The rest is optional.
+ #stats.print_callees()
+ #stats.print_callers()
+ print stream.getvalue()
+ #logging.info("Profile data:\n%s", stream.getvalue())
+
+
+if __name__ == "__main__":
+    profile_test()
+
