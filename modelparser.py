@@ -146,12 +146,6 @@ class LogicalLoc(object):
         self.linestart = linestart # start of logical line
         self.lineend   = lineend   # end of logical line
 
-def getLinesFromText(text):
-    if isinstance(text,list):
-        return text
-    textlines = StringIO.StringIO(text)
-    return textlines
-
 def getPhysicalLineData(textlines, logpos):
     textlines = getLinesFromText(textlines)
     
@@ -172,8 +166,15 @@ def getPhysicalLineData(textlines, logpos):
             nendline = iline
             endline = line
             endlinepos = physend - line_start_pos
+            try2close(textlines)
             return PhysicalLoc(physstart, startline, nstartline, startlinepos, physend, endline, nendline, endlinepos)
     return None
+
+def try2close(f):
+    try:
+        f.close()
+    except:
+        pass
 
 class StimatorParserError(Exception):
     def __init__(self, value, physloc, logloc):
@@ -182,7 +183,26 @@ class StimatorParserError(Exception):
         self.logloc = logloc
     def __str__(self):
         return str(self.value)
-    
+
+def getLinesFromText(text):
+    # try to open with urllib (if source is http, ftp, or file URL)
+    #~ import urllib                         
+    #~ try:                                  
+        #~ return urllib.urlopen(source)
+    #~ except (IOError, OSError):            
+        #~ pass                              
+    if isinstance(text,list):
+        return text
+    # try to open with native open function (if source is pathname)
+    try:
+        return open(text)
+    except (IOError, OSError):
+        pass
+
+    textlines = StringIO.StringIO(str(text))
+    return textlines
+
+
 def read_model(text, otherdata = False):
     parser = StimatorParser()
     parser.parse(text)
@@ -197,8 +217,8 @@ def read_model(text, otherdata = False):
 
 def try2read_model(text):
     try:
-        m, tc, os = read_model(text, True)
-        print '-------- Mode sucessfuly read ------------------'
+        m, tc, os = read_model(text, otherdata = True)
+        print '\n-------- Model %s sucessfuly read ------------------'% m.title
         print m
         print "the timecourses to load are", tc.filenames
         print
@@ -247,7 +267,6 @@ class StimatorParser:
         self.problemname = ""   # the name of the problem
 
         self.error = None      # different of None if an error occurs
-        #self.errorLogLineloc = None
         self.errorloc = None
         
         # default Differential Evolution num of generations and population size
@@ -279,12 +298,15 @@ class StimatorParser:
                     output_function = getattr(StimatorParser, d[1])
                     output_function(self, line, loc, matchresult)
                     if self.error :
+                        try2close(self.textlines)
                         return #quit on first error. Needs revision!
                     matchfound = True
                     break #do not try any more patterns
             if not matchfound:
                 self.setError("Invalid syntax", loc)
+                try2close(self.textlines)
                 return
+        try2close(self.textlines)
 
         # build list of ints with the order of variables (time is at pos 0)
         if not self.tc.variablesorder:
@@ -558,6 +580,9 @@ timecourse anotherfile.txt
     #~ del(textlines[27])
 
     #~ modelText = '\n'.join(textlines)
+    
+    filename = "examples/ca.txt"
+    try2read_model(filename)
 
 
 def profile_main():
