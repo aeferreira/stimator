@@ -6,10 +6,16 @@
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
+import sys
+import os.path
+
+#append parent directory to sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
+
 from numpy import *
-from model import *
-from analysis import *
-from fim import *
+from stimator import *
+from stimator.analysis import *
+from stimator.fim import *
 
 
 def test():

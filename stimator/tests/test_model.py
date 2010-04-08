@@ -1,5 +1,5 @@
-from stimatordev import *
-from stimatordev import model
+from stimator import *
+#from stimator import model
 from nose.tools import *
 
 
