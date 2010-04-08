@@ -5,8 +5,8 @@ import os.path
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
 
 from time import time
-from stimator import *
-from stimator.deode import DeODESolver
+from stimatordev import *
+from stimatordev.deode import DeODESolver
 
 def reportResults(solver):
     reportText = ""
