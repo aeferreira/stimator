@@ -321,9 +321,15 @@ class Variable(object):
 
 def isPairOfNums(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
-        for numtype in (float,int,long):
-            if isinstance(value[0], numtype) and isinstance(value[1], numtype):
-                return True
+        for pos in (0,1):
+            typeOK = False
+            for numtype in (float,int,long):
+                if isinstance(value[pos], numtype):
+                    typeOK = True
+                    break
+            if not typeOK:
+                return False
+        return True
     return False
 
 def ConvertPair2Reaction(value):

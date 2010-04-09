@@ -1,7 +1,7 @@
 from stimator import *
+from stimator.model import isPairOfNums
 #from stimator import model
 from nose.tools import *
-
 
 def test_M1():
     """test Model __init__ empty ()"""
@@ -90,6 +90,27 @@ def test_par1():
     assert m.p1 == 4.0
     assert m.p2 == 3.0
 
+def test_isPairOfNums():
+    """test isPairOfNums function"""
+    p1 = 1,10.0
+    p2 = (1, 10.0)
+    p3 = [1,10.0]
+    p4 = [2.3, 4.4]
+    p5 = 3
+    p6 = (4)
+    p7 = ("2.3", 4.5)
+    p8 = [8.8]
+    p9 = (1,2.3,4)
+    assert isPairOfNums(p1)
+    assert isPairOfNums(p2)
+    assert isPairOfNums(p3)
+    assert isPairOfNums(p4)
+    assert not isPairOfNums(p5)
+    assert not isPairOfNums(p6)
+    assert not isPairOfNums(p7)
+    assert not isPairOfNums(p8)
+    assert not isPairOfNums(p9)
+    
 def test_par2():
     """test assignment of parameters with bounds"""
     m = Model("My first model")
