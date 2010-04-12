@@ -1,14 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: ISO-8859-1 -*-
 
-import sys
-import os.path
-
-#append parent directory to sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir))
-
 from stimator import *
-from stimator.analysis import *
 
 #print '---------------- EXAMPLE: CICR model ------------------'
 def step (t, t_stimulus, B):

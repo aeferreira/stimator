@@ -1,6 +1,5 @@
 from stimator import *
 from stimator.model import isPairOfNums
-#from stimator import model
 from nose.tools import *
 
 def test_M1():
@@ -222,3 +221,16 @@ def test_clonemodel():
     m2 = m.clone()
     m2str = str(m2)
     assert mstr == m2str
+
+def test_init1():
+    """test assignment of states"""
+    m = Model("My first model")
+    m.p1 = 4
+    m.p2 = 3.0
+    m.init = state(x = 1, y = 2.0)
+    m.end = state(x = 2, y = 4.0)
+    assert isinstance(m.init, model.StateArray)
+    assert isinstance(m.end, model.StateArray)
+    assert m.init.x == 1.0
+    assert m.init.y == 2.0
+
