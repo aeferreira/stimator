@@ -138,6 +138,7 @@ class SolutionTimeCourse(object):
         if newnames is not None:
             self.names = newnames
         self.data = trf
+        return self
 
 def transform(solution, f, outputs=False, title = None):
     pass

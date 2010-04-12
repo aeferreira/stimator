@@ -1,7 +1,13 @@
+"""S-timator : DEMO of deode module."""
 
 from time import time
 from stimator import *
 from stimator.deode import DeODESolver
+
+print __doc__
+print
+print """The deode module combines ODE solving with DE (differential evolution)
+"""
 
 def reportResults(solver):
     reportText = ""
@@ -14,19 +20,21 @@ def reportResults(solver):
         reportText += '\n\n'
     return reportText
 
-m1 = Model("Glyoxalase system in L.infantum")
-m1.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
-m1.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
-m1.V1  = 2.57594e-05
-m1.Km1 = 0.252531
-m1.V2  = 2.23416e-05
-m1.Km2 = 0.0980973
-m1.V1.uncertainty(0.00001, 0.0001)
-m1.Km1.uncertainty(0.01, 1)
-m1.V2.uncertainty(0.00001, 0.0001)
-m1.Km2.uncertainty(0.01, 1)
-m1.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
-#print m1
+m1 = read_model("""
+title Glyoxalase system in L. Infantum
+
+#reactions (with stoichiometry and rate)
+glx1 : HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
+glx2 : SDLTSH ->,     V2*SDLTSH/(Km2 + SDLTSH)
+
+find V1  in [0.00001, 0.0001]
+find Km1 in [0.01, 1]
+find V2  in [0.00001, 0.0001]
+find Km2 in [0.01, 1]
+init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+""")
+
+#~ print m1
 
 optSettings={'genomesize':80, 'generations':200}
 timecourses = readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], '../../models', (0,2,1))

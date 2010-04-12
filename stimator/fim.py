@@ -12,7 +12,7 @@ from analysis import *
 import timecourse
 
 def add_dSdt_to_model(m, pars):
-    """Add sensitivity ODS to model, according to formula:
+    """Add sensitivity ODEs to model, according to formula:
     
     dS/dt = df/dx * S + df/dp
     
