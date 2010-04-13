@@ -54,6 +54,7 @@ atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpatter
 titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
 statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
 dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
+transfpattern     = r"^\s*(transf|~)\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 
 stoichpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
@@ -75,6 +76,7 @@ tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
 titledef  = re.compile(titlepattern)
 dxdtdef   = re.compile(dxdtpattern,        re.IGNORECASE)
+transfdef = re.compile(transfpattern,      re.IGNORECASE)
 
 stoichmatch = re.compile(stoichpattern, re.IGNORECASE)
 
@@ -90,6 +92,7 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (atdef,     "atDefParse"),
                (statedef,  "stateDefParse"),
                (dxdtdef,   "dxdtDefParse"),
+               (transfdef, "transfDefParse"),
                (constdef,  "constDefParse"),
                (titledef,  "titleDefParse")]
 
@@ -332,7 +335,11 @@ class StimatorParser:
                 vn = m.group('name')
                 indx = self.vname.index(vn)
                 if vn.startswith('d_') and vn.endswith('_dt'):
-                    msg = msg.replace('in rate of', 'in')
+                    msg = msg.replace('in rate of', 'in the definition of')
+                tt = getattr(self.model, vn)
+                if isinstance(tt, model.Transformation):
+                    msg = msg.replace('in rate of', 'in the definition of')
+                    
                 self.setError(msg, self.rateloc[indx])
                 expr = getattr(self.model, vn).rate
                 self.setIfNameError(msg, expr, self.errorloc)
@@ -400,6 +407,18 @@ class StimatorParser:
         loc.end   = match.end('value')
         self.rateloc.append(loc)
         self.vname.append(dxdtname)
+    
+    def transfDefParse(self, line, loc, match):
+        name = match.group('name')
+        if model.findWithName(name, self.model.transf): #repeated declaration
+            self.setError("Repeated declaration", loc)
+            return
+        expr = match.group('value').strip()
+        setattr(self.model, name, model.transf(expr))
+        loc.start = match.start('value')
+        loc.end   = match.end('value')
+        self.rateloc.append(loc)
+        self.vname.append(name)
    
     def emptyLineParse(self, line, loc, match):
         pass
@@ -499,7 +518,7 @@ Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 leak : MG -> , 10 ..
 reaction Glx2 : SDLTSH ->  ,  \\
     Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2
-
+~ totTSH = TSH2 + SDLTSH
 pi   = 3.1416
 pi2  = 2*pi
 pipi = pi**2  #this is pi square

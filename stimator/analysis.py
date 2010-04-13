@@ -179,7 +179,7 @@ def test():
     v1 =  -> Ca, B*k1
     k1 = 7.3
     B  = 0.4
-    export = Ca -> , 10 ..
+    export = Ca -> ,       10 ..
     leak   = CaComp -> Ca, 1 ..
     v2     = Ca -> CaComp, 65 * Ca**2 / (1+Ca**2)
     v3     = CaComp -> Ca, 500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)
@@ -197,10 +197,10 @@ def test():
     X2' = 0.36 * X2 - X1
     X3' = X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8
     init = state(X1 = 19.0, X2 = 47, X3 = 50)
+    ~ x3 = X3 -50.0
+    ~ x1 = X1 -18.0
+    ~ x2 = X2 -50.0
     """)
-    m4.x3 = transf("X3 -50.0")
-    m4.x1 = transf("X1 -18.0")
-    m4.x2 = transf("X2 -50.0")
 
     print m4
 
