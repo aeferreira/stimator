@@ -7,8 +7,6 @@ Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
-import timecourse
-
 
 def getCriteriumFunction(weights, ydata):
     """Returns a function to compute the objective function (for each timecourse).

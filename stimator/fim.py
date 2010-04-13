@@ -153,7 +153,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
     
     #scale = float(max([ (s.t[-1]-s.t[0]) for s in timecoursedata]))
     
-    sols = Solutions()
+    sols = timecourse.Solutions()
     for tc in timecoursedata:
         #set init and solve
         for n,v in tc.state_at(0.0): #TODO: may not start at zero
@@ -262,7 +262,7 @@ def test():
     pars = "V1 Km1".split()
     parvalues = [getattr(m, p) for p in pars]
     
-    sols = Solutions()
+    sols = timecourse.Solutions()
     sols += solve(m, tf = 4030.0) 
     
     pars = "V1 Km1".split()

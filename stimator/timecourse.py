@@ -11,7 +11,6 @@ import os.path
 import re
 import math
 from numpy import *
-from analysis import *
 import model
 
 #----------------------------------------------------------------------------
@@ -142,7 +141,127 @@ def readTimeCourses(filenames, filedir, intvarsorder):
     nread = tc.loadTimeCourses(filedir)
     return tc
 
+
+class SolutionTimeCourse(object):
+    """Holds a timecourse created by ODE solvers"""
+    def __init__(self, t = array([]), data = array([]), names = [], title = ""):
+        self.t = t         #values of time points
+        self.data = data   # table of solution points: series in rows, times in cols
+        self.names = names # names of the series
+        self.shape = data.shape
+        self.title = title # a title for the solution
+        
+    def __len__(self):
+        return self.data.shape[0]
+    def __nonzero__(self):
+        return len(t) > 0
+    def __getitem__(self, key):
+        """retrieves a series by name or index"""
+        if isinstance(key, str) or isinstance(key, unicode):
+            try:
+                i = self.names.index(key)
+            except ValueError:
+                raise ValueError( "No data for '%s' in timecourse" % str(key))
+            return self.data.__getitem__(i)
+        return self.data.__getitem__(key)
+    def state_at(self, t):
+        """Retrieves a State object with values at a time point.
+        
+           May have to interpolate."""
+        if t > self.t[-1] or t < self.t[0]:
+            raise ValueError( "No data for time '%s' in timecourse" % str(t) )
+        # Interpolate:
+        ileft = self.t.searchsorted(t, side = 'left')
+        iright = self.t.searchsorted(t, side = 'right')
+        if iright == ileft:
+            ileft -= 1
+            tl = self.t[ileft]
+            tr = self.t[iright]
+            yl = self.data[:,ileft]
+            yr = self.data[:,iright]
+            m = (yr-yl)/(tr-tl)
+            y = yl + m *(t-tl)
+        else:
+            y = self.data[:, ileft]
+        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+
+    def i_time(self,t):
+        """Retrieves the closest index for time t."""
+        if t > self.t[-1] or t < self.t[0]:
+            raise ValueError( "No data for time '%s' in timecourse" % str(t) )
+        # Find closest:
+        ileft  = self.t.searchsorted(t, side = 'left')
+        iright = self.t.searchsorted(t, side = 'right')
+        if iright == ileft:
+            ileft -= 1
+            tl = self.t[ileft]
+            tr = self.t[iright]
+            if (t-tl) <= (tr-t):
+                return ileft
+            else:
+                return iright
+        else:
+            return ileft
+        
+    def __getLastState(self):
+        """Retrieves state_at last timepoint"""
+        y = self.data[:,-1]
+        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
+    last = property(__getLastState) #'last' is a synonymous, used as 'sol.last'
+    def __getNumberOfTimes(self):
+        """Retrieves the number of time points"""
+        return self.data.shape[1]
+    ntimes = property(__getNumberOfTimes)
     
+    def apply_transf(self,f, newnames=None):
+        """Applies a transformation to time series.
+        
+           f is the transformation function, with signature
+           f(variables,t). variables is an array, list or tuple, t is a scalar.
+           This function must return an array with the same size as 'variables'.
+           newnames is a list of names of the transformed variables.
+           results are kept 'in place': data is substituted."""
+           
+        def newf(newdata,f):
+            return f(newdata[1:], newdata[0])
+        trf   = apply_along_axis(newf, 0, vstack((self.t,self.data)), f)
+        if newnames is not None:
+            self.names = newnames
+        self.data = trf
+        return self
+
+class Solutions(object):
+    """Holds a colection of objects of class SolutionTimeCourse"""
+    def __init__(self, title = ""):
+        self.title = title
+        self.solutions = []
+    
+    def __getitem__(self, key):
+        """retrieves a series by index"""
+        return self.solutions.__getitem__(key)
+    def __len__(self):
+        return len(self.solutions)
+    def __nonzero__(self):
+        return len(self.solutions) > 0
+    def __iadd__(self,other):
+        if isinstance(other, Solutions):
+            self.solutions.extend(other.solutions)
+        elif isinstance(other, list) or isinstance(other, tuple):
+            for s in other:
+                if not isinstance(s, SolutionTimeCourse): 
+                    raise TypeError( "Must add a solutions or collection of solutions")
+            self.solutions.extend(list(other))
+        elif isinstance(other, SolutionTimeCourse):
+            self.solutions.append(other)
+        else:
+            raise TypeError( "Must add a solutions or collection of solutions")
+        return self
+    def __iter__(self):
+        return iter(self.solutions)
+    def append(self, other):
+        return self.__iadd__(other)
+
+
 #----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------

@@ -159,7 +159,7 @@ class DeODESolver(de.DESolver):
         parsdict = dict (zip(pars, parvalues))
         self.model.set_uncertain(self.bestSolution)
         
-        sols = Solutions()
+        sols = timecourse.Solutions()
         
         errorestim = 0.0
 
@@ -172,7 +172,7 @@ class DeODESolver(de.DESolver):
             #best['best timecourses']['data'].append(Y)
             nx = len(data[:,0].T)
             errorestim += score / float(nx)
-            sols += SolutionTimeCourse (data[:,0].T, Y.T, varnames)
+            sols += timecourse.SolutionTimeCourse (data[:,0].T, Y.T, varnames)
             
             varnames = []
             varindexes=[]

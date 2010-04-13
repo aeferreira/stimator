@@ -9,8 +9,10 @@
 #----------------------------------------------------------------------------
 import math
 from model import *
+from modelparser import read_model
 from numpy import *
 from scipy import integrate
+from timecourse import SolutionTimeCourse
 
 import pylab as p
 
@@ -52,132 +54,12 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         raise TypeError("'outputs' parameter is of the wrong type")
     return sol
 
-class SolutionTimeCourse(object):
-    """Holds a timecourse created by ODE solvers"""
-    def __init__(self, t = array([]), data = array([]), names = [], title = ""):
-        self.t = t         #values of time points
-        self.data = data   # table of solution points: series in rows, times in cols
-        self.names = names # names of the series
-        self.shape = data.shape
-        self.title = title # a title for the solution
-        
-    def __len__(self):
-        return self.data.shape[0]
-    def __nonzero__(self):
-        return len(t) > 0
-    def __getitem__(self, key):
-        """retrieves a series by name or index"""
-        if isinstance(key, str) or isinstance(key, unicode):
-            try:
-                i = self.names.index(key)
-            except ValueError:
-                raise ValueError( "No data for '%s' in timecourse" % str(key))
-            return self.data.__getitem__(i)
-        return self.data.__getitem__(key)
-    def state_at(self, t):
-        """Retrieves a State object with values at a time point.
-        
-           May have to interpolate."""
-        if t > self.t[-1] or t < self.t[0]:
-            raise ValueError( "No data for time '%s' in timecourse" % str(t) )
-        # Interpolate:
-        ileft = self.t.searchsorted(t, side = 'left')
-        iright = self.t.searchsorted(t, side = 'right')
-        if iright == ileft:
-            ileft -= 1
-            tl = self.t[ileft]
-            tr = self.t[iright]
-            yl = self.data[:,ileft]
-            yr = self.data[:,iright]
-            m = (yr-yl)/(tr-tl)
-            y = yl + m *(t-tl)
-        else:
-            y = self.data[:, ileft]
-        return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
-
-    def i_time(self,t):
-        """Retrieves the closest index for time t."""
-        if t > self.t[-1] or t < self.t[0]:
-            raise ValueError( "No data for time '%s' in timecourse" % str(t) )
-        # Find closest:
-        ileft  = self.t.searchsorted(t, side = 'left')
-        iright = self.t.searchsorted(t, side = 'right')
-        if iright == ileft:
-            ileft -= 1
-            tl = self.t[ileft]
-            tr = self.t[iright]
-            if (t-tl) <= (tr-t):
-                return ileft
-            else:
-                return iright
-        else:
-            return ileft
-        
-    def __getLastState(self):
-        """Retrieves state_at last timepoint"""
-        y = self.data[:,-1]
-        return StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
-    last = property(__getLastState) #'last' is a synonymous, used as 'sol.last'
-    def __getNumberOfTimes(self):
-        """Retrieves the number of time points"""
-        return self.data.shape[1]
-    ntimes = property(__getNumberOfTimes)
-    
-    def apply_transf(self,f, newnames=None):
-        """Applies a transformation to time series.
-        
-           f is the transformation function, with signature
-           f(variables,t). variables is an array, list or tuple, t is a scalar.
-           This function must return an array with the same size as 'variables'.
-           newnames is a list of names of the transformed variables.
-           results are kept 'in place': data is substituted."""
-           
-        def newf(newdata,f):
-            return f(newdata[1:], newdata[0])
-        trf   = apply_along_axis(newf, 0, vstack((self.t,self.data)), f)
-        if newnames is not None:
-            self.names = newnames
-        self.data = trf
-        return self
 
 def transform(solution, f, outputs=False, title = None):
     pass
     #~ times = copy(solution.t)
     
     #~ sol = SolutionTimeCourse (times, Y.T, names, title)
-
-
-class Solutions(object):
-    """Holds a colection of objects of class SolutionTimeCourse"""
-    def __init__(self, title = ""):
-        self.title = title
-        self.solutions = []
-    
-    def __getitem__(self, key):
-        """retrieves a series by index"""
-        return self.solutions.__getitem__(key)
-    def __len__(self):
-        return len(self.solutions)
-    def __nonzero__(self):
-        return len(self.solutions) > 0
-    def __iadd__(self,other):
-        if isinstance(other, Solutions):
-            self.solutions.extend(other.solutions)
-        elif isinstance(other, list) or isinstance(other, tuple):
-            for s in other:
-                if not isinstance(s, SolutionTimeCourse): 
-                    raise TypeError( "Must add a solutions or collection of solutions")
-            self.solutions.extend(list(other))
-        elif isinstance(other, SolutionTimeCourse):
-            self.solutions.append(other)
-        else:
-            raise TypeError( "Must add a solutions or collection of solutions")
-        return self
-    def __iter__(self):
-        return iter(self.solutions)
-    def append(self, other):
-        return self.__iadd__(other)
-
 
 def plot(solutions, figure = None, style = None, titles=None, ynormalize = False, superimpose = False):
     p.figure()
@@ -246,14 +128,16 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
 
 def test():
     print '---------------- EXAMPLE 1 ------------------'
-    m1 = Model("Glyoxalase system")
-    m1.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
-    m1.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
-    m1.V1  = 2.57594e-05
-    m1.Km1 = 0.252531
-    m1.V2  = 2.23416e-05
-    m1.Km2 = 0.0980973
-    m1.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+    m1 = read_model("""
+    title Glyoxalase system
+    glo1 = HTA -> SDLTSH, rate = V1*HTA/(Km1 + HTA)
+    glo2 = SDLTSH ->    , rate = V2*SDLTSH/(Km2 + SDLTSH)
+    V1  = 2.57594e-05
+    Km1 = 0.252531
+    V2  = 2.23416e-05
+    Km2 = 0.0980973
+    init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+    """)
 
     print m1
 

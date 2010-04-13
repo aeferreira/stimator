@@ -53,6 +53,7 @@ tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
 statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
+dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 
 stoichpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
@@ -73,6 +74,7 @@ statedef  = re.compile(statepattern,       re.IGNORECASE)
 tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
 titledef  = re.compile(titlepattern)
+dxdtdef   = re.compile(dxdtpattern,        re.IGNORECASE)
 
 stoichmatch = re.compile(stoichpattern, re.IGNORECASE)
 
@@ -87,6 +89,7 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (tcdef,     "tcDefParse"),
                (atdef,     "atDefParse"),
                (statedef,  "stateDefParse"),
+               (dxdtdef,   "dxdtDefParse"),
                (constdef,  "constDefParse"),
                (titledef,  "titleDefParse")]
 
@@ -328,6 +331,8 @@ class StimatorParser:
             if m:
                 vn = m.group('name')
                 indx = self.vname.index(vn)
+                if vn.startswith('d_') and vn.endswith('_dt'):
+                    msg = msg.replace('in rate of', 'in')
                 self.setError(msg, self.rateloc[indx])
                 expr = getattr(self.model, vn).rate
                 self.setIfNameError(msg, expr, self.errorloc)
@@ -348,8 +353,6 @@ class StimatorParser:
             self.setError(text, loc)
 
     def rateDefParse(self, line, loc, match):
-        entry={}
-        entryloc = {}
         #process name
         name = match.group('name')
         if model.findWithName(name, self.model.reactions): #repeated declaration
@@ -361,8 +364,8 @@ class StimatorParser:
         
         if rate.endswith('..'):
             rate = rate[:-2]
+            
             localsdict = dict([(p.name, p) for p in self.model.parameters])
-
             resstring, value = test_with_consts(rate, localsdict)
             if resstring != "":
                 loc.start = match.start('rate')
@@ -385,6 +388,19 @@ class StimatorParser:
         self.rateloc.append(loc)
         self.vname.append(name)
 
+    def dxdtDefParse(self, line, loc, match):
+        name = match.group('name')
+        dxdtname = "d_%s_dt"%name
+        if model.findWithName(dxdtname, self.model.reactions): #repeated declaration
+            self.setError("Repeated declaration", loc)
+            return
+        expr = match.group('value').strip()
+        setattr(self.model, name, model.variable(expr))
+        loc.start = match.start('value')
+        loc.end   = match.end('value')
+        self.rateloc.append(loc)
+        self.vname.append(dxdtname)
+   
     def emptyLineParse(self, line, loc, match):
         pass
 
@@ -406,7 +422,7 @@ class StimatorParser:
         except Exception, e:
            self.setError("Bad '%s' state definition"%name, loc) 
            return
-
+           
     def constDefParse(self, line, loc, match):
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
@@ -497,8 +513,8 @@ find Km2   in [1e-5, 1]
 find Vmax2 in [1e-9, 1e-3]
 
 @ 3.4 pi = 2*pi
-
-init  = state(TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0)
+x' = MG/2
+init  = state(TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0)
 
 genomesize = 50 #should be enough
 generations = 400
