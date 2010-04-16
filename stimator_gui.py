@@ -654,7 +654,10 @@ class stimatorMainFrame(wx.Frame):
         oldout = sys.stdout #parser may need to print messages
         sys.stdout = self
         try:
-            self.model, self.tc, self.optSettings = stimator.modelparser.read_model(textlines, True)
+            #~ self.model, self.tc, self.optSettings = stimator.modelparser.read_model(textlines, True)
+            self.model = stimator.modelparser.read_model(textlines)
+            self.tc = self.model.getData('timecourses')
+            self.optSettings = self.model.getData('optSettings')
         except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout

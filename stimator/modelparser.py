@@ -209,21 +209,29 @@ def getLinesFromText(text):
     return textlines
 
 
-def read_model(text, otherdata = False):
+def read_model(text): #, otherdata = False):
     parser = StimatorParser()
     parser.parse(text)
     if parser.error is None:
-        if otherdata:
-            return (parser.model, parser.tc, parser.optSettings)
-        else:
-            return parser.model
+        parser.model.setData('timecourses', parser.tc)
+        parser.model.setData('optSettings', parser.optSettings)
+        return parser.model
+        #~ if otherdata:
+            #~ parser.model.setData('timecourses', parser.tc)
+            #~ parser.model.setData('optSettings', parser.optSettings)
+            #~ return (parser.model, parser.tc, parser.optSettings)
+        #~ else:
+            #~ return parser.model
     logloc = parser.errorloc
     ppos = getPhysicalLineData(text, logloc)
     raise StimatorParserError(parser.error, ppos, logloc)
 
 def try2read_model(text):
     try:
-        m, tc, os = read_model(text, otherdata = True)
+        #~ m, tc, os = read_model(text, otherdata = True)
+        m= read_model(text)
+        tc = m.getData('timecourses')
+        os = m.getData('optSettings')
         print '\n-------- Model %s sucessfuly read ------------------'% m.getData('title')
         print m
         print "the timecourses to load are", tc.filenames
@@ -277,6 +285,7 @@ class StimatorParser:
         
         # default Differential Evolution num of generations and population size
         self.model       = model.Model()
+        #~ self.model.setData('timecourses', timecourse.TimeCourseCollection())
         self.tc          = timecourse.TimeCourseCollection()
         self.optSettings = {'generations':200, 'genomesize' :10}
 
