@@ -47,7 +47,7 @@ realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 emptylinepattern  = r"^\s*(?:#.*)?$"
 constdefpattern   = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 varlistpattern    = r"^\s*variables\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
-finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+identifierpattern+r")\s*in\s*\[\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*\]\s*(?:#.*)?$"
+finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+identifierpattern+r")\s*in\s*(\[|\()\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*(\]|\))\s*(?:#.*)?$"
 ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*(:|=)\s*(?P<stoich>.*\s*(->|<=>)\s*.*)\s*,(?:\s*rate\s*=)?\s*(?P<rate>[^#]+)(?:#.*)?$"
 tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
@@ -309,7 +309,7 @@ class StimatorParser:
                     matchfound = True
                     break #do not try any more patterns
             if not matchfound:
-                self.setError("Invalid syntax", loc)
+                self.setError("Invalid syntax:\n%s"% line, loc)
                 try2close(self.textlines)
                 return
         try2close(self.textlines)
@@ -530,7 +530,7 @@ find   KmMG  in [1e-5, 1]
 find KmTSH2 in [1e-5, pi/pi]
 
 find Km2   in [1e-5, 1]
-find Vmax2 in [1e-9, 1e-3]
+find Vmax2 in (1e-9, 1e-3)
 
 @ 3.4 pi = 2*pi
 x' = MG/2
