@@ -167,7 +167,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
     P = matrix(diag([pars[p] for p in pars]))
 
     # MVINV is the inverse of measurement COV matrix
-    # RIGHT NOW, IT ONLY WORKS FOR A CONSTANT VALUES
+    # RIGHT NOW, IT ONLY WORKS FOR A VECTOR OF CONSTANT VALUES
     # if COV is a scalar, transform in vector of constants
     if isinstance(expCOV, float) or isinstance(expCOV, int): #constant for all variables
         error_x = array([expCOV for i in range(nvars)], dtype=float)
@@ -193,7 +193,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
         #timestep (assumed constant)
         h = (sol.t[1] - sol.t[0]) #*scale
         #compute integral of ST * MVINV * S
-        ntimes = len(sol.t) #sol.data.shape[1]
+        ntimes = len(sol.t)
         FIM = zeros((npars,npars))
         for i in range(ntimes):
             #compute S matrix
@@ -268,18 +268,20 @@ def test():
     pars = "V1 Km1".split()
     parvalues = [getattr(m, p) for p in pars]
     parsdict = dict (zip(pars, parvalues))
+    
+    errors = (0.01,0.001)
 
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
     print 'Timecourse with HTA and SDLTSH'
-    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, (0.01,0.001))
+    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, errors)
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
     print 'Timecourse with SDLTSH only'
-    FIM1, invFIM1 = computeFIM(m, parsdict, "SDLTSH".split(), sols, 0.001)
+    FIM1, invFIM1 = computeFIM(m, parsdict, "SDLTSH".split(), sols, errors[1])
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
@@ -293,8 +295,8 @@ def test():
     m.init.SDLTSH = 0.001246154
     m.init.HTA = 0.2688
     sols += solve(m, tf = 5190.0)
-
-    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, (0.01,0.001))
+    
+    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, errors)
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
@@ -303,7 +305,7 @@ def test():
     print 'Glyoxalase model, 2 timecourses, parameters V1 and Km1'
     print 'Timecourses with SDLTSH only'
     
-    FIM1, invFIM1 = computeFIM(m, parsdict, ["SDLTSH"], sols, 0.001)
+    FIM1, invFIM1 = computeFIM(m, parsdict, ["SDLTSH"], sols, errors[1])
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    

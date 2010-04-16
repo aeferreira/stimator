@@ -361,8 +361,10 @@ class Model(object):
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__states']            = []
         self.__dict__['_Model__forcing']           = []
-        self.__dict__['title']                     = title
+        self.__dict__['_Model__metadata']          = {}
+        #self.__dict__['title']                     = title
         self.__dict__['_Model__m_Parameters']      = None
+        self.setData('title', title)
     
     def __setattr__(self, name, value):
         for numtype in (float,int,long):
@@ -444,6 +446,15 @@ class Model(object):
         if c :
             return c
         raise AttributeError( name + ' is not defined for this model')
+    
+    def setData(self, name, value):
+        self.__metadata[name] = value
+    
+    def getData(self, name):
+        if not name in self.__metadata:
+            return None
+        return self.__metadata[name]
+        
 
     def findComponent(self, name):
         c = findWithNameIndex(name, self.__parameters)
@@ -488,7 +499,8 @@ class Model(object):
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
-        res = "%s\n"% self.title
+        res = "%s\n"% self.getData('title')
+        #~ res = "%s\n"% self.title
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
             res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
@@ -501,10 +513,13 @@ class Model(object):
             res += p.name +' = '+ str(p) + '\n'
         for u in self.uncertain:
             res += u.name + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
+        
+        for k, v in self.__metadata.items():
+            res += "%s: %s\n"%(str(k), str(v))
         return res
     
     def clone(self):
-        m = Model(self.title)
+        m = Model(self.getData('title'))
         for r in self.reactions:
             setattr(m, r.name, Reaction(r.reagents, r.products, r.rate, r.irreversible))
         for p in self.parameters:
@@ -527,6 +542,8 @@ class Model(object):
                 var.uncertainty(u.min, u.max)
             else:
                 getattr(m, loc[0]).uncertainty(u.min, u.max)
+        for k,v in self.__metadata.items():
+            m.setData(k,v)
         return m
     
     def __refreshVars(self):
@@ -1036,6 +1053,9 @@ def test():
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
     m.input1 = forcing(force)
+    
+    m.setData('where', 'in model')
+    m.setData('title', 'My first model')
     
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'

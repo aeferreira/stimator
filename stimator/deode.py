@@ -284,7 +284,7 @@ def test():
 
     print
     print '---------------------------------------------------------'
-    print "Results for %s\n" % m1.title
+    print "Results for %s\n" % m1.getData('title')
     print reportResults(solver)
 
     #--- an example with unknown initial values --------------------
@@ -314,7 +314,7 @@ def test():
 
     print
     print '---------------------------------------------------------'
-    print "Results for %s\n" % m2.title
+    print "Results for %s\n" % m2.getData('title')
     print reportResults(solver)
 
 if __name__ == "__main__":

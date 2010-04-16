@@ -397,7 +397,7 @@ class DemoPlotPanel(PlotPanel):
         self.subplot.plot(x,y, '-b')
         #Set some plot attributes
         #self.subplot.set_title("A polar flower (%s points)" % len(x), fontsize = 12)
-        self.subplot.set_title("Results for %s" % self.model.problemname)
+        self.subplot.set_title("Results for %s" % self.model.getData('title'))
         self.subplot.set_xlabel("Flower is from  http://www.physics.emory.edu/~weeks/ideas/rose.html")
         self.subplot.set_xlim([-400, 400])
         self.subplot.set_ylim([-400, 400])
@@ -484,7 +484,7 @@ class resultsFrame(wx.Frame):
         self.plotpanel.bestData = bestData
         self.plotpanel.timecoursedata = timecoursedata
 
-        self.SetTitle("Results for %s" % model.title)
+        self.SetTitle("Results for %s" % model.getData('title'))
 
         # generate report
         reportText = ""

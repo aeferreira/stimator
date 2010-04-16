@@ -224,7 +224,7 @@ def read_model(text, otherdata = False):
 def try2read_model(text):
     try:
         m, tc, os = read_model(text, otherdata = True)
-        print '\n-------- Model %s sucessfuly read ------------------'% m.title
+        print '\n-------- Model %s sucessfuly read ------------------'% m.getData('title')
         print m
         print "the timecourses to load are", tc.filenames
         print
@@ -501,7 +501,8 @@ class StimatorParser:
 
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
-        setattr(self.model, 'title', title)
+        self.model.setData('title', title)
+        #~ setattr(self.model, 'title', title)
 
 #----------------------------------------------------------------------------
 #         TESTING CODE

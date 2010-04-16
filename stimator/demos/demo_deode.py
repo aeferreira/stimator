@@ -49,7 +49,7 @@ print "Optimization took %f s"% (time()-time0)
 
 print
 print '---------------------------------------------------------'
-print "Results for %s\n" % m1.title
+print "Results for %s\n" % m1.getData('title')
 print reportResults(solver)
 
 #--- an example with unknown initial values --------------------
@@ -79,5 +79,5 @@ print "Optimization took %f s"% (time()-time0)
 
 print
 print '---------------------------------------------------------'
-print "Results for %s\n" % m2.title
+print "Results for %s\n" % m2.getData('title')
 print reportResults(solver)

@@ -11,7 +11,7 @@ def test_M2():
     """test Model __init__ with title"""
     m = Model("My first model")
     assert isinstance(m, Model)
-    assert m.title == "My first model"
+    assert m.getData('title') == "My first model"
 
 def test_react1():
     """test react(string, int or float)"""

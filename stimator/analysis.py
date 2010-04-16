@@ -34,7 +34,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     if output[-1] < 0: return None
     Y = output[0]
     if title is None:
-        title = model.title
+        title = model.getData('title')
     
     sol = SolutionTimeCourse (times, Y.T, names, title)
     

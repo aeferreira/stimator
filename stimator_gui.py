@@ -670,11 +670,11 @@ class stimatorMainFrame(wx.Frame):
 
         os.chdir(self.GetFileDir())
         
-        if self.model.title == "":
-           self.model.title   = self.GetFileName()
+        if self.model.getData('title') == "":
+           self.model.setData('title', self.GetFileName())
 
         self.write("-------------------------------------------------------")
-        self.write("Solving %s..."%self.model.title)
+        self.write("Solving %s..."%self.model.getData('title'))
         self.time0 = time.time()
 
         self.optimizerThread=CalcOptmThread()
