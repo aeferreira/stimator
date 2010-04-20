@@ -40,4 +40,4 @@ transformation = m.getdXdt()
 svars = solve(m, tf = 6.0, npoints = 1000, title = 'X')
 sdxdt = solve(m, tf = 6.0, npoints = 5000, title = 'dX/dt').apply_transf(transformation)
 
-plot([svars,sdxdt])
+plot([svars,sdxdt], show = True)

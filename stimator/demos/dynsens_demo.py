@@ -52,4 +52,4 @@ for p in pars:
                           outputs = 'd_HTA_d_%s d_SDLTSH_d_%s'%(p,p)))
 
 print '\nDONE!'
-plot(plots)
+plot(plots, show = True)

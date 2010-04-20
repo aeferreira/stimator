@@ -60,8 +60,8 @@ def transform(solution, f, outputs=False, title = None):
     #~ times = copy(solution.t)
     
     #~ sol = SolutionTimeCourse (times, Y.T, names, title)
-
-def plot(solutions, figure = None, style = None, titles=None, ynormalize = False, superimpose = False):
+    
+def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, superimpose = False):
     p.figure()
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
     ntc = len(solutions)
@@ -124,7 +124,8 @@ def plot(solutions, figure = None, style = None, titles=None, ynormalize = False
         for isolution in range(ntc):
             p.subplot(nrows,ncols,isolution+1)
             p.ylim(yscale_all)
-    p.show()
+    if show:
+        p.show()
 
 def test():
     print '---------------- EXAMPLE 1 ------------------'
@@ -214,7 +215,7 @@ def test():
 
     solution4.apply_transf(transformation)
 
-    plot ([solution1, solution2, solution3, solution4])
+    plot ([solution1, solution2, solution3, solution4], show = True)
 
 if __name__ == "__main__":
     test()
