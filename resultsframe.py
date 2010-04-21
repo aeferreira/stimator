@@ -8,6 +8,7 @@ import math
 import wx
 import wx.stc  as  stc
 from numpy import arange, sin, pi, cos, isnan
+import stimator.timecourse
 
 import matplotlib
 matplotlib.interactive(True)
@@ -410,8 +411,8 @@ class BestPlotPanel(PlotPanel):
         self.figure.clear()
         #if not hasattr(self, 'tcsubplots'):
         self.tcsubplots = []
-        ntc = len(self.bestData['best timecourses']['data'])
         besttimecoursedata = self.bestData['best timecourses']['data']
+        ntc = len(besttimecoursedata)
         timecoursedata = self.timecoursedata
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
@@ -433,6 +434,19 @@ class BestPlotPanel(PlotPanel):
                 ysim = besttimecoursedata[i][:,line-1]
                 subplot.plot(x,yexp, '-b')
                 subplot.plot(x,ysim, '-r')
+            #~ expsol = stimator.timecourse.SolutionTimeCourse (timecoursedata[i][:,0].T, d[:,1:].T, h[1:])
+            #~ exptimecourse = stimator.timecourse.TC2SolutionTimeCourse(timecoursedata[i],["","",""])
+            #~ symimecourse = stimator.timecourse.TC2SolutionTimeCourse(besttimecoursedata[i],["","",""])
+            #~ x = exptimecourse.t
+            #~ nx = len(x)
+            #~ for line in range(1, timecoursedata[i].shape[1]):
+                #~ #count NaN
+                #~ yexp = timecoursedata[i][:,line]
+                #~ nnan = len(yexp[isnan(yexp)])
+                #~ if nnan >= nx-1: continue
+                #~ ysim = besttimecoursedata[i][:,line-1]
+                #~ subplot.plot(x,yexp, '-b')
+                #~ subplot.plot(x,ysim, '-r')
 
 ##------------- Results Frame
 

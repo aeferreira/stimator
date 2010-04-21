@@ -141,6 +141,9 @@ def readTimeCourses(filenames, filedir, intvarsorder):
     nread = tc.loadTimeCourses(filedir)
     return tc
 
+def TC2SolutionTimeCourse(d,h):
+    sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h[1:])
+    return sol
 
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
@@ -148,13 +151,26 @@ class SolutionTimeCourse(object):
         self.t = t         #values of time points
         self.data = data   # table of solution points: series in rows, times in cols
         self.names = names # names of the series
-        self.shape = data.shape
         self.title = title # a title for the solution
         
+        #for solutions read from a file
+        self.filename =  ""
+        self.shortname = ""
+        
+        
     def __len__(self):
+        """retrieves the number of vars in this solution, NOT the len(timepoints)."""
         return self.data.shape[0]
     def __nonzero__(self):
         return len(t) > 0
+    def __getNumberOfTimes(self):
+        """Retrieves the number of time points"""
+        return self.data.shape[1]
+    ntimes = property(__getNumberOfTimes)
+    def __getShape(self):
+        return self.data.shape
+    shape = property(__getShape)
+    
     def __getitem__(self, key):
         """retrieves a series by name or index"""
         if isinstance(key, str) or isinstance(key, unicode):
@@ -164,6 +180,7 @@ class SolutionTimeCourse(object):
                 raise ValueError( "No data for '%s' in timecourse" % str(key))
             return self.data.__getitem__(i)
         return self.data.__getitem__(key)
+    
     def state_at(self, t):
         """Retrieves a State object with values at a time point.
         
@@ -208,11 +225,7 @@ class SolutionTimeCourse(object):
         y = self.data[:,-1]
         return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')    
     last = property(__getLastState) #'last' is a synonymous, used as 'sol.last'
-    def __getNumberOfTimes(self):
-        """Retrieves the number of time points"""
-        return self.data.shape[1]
-    ntimes = property(__getNumberOfTimes)
-    
+
     def apply_transf(self,f, newnames=None):
         """Applies a transformation to time series.
         
@@ -229,12 +242,84 @@ class SolutionTimeCourse(object):
             self.names = newnames
         self.data = trf
         return self
+    
+    def load_from(self, filename, atindexes = None):
+        """Reads a time course from file.
+        
+        Returns a header with variable names (possibly absent in file) and a 2D numpy array with data.
+        """
+        
+        header = []
+        nvars = 0
+        rows = []
+        headerFound = False
+        t0found = False
+
+        if hasattr(filename, 'read'):
+            f = filename
+            isname = False
+        else:
+            f = open(filename, "rU") # could be a name,instead of an open file
+            isname = True
+            
+        for line in f:
+            line = line.strip()
+            if len(line) == 0:continue          #empty lines are skipped
+            if line.startswith('#'): continue   #comment lines are skipped
+            
+            items = line.split()
+            
+            if identifier.match(items[0]):
+                if not headerFound and not t0found:
+                    header = filter (identifier.match, items)
+                    headerFound = True
+                else:
+                    continue
+            elif not realnumber.match(items[0]):
+                continue
+            else:
+                if not t0found:
+                    nvars = len(items)
+                    t0found = True
+                temprow = [nan]*nvars
+                for (i,num) in enumerate(items):
+                    if realnumber.match(num):
+                        if atindexes:
+                            temprow[atindexes[i]] = float(num)
+                        else:
+                            temprow[i] = float(num)
+                rows.append(temprow)
+        if isname:
+            f.close()
+        
+        #create default names "t, x1, x2, x3,..."
+        if len(header) == 0:
+            header = ['t']
+            for i in range(1, nvars):
+                header.append('x%d'%i)
+        #apply atindexes to header
+        if atindexes:
+            newheader = [''] * nvars
+            for (i, ai) in enumerate(atindexes):
+                newheader[ai] = header[i]
+            header = newheader
+        #fill in attrs with data
+        data = array(rows)
+        self.names = header[1:]
+        self.t = data[:,0].T
+        self.data = data[:,1:].T
 
 class Solutions(object):
     """Holds a colection of objects of class SolutionTimeCourse"""
     def __init__(self, title = ""):
         self.title = title
         self.solutions = []
+        self.shortnames     = []
+        self.filenames      = []
+        self.basedir        = None
+        self.intvarsorder   = None
+        self.variablesorder = None # list of names indicating the order of variables in timecourses
+
     
     def __getitem__(self, key):
         """retrieves a series by index"""
@@ -260,6 +345,44 @@ class Solutions(object):
         return iter(self.solutions)
     def append(self, other):
         return self.__iadd__(other)
+    def loadTimeCourses (self,filedir):
+        if len(self.filenames) == 0 :
+           print "No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'"
+           return 0
+        
+        # check and load timecourses
+        self.basedir = filedir
+        cwd = os.getcwdu()
+        os.chdir(self.basedir)
+        pathlist = [os.path.abspath(k) for k in self.filenames]
+
+        print "-------------------------------------------------------"
+        self.data = []
+        for filename in pathlist:
+            if not os.path.exists(filename) or not os.path.isfile(filename):
+                print "Time course file \n%s\ndoes not exist"% filename
+                os.chdir(cwd)
+                return 0
+            sol = SolutionTimeCourse()
+            sol.load_from(filename, atindexes=self.intvarsorder)
+            if sol.shape == (0,0):
+                print "File\n%s\ndoes not contain valid time-course data"% filename
+                os.chdir(cwd)
+                return 0
+            else:
+                print "%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename)
+                self.append(sol)
+        self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+        os.chdir(cwd)
+        return len(pathlist)
+
+
+def readTCs(filenames, filedir, intvarsorder = None):
+    tcs = Solutions()
+    tcs.filenames = filenames
+    tcs.intvarsorder = intvarsorder
+    nread = tcs.loadTimeCourses(filedir)
+    return tcs
 
 
 #----------------------------------------------------------------------------
@@ -297,10 +420,63 @@ nothing really usefull here
     print d
     print
     
-    print '--Using a SolutionTimeCourse interface---------'
-    sol = SolutionTimeCourse (d[:,0].T, d[:,1:].T, h[1:])
+    
+    aTC.seek(0) #reset StringIO
+    h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   
+    print
+    print '- atindexes (0,3,1,2) --------------'
+    print '\nheader:'
+    print h
+    print '\ndata'
+    print d
+    
+    aTC.seek(0)
+    sol = SolutionTimeCourse()
+    sol.load_from(aTC)   
+    print '\n- using load_from() ----------------'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+    
+    aTC.seek(0)
+    sol.load_from(aTC, atindexes=(0,3,1,2))   
+    print '\n- using load_from() atindexes (0,3,1,2)'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+    
+    aTC.seek(0) #reset StringIO
+    h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   
+    sol2 = TC2SolutionTimeCourse(d,h)
+    print '\n- transforming into SolutionTimeCourse'
+    print '\nnames:'
+    print sol2.names
+    print '\nt'
+    print sol2.t
+    print '\ndata'
+    print sol2.data
+    print
+
+    print '--Using SolutionTimeCourse interface ----------'
+    aTC.seek(0)
+    sol.load_from(aTC)   
     print 'retrieving components...'
     try:
+        print '\nnames:'
+        print sol.names
+        print '\nt'
+        print sol.t
+        print '\ndata'
+        print sol.data
+        print
         print 'len(sol)'
         print len(sol)
         print 'sol.ntimes'
@@ -334,15 +510,6 @@ nothing really usefull here
         print msg
     print
     
-    aTC.seek(0) #reset StringIO
-    h, d =  readTimeCourseFromFile(aTC, atindexes=(0,3,1,2))   
-    print
-    print '- atindexes (0,3,1,2) --------------'
-    print '\nheader:'
-    print h
-    print '\ndata'
-    print d
-    
     h, d =  readTimeCourseFromFile('../models/TSH2b.txt')   
     print '\n\n====Parsing timecourse from file =============='
     print '\n\nData from TSH2b.txt'
@@ -352,12 +519,24 @@ nothing really usefull here
     print d
     print 'dimensions are %d by %d'% d.shape
     
-    #~ h, d =  readTimeCourseFromFile(''../models/TSH2a.txt')   
-    #~ print '\n\n====Parsing timecourse from file =============='
-    #~ print '\n\nData from TSH2a.txt'
-    #~ print 'header:'
-    #~ print h
-    #~ print '\ndata'
-    #~ print d
-    #~ print 'dimensions are %d by %d'% d.shape
-
+    sol.load_from('../models/TSH2b.txt')
+    print '\n- using load_from() ----------------'
+    print '\nnames:'
+    print sol.names
+    print '\nnumber of times'
+    print sol.ntimes
+    print '\nshape'
+    print sol.shape
+    print '\nstate at 0.0:'
+    print sol.state_at(0)
+    print '\nlast time point:'
+    print sol.last
+    print
+    
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models')
+    for tc in tcs:
+        print tc.shape
+        print tc.last
+    
+    
+    

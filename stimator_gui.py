@@ -671,7 +671,7 @@ class stimatorMainFrame(wx.Frame):
         
         sys.stdout = oldout
 
-        os.chdir(self.GetFileDir())
+        #os.chdir(self.GetFileDir())
         
         if self.model.getData('title') == "":
            self.model.setData('title', self.GetFileName())
