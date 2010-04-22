@@ -8,13 +8,13 @@ import math
 import wx
 import wx.stc  as  stc
 from numpy import arange, sin, pi, cos, isnan
-import stimator.timecourse
 
 import matplotlib
 matplotlib.interactive(True)
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+import stimator.timecourse
 
 ##------------- Fonts to be used.
 if wx.Platform == '__WXMSW__':
@@ -409,14 +409,12 @@ class BestPlotPanel(PlotPanel):
     def draw(self):
         self._SetSize()    #?????
         self.figure.clear()
-        #if not hasattr(self, 'tcsubplots'):
         self.tcsubplots = []
         besttimecoursedata = self.bestData['best timecourses']['data']
         ntc = len(besttimecoursedata)
         timecoursedata = self.timecoursedata
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
-        #print "ncols=",ncols,'nrows=',nrows
         for i in range(ntc):
             self.tcsubplots.append(self.figure.add_subplot(nrows,ncols,i+1))
 
@@ -424,20 +422,7 @@ class BestPlotPanel(PlotPanel):
             subplot = self.tcsubplots[i]
             #subplot.set_xlabel("time")
             subplot.set_title("%s (%d)%g"% self.bestData['timecourses']['data'][i], fontsize = 12)
-            x = timecoursedata[i][:,0]
-            nx = len(x)
-            for line in range(1, timecoursedata[i].shape[1]):
-                #count NaN
-                yexp = timecoursedata[i][:,line]
-                nnan = len(yexp[isnan(yexp)])
-                if nnan >= nx-1: continue
-                ysim = besttimecoursedata[i][:,line-1]
-                subplot.plot(x,yexp, '-b')
-                subplot.plot(x,ysim, '-r')
-            #~ expsol = stimator.timecourse.SolutionTimeCourse (timecoursedata[i][:,0].T, d[:,1:].T, h[1:])
-            #~ exptimecourse = stimator.timecourse.TC2SolutionTimeCourse(timecoursedata[i],["","",""])
-            #~ symimecourse = stimator.timecourse.TC2SolutionTimeCourse(besttimecoursedata[i],["","",""])
-            #~ x = exptimecourse.t
+            #~ x = timecoursedata[i][:,0]
             #~ nx = len(x)
             #~ for line in range(1, timecoursedata[i].shape[1]):
                 #~ #count NaN
@@ -447,6 +432,17 @@ class BestPlotPanel(PlotPanel):
                 #~ ysim = besttimecoursedata[i][:,line-1]
                 #~ subplot.plot(x,yexp, '-b')
                 #~ subplot.plot(x,ysim, '-r')
+            expsol = stimator.timecourse.SolutionTimeCourse (timecoursedata[i][:,0].T, timecoursedata[i][:,1:].T, ["","",""])
+            symsol = stimator.timecourse.SolutionTimeCourse (timecoursedata[i][:,0].T, besttimecoursedata[i].T, ["","",""])
+            for line in range(len(expsol)):
+                #count NaN and do not plot if they are most of the timecourse
+                yexp = expsol[line]
+                nnan = len(yexp[isnan(yexp)])
+                if nnan >= expsol.ntimes-1: continue
+                #otherwise plot lines
+                ysim = symsol[line]
+                subplot.plot(expsol.t,yexp, '-b')
+                subplot.plot(expsol.t,ysim, '-r')
 
 ##------------- Results Frame
 
