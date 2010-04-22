@@ -216,12 +216,6 @@ def read_model(text): #, otherdata = False):
         parser.model.setData('timecourses', parser.tc)
         parser.model.setData('optSettings', parser.optSettings)
         return parser.model
-        #~ if otherdata:
-            #~ parser.model.setData('timecourses', parser.tc)
-            #~ parser.model.setData('optSettings', parser.optSettings)
-            #~ return (parser.model, parser.tc, parser.optSettings)
-        #~ else:
-            #~ return parser.model
     logloc = parser.errorloc
     ppos = getPhysicalLineData(text, logloc)
     raise StimatorParserError(parser.error, ppos, logloc)
@@ -286,7 +280,7 @@ class StimatorParser:
         # default Differential Evolution num of generations and population size
         self.model       = model.Model()
         #~ self.model.setData('timecourses', timecourse.TimeCourseCollection())
-        self.tc          = timecourse.TimeCourseCollection()
+        self.tc          = timecourse.TimeCourses()
         self.optSettings = {'generations':200, 'genomesize' :10}
 
         self.tclines     = []  #location of timecourse def lines for error reporting
