@@ -28,12 +28,11 @@ class DeODESolver(de.DESolver):
     Ticker functions are called on generation completion and when optimization finishes.
     """
     
-    def __init__(self, model, optSettings, timecoursecollection, weights = None,
+    def __init__(self, model, optSettings, tcs, weights = None,
                     aGenerationTicker=None, anEndComputationTicker=None, 
                     dump_pars=False):
         self.model = model
-        self.tc    = timecoursecollection
-        self.timecoursedata   = self.tc.data
+        self.tc    = tcs
         self.generationTicker = aGenerationTicker
         self.endTicker        = anEndComputationTicker
         self.dump_pars        = dump_pars
@@ -51,10 +50,10 @@ class DeODESolver(de.DESolver):
                              True)                    # use class random number methods
 
         # cutoffEnergy is 1e-6 of deviation from data
-        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc[:,1:])) for tc in self.timecoursedata])
+        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc.data)) for tc in self.tc])
         
         # scale times to maximum time in data
-        scale = float(max([ (tc[-1,0]-tc[0,0]) for tc in self.timecoursedata]))
+        scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
         
         self.calcDerivs = model.getdXdt(scale=scale, with_uncertain=True)
         self.salg=integrate._odepack.odeint
@@ -63,20 +62,14 @@ class DeODESolver(de.DESolver):
         self.X0 = []
         self.times = []
         self.varindexes = []
-        self.ydata = []
-        for data in self.timecoursedata:
-            y0 = copy(data[0, 1:]) # variables are in columns 1 to end
-            self.X0.append(y0)
-            self.ydata.append(data[:, 1:])
-            
-            t  = data[:, 0]        # times are in columns 0
+        for data in self.tc:
+            self.X0.append(copy(data[:, 0].T))
+            t  = data.t
             t0 = t[0]
             times = (t-t0)/scale+t0  # this scales time points
             self.times.append(times)
-            
-        self.criterium = dyncriteria.getCriteriumFunction(weights, self.ydata)
-
-        self.timecourse_scores = empty(len(self.timecoursedata))
+        self.timecourse_scores = empty(len(self.tc))
+        
         # find uncertain initial values
         self.mapinit2trial = []
         for iu, u in enumerate(self.model.uncertain):
@@ -85,6 +78,8 @@ class DeODESolver(de.DESolver):
                 ix = findWithNameIndex(varname, self.model.variables)
                 self.mapinit2trial.append((ix,iu))
         
+        self.criterium = dyncriteria.getCriteriumFunction(weights, self.tc)
+
         # open files to write parameter progression
         if self.dump_pars:
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
@@ -98,7 +93,6 @@ class DeODESolver(de.DESolver):
             y0[varindex] = trial[trialindex]
             
         t  = copy(self.times[i])
-
         #~ Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
         output = self.salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
@@ -117,7 +111,7 @@ class DeODESolver(de.DESolver):
         self.model.set_uncertain(trial)
         
         #compute solutions and scores
-        for i in range(len(self.timecoursedata)):
+        for i in range(len(self.tc)):
             Y = self.computeSolution(i,trial)
             if Y is not None:
                 self.timecourse_scores[i]=self.criterium(Y, i)
@@ -164,36 +158,36 @@ class DeODESolver(de.DESolver):
         
         errorestim = 0.0
 
-        for (i,data) in enumerate(self.timecoursedata):
+        for (i,data) in enumerate(self.tc):
             Y = self.computeSolution(i, self.bestSolution)
             if Y is not None:
                 score =self.criterium(Y, i)
             else:
                 score = 1.0E300
             #best['best timecourses']['data'].append(Y)
-            nx = len(data[:,0].T)
+            nx = len(data.t)
             errorestim += score / float(nx)
-            sols += timecourse.SolutionTimeCourse (data[:,0].T, Y.T, varnames)
+            sols += timecourse.SolutionTimeCourse (data.t, Y.T, varnames)
             
             varnames = []
             varindexes=[]
-            for line in range(1, data.shape[1]):
+            for iline,line in enumerate(data.data):
                 #count NaN
-                yexp = data[:,line]
+                yexp = line
                 nnan = len(yexp[isnan(yexp)])
                 if nnan >= nx-1: continue
-                varnames.append(str(self.model.variables[line-1].name))
-                varindexes.append(line)
+                varnames.append(str(self.model.variables[iline].name))
+                varindexes.append(iline)
         
         consterror = [0.0 for i in range(len(varnames))]
         for ix, x in enumerate(varnames):
-            for (i,data) in enumerate(self.timecoursedata):    
-                yexp = data[:,varindexes[ix]]
+            for (i,data) in enumerate(self.tc):    
+                yexp = data.data[varindexes[ix]]
                 tpe = (max(yexp) - min(yexp))
                 if tpe > consterror[ix]:
                     consterror[ix] = tpe
         
-        consterror = [r * 0.05 for r in consterror] #assumung 5% error
+        consterror = [r * 0.05 for r in consterror] #assuming 5% error
         errorestim = errorestim**0.5
         
         #print varnames
@@ -232,14 +226,15 @@ class DeODESolver(de.DESolver):
         best['best timecourses']['data'] = []
         self.model.set_uncertain(self.bestSolution)
 
-        for (i,data) in enumerate(self.timecoursedata):
+        for (i,data) in enumerate(self.tc):
             Y = self.computeSolution(i, self.bestSolution)
             if Y is not None:
                 score =self.criterium(Y, i)
             else:
                 score = 1.0E300
-            best['best timecourses']['data'].append(Y)
-            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc.shapes[i][0], score))
+            sol = timecourse.SolutionTimeCourse (data.t, Y.T, varnames)
+            best['best timecourses']['data'].append(sol)
+            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].shape[0], score))
         best['timecourses']['format'] = "%s\t%d\t%g"
         best['timecourses']['header'] = ['Name', 'Points', 'Score']
         
@@ -281,7 +276,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
     #print m1
     optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTimeCourses(['TSH2a.txt', 'TSH2b.txt'], '../models', (0,2,1))
+    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../models', intvarsorder=(0,2,1))
     
     solver = DeODESolver(m1,optSettings, timecourses)
     
@@ -311,7 +306,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     ## VERY IMPORTANT:
     ## only one time course can be used: 
     ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTimeCourses(['TSH2a.txt'], '../models', (0,2,1))
+    timecourses = timecourse.readTCs(['TSH2a.txt'], '../models', intvarsorder=(0,2,1))
     
     solver = DeODESolver(m2,optSettings, timecourses)
     

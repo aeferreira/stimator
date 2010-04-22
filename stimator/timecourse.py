@@ -384,6 +384,7 @@ def readTCs(filenames, filedir, intvarsorder = None):
     nread = tcs.loadTimeCourses(filedir)
     return tcs
 
+TimeCourses = Solutions
 
 #----------------------------------------------------------------------------
 #         TESTING CODE

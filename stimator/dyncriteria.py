@@ -8,7 +8,7 @@ S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
 
-def getCriteriumFunction(weights, ydata):
+def getCriteriumFunction(weights, tc):
     """Returns a function to compute the objective function (for each timecourse).
     
     the function has signature
@@ -31,13 +31,13 @@ def getCriteriumFunction(weights, ydata):
     
     #mask series with NaN values.
     allvarindexes = []
-    for data in ydata:
-        nt = data.shape[0]
+    for data in tc:
+        nt = data.ntimes
         varindexes = []
 
-        for ivar in range(data.shape[1]):
+        for ivar in range(len(data.data)):
             #count NaN
-            yexp = data[:,ivar]
+            yexp = data[ivar]
             nnan = len(yexp[isnan(yexp)])
             if nnan >= nt-1: continue
             varindexes.append(ivar)
@@ -46,17 +46,17 @@ def getCriteriumFunction(weights, ydata):
 
     if weights is None:
         def criterium(Y,i):
-            d = (Y[:,allvarindexes[i]]- ydata[i][:, allvarindexes[i]])
+            d = (Y.T[allvarindexes[i]]- tc[i].data[allvarindexes[i]])
             return sum(d*d)
         return criterium
 
     if weights  == 'demo':
         W = []
-        for i in range(len(ydata)):
+        for i in range(len(tc)):
             W.append(array([1.0/(1+j) for j in range(allvarindexes[i])]))
         #print W
         def criterium(Y,i):
-            d = (Y[:,allvarindexes[i]]- ydata[i][:, allvarindexes[i]])
+            d = (Y.T[allvarindexes[i]]- tc.data[i][allvarindexes[i]])
             return sum(d*W[i]*d)
         return criterium
     return None
