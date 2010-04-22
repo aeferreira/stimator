@@ -3,7 +3,7 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2009 António Ferreira
+Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
@@ -17,8 +17,8 @@ def getCriteriumFunction(weights, tc):
     i is the index of the timecourse.
     The function returns a float.
     
-    ydata is a list of ('experimental') timecourse data, 
-    an array with shape (nt, nvars).
+    tc is a Solutions object holding ('experimental') timecourse data, 
+    each timecourse has shape (nvars, ntimes).
     
     weights can be:
     
@@ -59,7 +59,6 @@ def getCriteriumFunction(weights, tc):
             d = (Y.T[allvarindexes[i]]- tc.data[i][allvarindexes[i]])
             return sum(d*W[i]*d)
         return criterium
+        
+    ###TODO: weights not implemented
     return None
-
-def WSSD(differences, W):
-    return sum(differences*W*differences)

@@ -3,7 +3,7 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2009 António Ferreira
+Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
@@ -142,14 +142,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
     nsens = npars * nvars
     add_dSdt_to_model(m, pars.keys())
 
-    if (isinstance(timecoursecollection, timecourse.TimeCourseCollection)):
-        # change to SolutionTimeCourse interface
-        timecoursedata = Solutions()
-        for i,d in enumerate(timecoursecollection.data):
-            timecoursedata += SolutionTimeCourse (d[:,0].T, d[:,1:].T, timecoursecollection.headers[i][1:])
-            
-    else:
-        timecoursedata = timecoursecollection
+    timecoursedata = timecoursecollection
     
     #scale = float(max([ (s.t[-1]-s.t[0]) for s in timecoursedata]))
     

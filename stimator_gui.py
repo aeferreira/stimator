@@ -3,10 +3,10 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2009 António Ferreira
+Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.86"
-stimatorDate = "17 Jun 2009"
+stimatorVersion = "0.91"
+stimatorDate = "22 Apr 2010"
 
 import sys
 import os
@@ -700,7 +700,7 @@ class stimatorMainFrame(wx.Frame):
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.model, solver.optimum, solver.timecoursedata)
+        win.loadBestData(self.model, solver.optimum, solver.tc)
         win.Show(True)
     
     def generationTick(self, generation, energy):

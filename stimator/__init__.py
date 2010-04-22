@@ -2,6 +2,6 @@
 
 from model import Model, react, transf, state, variable, forcing
 from analysis import solve, plot
-from timecourse import readTimeCourses, Solutions
+from timecourse import readTCs, Solutions, TimeCourses
 from modelparser import read_model
 

@@ -14,7 +14,6 @@ matplotlib.interactive(True)
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
-import stimator.timecourse
 
 ##------------- Fonts to be used.
 if wx.Platform == '__WXMSW__':
@@ -412,7 +411,7 @@ class BestPlotPanel(PlotPanel):
         self.tcsubplots = []
         besttimecoursedata = self.bestData['best timecourses']['data']
         ntc = len(besttimecoursedata)
-        timecoursedata = self.timecoursedata
+        timecoursedata = self.tc
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
         for i in range(ntc):
@@ -422,18 +421,8 @@ class BestPlotPanel(PlotPanel):
             subplot = self.tcsubplots[i]
             #subplot.set_xlabel("time")
             subplot.set_title("%s (%d)%g"% self.bestData['timecourses']['data'][i], fontsize = 12)
-            #~ x = timecoursedata[i][:,0]
-            #~ nx = len(x)
-            #~ for line in range(1, timecoursedata[i].shape[1]):
-                #~ #count NaN
-                #~ yexp = timecoursedata[i][:,line]
-                #~ nnan = len(yexp[isnan(yexp)])
-                #~ if nnan >= nx-1: continue
-                #~ ysim = besttimecoursedata[i][:,line-1]
-                #~ subplot.plot(x,yexp, '-b')
-                #~ subplot.plot(x,ysim, '-r')
-            expsol = stimator.timecourse.SolutionTimeCourse (timecoursedata[i][:,0].T, timecoursedata[i][:,1:].T, ["","",""])
-            symsol = stimator.timecourse.SolutionTimeCourse (timecoursedata[i][:,0].T, besttimecoursedata[i].T, ["","",""])
+            expsol = timecoursedata[i]
+            symsol = besttimecoursedata[i]
             for line in range(len(expsol)):
                 #count NaN and do not plot if they are most of the timecourse
                 yexp = expsol[line]
@@ -485,14 +474,14 @@ class resultsFrame(wx.Frame):
     def __del__(self):
         pass
     
-    def loadBestData(self, model, bestData, timecoursedata):
+    def loadBestData(self, model, bestData, tc):
         """Main initialization function.
         
         Should be called after __init__() but before Show()."""
 
         self.plotpanel.model = model
         self.plotpanel.bestData = bestData
-        self.plotpanel.timecoursedata = timecoursedata
+        self.plotpanel.tc = tc
 
         self.SetTitle("Results for %s" % model.getData('title'))
 
