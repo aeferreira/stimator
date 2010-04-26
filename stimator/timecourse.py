@@ -40,10 +40,12 @@ class SolutionTimeCourse(object):
         return self.data.shape[0]
     def __nonzero__(self):
         return len(t) > 0
+    
     def __getNumberOfTimes(self):
         """Retrieves the number of time points"""
         return self.data.shape[1]
     ntimes = property(__getNumberOfTimes)
+    
     def __getShape(self):
         return self.data.shape
     shape = property(__getShape)
@@ -123,7 +125,8 @@ class SolutionTimeCourse(object):
     def load_from(self, filename, atindexes = None):
         """Reads a time course from file.
         
-        Returns a header with variable names (possibly absent in file) and a 2D numpy array with data.
+        Fills self.names from a header with variable names (possibly absent in file) 
+        and a 2D numpy array with data.
         """
         
         header = []
@@ -185,6 +188,38 @@ class SolutionTimeCourse(object):
         self.names = header[1:]
         self.t = data[:,0].T
         self.data = data[:,1:].T
+    
+    def clone(self):
+        """Clones the entire solution."""
+        tc = SolutionTimeCourse(self.t.copy(), self.data.copy(), self.names[:], self.title)
+        tc.filename = self.filename
+        tc.shortname = self.shortname
+        return tc
+
+    def copy(self, names = [], newtitle = None):
+        """Constructs new solution, restricted to the variables in 'names'."""
+        if not isinstance(names, list):
+            names = names.strip()
+            names = names.split()
+        t = self.t.copy()
+        if names == []:
+            names = self.names
+        nameindexes = []
+        for name in names:
+            if not name in self.names:
+                raise ValueError( "No data for '%s' in timecourse" % name)
+            nameindexes.append(self.names.index(name))
+        data = self.data[nameindexes, :].copy()
+        if newtitle is not None:
+            title = newtitle
+        else:
+            title = self.title
+        tc = SolutionTimeCourse(t, data, names[:], title)
+        tc.filename = self.filename
+        tc.shortname = self.shortname
+        return tc
+            
+        
 
 #----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -372,6 +407,51 @@ nothing really usefull here
     print sol.last
     print
     
+    sol2 = sol.clone()
+    del(sol)
+    print '\n- using a cloned solution ----------'
+    print '\nnames:'
+    print sol2.names
+    print '\nnumber of times'
+    print sol2.ntimes
+    print '\nshape'
+    print sol2.shape
+    print '\nstate at 0.0:'
+    print sol2.state_at(0)
+    print '\nlast time point:'
+    print sol2.last
+    print
+    
+    sol = sol2.copy()
+    del(sol2)
+    print '\n- a cloned with copy() solution -----'
+    print '\nnames:'
+    print sol.names
+    print '\nnumber of times'
+    print sol.ntimes
+    print '\nshape'
+    print sol.shape
+    print '\nstate at 0.0:'
+    print sol.state_at(0)
+    print '\nlast time point:'
+    print sol.last
+    print
+
+    sol2 = sol.copy('A')
+    del(sol)
+    print "\n- a cloned with copy('A') solution --"
+    print '\nnames:'
+    print sol2.names
+    print '\nnumber of times'
+    print sol2.ntimes
+    print '\nshape'
+    print sol2.shape
+    print '\nstate at 0.0:'
+    print sol2.state_at(0)
+    print '\nlast time point:'
+    print sol2.last
+    print
+
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models')
     for tc in tcs:
         print tc.shape

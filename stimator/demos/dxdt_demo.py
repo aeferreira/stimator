@@ -36,8 +36,7 @@ def step (t, t_stimulus, B):
         return B
 m.Bstep = forcing(step)
 
-transformation = m.getdXdt()
-svars = solve(m, tf = 6.0, npoints = 1000, title = 'X')
-sdxdt = solve(m, tf = 6.0, npoints = 5000, title = 'dX/dt').apply_transf(transformation)
+x = solve(m, tf = 6.0, npoints = 5000, title = 'X')
+dxdt = x.copy(newtitle = 'dX/dt').apply_transf(m.getdXdt())
 
-plot([svars,sdxdt], show = True)
+plot([x,dxdt], show = True)

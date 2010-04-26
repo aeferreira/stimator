@@ -45,11 +45,11 @@ add_dSdt_to_model(m, pars)
 #print m
 
 print '\nSolving with sensitivities...'
-plots = [solve(m, tf = 4030.0, title = 'X', outputs = "HTA SDLTSH")]
+sol = solve(m, tf = 4030.0)
+plots = [sol.copy(names = "HTA SDLTSH", newtitle = 'X')]
 for p in pars:
-    plots.append(solve(m, tf = 4030.0, 
-                          title = 'dX/d'+p , 
-                          outputs = 'd_HTA_d_%s d_SDLTSH_d_%s'%(p,p)))
+    plots.append(sol.copy(names = 'd_HTA_d_%s d_SDLTSH_d_%s'%(p,p), 
+                          newtitle ='dX/d'+p))
 
 print '\nDONE!'
 plot(plots, show = True)
