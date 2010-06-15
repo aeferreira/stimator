@@ -20,6 +20,7 @@ import wx.stc  as  stc
 import resultsframe
 import stimator.modelparser
 import stimator.deode
+import images
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
@@ -243,6 +244,7 @@ class SDLeditor(stc.StyledTextCtrl):
             #self.Refresh(True, wxRect(pt.x, pt.y, 5,5))
             #print pt
             #self.Refresh(False)
+        self.log.updateButtons()
 
 
     def OnStartDrag(self, evt):
@@ -333,7 +335,7 @@ class stimatorMainFrame(wx.Frame):
         mainstatusbar_fields = ["S-timator %s"%(stimatorVersion)]
         for i in range(len(mainstatusbar_fields)):
             self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
-        self.maintoolbar.Realize()
+        #~ self.maintoolbar.Realize()
 
         # STC widgets configuration
         # ModelEditor
@@ -400,21 +402,95 @@ class stimatorMainFrame(wx.Frame):
         self.AddMenus(self.mainmenu)
         self.SetMenuBar(self.mainmenu)
 
+    #~ def OnUpdateUndo(self, event):
+        #~ canUndo = self.ModelEditor.CanUndo()
+        #~ self.tbar.EnableTool(wx.ID_UNDO, canUndo)
+    def updateButtons(self):
+        canUndo = self.ModelEditor.CanUndo()
+        canRedo = self.ModelEditor.CanRedo()
+        self.tbar.EnableTool(wx.ID_UNDO, canUndo)
+        self.tbar.EnableTool(wx.ID_REDO, canRedo)
+        self.mainmenu.Enable(wx.ID_UNDO, canUndo)
+        self.mainmenu.Enable(wx.ID_REDO, canRedo)
+    
     def MakeToolbar(self):
-        self.maintoolbar = wx.ToolBar(self, -1, style=wx.TB_HORIZONTAL|wx.TB_TEXT|wx.TB_NOICONS|wx.TB_FLAT)
-        self.SetToolBar(self.maintoolbar)
+        def doBind(item, handler, updateUI=None):
+            self.Bind(wx.EVT_TOOL, handler, item)
+            #~ if updateUI is not None:
+                #~ self.Bind(wx.EVT_UPDATE_UI, updateUI, item)
+        
+        tbar = self.CreateToolBar(style=wx.TB_HORIZONTAL|wx.TB_FLAT)
+        doBind( tbar.AddTool(-1, images.get_rt_openBitmap(),
+                            shortHelpString="Open"), self.OnOpenMenu)
+        doBind( tbar.AddTool(-1, images.get_rt_saveBitmap(),
+                            shortHelpString="Save"), self.OnSaveMenu)
+        tbar.AddSeparator()
+        doBind( tbar.AddTool(wx.ID_CUT, images.get_rt_cutBitmap(),
+                            shortHelpString="Cut"), self.OnCutSelection)
+        doBind( tbar.AddTool(wx.ID_COPY, images.get_rt_copyBitmap(),
+                            shortHelpString="Copy"), self.OnCopySelection)
+        doBind( tbar.AddTool(wx.ID_PASTE, images.get_rt_pasteBitmap(),
+                            shortHelpString="Paste"), self.OnPaste)
+        tbar.AddSeparator()
+        doBind( tbar.AddTool(wx.ID_UNDO, images.get_rt_undoBitmap(),
+                            shortHelpString="Undo"), self.OnUndo) #, self.OnUpdateUndo)
+        doBind( tbar.AddTool(wx.ID_REDO, images.get_rt_redoBitmap(),
+                            shortHelpString="Redo"), self.OnRedo)
+        tbar.AddSeparator()
+        
         buttonId = wx.NewId()
-        self.maintoolbar.AddLabelTool(buttonId, "Compute", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
-        self.Bind(wx.EVT_TOOL, self.OnComputeButton, id=buttonId)
-        buttonId = wx.NewId()
-        self.maintoolbar.AddLabelTool(buttonId, "Abort", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
-        self.Bind(wx.EVT_TOOL, self.OnAbortButton, id=buttonId)
-        buttonId = wx.NewId()
-        self.maintoolbar.AddLabelTool(buttonId, "Example", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
-        self.Bind(wx.EVT_TOOL, self.OnExampleButton, id=buttonId)
+        b = wx.Button(tbar, buttonId, "Compute", (20, 20), style=wx.NO_BORDER)
+        tbar.AddControl(b)
+        self.Bind(wx.EVT_BUTTON, self.OnComputeButton, b)
+        #~ b.SetDefault()
+        b.SetSize(b.GetBestSize())
 
-    def AddMenuItem(self, menu, itemText, itemDescription, itemHandler):
-        menuId = wx.NewId()
+        buttonId = wx.NewId()
+        b = wx.Button(tbar, buttonId, "Abort", (20, 20), style=wx.NO_BORDER)
+        tbar.AddControl(b)
+        self.Bind(wx.EVT_BUTTON, self.OnAbortButton, b)
+        #~ b.SetDefault()
+        b.SetSize(b.GetBestSize())
+        tbar.AddSeparator()
+
+        buttonId = wx.NewId()
+        b = wx.Button(tbar, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
+        tbar.AddControl(b)
+        self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
+        #~ b.SetDefault()
+        #~ b.SetSize(b.GetBestSize())
+
+
+        #~ tbar.AddLabelTool(buttonId, "Compute", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        #~ self.Bind(wx.EVT_TOOL, self.OnComputeButton, id=buttonId)
+        #~ buttonId = wx.NewId()
+        #~ tbar.AddLabelTool(buttonId, "Abort", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        #~ self.Bind(wx.EVT_TOOL, self.OnAbortButton, id=buttonId)
+        #~ buttonId = wx.NewId()
+        #~ tbar.AddLabelTool(buttonId, "Example", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        #~ self.Bind(wx.EVT_TOOL, self.OnExampleButton, id=buttonId)
+
+        tbar.Realize()
+        self.tbar = tbar
+
+    #~ def MakeToolbar(self):
+        #~ self.maintoolbar = wx.ToolBar(self, -1, style=wx.TB_HORIZONTAL|wx.TB_TEXT|wx.TB_NOICONS|wx.TB_FLAT)
+        #~ self.SetToolBar(self.maintoolbar)
+        #~ buttonId = wx.NewId()
+        #~ self.maintoolbar.AddLabelTool(buttonId, "Compute", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        #~ self.Bind(wx.EVT_TOOL, self.OnComputeButton, id=buttonId)
+        #~ buttonId = wx.NewId()
+        #~ self.maintoolbar.AddLabelTool(buttonId, "Abort", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        #~ self.Bind(wx.EVT_TOOL, self.OnAbortButton, id=buttonId)
+        #~ buttonId = wx.NewId()
+        #~ self.maintoolbar.AddLabelTool(buttonId, "Example", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
+        #~ self.Bind(wx.EVT_TOOL, self.OnExampleButton, id=buttonId)
+
+    def AddMenuItem(self, menu, itemText, itemDescription, itemHandler, amenuId = None):
+        if amenuId is not None:
+            menuId = amenuId
+        else:
+            menuId = wx.NewId()
         menu.Append(menuId, itemText, itemDescription)
         self.Bind(wx.EVT_MENU, itemHandler, id=menuId)
         return menuId
@@ -431,9 +507,11 @@ class stimatorMainFrame(wx.Frame):
 
         # Edit menu
         editMenu = wx.Menu()
-        self.AddMenuItem(editMenu, 'Cut\tCtrl-X', 'Cut', self.OnCutSelection)
-        self.AddMenuItem(editMenu, '&Copy\tCtrl-C', 'Copy', self.OnCopySelection)
-        self.AddMenuItem(editMenu, 'Paste\tCtrl-V', 'Paste', self.OnPaste)
+        self.AddMenuItem(editMenu, 'Undo\tCtrl-Z', 'Undo', self.OnUndo, wx.ID_UNDO)
+        self.AddMenuItem(editMenu, 'Redo\tCtrl-Y', 'Redo', self.OnRedo, wx.ID_REDO)
+        self.AddMenuItem(editMenu, 'Cut\tCtrl-X', 'Cut', self.OnCutSelection, wx.ID_CUT)
+        self.AddMenuItem(editMenu, '&Copy\tCtrl-C', 'Copy', self.OnCopySelection, wx.ID_COPY)
+        self.AddMenuItem(editMenu, 'Paste\tCtrl-V', 'Paste', self.OnPaste, wx.ID_PASTE)
         menu.Append(editMenu, 'Edit')
 
         # Timecourse menu
@@ -609,6 +687,12 @@ class stimatorMainFrame(wx.Frame):
 
     def OnPaste(self, event):
         self.ModelEditor.Paste()
+
+    def OnUndo(self, event):
+        self.ModelEditor.Undo()
+
+    def OnRedo(self, event):
+        self.ModelEditor.Redo()
 
     def OnLoadTC(self, event):
         fileNames = self.SelectFilesDialog(True, self.GetFileDir())
