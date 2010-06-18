@@ -200,18 +200,18 @@ class DeODESolver(de.DESolver):
         best['timecourses']['header'] = ['Name', 'Points', 'Score']
         best['best timecourses']['data']=sols
         
-        consterror = [0.0 for i in range(len(varnames))]
-        for ix, x in enumerate(varnames):
-            for tc in self.tc:
-                yexp = tc.data[varindexes[ix]]
-                tpe = (max(yexp) - min(yexp))
-                if tpe > consterror[ix]:
-                    consterror[ix] = tpe
         
         if not (fim.sympy_installed):
             best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
         else:
 
+            consterror = [0.0 for i in range(len(varnames))]
+            for ix, x in enumerate(varnames):
+                for tc in self.tc:
+                    yexp = tc.data[varindexes[ix]]
+                    tpe = (max(yexp) - min(yexp))
+                    if tpe > consterror[ix]:
+                        consterror[ix] = tpe
             consterror = [r * 0.05 for r in consterror] #assuming 5% error
             
             #print consterror
