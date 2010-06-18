@@ -12,6 +12,7 @@ import os.path
 import re
 import math
 from numpy import *
+from timeit import Timer
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -425,6 +426,8 @@ class Model(object):
         object.__setattr__(self, name, value)
 
     def __getattr__(self, name):
+        if name == '__m_Parameters':
+            return self.__dict__['_Model__m_Parameters']
         if name in self.__dict__:
             return self.__dict__[name]
         c = findWithNameIndex(name, self.__parameters)
@@ -730,7 +733,7 @@ class Model(object):
                     #~ print _jfuncs
         return _jfuncs
         
-    def rates_func(self, with_uncertain = False):
+    def rates_func(self, with_uncertain = False, scale = 1.0, t0=0.0):
         """Generate function to compute rate vector for this model.
         
            Function has signature f(variables, t)"""
@@ -749,6 +752,7 @@ class Model(object):
         enf = list(enumerate(self.forcing))
             
         def f(variables, t):
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
@@ -756,6 +760,7 @@ class Model(object):
             return v
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
@@ -767,7 +772,7 @@ class Model(object):
         else:
             return f
 
-    def transf_func(self, with_uncertain = False):
+    def transf_func(self, with_uncertain = False, scale = 1.0, t0=0.0):
         """Generate function to compute transformations for this model.
         
            Function has signature f(variables, t)"""
@@ -785,6 +790,7 @@ class Model(object):
         enf = list(enumerate(self.forcing))
             
         def f(variables, t):
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(transfbytecode):
@@ -792,6 +798,7 @@ class Model(object):
             return m_Transformations
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in enumerate(transfbytecode):
@@ -873,7 +880,7 @@ class Model(object):
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
     
-    def getdXdt(self, with_uncertain = False, scale = 1.0):
+    def getdXdt(self, with_uncertain = False, scale = 1.0, t0=0.0):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -885,6 +892,7 @@ class Model(object):
             print [x.name for x in self.variables]
             raise BadRateError(msg)
         #compile rate laws
+        #m_Parameters = self.__m_Parameters
         ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain = with_uncertain), '<string>','eval') for v in self.__reactions]
         # compute stoichiometry matrix, scale and transpose
         N  = self.genStoichiometryMatrix()
@@ -894,28 +902,66 @@ class Model(object):
         v = empty(len(self.reactions))
         en = list(enumerate(ratebytecode))
         # create array to hold forcing functions
-        forcing_function = empty(len(self.forcing))
+        nforce = len(self.forcing)
+        forcing_function = empty(nforce)
         enf = list(enumerate(self.forcing))
         
-        def f(variables, t):
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
-            for i,r in en:
-                v[i] = eval(r)
-            return dot(v,NT)
+        
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
-        if with_uncertain:
+        def f3(variables, t):
+            m_Parameters = self.__m_Parameters
+            for i,r in en:
+                v[i] = eval(r)
+            return dot(v,NT)
+
+        if nforce >0:
             return f2
         else:
-            return f
+            return f3
+    
+    def getdXdt2(self, with_uncertain = False, scale = 1.0, t0=0.0):
+        """Generate function to compute rhs of SODE for this model.
+        
+           Function has signature f(variables, t)
+           This is compatible with scipy.integrate.odeint"""
 
-    def dXdt_with(self, uncertainparameters, scale = 1.0):
+        check, msg = self.checkRates()
+        if not check:
+            print "vars = "
+            print [x.name for x in self.variables]
+            raise BadRateError(msg)
+        
+        x = empty(len(self.variables))
+        nforce = len(self.forcing)
+        forcing_function = empty(nforce)
+        m_Parameters = self.__m_Parameters
+       
+        ODEstr = "def f4(variables,t):\n"
+        #ODEstr += '\tm_Parameters = self.__m_Parameters\n'
+        if nforce >0:
+            ODEstr += '\tt = t*scale + t0\n'
+            for i in range(nforce):
+                ODEstr += '\tforcing_function[%d] = self.forcing[%d].func(variables,t)\n' % (i,i)
+
+        for i, xstr in enumerate(self.dXdt_strings()):
+            ODEstr += "\tx[%d] = "% i + self.rateCalcString(xstr[1], with_uncertain = with_uncertain)+'\n'
+        #ODEstr += "\tself.fcount+=1\n"            
+        #ODEstr += "\tprint self.fcount\n"            
+        ODEstr += "\treturn x"            
+        
+        #print ODEstr
+        dct = locals()
+        exec ODEstr in dct#{'self':self, 'nforce':nforce, 'x':x, 'forcing_function': forcing_function}
+        return f4
+        
+    def dXdt_with(self, uncertainparameters, scale = 1.0, t0=0.0):
         """Generate function to compute rhs of SODE for this model.
         
            Function has signature f(variables, t)
@@ -939,15 +985,16 @@ class Model(object):
         enf = list(enumerate(self.forcing))
 
         def f(variables, t):
+            m_Parameters = uncertainparameters
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
-            m_Parameters = uncertainparameters
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
         return f
 
-    def getJacobian(self, with_uncertain = False, scale = 1.0):
+    def getJacobian(self, with_uncertain = False, scale = 1.0, t0=0.0):
         """Generate function to compute the jacobian for this model.
         
            Function has signature J(variables, t)
@@ -965,6 +1012,7 @@ class Model(object):
         
         def J(variables, t):
             Jarray = empty((nvars,nvars), float)
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i in range(nvars):
@@ -974,6 +1022,7 @@ class Model(object):
         def J2(variables, t):
             m_Parameters = self.__m_Parameters
             Jarray = empty((nvars,nvars), float)
+            t = t*scale + t0
             for i,fi in enf:
                 forcing_function[i] = fi.func(variables,t)
             for i in range(nvars):
@@ -1206,10 +1255,29 @@ def test():
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
     print '---- dXdt using Model.dXdt() --------------------------------'
-    #f = m.getdXdt()
-    dXdt = m.dXdt(varvalues,0)
+    f = m.getdXdt()
+    #~ dXdt = m.dXdt(varvalues,0)
+    dXdt = f(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
+
+    print '---- dXdt using Model.dXdt2() --------------------------------'
+    print 'f = m.getdXdt2()'
+    f = m.getdXdt2()
+    dXdt = f(varvalues,0)
+    for x,r in zip(m.variables, dXdt):
+        print "d%s/dt = %s" % (x.name, r)
+    
+    def t1(ntimes):
+        f = m.getdXdt()
+        for i in range(ntimes):
+            dXdt = f(varvalues,0)
+        return dXdt
+    def t2(ntimes):
+        f = m.getdXdt2()
+        for i in range(ntimes):
+            dXdt = f(varvalues,0)
+        return dXdt
 
     print '---- dXdt using Model.dXdt() setting uncertain parameters ---'
     print 'f = m.getdXdt(with_uncertain = True)'
@@ -1251,6 +1319,36 @@ def test():
     dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
+
+    #~ print '\n\n\nProfiling dXdt...'
+    #~ ntimes = 100000
+    #~ import cProfile, pstats, StringIO
+    #~ prof = cProfile.Profile()
+    #~ prof = prof.runctx("t1(ntimes)", globals(), locals())
+    #~ print '------------- for dXdt --------------------'
+    #~ stream = StringIO.StringIO()
+    #~ stats = pstats.Stats(prof, stream=stream)
+    #~ stats.sort_stats("cumulative")  # Or cumulative
+    #~ stats.print_stats(40)  # 40 = how many to print
+    #~ # The rest is optional.
+    #~ #stats.print_callees()
+    #~ #stats.print_callers()
+    #~ print stream.getvalue()
+    #~ #logging.info("Profile data:\n%s", stream.getvalue())
+    #~ prof = cProfile.Profile()
+    #~ prof = prof.runctx("t2(ntimes)", globals(), locals())
+    #~ print '\n-------------- for dXdt2 -------------------'
+    #~ stream = StringIO.StringIO()
+    #~ stats = pstats.Stats(prof, stream=stream)
+    #~ stats.sort_stats("cumulative")  # Or cumulative
+    #~ stats.print_stats(40)  # 40 = how many to print
+    #~ # The rest is optional.
+    #~ #stats.print_callees()
+    #~ #stats.print_callers()
+    #~ print stream.getvalue()
+    #~ #logging.info("Profile data:\n%s", stream.getvalue())
+
+
 
 if __name__ == "__main__":
     test()

@@ -208,22 +208,24 @@ class DeODESolver(de.DESolver):
                 if tpe > consterror[ix]:
                     consterror[ix] = tpe
         
-        consterror = [r * 0.05 for r in consterror] #assuming 5% error
-        
-        #print varnames
-        #print consterror
-        FIM1, invFIM1 = fim.computeFIM(self.model, parsdict, varnames, sols, consterror)
-        #print "compute FIM concluded"
-        STDerrors = []
-        for i,p in enumerate(parsdict.keys()):
-            STDerrors.append((p,invFIM1[i,i]**0.5))    
-        perrors =[]
-        for p in pars:
-            for p2,v in STDerrors:
-                if p2 == p:
-                    perrors.append(v)
-                    break
-        best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%perrors[i]) for (i,value) in enumerate(self.bestSolution)]
+        if not (fim.sympy_installed):
+            best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
+        else:
+
+            consterror = [r * 0.05 for r in consterror] #assuming 5% error
+            
+            #print consterror
+            FIM1, invFIM1 = fim.computeFIM(self.model, parsdict, varnames, sols, consterror)
+            STDerrors = []
+            for i,p in enumerate(parsdict.keys()):
+                STDerrors.append((p,invFIM1[i,i]**0.5))    
+            perrors =[]
+            for p in pars:
+                for p2,v in STDerrors:
+                    if p2 == p:
+                        perrors.append(v)
+                        break
+            best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%perrors[i]) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
 

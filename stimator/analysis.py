@@ -16,11 +16,10 @@ from timecourse import SolutionTimeCourse
 
 import pylab as p
 
-def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None):
+def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None, whichdXdt = 0):
     salg=integrate._odepack.odeint
     names = [x.name for x in model.variables]
-    scale = 1.0
-    f = model.getdXdt(scale)
+
     #get initial values, possibly from a state in the model
     if isinstance(initial, str) or isinstance(initial, StateArray):
         y0 = copy(model.vectorize(initial))
@@ -28,7 +27,16 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         y0 = copy(initial)
     if times is None:
         times = linspace (t0, tf, npoints)
-    t  = copy(times)
+    # scale times to maximum time in data
+    t0 = times[0]
+    #scale = float(times[-1] - times[0])
+    scale = 1.0
+    
+    if whichdXdt == 0:
+        f = model.getdXdt(scale=scale, t0=t0)
+    else:
+        f = model.getdXdt2(scale=scale, t0=t0)
+    t  = (times-t0)/scale  # this scales time points
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
     if output[-1] < 0: return None

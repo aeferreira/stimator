@@ -11,6 +11,14 @@ from model import *
 from analysis import *
 import timecourse
 
+sympy_installed = True
+try:
+    import sympy
+except:
+    print 'ERROR: sympy module must be installed to generate sensitivity strings'
+    sympy_installed = False
+
+
 def add_dSdt_to_model(m, pars):
     """Add sensitivity ODEs to model, according to formula:
     
@@ -46,11 +54,6 @@ def add_dSdt_to_model(m, pars):
     nvars = len(J)
     npars = len(pars)
     
-    try:
-        import sympy
-    except:
-        print 'ERROR: sympy module must be installed to generate sensitivity strings'
-        raise
     _symbs = {}
     for x in m.variables:
         _symbs[x.name] = sympy.Symbol(str(x.name))
@@ -151,7 +154,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
         #set init and solve
         for n,v in tc.state_at(0.0): #TODO: may not start at zero
             setattr(m.init, n, v)
-        sols += solve(m, tf = tc.t[-1])#, scale = scale)
+        sols += solve(m, tf = tc.t[-1])
     
     
     #compute P and MVINV
