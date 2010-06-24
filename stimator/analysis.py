@@ -29,8 +29,8 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         times = linspace (t0, tf, npoints)
     # scale times to maximum time in data
     t0 = times[0]
-    #scale = float(times[-1] - times[0])
-    scale = 1.0
+    scale = float(times[-1] - times[0])
+    #scale = 1.0
     
     if whichdXdt == 0:
         f = model.getdXdt(scale=scale, t0=t0)

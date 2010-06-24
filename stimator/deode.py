@@ -54,8 +54,9 @@ class DeODESolver(de.DESolver):
         
         # scale times to maximum time in data
         scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
+        t0 = self.tc[0].t[0]
         
-        self.calcDerivs = model.getdXdt(scale=scale, with_uncertain=True)
+        self.calcDerivs = model.getdXdt(scale=scale, with_uncertain=True, t0=t0)
         self.salg=integrate._odepack.odeint
         
         # store initial values and (scaled) time points
@@ -65,8 +66,8 @@ class DeODESolver(de.DESolver):
         for data in self.tc:
             self.X0.append(copy(data[:, 0].T))
             t  = data.t
-            t0 = t[0]
-            times = (t-t0)/scale+t0  # this scales time points
+            #t0 = t[0]
+            times = (t-t0)/scale #+t0  # this scales time points
             self.times.append(times)
         self.timecourse_scores = empty(len(self.tc))
         
