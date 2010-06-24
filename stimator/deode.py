@@ -205,7 +205,6 @@ class DeODESolver(de.DESolver):
         if not (fim.sympy_installed):
             best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
         else:
-
             consterror = [0.0 for i in range(len(varnames))]
             for ix, x in enumerate(varnames):
                 for tc in self.tc:
@@ -217,16 +216,11 @@ class DeODESolver(de.DESolver):
             
             #print consterror
             FIM1, invFIM1 = fim.computeFIM(self.model, parsdict, varnames, sols, consterror)
-            STDerrors = []
+            
+            STDerrors = {}
             for i,p in enumerate(parsdict.keys()):
-                STDerrors.append((p,invFIM1[i,i]**0.5))    
-            perrors =[]
-            for p in pars:
-                for p2,v in STDerrors:
-                    if p2 == p:
-                        perrors.append(v)
-                        break
-            best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%perrors[i]) for (i,value) in enumerate(self.bestSolution)]
+                STDerrors[p] =invFIM1[i,i]**0.5
+            best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%STDerrors[self.model.uncertain[i].name]) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
 
