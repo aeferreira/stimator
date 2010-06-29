@@ -166,12 +166,11 @@ class DeODESolver(de.DESolver):
 
         #generate best time-courses
         best['timecourses']['data'] = []
-        #best['best timecourses']['data'] = []
 
         varnames = [x.name for x in self.model.variables]
         pars = [self.model.uncertain[i].name for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
-        parsdict = dict (zip(pars, parvalues))
+        parszip = zip(pars, parvalues)
         self.model.set_uncertain(self.bestSolution)
         
         sols = timecourse.Solutions()
@@ -185,7 +184,6 @@ class DeODESolver(de.DESolver):
             nt = tc.ntimes
             sol = timecourse.SolutionTimeCourse (tc.t, Y.T, varnames)
             sols += sol
-            #best['best timecourses']['data'].append(sol)
             best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].shape[0], score))
             
             varnames = []
@@ -215,10 +213,10 @@ class DeODESolver(de.DESolver):
             consterror = [r * 0.05 for r in consterror] #assuming 5% error
             
             #print consterror
-            FIM1, invFIM1 = fim.computeFIM(self.model, parsdict, varnames, sols, consterror)
+            FIM1, invFIM1 = fim.computeFIM(self.model, parszip, varnames, sols, consterror)
             
             STDerrors = {}
-            for i,p in enumerate(parsdict.keys()):
+            for i,p in enumerate(pars):
                 STDerrors[p] =invFIM1[i,i]**0.5
             best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%STDerrors[self.model.uncertain[i].name]) for (i,value) in enumerate(self.bestSolution)]
         

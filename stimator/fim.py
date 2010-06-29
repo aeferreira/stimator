@@ -42,15 +42,6 @@ def add_dSdt_to_model(m, pars):
     J = m.Jacobian_strings()
     dfdpstrs = m.dfdp_strings(pars)
             
-    #~ print '************************'
-    #~ print 'PARAMETERS'
-    #~ print pars
-    #~ print '************************'
-    #~ print 'dfdp_strings(pars)'
-    #~ for i,x in enumerate(m.variables):
-        #~ for j,p in enumerate(pars):
-            #~ print "d(%s, %s) = %s"%(x.name, p, dfdpstrs[i][j])
-    #~ print '************************'
     nvars = len(J)
     npars = len(pars)
     
@@ -73,14 +64,6 @@ def add_dSdt_to_model(m, pars):
             Sname = "d_%s_d_%s" % (m.variables[i].name, pars[j])
             _symbs[Sname] = sympy.Symbol(str(Sname))
             Smatrix[i].append(Sname)
-    #~ print '************************'
-    #~ print 'SYMBOLS'
-    #~ for k,v in _symbs.items():
-        #~ print "%-18s:"%k, v
-    #~ print '************************'
-
-    #print '************************'
-    #print "SENSITIVITIES ODE's"
     for i in range(nvars):
         vname = m.variables[i].name
         for j in range(npars):
@@ -96,32 +79,28 @@ def add_dSdt_to_model(m, pars):
             if _dres == '0':
                 _dres = '0.0'
             Smatrix[i][j] = str(Smatrix[i][j])
-            #print Smatrix[i][j], '=', _dres
             setattr(m, Smatrix[i][j], variable(_dres))
             if init_of[j] is None:
                 setattr(m.init, Smatrix[i][j], 0.0)
-                #print Smatrix[i][j], '(0) =', 0.0
             else:
                 if init_of[j] == vname:
                     setattr(m.init, Smatrix[i][j], 1.0)
-                    #print Smatrix[i][j], '(0) =', 1.0
                 else:
                     setattr(m.init, Smatrix[i][j], 0.0)
-                    #print Smatrix[i][j], '(0) =', 0.0
-    #print '************************'
 
-def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
+def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     
     """Computes FIM normalized by parameter values.
     
     model is a model object.
     
-    pars is a dicionary of parameter names as keys and parameter values as values.
+    pars is a dicionary of parameter names as keys and parameter values as values,
+    or list of (name,value) pairs
         names of the form init.<name> are possible.
         
     vars is a list of names of variables to be considered in the timecourses
     
-    timecoursecollection is a Solutions or TimeCourseCollection object 
+    timecoursecollection is a Solutions object 
        (initial values are read from these)
     
     expCOV is an experimental variance-covariance matrix of variables.
@@ -137,16 +116,21 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
         inits[str(x.name)] = 0.0
     setattr(m, 'init', state(**inits))
     
-    for p in pars:
-        setattr(m, p, pars[p])  #TODO: verify existence of each p
+    if isinstance(pars,dict):
+        parnames = pars.keys()
+        parvalues = pars.values()
+    else:
+        parnames = [n for (n,v) in pars]
+        parvalues = [v for (n,v) in pars]
+    
+    for n,v in zip(parnames,parvalues):
+        setattr(m, n, v)  #TODO: verify existence of each p
     # Adding sensitivity ODEs
     npars = len(pars)
     nvars = len(vars)
     nsens = npars * nvars
-    add_dSdt_to_model(m, pars.keys())
+    add_dSdt_to_model(m, parnames)
 
-    timecoursedata = timecoursecollection
-    
     #scale = float(max([ (s.t[-1]-s.t[0]) for s in timecoursedata]))
     
     sols = timecourse.Solutions()
@@ -160,7 +144,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
     #compute P and MVINV
 
     # P is the diagonal matrix of parameter values
-    P = matrix(diag([pars[p] for p in pars]))
+    P = matrix(diag(parvalues))
 
     # MVINV is the inverse of measurement COV matrix
     # RIGHT NOW, IT ONLY WORKS FOR A VECTOR OF CONSTANT VALUES
@@ -209,28 +193,6 @@ def __computeNormalizedFIM(model, pars, vars, timecoursecollection, expCOV):
     
     return sumFIM, P
 
-
-
-def __computeNormalizedFIM4SingleTC(model, pars, vars, tf, expCOV):
-    
-    sols = Solutions()
-    
-    sols += solve(model, tf)
-    FIM, P = __computeNormalizedFIM(model, pars, vars, sols, expCOV)
-    return FIM, P
-        
-def computeFIM4SingleTC(model, pars, vars, tf, COV):
-    FIM, P = __computeNormalizedFIM4SingleTC(model, pars, vars, tf, COV)
-    # compute inverse of P to "descale"
-    PINV = linalg.inv(P)
-    # compute FIM and its inverse (lower bounds for parameter COV matrix)
-    realFIM = PINV * FIM * PINV
-    INVFIM = linalg.inv(FIM)
-    INVFIM = P * INVFIM * P
-    check = dot(INVFIM, realFIM)
-    #TODO: MAKE THIS CHECK USEFUL
-    
-    return realFIM, INVFIM
 
 def computeFIM(model, pars, vars, TCs, COV):
     FIM, P = __computeNormalizedFIM(model, pars, vars, TCs, COV)
