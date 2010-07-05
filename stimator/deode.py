@@ -185,7 +185,7 @@ class DeODESolver(de.DESolver):
             nt = tc.ntimes
             sol = timecourse.SolutionTimeCourse (tc.t, Y.T, varnames)
             sols += sol
-            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].shape[0], score))
+            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].shape[1], score))
             
             varnames = []
             varindexes=[]
