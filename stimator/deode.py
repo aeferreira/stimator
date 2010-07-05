@@ -16,6 +16,7 @@ from analysis import *
 import fim
 import timecourse
 import dyncriteria
+import expcov
 
 #----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
@@ -210,7 +211,7 @@ class DeODESolver(de.DESolver):
                     tpe = (max(yexp) - min(yexp))
                     if tpe > consterror[ix]:
                         consterror[ix] = tpe
-            consterror = [r * 0.05 for r in consterror] #assuming 5% error
+            consterror = expcov.constError_func([r * 0.05 for r in consterror]) #assuming 5% error
             
             #print consterror
             FIM1, invFIM1 = fim.computeFIM(self.model, parszip, varnames, sols, consterror)

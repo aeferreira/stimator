@@ -10,6 +10,7 @@ from numpy import *
 from model import *
 from analysis import *
 import timecourse
+import expcov
 
 sympy_installed = True
 try:
@@ -103,10 +104,10 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     timecoursecollection is a Solutions object 
        (initial values are read from these)
     
-    expCOV is an experimental variance-covariance matrix of variables.
-        NOTE: only a constant error for all the variables is now possible:
-        set expCOV to a float
-    
+    expCOV is a function wich computes the 
+        experimental variance-covariance matrix of variables.
+        function has signature f(x), where x is the numpy array of variables.
+        NOTE: module expcov defines some 'stock' error functions.
     """
     m  = model.clone()
     
@@ -128,11 +129,8 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     # Adding sensitivity ODEs
     npars = len(pars)
     nvars = len(vars)
-    nsens = npars * nvars
     add_dSdt_to_model(m, parnames)
 
-    #scale = float(max([ (s.t[-1]-s.t[0]) for s in timecoursedata]))
-    
     sols = timecourse.Solutions()
     for tc in timecoursedata:
         #set init and solve
@@ -140,23 +138,18 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
             setattr(m.init, n, v)
         sols += solve(m, tf = tc.t[-1])
     
-    
-    #compute P and MVINV
+    #compute P
 
     # P is the diagonal matrix of parameter values
-    P = matrix(diag(parvalues))
-
-    # MVINV is the inverse of measurement COV matrix
-    # RIGHT NOW, IT ONLY WORKS FOR A VECTOR OF CONSTANT VALUES
-    # if COV is a scalar, transform in vector of constants
-    if isinstance(expCOV, float) or isinstance(expCOV, int): #constant for all variables
-        error_x = array([expCOV for i in range(nvars)], dtype=float)
-    else:
-        error_x = array(expCOV, dtype=float)
-    errorvec = error_x**2
-    MV = matrix(diag(errorvec))
-    MVINV = linalg.inv(MV)
+    P = matrix(diag(array(parvalues, dtype=float)))
     
+    #keep indexes of variables considered
+    xindexes = []
+    for vname in vars:
+        for i,y in enumerate(m.variables):
+            if y.name == vname:
+                xindexes.append(i)
+    xindexes = array(xindexes)
     #compute indexes of sensitivities
     # search pattern d_<var name>_d_<parname> in variable names
     indexes = []
@@ -170,26 +163,31 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
 
     tcFIM = []
     for sol in sols:
-        #timestep (assumed constant)
-        h = (sol.t[1] - sol.t[0]) #*scale
         #compute integral of ST * MVINV * S
         ntimes = len(sol.t)
         FIM = zeros((npars,npars))
-        for i in range(ntimes):
-            #compute S matrix
+        for i in range(1,ntimes):
+            #time step
+            h = (sol.t[i]-sol.t[i-1])
+            
+            #S matrix
             svec = sol.data[indexes , i]
             S = matrix(svec.reshape((nvars, npars)))
             S = S * P # scale with par values
             ST = matrix(S.T)
 
-            #compute contribution at point i and add to FIM
+            # MVINV is the inverse of measurement COV matrix
+            xvec = sol.data[xindexes , i]
+            error_x = expCOV(xvec)
+            MV = matrix(error_x**2)
+            MVINV = linalg.inv(MV)
+            
+            #contribution at point i (rectangle's rule)
             FIMpoint = h * ST * MVINV * S
             FIM += FIMpoint
         tcFIM.append(FIM)
     
-    sumFIM = zeros((npars,npars))  #TODO use numpy tensor and 1 dimension sum?
-    for f in tcFIM:
-        sumFIM += f
+    sumFIM = sum(dstack(tcFIM), axis=2)
     
     return sumFIM, P
 
@@ -228,6 +226,9 @@ def test():
     parsdict = dict (zip(pars, parvalues))
     
     errors = (0.01,0.001)
+    errors = expcov.constError_func(errors)
+    errorsSDLonly = 0.001
+    errorsSDLonly = expcov.constError_func(errorsSDLonly)
 
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
@@ -239,7 +240,7 @@ def test():
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters V1 and Km1'
     print 'Timecourse with SDLTSH only'
-    FIM1, invFIM1 = computeFIM(m, parsdict, "SDLTSH".split(), sols, errors[1])
+    FIM1, invFIM1 = computeFIM(m, parsdict, "SDLTSH".split(), sols, errorsSDLonly)
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
@@ -263,7 +264,7 @@ def test():
     print 'Glyoxalase model, 2 timecourses, parameters V1 and Km1'
     print 'Timecourses with SDLTSH only'
     
-    FIM1, invFIM1 = computeFIM(m, parsdict, ["SDLTSH"], sols, errors[1])
+    FIM1, invFIM1 = computeFIM(m, parsdict, ["SDLTSH"], sols, errorsSDLonly)
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
