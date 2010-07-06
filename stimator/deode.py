@@ -6,7 +6,6 @@
 Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
-from time import time
 import de
 from numpy import *
 from scipy import integrate
@@ -185,7 +184,7 @@ class DeODESolver(de.DESolver):
             nt = tc.ntimes
             sol = timecourse.SolutionTimeCourse (tc.t, Y.T, varnames)
             sols += sol
-            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].shape[1], score))
+            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].ntimes, score))
             
             varnames = []
             varindexes=[]
@@ -196,6 +195,7 @@ class DeODESolver(de.DESolver):
                 if nnan >= nt-1: continue
                 varnames.append(str(self.model.variables[iline].name))
                 varindexes.append(iline)
+            #print len(varindexes), varnames
         best['timecourses']['format'] = "%s\t%d\t%g"
         best['timecourses']['header'] = ['Name', 'Points', 'Score']
         best['best timecourses']['data']=sols
@@ -223,16 +223,16 @@ class DeODESolver(de.DESolver):
         
         self.optimum = best
 
-def reportResults(solver):
-    reportText = ""
-    sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-    for section in sections:
-        reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
-        if section['header']:
-            reportText += '\t\t'.join(section['header'])+'\n'
-        reportText += "\n".join([section['format'] % i for i in section['data']])
-        reportText += '\n\n'
-    return reportText
+    def reportResults(self):
+        reportText = ""
+        sections = [self.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
+        for section in sections:
+            reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
+            if section['header']:
+                reportText += '\t\t'.join(section['header'])+'\n'
+            reportText += "\n".join([section['format'] % i for i in section['data']])
+            reportText += '\n\n'
+        return reportText
 
 
 def test():
@@ -262,17 +262,12 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../models', intvarsorder=(0,2,1))
     
     solver = DeODESolver(m1,optSettings, timecourses)
-    
-    time0 = time()
-    
     solver.Solve()
     
-    print "Optimization took %f s"% (time()-time0)
-
     print
     print '---------------------------------------------------------'
     print "Results for %s\n" % m1.getData('title')
-    print reportResults(solver)
+    print solver.reportResults()
 
     #--- an example with unknown initial values --------------------
     
@@ -292,17 +287,12 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     timecourses = timecourse.readTCs(['TSH2a.txt'], '../models', intvarsorder=(0,2,1))
     
     solver = DeODESolver(m2,optSettings, timecourses)
-    
-    time0 = time()
-    
     solver.Solve()
-    
-    print "Optimization took %f s"% (time()-time0)
 
     print
     print '---------------------------------------------------------'
     print "Results for %s\n" % m2.getData('title')
-    print reportResults(solver)
+    print solver.reportResults()
 
 if __name__ == "__main__":
     test()

@@ -420,7 +420,7 @@ class BestPlotPanel(PlotPanel):
         for i in range(ntc):
             subplot = self.tcsubplots[i]
             #subplot.set_xlabel("time")
-            subplot.set_title("%s (%d)%g"% self.bestData['timecourses']['data'][i], fontsize = 12)
+            subplot.set_title("%s (%d pt) %g"% self.bestData['timecourses']['data'][i], fontsize = 12)
             expsol = timecoursedata[i]
             symsol = besttimecoursedata[i]
             for line in range(len(expsol)):

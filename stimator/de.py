@@ -21,6 +21,8 @@ Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 import random
+import time
+import datetime
 import numpy
 import scipy.optimize
 
@@ -61,7 +63,9 @@ class DESolver:
         self.generation = 0
         self.generationsWithNoImprovement = 0
         self.atSolution = False
-        self.exitCode = 0   
+        self.exitCode = 0
+        
+        self.elapsed = 0.0
     
     
     exitCodeStrings = (
@@ -78,8 +82,14 @@ class DESolver:
         #~ % (self.generation, self.bestEnergy, self.bestSolution)
 
     def reportFinalString (self):
-        return "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
+        res = "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
         % (DESolver.exitCodeStrings[self.exitCode], self.generation, self.bestEnergy, self.bestSolution)
+        if self.elapsed > 60.0:
+            ts = str(datetime.timedelta(seconds = self.elapsed))
+            res += "\nOptimization took %f s (%s)"% (self.elapsed, ts)
+        else:
+            res += "\nOptimization took %f s"% (self.elapsed)
+        return res
 
     def reportGeneration (self):
         print self.reportGenerationString ()
@@ -139,6 +149,8 @@ class DESolver:
                 if trialEnergy < self.bestEnergy:
                     self.bestEnergy = trialEnergy
                     self.bestSolution = numpy.copy(self.population[candidate])
+            #initialize stopwatch
+            self.elapsed = time.clock()
         
         if (self.popEnergy.ptp()/self.popEnergy.mean()) < 1.0E-2:
             self.exitCode = 5
@@ -184,6 +196,7 @@ class DESolver:
         # try to polish the best solution using scipy.optimize.fmin.
         self.bestSolution = scipy.optimize.fmin(self.externalEnergyFunction, self.bestSolution, disp = 0) # don't print warning messages to stdout
         self.bestEnergy, self.atSolution = self.EnergyFunction(self.bestSolution)
+        self.elapsed = time.clock() - self.elapsed
         self.reportFinal()
 
     def Solve(self):

@@ -126,7 +126,7 @@ class SolutionTimeCourse(object):
         """Reads a time course from file.
         
         Fills self.names from a header with variable names (possibly absent in file) 
-        and a 2D numpy array with data.
+        Fills a 2D numpy array with whitespace separated data. 
         """
         
         header = []
@@ -146,7 +146,7 @@ class SolutionTimeCourse(object):
             line = line.strip()
             if len(line) == 0:continue          #empty lines are skipped
             if line.startswith('#'): continue   #comment lines are skipped
-            
+            #print line
             items = line.split()
             
             if identifier.match(items[0]):
@@ -165,6 +165,7 @@ class SolutionTimeCourse(object):
                 for (i,num) in enumerate(items):
                     if realnumber.match(num):
                         if atindexes:
+                            #print num
                             temprow[atindexes[i]] = float(num)
                         else:
                             temprow[i] = float(num)
@@ -219,7 +220,6 @@ class SolutionTimeCourse(object):
         tc.shortname = self.shortname
         return tc
             
-        
 
 #----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -453,9 +453,12 @@ nothing really usefull here
     print
 
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models')
-    for tc in tcs:
+    for i, tc in enumerate(tcs):
         print tc.shape
+        print tc.names
         print tc.last
+        print tcs.filenames[i]
+        print tcs.shortnames[i]
     
     
     

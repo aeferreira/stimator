@@ -402,16 +402,16 @@ class stimatorMainFrame(wx.Frame):
         self.AddMenus(self.mainmenu)
         self.SetMenuBar(self.mainmenu)
 
-    #~ def OnUpdateUndo(self, event):
-        #~ canUndo = self.ModelEditor.CanUndo()
-        #~ self.tbar.EnableTool(wx.ID_UNDO, canUndo)
     def updateButtons(self):
         canUndo = self.ModelEditor.CanUndo()
         canRedo = self.ModelEditor.CanRedo()
+        canSave = self.ModelEditor.IsModified()
         self.tbar.EnableTool(wx.ID_UNDO, canUndo)
         self.tbar.EnableTool(wx.ID_REDO, canRedo)
+        self.tbar.EnableTool(wx.ID_SAVE, canSave)
         self.mainmenu.Enable(wx.ID_UNDO, canUndo)
         self.mainmenu.Enable(wx.ID_REDO, canRedo)
+        self.mainmenu.Enable(wx.ID_SAVE, canSave)
     
     def MakeToolbar(self):
         def doBind(item, handler, updateUI=None):
@@ -422,7 +422,7 @@ class stimatorMainFrame(wx.Frame):
         tbar = self.CreateToolBar(style=wx.TB_HORIZONTAL|wx.TB_FLAT)
         doBind( tbar.AddTool(-1, images.get_rt_openBitmap(),
                             shortHelpString="Open"), self.OnOpenMenu)
-        doBind( tbar.AddTool(-1, images.get_rt_saveBitmap(),
+        doBind( tbar.AddTool(wx.ID_SAVE, images.get_rt_saveBitmap(),
                             shortHelpString="Save"), self.OnSaveMenu)
         tbar.AddSeparator()
         doBind( tbar.AddTool(wx.ID_CUT, images.get_rt_cutBitmap(),
@@ -500,7 +500,7 @@ class stimatorMainFrame(wx.Frame):
         fileMenu = wx.Menu()
         self.AddMenuItem(fileMenu, '&New\tCtrl-N', 'New File', self.OnNewMenu)
         self.AddMenuItem(fileMenu, '&Open\tCtrl-O', 'Open File', self.OnOpenMenu)
-        self.AddMenuItem(fileMenu, '&Save\tCtrl-S', 'Save File', self.OnSaveMenu)
+        self.AddMenuItem(fileMenu, '&Save\tCtrl-S', 'Save File', self.OnSaveMenu, wx.ID_SAVE)
         self.AddMenuItem(fileMenu, 'Save &As\tCtrl-A', 'Save File As',self.OnSaveAsMenu)
         self.AddMenuItem(fileMenu, 'E&xit\tAlt-X', 'Exit', self.OnExitMenu)
         menu.Append(fileMenu, 'File')
@@ -775,8 +775,8 @@ class stimatorMainFrame(wx.Frame):
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
-            #print >> self, "Optimization took %f s"% (time.time()-self.time0) #this works too!
-            self.write("Optimization took %f s"% (time.time()-self.time0))
+            #~ #print >> self, "Optimization took %f s"% (time.time()-self.time0) #this works too!
+            #~ self.write("Optimization took %f s"% (time.time()-self.time0))
             #self.bestData = evt.bestData
             self.PostProcessEnded()
         self.optimizerThread = None

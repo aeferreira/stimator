@@ -1,6 +1,5 @@
 """S-timator : DEMO of deode module."""
 
-from time import time
 from stimator import *
 from stimator.deode import DeODESolver
 
@@ -8,17 +7,6 @@ print __doc__
 print
 print """The deode module combines ODE solving with DE (differential evolution)
 """
-
-def reportResults(solver):
-    reportText = ""
-    sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-    for section in sections:
-        reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
-        if section['header']:
-            reportText += '\t\t'.join(section['header'])+'\n'
-        reportText += "\n".join([section['format'] % i for i in section['data']])
-        reportText += '\n\n'
-    return reportText
 
 m1 = read_model("""
 title Glyoxalase system in L. Infantum
@@ -40,17 +28,12 @@ optSettings={'genomesize':80, 'generations':200}
 timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], '../../models', (0,2,1))
 
 solver = DeODESolver(m1,optSettings, timecourses)
-
-time0 = time()
-
 solver.Solve()
-
-print "Optimization took %f s"% (time()-time0)
 
 print
 print '---------------------------------------------------------'
 print "Results for %s\n" % m1.getData('title')
-print reportResults(solver)
+print solver.reportResults()
 
 #--- an example with unknown initial values --------------------
 
@@ -70,14 +53,9 @@ optSettings={'genomesize':60, 'generations':200}
 timecourses = readTCs(['TSH2a.txt'], '../../models', (0,2,1))
 
 solver = DeODESolver(m2,optSettings, timecourses)
-
-time0 = time()
-
 solver.Solve()
-
-print "Optimization took %f s"% (time()-time0)
 
 print
 print '---------------------------------------------------------'
 print "Results for %s\n" % m2.getData('title')
-print reportResults(solver)
+print solver.reportResults()
