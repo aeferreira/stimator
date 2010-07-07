@@ -747,7 +747,7 @@ class stimatorMainFrame(wx.Frame):
                 sys.stdout = oldout
                 return
 
-        ntcread = self.tc.loadTimeCourses (self.GetFileDir())
+        ntcread = self.tc.loadTimeCourses (self.GetFileDir(), verbose=True)
         if ntcread == 0:
            #self.IndicateError(parser.error, parser.errorLoc)
            sys.stdout = oldout

@@ -122,7 +122,7 @@ class SolutionTimeCourse(object):
         self.data = trf
         return self
     
-    def load_from(self, filename, atindexes = None):
+    def load_from(self, filename, atindexes = None, names = None):
         """Reads a time course from file.
         
         Fills self.names from a header with variable names (possibly absent in file) 
@@ -178,6 +178,9 @@ class SolutionTimeCourse(object):
             header = ['t']
             for i in range(1, nvars):
                 header.append('x%d'%i)
+        if names is not None:
+            header = ['t']
+            header.extend(names)
         #apply atindexes to header
         if atindexes:
             newheader = [''] * nvars
@@ -260,43 +263,53 @@ class Solutions(object):
         return iter(self.solutions)
     def append(self, other):
         return self.__iadd__(other)
-    def loadTimeCourses (self,filedir):
+    def loadTimeCourses (self,filedir = None, verbose = False):
         if len(self.filenames) == 0 :
            print "No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'"
            return 0
         
         # check and load timecourses
-        self.basedir = filedir
         cwd = os.getcwdu()
+        if filedir is not None:
+            self.basedir = filedir
+        else:
+            self.basedir = cwd
         os.chdir(self.basedir)
         pathlist = [os.path.abspath(k) for k in self.filenames]
 
-        print "-------------------------------------------------------"
         self.data = []
+        nTCsOK = 0
+        print "-------------------------------------------------------"
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 print "Time course file \n%s\ndoes not exist"% filename
                 os.chdir(cwd)
-                return 0
+                return nTCsOK
             sol = SolutionTimeCourse()
             sol.load_from(filename, atindexes=self.intvarsorder)
             if sol.shape == (0,0):
                 print "File\n%s\ndoes not contain valid time-course data"% filename
                 os.chdir(cwd)
-                return 0
+                return nTCsOK
             else:
-                print "%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename)
+                if verbose:
+                    print "%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename)
                 self.append(sol)
+                nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
         os.chdir(cwd)
-        return len(pathlist)
+        return nTCsOK
+    
+    def orderByModelVars(self, model):
+        varnames = [x.name for x in model.variables]
+        
 
 
-def readTCs(filenames, filedir, intvarsorder = None):
+def readTCs(filenames, filedir = None, intvarsorder = None, verbose = False):
     tcs = Solutions()
     tcs.filenames = filenames
     tcs.intvarsorder = intvarsorder
-    nread = tcs.loadTimeCourses(filedir)
+    nread = tcs.loadTimeCourses(filedir, verbose)
     return tcs
 
 TimeCourses = Solutions
@@ -348,6 +361,17 @@ nothing really usefull here
     print sol.data
     print
     
+    aTC.seek(0)
+    sol.load_from(aTC, names = ['x1','x2','x3'])   
+    print '\n- using load_from() with names x1, x2 ,x3'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+
     print '--Using SolutionTimeCourse interface ----------'
     aTC.seek(0)
     sol.load_from(aTC)   
@@ -452,7 +476,7 @@ nothing really usefull here
     print sol2.last
     print
 
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models')
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models', verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names

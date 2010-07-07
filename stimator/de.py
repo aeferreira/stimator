@@ -86,9 +86,9 @@ class DESolver:
         % (DESolver.exitCodeStrings[self.exitCode], self.generation, self.bestEnergy, self.bestSolution)
         if self.elapsed > 60.0:
             ts = str(datetime.timedelta(seconds = self.elapsed))
-            res += "\nOptimization took %f s (%s)"% (self.elapsed, ts)
+            res += "\nOptimization took %.3f s (%s)"% (self.elapsed, ts)
         else:
-            res += "\nOptimization took %f s"% (self.elapsed)
+            res += "\nOptimization took %.3f s"% (self.elapsed)
         return res
 
     def reportGeneration (self):
@@ -197,6 +197,7 @@ class DESolver:
         self.bestSolution = scipy.optimize.fmin(self.externalEnergyFunction, self.bestSolution, disp = 0) # don't print warning messages to stdout
         self.bestEnergy, self.atSolution = self.EnergyFunction(self.bestSolution)
         self.elapsed = time.clock() - self.elapsed
+        self.elapsed = round(self.elapsed, 3)
         self.reportFinal()
 
     def Solve(self):
