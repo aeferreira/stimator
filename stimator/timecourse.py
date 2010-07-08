@@ -12,11 +12,19 @@ import re
 import math
 from numpy import *
 import model
+import modelparser
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 realnumber = re.compile(realnumberpattern, re.IGNORECASE)
+
+class StimatorTCError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+    def __str__(self):
+        return self.msg
+
 
 #----------------------------------------------------------------------------
 #         THE BASIC TIMECOURSE CLASS
@@ -173,14 +181,14 @@ class SolutionTimeCourse(object):
         if isname:
             f.close()
         
-        #create default names "t, x1, x2, x3,..."
+        #create default names "t, x1, x2, x3,..." or use names if provided
         if len(header) == 0:
             header = ['t']
-            for i in range(1, nvars):
-                header.append('x%d'%i)
-        if names is not None:
-            header = ['t']
-            header.extend(names)
+            if names is not None:
+                header.extend(names)
+            else:
+                for i in range(1, nvars):
+                    header.append('x%d'%i)
         #apply atindexes to header
         if atindexes:
             newheader = [''] * nvars
@@ -223,6 +231,24 @@ class SolutionTimeCourse(object):
         tc.shortname = self.shortname
         return tc
             
+    def orderByNames(self, varnames):
+        newindexes = range(len(self))
+        restoffset = len(varnames)
+        for varname in varnames:
+            if varname not in self.names:
+                raise StimatorTCError("series %s was not found in timecourse %s"%(varname, self.title))
+        for i, name in enumerate(self.names):
+            try:
+                ivar = varnames.index(name)
+            except ValueError:
+                ivar = None
+            if ivar is None:
+                newindexes[restoffset] = i
+                restoffset += 1
+                continue
+            newindexes[ivar] = i
+        self.names = [self.names[i] for i in newindexes]
+        self.data = self.data[array(newindexes, dtype=int)]
 
 #----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -263,7 +289,7 @@ class Solutions(object):
         return iter(self.solutions)
     def append(self, other):
         return self.__iadd__(other)
-    def loadTimeCourses (self,filedir = None, verbose = False):
+    def loadTimeCourses (self,filedir = None, names = None, verbose = False):
         if len(self.filenames) == 0 :
            print "No time courses to load!\nPlease indicate some time courses with 'timecourse <filename>'"
            return 0
@@ -286,7 +312,7 @@ class Solutions(object):
                 os.chdir(cwd)
                 return nTCsOK
             sol = SolutionTimeCourse()
-            sol.load_from(filename, atindexes=self.intvarsorder)
+            sol.load_from(filename, atindexes=self.intvarsorder, names=names)
             if sol.shape == (0,0):
                 print "File\n%s\ndoes not contain valid time-course data"% filename
                 os.chdir(cwd)
@@ -297,19 +323,26 @@ class Solutions(object):
                 self.append(sol)
                 nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+        for i,sol in enumerate(self.solutions):
+            sol.title = self.shortnames[i]
+            sol.shortname = self.shortnames[i]
+            sol.filename = self.filenames[i]
         os.chdir(cwd)
         return nTCsOK
     
+    def orderByNames(self, varnames):
+        for sol in self.solutions:
+            sol.orderByNames(varnames)
+
     def orderByModelVars(self, model):
         varnames = [x.name for x in model.variables]
-        
+        self.orderByNames(varnames)
 
-
-def readTCs(filenames, filedir = None, intvarsorder = None, verbose = False):
+def readTCs(filenames, filedir = None, intvarsorder = None, names = None, verbose = False):
     tcs = Solutions()
     tcs.filenames = filenames
     tcs.intvarsorder = intvarsorder
-    nread = tcs.loadTimeCourses(filedir, verbose)
+    nread = tcs.loadTimeCourses(filedir, names=names, verbose=verbose)
     return tcs
 
 TimeCourses = Solutions
@@ -336,8 +369,24 @@ nothing really usefull here
 0.6 0.6 0.8 0.9
 
 """
+    demodata_noheader = """
+#this is demo data with a header
+#t x y z
+0       1 0         0
+0.1                  0.1
+
+  0.2 skip 0.2 skip this
+nothing really usefull here
+- 0.3 0.3 this line should be skipped
+#0.4 0.4
+0.5  - 0.5 - -
+0.6 0.6 0.8 0.9
+
+"""
+
     import StringIO
-    aTC = StringIO.StringIO(demodata)
+    aTC   = StringIO.StringIO(demodata)
+    aTCnh = StringIO.StringIO(demodata_noheader)
 
     sol = SolutionTimeCourse()
     sol.load_from(aTC)   
@@ -351,6 +400,51 @@ nothing really usefull here
     print
     
     aTC.seek(0)
+    sol.load_from(aTC)
+    sol.orderByNames("z y".split())
+    print '\n- using load_from() with name order z y'
+    print '\nnames:'
+    print sol.names
+    print '\ndata'
+    print sol.data
+    print
+
+    aTC.seek(0)
+    sol.load_from(aTC)
+    sol.orderByNames("z".split())
+    print '\n- using load_from() with name order z'
+    print '\nnames:'
+    print sol.names
+    print '\ndata'
+    print sol.data
+    print
+
+    try:
+        aTC.seek(0)
+        sol.load_from(aTC)
+        print '\n- using load_from() with name order x bof z'
+        sol.orderByNames("x bof z".split())
+        print '\nnames:'
+        print sol.names
+        print '\ndata'
+        print sol.data
+        print
+    except StimatorTCError, msg:
+        print msg
+        print
+
+    aTCnh.seek(0)
+    sol.load_from(aTCnh, names = ['x1','x2','x3'])   
+    print '\n- using load_from() with names x1, x2 ,x3'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+
+    aTC.seek(0)
     sol.load_from(aTC, atindexes=(0,3,1,2))   
     print '\n- using load_from() atindexes (0,3,1,2)'
     print '\nnames:'
@@ -361,17 +455,6 @@ nothing really usefull here
     print sol.data
     print
     
-    aTC.seek(0)
-    sol.load_from(aTC, names = ['x1','x2','x3'])   
-    print '\n- using load_from() with names x1, x2 ,x3'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
-
     print '--Using SolutionTimeCourse interface ----------'
     aTC.seek(0)
     sol.load_from(aTC)   
@@ -461,9 +544,9 @@ nothing really usefull here
     print sol.last
     print
 
-    sol2 = sol.copy('A')
+    sol2 = sol.copy('HTA')
     del(sol)
-    print "\n- a cloned with copy('A') solution --"
+    print "\n- a cloned with copy('HTA') solution --"
     print '\nnames:'
     print sol2.names
     print '\nnumber of times'
@@ -480,9 +563,48 @@ nothing really usefull here
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names
+        print tc.state_at(0.0)
         print tc.last
-        print tcs.filenames[i]
-        print tcs.shortnames[i]
+        print tc.filename
+        print tc.shortname
+        print
     
+    print "Providing default names HTA SDLTSH ------------------------"
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models', names = "SDLTSH HTA".split(), verbose=True)
+    for i, tc in enumerate(tcs):
+        print tc.shape
+        print tc.names
+        print tc.state_at(0.0)
+        print tc.last
+        print tc.shortname
+        print
     
+    print "After changing order to HTA SDLTSH ------------------------"
     
+    tcs.orderByNames('HTA SDLTSH'.split())
+    for i, tc in enumerate(tcs):
+        print tc.shape
+        print tc.names
+        print tc.state_at(0.0)
+        print tc.data[:,0]
+        print tc.last
+        print tc.shortname
+        print
+    
+    m = modelparser.read_model("""
+    v1:        -> SDLTSH, rate = 1 ..
+    v2: SDLTSH -> HTA,    rate = 2 ..
+    """)
+    print m
+    
+    print "After changing order according to model variables ------"
+    
+    tcs.orderByModelVars(m)
+    for i, tc in enumerate(tcs):
+        print tc.shape
+        print tc.names
+        print tc.state_at(0.0)
+        print tc.data[:,0]
+        print tc.last
+        print tc.shortname
+        print

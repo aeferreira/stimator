@@ -36,6 +36,7 @@ class DeODESolver(de.DESolver):
         self.generationTicker = aGenerationTicker
         self.endTicker        = anEndComputationTicker
         self.dump_pars        = dump_pars
+        self.tc.orderByModelVars(self.model)
 
         pars = model.uncertain
         mins = array([u.min for u in pars])
@@ -258,7 +259,8 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
     #print m1
     optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../models', intvarsorder=(0,2,1), verbose=True)
+    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../models', names = ['SDLTSH', 'HTA'], verbose = True)
+    #intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m1,optSettings, timecourses)
     solver.Solve()
@@ -283,7 +285,8 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     ## VERY IMPORTANT:
     ## only one time course can be used: 
     ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTCs(['TSH2a.txt'], '../models', intvarsorder=(0,2,1), verbose=True)
+    timecourses = timecourse.readTCs(['TSH2a.txt'], '../models', names = ['SDLTSH', 'HTA'], verbose = True)
+    #, intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m2,optSettings, timecourses)
     solver.Solve()
