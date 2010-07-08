@@ -42,6 +42,8 @@ m2 = m1.clone()
 # Now, assume init.HTA is uncertain
 m2.init.HTA.uncertainty(0.05,0.25)
 # do not estimate Km1 and Km2 to help the analysis
+m2.Km1 = 0.252531
+m2.Km2 = 0.0980973
 m2.Km1.uncertainty(None)
 m2.Km2.uncertainty(None)
 

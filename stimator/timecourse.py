@@ -130,7 +130,7 @@ class SolutionTimeCourse(object):
         self.data = trf
         return self
     
-    def load_from(self, filename, atindexes = None, names = None):
+    def load_from(self, filename, names = None): #atindexes = None,
         """Reads a time course from file.
         
         Fills self.names from a header with variable names (possibly absent in file) 
@@ -172,11 +172,12 @@ class SolutionTimeCourse(object):
                 temprow = [nan]*nvars
                 for (i,num) in enumerate(items):
                     if realnumber.match(num):
-                        if atindexes:
-                            #print num
-                            temprow[atindexes[i]] = float(num)
-                        else:
-                            temprow[i] = float(num)
+                        temprow[i] = float(num)
+                        #~ if atindexes:
+                            #~ #print num
+                            #~ temprow[atindexes[i]] = float(num)
+                        #~ else:
+                            #~ temprow[i] = float(num)
                 rows.append(temprow)
         if isname:
             f.close()
@@ -189,12 +190,12 @@ class SolutionTimeCourse(object):
             else:
                 for i in range(1, nvars):
                     header.append('x%d'%i)
-        #apply atindexes to header
-        if atindexes:
-            newheader = [''] * nvars
-            for (i, ai) in enumerate(atindexes):
-                newheader[ai] = header[i]
-            header = newheader
+        #~ #apply atindexes to header
+        #~ if atindexes:
+            #~ newheader = [''] * nvars
+            #~ for (i, ai) in enumerate(atindexes):
+                #~ newheader[ai] = header[i]
+            #~ header = newheader
         #fill in attrs with data
         data = array(rows)
         self.names = header[1:]
@@ -261,7 +262,7 @@ class Solutions(object):
         self.shortnames     = []
         self.filenames      = []
         self.basedir        = None
-        self.intvarsorder   = None
+        #~ self.intvarsorder   = None
         self.variablesorder = None # list of names indicating the order of variables in timecourses
 
     
@@ -312,7 +313,7 @@ class Solutions(object):
                 os.chdir(cwd)
                 return nTCsOK
             sol = SolutionTimeCourse()
-            sol.load_from(filename, atindexes=self.intvarsorder, names=names)
+            sol.load_from(filename, names=names) #atindexes=self.intvarsorder,
             if sol.shape == (0,0):
                 print "File\n%s\ndoes not contain valid time-course data"% filename
                 os.chdir(cwd)
@@ -341,7 +342,7 @@ class Solutions(object):
 def readTCs(filenames, filedir = None, intvarsorder = None, names = None, verbose = False):
     tcs = Solutions()
     tcs.filenames = filenames
-    tcs.intvarsorder = intvarsorder
+    #~ tcs.intvarsorder = intvarsorder
     nread = tcs.loadTimeCourses(filedir, names=names, verbose=verbose)
     return tcs
 
@@ -444,16 +445,16 @@ nothing really usefull here
     print sol.data
     print
 
-    aTC.seek(0)
-    sol.load_from(aTC, atindexes=(0,3,1,2))   
-    print '\n- using load_from() atindexes (0,3,1,2)'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
+    #~ aTC.seek(0)
+    #~ sol.load_from(aTC, atindexes=(0,3,1,2))   
+    #~ print '\n- using load_from() atindexes (0,3,1,2)'
+    #~ print '\nnames:'
+    #~ print sol.names
+    #~ print '\nt'
+    #~ print sol.t
+    #~ print '\ndata'
+    #~ print sol.data
+    #~ print
     
     print '--Using SolutionTimeCourse interface ----------'
     aTC.seek(0)
