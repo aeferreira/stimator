@@ -209,7 +209,7 @@ def getLinesFromText(text):
     return textlines
 
 
-def read_model(text): #, otherdata = False):
+def read_model(text):
     parser = StimatorParser()
     parser.parse(text)
     if parser.error is None:
@@ -222,15 +222,16 @@ def read_model(text): #, otherdata = False):
 
 def try2read_model(text):
     try:
-        #~ m, tc, os = read_model(text, otherdata = True)
         m= read_model(text)
         tc = m.getData('timecourses')
         os = m.getData('optSettings')
         print '\n-------- Model %s sucessfuly read ------------------'% m.getData('title')
         print m
-        print "the timecourses to load are", tc.filenames
-        print
-        print "the order of variables in timecourses is", tc.variablesorder
+        if len(tc.filenames) >0:
+            print "the timecourses to load are", tc.filenames
+            if tc.defaultnames:
+                print
+                print "the default names to use in timecourses are", tc.defaultnames
         print
         return
     except StimatorParserError, expt:
@@ -316,14 +317,6 @@ class StimatorParser:
                 try2close(self.textlines)
                 return
         try2close(self.textlines)
-
-        # build list of ints with the order of variables (time is at pos 0)
-        if not self.tc.variablesorder:
-            self.tc.intvarsorder = range(len(self.model.variables)+1)
-        else:
-            varnames = [x.name for x in self.model.variables]
-            self.tc.intvarsorder = [varnames.index(name)+1 for name in self.tc.variablesorder]
-            self.tc.intvarsorder = [0] + self.tc.intvarsorder
 
         # check the validity of rate laws
         check, msg = self.model.checkRates()
@@ -474,13 +467,13 @@ class StimatorParser:
         pass # for now
 
     def varListParse(self, line, loc, match):
-        if self.tc.variablesorder: #repeated declaration
+        if self.tc.defaultnames: #repeated declaration
             self.setError("Repeated declaration", loc)
             return
 
         names = match.group('names')
         names = names.strip()
-        self.tc.variablesorder = names.split()
+        self.tc.defaultnames = names.split()
 
     def findDefParse(self, line, loc, match):
         name = match.group('name')

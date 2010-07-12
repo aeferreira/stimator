@@ -191,6 +191,112 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     
     return sumFIM, P
 
+def computeStS_func(model, pars, vars, timecoursedata):
+    
+    """Computes FIM normalized by parameter values.
+    
+    model is a model object.
+    
+    pars is a dicionary of parameter names as keys and parameter values as values,
+    or list of (name,value) pairs
+        names of the form init.<name> are possible.
+        
+    vars is a list of names of variables to be considered in the timecourses
+    
+    timecoursecollection is a Solutions object 
+       (initial values are read from these)
+    
+    expCOV is a function wich computes the 
+        experimental variance-covariance matrix of variables.
+        function has signature f(x), where x is the numpy array of variables.
+        NOTE: module expcov defines some 'stock' error functions.
+    """
+    m  = model.clone()
+    
+    #ensure m has init attr
+    inits = {}
+    for x in m.variables:
+        inits[str(x.name)] = 0.0
+    setattr(m, 'init', state(**inits))
+    
+    if isinstance(pars,dict):
+        parnames = pars.keys()
+        parvalues = pars.values()
+    else:
+        parnames = [n for (n,v) in pars]
+        parvalues = [v for (n,v) in pars]
+    
+    for n,v in zip(parnames,parvalues):
+        setattr(m, n, v)  #TODO: verify existence of each p
+    # Adding sensitivity ODEs
+    npars = len(pars)
+    nvars = len(vars)
+    add_dSdt_to_model(m, parnames)
+
+    FIMsols = timecourse.Solutions()
+    
+    sols = timecourse.Solutions()
+    for tc in timecoursedata:
+        #set init and solve
+        for n,v in tc.state_at(0.0): #TODO: may not start at zero
+            setattr(m.init, n, v)
+        sols += solve(m, tf = tc.t[-1], title=tc.title)
+    
+    #compute P
+
+    # P is the diagonal matrix of parameter values
+    P = matrix(diag(array(parvalues, dtype=float)))
+    
+    #keep indexes of variables considered
+    xindexes = []
+    for vname in vars:
+        for i,y in enumerate(m.variables):
+            if y.name == vname:
+                xindexes.append(i)
+    xindexes = array(xindexes)
+    #compute indexes of sensitivities
+    # search pattern d_<var name>_d_<parname> in variable names
+    indexes = []
+    for vname in vars:
+        for i,y in enumerate(m.variables):
+            dnames = y.name.split('_')
+            if len(dnames) < 3: continue
+            if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':
+                indexes.append(i)
+    indexes = array(indexes)
+
+    names = []
+    for i in range(len(pars)):
+        for j in range(len(pars)):
+            names.append('s(%d,%d)'%(i,j))
+    for sol in sols:
+        #compute integral of ST * MVINV * S
+        ntimes = len(sol.t)
+        
+        data = zeros((npars*npars,ntimes), dtype = float)
+        
+        for i in range(1,ntimes):
+            
+            #S matrix
+            
+            svec = sol.data[indexes , i]
+            S = matrix(svec.reshape((nvars, npars)))
+            S = S * P # scale with par values
+            ST = matrix(S.T)
+          
+            #contribution at point i (rectangle's rule)
+            FIMpoint = ST * S
+            if i%10 == 0:
+                print
+                print FIMpoint
+            col = FIMpoint.ravel()
+            #~ if i%10 == 0:
+                #~ print col
+            data[:,i] = col
+        FIMsols += timecourse.SolutionTimeCourse(sol.t, data, names=names,title =sol.title)
+    
+    return FIMsols, P
+
 
 def computeFIM(model, pars, vars, TCs, COV):
     FIM, P = __computeNormalizedFIM(model, pars, vars, TCs, COV)

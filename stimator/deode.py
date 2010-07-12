@@ -36,6 +36,8 @@ class DeODESolver(de.DESolver):
         self.generationTicker = aGenerationTicker
         self.endTicker        = anEndComputationTicker
         self.dump_pars        = dump_pars
+        
+        #reorder variables according to model
         self.tc.orderByModelVars(self.model)
 
         pars = model.uncertain
@@ -66,7 +68,6 @@ class DeODESolver(de.DESolver):
         for data in self.tc:
             self.X0.append(copy(data[:, 0].T))
             t  = data.t
-            #t0 = t[0]
             times = (t-t0)/scale #+t0  # this scales time points
             self.times.append(times)
         self.timecourse_scores = empty(len(self.tc))

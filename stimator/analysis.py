@@ -69,7 +69,7 @@ def transform(solution, f, outputs=False, title = None):
     
     #~ sol = SolutionTimeCourse (times, Y.T, names, title)
     
-def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, superimpose = False):
+def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, superimpose = False, legend=True):
     p.figure()
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
     ntc = len(solutions)
@@ -95,7 +95,7 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
                 if icolour == len(colours):
                     icolour = 0
         p.grid()
-        p.legend(loc='best')
+        if legend: p.legend(loc='best')
         p.xlabel('')
         p.ylabel('')
         p.title(solutions.title)
@@ -113,7 +113,7 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
                 if icolour == len(colours):
                     icolour = 0 
             p.grid()
-            p.legend(loc='best')
+            if legend: p.legend(loc='best')
             p.xlabel('')
             p.ylabel('')
             if titles is not None:
