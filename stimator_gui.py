@@ -784,7 +784,7 @@ class stimatorMainFrame(wx.Frame):
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.model, solver.optimum, solver.tc)
+        win.loadBestData(self.model, solver)
         win.Show(True)
     
     def generationTick(self, generation, energy):

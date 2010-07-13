@@ -235,6 +235,34 @@ class DeODESolver(de.DESolver):
             reportText += '\n\n'
         return reportText
 
+    def draw(self, figure):
+        figure.clear()
+        tcsubplots = []
+        bestsols = self.optimum['best timecourses']['data']
+        expsols = self.tc
+        tcstats = self.optimum['timecourses']['data']
+        ntc = len(bestsols)
+        ncols = int(math.ceil(math.sqrt(ntc)))
+        nrows = int(math.ceil(float(ntc)/ncols))
+        for i in range(ntc):
+            tcsubplots.append(figure.add_subplot(nrows,ncols,i+1))
+
+        for i in range(ntc):
+            subplot = tcsubplots[i]
+            #subplot.set_xlabel("time")
+            subplot.set_title("%s (%d pt) %g"% tcstats[i], fontsize = 12)
+            expsol = expsols[i]
+            symsol = bestsols[i]
+            for line in range(len(expsol)):
+                #count NaN and do not plot if they are most of the timecourse
+                yexp = expsol[line]
+                nnan = len(yexp[isnan(yexp)])
+                if nnan >= expsol.ntimes-1: continue
+                #otherwise plot lines
+                ysim = symsol[line]
+                subplot.plot(expsol.t,yexp, '-b')
+                subplot.plot(expsol.t,ysim, '-r')
+
 
 def test():
     m1 = read_model("""

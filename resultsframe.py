@@ -253,79 +253,6 @@ class SDLeditor(stc.StyledTextCtrl):
 #~ """
 
 
-
-
-#~ class NoRepaintCanvas(FigureCanvas):
-    #~ """We subclass FigureCanvasWxAgg, overriding the _onPaint method, so that
-    #~ the draw method is only called for the first two paint events. After that,
-    #~ the canvas will only be redrawn when it is resized.
-    #~ """
-    #~ def __init__(self, *args, **kwargs):
-        #~ FigureCanvas.__init__(self, *args, **kwargs)
-        #~ self._drawn = 0
-        #~ self._isRealized = False
-
-    #~ def _onPaint(self, evt):
-        #~ """
-        #~ Called when wxPaintEvt is generated
-        #~ """
-        #~ if not self._isRealized:
-            #~ self.realize()
-        #~ if self._drawn < 2:
-            #~ self.draw(repaint = False)
-            #~ self._drawn += 1
-        #~ self.gui_repaint(drawDC=wx.PaintDC(self))
-
-#~ class PlotPanel(wx.Panel):
-    #~ """
-    #~ The PlotPanel has a Figure and a Canvas. OnSize events simply set a 
-    #~ flag, and the actually redrawing of the
-    #~ figure is triggered by an Idle event.
-    #~ """
-    #~ def __init__(self, parent, id = -1, color = None,\
-        #~ dpi = None, style = wx.NO_FULL_REPAINT_ON_RESIZE, **kwargs):
-        #~ wx.Panel.__init__(self, parent, id = id, style = style, **kwargs)
-        #~ self.figure = Figure(None, dpi)
-        #~ self.canvas = NoRepaintCanvas(self, -1, self.figure)
-        #~ self.SetColor(color)
-        #~ self.Bind(wx.EVT_IDLE, self._onIdle)
-        #~ self.Bind(wx.EVT_SIZE, self._onSize)
-        #~ self._resizeflag = True
-        #~ self._SetSize()
-
-    #~ def SetColor(self, rgbtuple):
-        #~ """Set figure and canvas colours to be the same"""
-        #~ if not rgbtuple:
-            #~ rgbtuple = wx.SystemSettings.GetColour(wx.SYS_COLOUR_BTNFACE).Get()
-        #~ col = [c/255.0 for c in rgbtuple]
-        #~ self.figure.set_facecolor(col)
-        #~ self.figure.set_edgecolor(col)
-        #~ self.canvas.SetBackgroundColour(wx.Colour(*rgbtuple))
-
-    #~ def _onSize(self, event):
-        #~ self._resizeflag = True
-
-    #~ def _onIdle(self, evt):
-        #~ if self._resizeflag:
-            #~ self._resizeflag = False
-            #~ self._SetSize()
-            #~ self.draw()
-
-    #~ def _SetSize(self, pixels = None):
-        #~ """
-        #~ This method can be called to force the Plot to be a desired size, which defaults to
-        #~ the ClientSize of the panel
-        #~ """
-        #~ if not pixels:
-            #~ pixels = self.GetClientSize()
-        #~ self.canvas.SetSize(pixels)
-        #~ self.figure.set_size_inches(pixels[0]/self.figure.get_dpi(),
-                                    #~ pixels[1]/self.figure.get_dpi())
-
-    #~ def draw(self):
-        #~ """Where the actual drawing happens"""
-        #~ pass
-
 class PlotPanel (wx.Panel):
     """The PlotPanel has a Figure and a Canvas. OnSize events simply set a 
 flag, and the actual resizing of the figure is triggered by an Idle event."""
@@ -407,31 +334,7 @@ class BestPlotPanel(PlotPanel):
     #TODO: implement graph settings
     def draw(self):
         self._SetSize()    #?????
-        self.figure.clear()
-        self.tcsubplots = []
-        besttimecoursedata = self.bestData['best timecourses']['data']
-        ntc = len(besttimecoursedata)
-        timecoursedata = self.tc
-        ncols = int(math.ceil(math.sqrt(ntc)))
-        nrows = int(math.ceil(float(ntc)/ncols))
-        for i in range(ntc):
-            self.tcsubplots.append(self.figure.add_subplot(nrows,ncols,i+1))
-
-        for i in range(ntc):
-            subplot = self.tcsubplots[i]
-            #subplot.set_xlabel("time")
-            subplot.set_title("%s (%d pt) %g"% self.bestData['timecourses']['data'][i], fontsize = 12)
-            expsol = timecoursedata[i]
-            symsol = besttimecoursedata[i]
-            for line in range(len(expsol)):
-                #count NaN and do not plot if they are most of the timecourse
-                yexp = expsol[line]
-                nnan = len(yexp[isnan(yexp)])
-                if nnan >= expsol.ntimes-1: continue
-                #otherwise plot lines
-                ysim = symsol[line]
-                subplot.plot(expsol.t,yexp, '-b')
-                subplot.plot(expsol.t,ysim, '-r')
+        self.solver.draw(self.figure)
 
 ##------------- Results Frame
 
@@ -474,20 +377,19 @@ class resultsFrame(wx.Frame):
     def __del__(self):
         pass
     
-    def loadBestData(self, model, bestData, tc):
+    def loadBestData(self, model, solver):
         """Main initialization function.
         
         Should be called after __init__() but before Show()."""
 
         self.plotpanel.model = model
-        self.plotpanel.bestData = bestData
-        self.plotpanel.tc = tc
+        self.plotpanel.solver = solver
 
         self.SetTitle("Results for %s" % model.getData('title'))
 
         # generate report
         reportText = ""
-        sections = [bestData[s] for s in ['parameters', 'optimization', 'timecourses']]
+        sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
         for section in sections:
             reportText += "%-20s --------------------------------\n" % section['name'].upper()
             if section['header']:
