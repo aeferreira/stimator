@@ -2,6 +2,7 @@
 
 from stimator import *
 from stimator.deode import DeODESolver
+import pylab as pl
 
 print __doc__
 print
@@ -35,6 +36,9 @@ print '---------------------------------------------------------'
 print "Results for %s\n" % m1.getData('title')
 print solver.reportResults()
 
+fig1 = pl.figure()
+solver.draw(fig1)
+
 #--- an example with unknown initial values --------------------
 
 m2 = m1.clone()
@@ -61,3 +65,8 @@ print
 print '---------------------------------------------------------'
 print "Results for %s\n" % m2.getData('title')
 print solver.reportResults()
+
+fig2 = pl.figure()
+solver.draw(fig2)
+
+pl.show()

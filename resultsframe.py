@@ -81,7 +81,7 @@ class SDLeditor(stc.StyledTextCtrl):
         # Scintilla sample property files.
 
         # Global default styles for all languages
-        self.StyleSetSpec(stc.STC_STYLE_DEFAULT,     "face:%(mono)s,size:%(size)d" % faces)
+        self.StyleSetSpec(stc.STC_STYLE_DEFAULT,  "face:%(mono)s,size:%(size)d" % faces)
         self.StyleClearAll()  # Reset all to be like the default
 
         # Line numbers in margin
