@@ -262,10 +262,11 @@ def transf(rate = 0.0):
 
 
 class ConstValue(float):
-    def __init__(self, value):
-        float.__init__(self,value)
-        self.name = '?'
-        self.bounds = None
+    def __new__(cls, value):
+        return float.__new__(cls,value)
+##     def __init__(self):
+##         self.name = '?'
+##         self.bounds = None
     def uncertainty(self, *pars):
         if len(pars) == 0 or pars[0]==None:
             self.bounds = None
@@ -285,6 +286,8 @@ def constValue(value = None, name = None, into = None):
     if isinstance(value, float) or isinstance(value, int):
         v = float(value)
         res = ConstValue(v)
+        res.name = '?'
+        res.bounds = None
         if into:
             res.name = into.name
             res.bounds = into.bounds
@@ -296,6 +299,7 @@ def constValue(value = None, name = None, into = None):
             res.name = into.name
         else:
             res = ContsValue(v)
+            res.name = '?'
         res.bounds = bounds
     else:
         raise TypeError( value + ' is not a float or pair of floats')
@@ -370,7 +374,7 @@ class Model(object):
     def __setattr__(self, name, value):
         for numtype in (float,int,long):
             if isinstance(value, numtype):
-                value = ConstValue(float(value))
+                value = constValue(float(value))
         if isPairOfNums(value):
             value = Bounds(float(value[0]), float(value[1]))
         if isinstance(value,Variable_dXdt):
@@ -417,8 +421,7 @@ class Model(object):
                 return
         if isinstance (value, Bounds):
             value.name = name
-            newvalue = ConstValue((float(value.min)+float(value.max))/2.0)
-            newvalue.name = name
+            newvalue = constValue((float(value.min)+float(value.max))/2.0, name)
             newvalue.bounds = value
             self.__dict__['_Model__parameters'].append(newvalue)
             self.__refreshVars()
@@ -526,7 +529,7 @@ class Model(object):
         for r in self.reactions:
             setattr(m, r.name, Reaction(r.reagents, r.products, r.rate, r.irreversible))
         for p in self.parameters:
-            setattr(m, p.name, ConstValue(p))
+            setattr(m, p.name, constValue(p))
         for t in self.transf:
             setattr(m, t.name, Transformation(t.rate))
         for f in self.forcing:
