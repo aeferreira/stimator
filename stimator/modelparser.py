@@ -225,7 +225,7 @@ def try2read_model(text):
         m= read_model(text)
         tc = m.getData('timecourses')
         os = m.getData('optSettings')
-        print '\n-------- Model %s sucessfuly read ------------------'% m.getData('title')
+        print '\n-------- Model %s successfuly read ------------------'% m.getData('title')
         print m
         if len(tc.filenames) >0:
             print "the timecourses to load are", tc.filenames
@@ -278,10 +278,10 @@ class StimatorParser:
         self.error = None      # different of None if an error occurs
         self.errorloc = None
         
-        # default Differential Evolution num of generations and population size
         self.model       = model.Model()
         #~ self.model.setData('timecourses', timecourse.TimeCourseCollection())
         self.tc          = timecourse.TimeCourses()
+        # default Differential Evolution num of generations and population size
         self.optSettings = {'generations':200, 'genomesize' :10}
 
         self.tclines     = []  #location of timecourse def lines for error reporting

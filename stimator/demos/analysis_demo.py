@@ -8,8 +8,8 @@ print __doc__
 print '---------------- EXAMPLE 1 ------------------'
 m1 = read_model("""
 title Glyoxalase system
-glo1 = HTA -> SDLTSH, rate = V1*HTA/(Km1 + HTA)
-glo2 = SDLTSH ->    , rate = V2*SDLTSH/(Km2 + SDLTSH)
+glo1 = HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
+glo2 = SDLTSH ->    , V2*SDLTSH/(Km2 + SDLTSH)
 V1  = 2.57594e-05
 Km1 = 0.252531
 V2  = 2.23416e-05
@@ -29,17 +29,17 @@ for x,value in solution1.last:
 #print '---------------- EXAMPLE 2 ------------------'
 m2 = read_model("""
 title Branched pathway
-v1 = A -> B, rate = k1*A
+v1 = A -> B, k1*A
 k1 = 10
-v2 = B -> C, rate = k2*B**0.5
+v2 = B -> C, k2*B**0.5
 k2 = 5
-v3 = C -> D, rate = k3*C**0.5
+v3 = C -> D, k3*C**0.5
 k3 = 2
-v4 = C -> E, rate = k4*C**0.5
+v4 = C -> E, k4*C**0.5
 k4 = 8
-v5 = D ->  , rate = k5*D**0.5
+v5 = D ->  , k5*D**0.5
 k5 = 1.25
-v6 = E ->  , rate = k6*E**0.5
+v6 = E ->  , k6*E**0.5
 k6 = 5
 A  = 0.5
 init = state(B = 2, C = 0.25, D = 0.64, E = 0.64)
