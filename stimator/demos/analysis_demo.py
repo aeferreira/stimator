@@ -97,11 +97,12 @@ plot ([solution1, solution2, solution3, solution4])
 m = read_model("""
 title Calcium Spikes
 v0         = -> Ca, 1
-v1         = -> Ca, Bstep*k1
-Bstep      = 0.4
+#v1         = -> Ca, Bstep*k1
+v1         = -> Ca, k1*B*step(t, 1.0)
 k1         = 7.3
 B          = 0.4
-t_stimulus = 1.0
+#Bstep      = 0.4
+#t_stimulus = 1.0
 export     = Ca ->  , 10 ..
 leak       = CaComp -> Ca, 1 ..
     
@@ -112,16 +113,16 @@ v3         = CaComp -> Ca, \
 init       = state(Ca = 0.1, CaComp = 0.63655)
 """)
 
-def step (t,B, t_stimulus):
-    if t < t_stimulus:
-        return 0.0
-    else:
-        return B
+## def step (t,B, t_stimulus):
+##     if t < t_stimulus:
+##         return 0.0
+##     else:
+##         return B
 
-m.Bstep = forcing(step)
+#m.Bstep = forcing(step)
 
 s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
-
+print m
 def mytransformation(B, Ca, CaComp):
     return B, Ca, CaComp
 mytransformation.names = "stimulus", "Ca cit", 'Ca comp'

@@ -7,16 +7,27 @@
 # S-timator Model related classes
 # Copyright António Ferreira 2006-2009
 #----------------------------------------------------------------------------
+import sys
 import os
 import os.path
 import re
 import math
+from kinetics import *
 from numpy import *
 from timeit import Timer
+import pprint
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
 #----------------------------------------------------------------------------
+__globs = vars(math)
+__haskinetics = {}
+for k, v in globals().items():
+    if hasattr(v,"israte"):
+        __haskinetics[k] = v
+        
+__globs.update(__haskinetics)
+## pprint.pprint(__globs)
 
 def _test_with_everything(valueexpr, model): 
     locs = {}
@@ -25,7 +36,7 @@ def _test_with_everything(valueexpr, model):
     
     #part 1: nonpermissive, except for NameError
     try :
-       value = float(eval(valueexpr, vars(math), locs))
+       value = float(eval(valueexpr, __globs, locs))
     except NameError:
        pass
     except Exception, e:
@@ -37,9 +48,10 @@ def _test_with_everything(valueexpr, model):
     locs.update(vardict)
     for i in model.forcing:
         vardict[i.name]=1.0
+    vardict['t'] = 1.0
     locs.update(vardict)
     try :
-       value = float(eval(valueexpr, vars(math), locs))
+       value = float(eval(valueexpr, __globs, locs))
     except (ArithmeticError, ValueError):
        pass # might fail but we don't know the values of vars
     except Exception, e:
@@ -160,94 +172,6 @@ def variable(rate = 0.0):
         rate = str(rate)
     return Variable_dXdt(rate)
 
-class StateArray(object):
-    def __init__(self, varvalues, name):
-        self.__dict__['name'] = name
-        for k,v in varvalues.items():
-            varvalues[k] = constValue(value = v, name = k)
-        self.__dict__['varvalues'] = varvalues
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        if name in self.varvalues:
-            return self.varvalues[name]
-        else:
-            raise AttributeError( name + ' is not a member of state'+ self.__dict__['name'])
-    def __setattr__(self, name, value):
-        if name != 'name' and name != 'varvalues':
-            value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
-            self.__dict__['varvalues'][name]=value
-        else:
-            object.__setattr__(self, name, value)
-    def __str__(self):
-        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self.varvalues.items()])
-    def __iter__(self):
-        return iter(self.varvalues.items())
-
-def state(**varvalues):
-    return StateArray(varvalues, '?')
-
-
-class Forcing(object):
-    def __init__(self, rate):
-        self.rate = rate
-        self.name = '?'
-    def __str__(self):
-        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
-
-    def genForcingFunction(self, model):
-        f = self.rate
-        if not callable(f):
-            if not isinstance(f,str):
-                    raise TypeError( 'rate must be a string or a callable.')
-            ratebytecode = compile(model.rateCalcString(f, with_uncertain=False), '<string>','eval')
-        
-        else:
-            cc = f.func_code
-            nargs = cc.co_argcount
-            argnames = cc.co_varnames[:nargs]
-            codes = []
-            for a in argnames:
-                if a == 't':
-                    codes.append(('t', 0))
-                    continue
-                i, collection = model.findComponent(a)
-                if collection == 'parameters':
-                    codes.append(('p', getattr(model, a)))
-                elif collection == 'variables':
-                    codes.append(('v', i))
-                else:
-                    raise AttributeError( a + ' is not a component in of the model')
-            args = [0.0] * nargs
-            en = [(i, c,d) for (i,(c,d)) in enumerate(codes)]
-            for i,c,d in en:
-                if c == 'p':
-                    args[i]=d
-
-        def retf(variables, t):
-            for i,c,d in en:
-                if c == 't':
-                    args[i] = t
-                elif c == 'v':
-                    args[i] = variables[d]
-                else:
-                    continue
-            return f(*args)
-        def reteval(variables, t):
-            return eval(ratebytecode)
-                
-        if callable(f):
-            self.func = retf
-        else:
-            self.func = reteval
-
-def forcing(rate):
-    if isinstance(rate, str) or callable(rate):
-        return Forcing(rate)
-    else:
-        raise ValueError('Bad forcing function')
-
-
 class Transformation(object):
     def __init__(self, rate):
         self.rate = rate.strip()
@@ -323,6 +247,95 @@ class Variable(object):
         self.name = name
     def __str__(self):
         return self.name
+
+class StateArray(object):
+    def __init__(self, varvalues, name):
+        self.__dict__['name'] = name
+        for k,v in varvalues.items():
+            varvalues[k] = constValue(value = v, name = k)
+        self.__dict__['varvalues'] = varvalues
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        if name in self.varvalues:
+            return self.varvalues[name]
+        else:
+            raise AttributeError( name + ' is not a member of state'+ self.__dict__['name'])
+    def __setattr__(self, name, value):
+        if name != 'name' and name != 'varvalues':
+            value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
+            self.__dict__['varvalues'][name]=value
+        else:
+            object.__setattr__(self, name, value)
+    def __str__(self):
+        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self.varvalues.items()])
+    def __iter__(self):
+        return iter(self.varvalues.items())
+
+def state(**varvalues):
+    return StateArray(varvalues, '?')
+
+
+class Forcing(object):
+    def __init__(self, rate):
+        self.rate = rate
+        self.name = '?'
+    def __str__(self):
+        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
+
+    def genForcingFunction(self, model):
+        f = self.rate
+        if not callable(f):
+            if not isinstance(f,str):
+                raise TypeError( 'rate must be a string or a callable.')
+            ratebytecode = compile(model.rateCalcString(f, with_uncertain=False), '<string>','eval')
+        
+        else:
+            cc = f.func_code
+            nargs = cc.co_argcount
+            argnames = cc.co_varnames[:nargs]
+            codes = []
+            for a in argnames:
+                if a == 't':
+                    codes.append(('t', 0))
+                    continue
+                i, collection = model.findComponent(a)
+                if collection == 'parameters':
+                    codes.append(('p', getattr(model, a)))
+                elif collection == 'variables':
+                    codes.append(('v', i))
+                else:
+                    raise AttributeError( a + ' is not a component in of the model')
+            args = [0.0] * nargs
+            en = [(i, c,d) for (i,(c,d)) in enumerate(codes)]
+            for i,c,d in en:
+                if c == 'p':
+                    args[i]=d
+
+        def reteval(variables, t):
+            return eval(ratebytecode)
+
+        def retf(variables, t):
+            for i,c,d in en:
+                if c == 't':
+                    args[i] = t
+                elif c == 'v':
+                    args[i] = variables[d]
+                else:
+                    continue
+            return f(*args)
+                
+        if callable(f):
+            self.func = retf
+        else:
+            self.func = reteval
+
+def forcing(rate):
+    if isinstance(rate, str) or callable(rate):
+        return Forcing(rate)
+    else:
+        raise ValueError('Bad forcing function')
+
 
 def isPairOfNums(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
@@ -920,6 +933,7 @@ class Model(object):
             return dot(v,NT)
         def f3(variables, t):
             m_Parameters = self.__m_Parameters
+            t = t*scale + t0
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
@@ -1092,6 +1106,7 @@ def test():
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.v4 = "B   ->  "  , "2*input1"
+    m.v5 = "C ->", "4.5*C*step(t,at,top)"
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
@@ -1105,6 +1120,9 @@ def test():
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
     m.input1 = forcing(force)
+    m.at = 1.0
+    m.top = 2.0
+    m.input2 = transf("4*step(t,at,top)")
     
     m.setData('where', 'in model')
     m.setData('title', 'My first model')
@@ -1122,23 +1140,23 @@ def test():
     print 'iterating m.reactions'
     for v in m.reactions:
         print v.name, ':', v.rate, '|', v.reagents, '->', v.products
-    print 'iterating m.transf'
+    print '\niterating m.transf'
     for v in m.transf:
         print v.name, ':', v.rate
-    print 'iterating m.variables'
+    print '\niterating m.variables'
     for x in m.variables:
         print x.name
-    print 'iterating m.extvariables'
+    print '\niterating m.extvariables'
     for x in m.extvariables:
         print x.name
-    print 'iterating m.parameters'
+    print '\niterating m.parameters'
     for p in m.parameters:
         print p.name , '=',  p, 'bounds=', p.bounds
-    print 'iterating m.uncertain'
+    print '\niterating m.uncertain'
     for x in m.uncertain:
         print '\t', x.name, 'in (', x.min, ',', x.max, ')'
     
-    print 'iterating m.init'
+    print '\niterating m.init'
     for name, x in m.init:
         print '\t', name, '=', x
     print
@@ -1234,53 +1252,67 @@ def test():
     print '********** Testing rateCalcString **************************'
     print 'calcstring for v3:\n', m.rateCalcString(m.v3.rate)
     print
+    print 'calcstring for v5:\n', m.rateCalcString(m.v5.rate)
+    print
     print 'calcstring for v3 with uncertain parameters:\n', m.rateCalcString(m.v3.rate, True)
+    print
+    print 'calcstring for t1:\n', m.rateCalcString(m.t1.rate)
+    print
+    print 'calcstring for t2:\n', m.rateCalcString(m.t2.rate)
+    print
+    print 'calcstring for input2:\n', m.rateCalcString(m.input2.rate)
     print
 
     print '********** Testing rate and dXdt generating functions ******'
     print 'Operating point:'
     varvalues = [1.0, 1.0, 1.0]
     pars      = [1.0]
+    t         = 2.0
+    
+    dxdtstrs = [b for (a,b) in m.dXdt_strings()]
 
-    print 'variables  =', dict((v.name, value) for v,value in zip(m.variables, varvalues))
-    print 'parameters =', dict((p.name, p)     for p in m.parameters)
+    print "t =", t
+    print 'variables  ='
+    pprint.pprint(dict((v.name, value) for v,value in zip(m.variables, varvalues)))
+    print 'parameters ='
+    pprint.pprint(dict((p.name, p)     for p in m.parameters))
  
     print '---- rates using Model.rates_func() -------------------------'
     vratesfunc = m.rates_func()
-    vrates = vratesfunc(varvalues,2.0)
+    vrates = vratesfunc(varvalues,t)
     for v,r in zip(m.reactions, vrates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
     print '---- transformations using Model.transf_func() --------------'
     tratesfunc = m.transf_func()
-    trates = tratesfunc(varvalues,2.0)
+    trates = tratesfunc(varvalues,t)
     for v,r in zip(m.transf, trates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
     print '---- dXdt using Model.dXdt() --------------------------------'
     f = m.getdXdt()
     #~ dXdt = m.dXdt(varvalues,0)
-    dXdt = f(varvalues,0)
-    for x,r in zip(m.variables, dXdt):
-        print "d%s/dt = %s" % (x.name, r)
+    dXdt = f(varvalues,t)
+    for x,s,r in zip(m.variables, dxdtstrs, dXdt):
+        print "d%s/dt = %s = %s" % (x.name, s,r)
 
-    print '---- dXdt using Model.dXdt2() --------------------------------'
-    print 'f = m.getdXdt2()'
-    f = m.getdXdt2()
-    dXdt = f(varvalues,0)
-    for x,r in zip(m.variables, dXdt):
-        print "d%s/dt = %s" % (x.name, r)
+##     print '---- dXdt using Model.dXdt2() --------------------------------'
+##     print 'f = m.getdXdt2()'
+##     f = m.getdXdt2()
+##     dXdt = f(varvalues,t)
+##     for x,s,r in zip(m.variables, dxdtstrs, dXdt):
+##         print "d%s/dt = %s = %s" % (x.name, s,r)
     
-    def t1(ntimes):
-        f = m.getdXdt()
-        for i in range(ntimes):
-            dXdt = f(varvalues,0)
-        return dXdt
-    def t2(ntimes):
-        f = m.getdXdt2()
-        for i in range(ntimes):
-            dXdt = f(varvalues,0)
-        return dXdt
+##     def t1(ntimes):
+##         f = m.getdXdt()
+##         for i in range(ntimes):
+##             dXdt = f(varvalues,t)
+##         return dXdt
+##     def t2(ntimes):
+##         f = m.getdXdt2()
+##         for i in range(ntimes):
+##             dXdt = f(varvalues,t)
+##         return dXdt
 
     print '---- dXdt using Model.dXdt() setting uncertain parameters ---'
     print 'f = m.getdXdt(with_uncertain = True)'
@@ -1288,16 +1320,16 @@ def test():
     print 'setting uncertain as', dict((v.name, value) for v,value in zip(m.uncertain, pars))
     print 'm.set_uncertain(pars)'
     m.set_uncertain(pars)
-    dXdt = f(varvalues,0)
-    for x,r in zip(m.variables, dXdt):
-        print "d%s/dt = %s" % (x.name, r)
+    dXdt = f(varvalues,t)
+    for x,s,r in zip(m.variables, dxdtstrs, dXdt):
+        print "d%s/dt = %s = %s" % (x.name, s,r)
 
     print '---- dXdt using Model.dXdt_with(pars) ------------------------'
     print 'f = m.dXdt_with(pars)'
     f = m.dXdt_with(pars)
-    dXdt   = f(varvalues,0)
-    for x,r in zip(m.variables, dXdt):
-        print "d%s/dt = %s" % (x.name, r)
+    dXdt   = f(varvalues,t)
+    for x,s,r in zip(m.variables, dxdtstrs, dXdt):
+        print "d%s/dt = %s = %s" % (x.name, s,r)
 
     print '---- dXdt using Model.dXdt() with a state argument (m.init) --'
     print 'm.init:', m.init
@@ -1307,8 +1339,8 @@ def test():
     print
     print 'f = m.dXdt'
     f = m.dXdt
-    print 'dXdt = f(m.vectorize("init"),0)'
-    dXdt = f(m.vectorize("init"),0)
+    print 'dXdt = f(m.vectorize("init"),2.0)'
+    dXdt = f(m.vectorize("init"),t)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
     print '---- same, changing state argument ---------------------------'
@@ -1318,8 +1350,8 @@ def test():
     print
     print 'f = m.dXdt'
     f = m.dXdt
-    print 'dXdt = f(m.vectorize("init"),0)'
-    dXdt = f(m.vectorize("init"),0)
+    print 'dXdt = f(m.vectorize("init"),2.0)'
+    dXdt = f(m.vectorize("init"),t)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
 
