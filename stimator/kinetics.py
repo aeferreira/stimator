@@ -16,4 +16,4 @@ def step (t, at, top=1.0):
         return top
 
 #mark step as a rate law
-step.israte = True
+step.is_rate = True

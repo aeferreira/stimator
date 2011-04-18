@@ -20,14 +20,16 @@ import pprint
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
 #----------------------------------------------------------------------------
-__globs = vars(math)
+__globs = {}
 __haskinetics = {}
 for k, v in globals().items():
-    if hasattr(v,"israte"):
+    if hasattr(v,"is_rate"):
         __haskinetics[k] = v
-        
 __globs.update(__haskinetics)
+pprint.pprint(__globs)
+__globs.update(vars(math))
 ## pprint.pprint(__globs)
+
 
 def _test_with_everything(valueexpr, model): 
     locs = {}
@@ -749,7 +751,7 @@ class Model(object):
                     #~ print _jfuncs
         return _jfuncs
         
-    def rates_func(self, with_uncertain = False, scale = 1.0, t0=0.0):
+    def rates_func(self, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
         """Generate function to compute rate vector for this model.
         
            Function has signature f(variables, t)"""
@@ -757,11 +759,16 @@ class Model(object):
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
+        
+        if transf :
+            collection = self.__transf
+        else:
+            collection = self.__reactions
 
         #compile rate laws
-        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__reactions]
+        ratebytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in collection]
         # create array to hold v's
-        v = empty(len(self.reactions))
+        v = empty(len(collection))
         en = list(enumerate(ratebytecode))
         # create array to hold forcing functions
         forcing_function = empty(len(self.forcing))
@@ -782,44 +789,6 @@ class Model(object):
             for i,r in en:
                 v[i] = eval(r)
             return v
-
-        if with_uncertain:
-            return f2
-        else:
-            return f
-
-    def transf_func(self, with_uncertain = False, scale = 1.0, t0=0.0):
-        """Generate function to compute transformations for this model.
-        
-           Function has signature f(variables, t)"""
-
-        check, msg = self.checkRates()
-        if not check:
-            raise BadRateError(msg)
-
-        #compile rate laws
-        transfbytecode = [compile(self.rateCalcString(v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in self.__transf]
-        # create array to hold v's
-        m_Transformations = empty(len(self.transf))
-        # create array to hold forcing functions
-        forcing_function = empty(len(self.forcing))
-        enf = list(enumerate(self.forcing))
-            
-        def f(variables, t):
-            t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
-            for i,r in enumerate(transfbytecode):
-                m_Transformations[i] = eval(r)
-            return m_Transformations
-        def f2(variables, t):
-            m_Parameters = self.__m_Parameters
-            t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
-            for i,r in enumerate(transfbytecode):
-                m_Transformations[i] = eval(r)
-            return m_Transformations
 
         if with_uncertain:
             return f2
@@ -1283,8 +1252,8 @@ def test():
     for v,r in zip(m.reactions, vrates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
 
-    print '---- transformations using Model.transf_func() --------------'
-    tratesfunc = m.transf_func()
+    print '---- transformations using Model.rates_func(transf = True) --'
+    tratesfunc = m.rates_func(transf = True)
     trates = tratesfunc(varvalues,t)
     for v,r in zip(m.transf, trates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
