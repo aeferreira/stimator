@@ -26,10 +26,13 @@ for k, v in globals().items():
     if hasattr(v,"is_rate"):
         __haskinetics[k] = v
 __globs.update(__haskinetics)
-pprint.pprint(__globs)
+## pprint.pprint(__globs)
 __globs.update(vars(math))
 ## pprint.pprint(__globs)
 
+def  register_kin_func(f):
+    __globs[f.__name__] = f
+    globals()[f.__name__] = f
 
 def _test_with_everything(valueexpr, model): 
     locs = {}
@@ -46,9 +49,6 @@ def _test_with_everything(valueexpr, model):
     #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
     for i in model.variables:
-        vardict[i.name]=1.0
-    locs.update(vardict)
-    for i in model.forcing:
         vardict[i.name]=1.0
     vardict['t'] = 1.0
     locs.update(vardict)
@@ -278,67 +278,6 @@ def state(**varvalues):
     return StateArray(varvalues, '?')
 
 
-class Forcing(object):
-    def __init__(self, rate):
-        self.rate = rate
-        self.name = '?'
-    def __str__(self):
-        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
-
-    def genForcingFunction(self, model):
-        f = self.rate
-        if not callable(f):
-            if not isinstance(f,str):
-                raise TypeError( 'rate must be a string or a callable.')
-            ratebytecode = compile(model.rateCalcString(f, with_uncertain=False), '<string>','eval')
-        
-        else:
-            cc = f.func_code
-            nargs = cc.co_argcount
-            argnames = cc.co_varnames[:nargs]
-            codes = []
-            for a in argnames:
-                if a == 't':
-                    codes.append(('t', 0))
-                    continue
-                i, collection = model.findComponent(a)
-                if collection == 'parameters':
-                    codes.append(('p', getattr(model, a)))
-                elif collection == 'variables':
-                    codes.append(('v', i))
-                else:
-                    raise AttributeError( a + ' is not a component in of the model')
-            args = [0.0] * nargs
-            en = [(i, c,d) for (i,(c,d)) in enumerate(codes)]
-            for i,c,d in en:
-                if c == 'p':
-                    args[i]=d
-
-        def reteval(variables, t):
-            return eval(ratebytecode)
-
-        def retf(variables, t):
-            for i,c,d in en:
-                if c == 't':
-                    args[i] = t
-                elif c == 'v':
-                    args[i] = variables[d]
-                else:
-                    continue
-            return f(*args)
-                
-        if callable(f):
-            self.func = retf
-        else:
-            self.func = reteval
-
-def forcing(rate):
-    if isinstance(rate, str) or callable(rate):
-        return Forcing(rate)
-    else:
-        raise ValueError('Bad forcing function')
-
-
 def isPairOfNums(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
         for pos in (0,1):
@@ -380,7 +319,6 @@ class Model(object):
         self.__dict__['_Model__parameters']        = []
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__states']            = []
-        self.__dict__['_Model__forcing']           = []
         self.__dict__['_Model__metadata']          = {}
         #self.__dict__['title']                     = title
         self.__dict__['_Model__m_Parameters']      = None
@@ -403,8 +341,7 @@ class Model(object):
         assoc = ((Reaction,       '_Model__reactions'),
                  (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
-                 (StateArray,     '_Model__states'),
-                 (Forcing,        '_Model__forcing'))
+                 (StateArray,     '_Model__states'))
         # find existing model object
         for t, listname in assoc:
             c = findWithNameIndex(name, self.__dict__[listname])
@@ -417,14 +354,6 @@ class Model(object):
                         self.__dict__[listname][c] = value
                     self.__refreshVars()
                     return
-                elif (isinstance(value, Forcing) and listname == '_Model__parameters'):
-                    #delete the constant parameter. It is going to be substituted by a Forcing object
-                    del (self.__dict__['_Model__parameters'][c])
-                    break
-                elif (isinstance(value, ConstValue) and listname == '_Model__forcing'):
-                    #delete the forcing function. It is going to be substituted by constant parameter
-                    del (self.__dict__['_Model__forcing'][c])
-                    break
                 else:
                     raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
         # append new object to proper list
@@ -463,9 +392,6 @@ class Model(object):
         c = findWithName(name, self.__states)
         if c :
             return c
-        c = findWithName(name, self.__forcing)
-        if c :
-            return c
         raise AttributeError( name + ' is not defined for this model')
     
     def setData(self, name, value):
@@ -490,9 +416,6 @@ class Model(object):
         c = findWithNameIndex(name, self.__transf)
         if c>=0 :
             return c, 'transf'
-        c = findWithNameIndex(name, self.__forcing)
-        if c>=0 :
-            return c, 'forcing'
         raise AttributeError( name + ' is not a component in this model')
 
     def vectorize(self, state):
@@ -512,8 +435,6 @@ class Model(object):
                 resstring, value = _test_with_everything(v.rate,self)
                 if resstring != "":
                     return False, '%s\nin rate of %s: %s' % (resstring, v.name, v.rate)
-        for t in self.__forcing:
-            t.genForcingFunction(self)
         return True, 'OK'
 
     def __str__(self):
@@ -525,7 +446,7 @@ class Model(object):
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
             res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
-        for collection in (self.__reactions, self.__transf, self.__forcing):
+        for collection in (self.__reactions, self.__transf):
             for i in collection:
                 res += str(i)
         for p in self.__states:
@@ -547,8 +468,6 @@ class Model(object):
             setattr(m, p.name, constValue(p))
         for t in self.transf:
             setattr(m, t.name, Transformation(t.rate))
-        for f in self.forcing:
-            setattr(m, f.name, Forcing(f.rate))
         for s in self.__states:
             newdict= {}
             for i in s:
@@ -605,9 +524,6 @@ class Model(object):
         # replace varnames
         for i,v in enumerate(self.variables):
             rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
-        # replace forcing functions
-        for i,v in enumerate(self.forcing):
-            rateString = re.sub(r"\b"+ v.name+r"\b", "forcing_function[%d]"%i, rateString)
         # replace uncertain parameters
         if with_uncertain:
             for i,u in enumerate(self.uncertain):
@@ -628,7 +544,6 @@ class Model(object):
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
-
         return tuple([(v.name, v.rate) for v in self.__reactions])
 
     def dXdt_strings(self):
@@ -680,8 +595,6 @@ class Model(object):
             _symbs[x.name] = sympy.Symbol(str(x.name))
         for p in self.__parameters:
             _symbs[p.name] = sympy.Symbol(str(p.name))
-        for f in self.__forcing:
-            _symbs[f.name] = sympy.Symbol(str(f.name))
         _nvars = len(self.__variables)
         _nvars = len(self.__variables)
         _jfuncs = []
@@ -725,8 +638,6 @@ class Model(object):
             _symbs[x.name] = sympy.Symbol(str(x.name))
         for p in self.__parameters:
             _symbs[p.name] = sympy.Symbol(str(p.name))
-        for f in self.__forcing:
-            _symbs[f.name] = sympy.Symbol(str(f.name))
         _nvars = len(self.__variables)
         _npars = len(_parnames)
         _jfuncs = []
@@ -759,7 +670,6 @@ class Model(object):
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
-        
         if transf :
             collection = self.__transf
         else:
@@ -770,22 +680,15 @@ class Model(object):
         # create array to hold v's
         v = empty(len(collection))
         en = list(enumerate(ratebytecode))
-        # create array to hold forcing functions
-        forcing_function = empty(len(self.forcing))
-        enf = list(enumerate(self.forcing))
             
         def f(variables, t):
             t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return v
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
             t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return v
@@ -820,8 +723,6 @@ class Model(object):
                 data.append(('t', compile(self.rateCalcString(self.transf[i].rate), '<string>','eval')))
             elif collection == 'reactions':
                 data.append(('r', compile(self.rateCalcString(self.reactions[i].rate), '<string>','eval')))
-            elif collection == 'forcing':
-                data.append(('f', self.forcing[i].func))
             else:
                 raise AttributeError(a + ' is not a component in this model')
         args = [0.0]*nargs
@@ -836,8 +737,6 @@ class Model(object):
                     continue
                 elif c == 'v':
                     args[i] = variables[d]
-                elif c == 'f':
-                    args[i] = d(variables,t)
                 else:
                     args[i] = eval(d)
             return f(*args)
@@ -847,8 +746,6 @@ class Model(object):
                     continue
                 elif c == 'v':
                     args[i] = variables[d]
-                elif c == 'f':
-                    args[i] = d(variables,t)
                 else:
                     args[i] = eval(d)
             return args
@@ -886,31 +783,14 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
         en = list(enumerate(ratebytecode))
-        # create array to hold forcing functions
-        nforce = len(self.forcing)
-        forcing_function = empty(nforce)
-        enf = list(enumerate(self.forcing))
-        
         
         def f2(variables, t):
             m_Parameters = self.__m_Parameters
             t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
-        def f3(variables, t):
-            m_Parameters = self.__m_Parameters
-            t = t*scale + t0
-            for i,r in en:
-                v[i] = eval(r)
-            return dot(v,NT)
-
-        if nforce >0:
-            return f2
-        else:
-            return f3
+        return f2
     
     def getdXdt2(self, with_uncertain = False, scale = 1.0, t0=0.0):
         """Generate function to compute rhs of SODE for this model.
@@ -933,8 +813,6 @@ class Model(object):
         #ODEstr += '\tm_Parameters = self.__m_Parameters\n'
         if nforce >0:
             ODEstr += '\tt = t*scale + t0\n'
-            for i in range(nforce):
-                ODEstr += '\tforcing_function[%d] = self.forcing[%d].func(variables,t)\n' % (i,i)
 
         for i, xstr in enumerate(self.dXdt_strings()):
             ODEstr += "\tx[%d] = "% i + self.rateCalcString(xstr[1], with_uncertain = with_uncertain)+'\n'
@@ -966,15 +844,9 @@ class Model(object):
         # create array to hold v's
         v = empty(len(self.reactions))
         en = list(enumerate(ratebytecode))
-        # create array to hold forcing functions
-        forcing_function = empty(len(self.forcing))
-        enf = list(enumerate(self.forcing))
-
         def f(variables, t):
             m_Parameters = uncertainparameters
             t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
             for i,r in en:
                 v[i] = eval(r)
             return dot(v,NT)
@@ -993,14 +865,9 @@ class Model(object):
         #compile rate laws
         ratebytecode = [[compile(self.rateCalcString(col, with_uncertain = with_uncertain), '<string>','eval') for col in line] for line in Jstrings]
 
-        forcing_function = empty(len(self.forcing))
-        enf = list(enumerate(self.forcing))
-        
         def J(variables, t):
             Jarray = empty((nvars,nvars), float)
             t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
             for i in range(nvars):
                 for j in range(nvars):
                     Jarray[i,j] = eval(ratebytecode[i][j])
@@ -1009,8 +876,6 @@ class Model(object):
             m_Parameters = self.__m_Parameters
             Jarray = empty((nvars,nvars), float)
             t = t*scale + t0
-            for i,fi in enf:
-                forcing_function[i] = fi.func(variables,t)
             for i in range(nvars):
                 for j in range(nvars):
                     Jarray[i,j] = eval(ratebytecode[i][j])
@@ -1031,8 +896,6 @@ class Model(object):
         return self.__parameters
     def __getTransformations(self):
         return self.__transf
-    def __getForcing(self):
-        return self.__forcing
     
     def __getUncertainValues(self):
         return list(getUncertainties(self)) #generator of uncertain values
@@ -1043,7 +906,6 @@ class Model(object):
     parameters   = property(__getParameters)
     uncertain    = property(__getUncertainValues)
     transf       = property(__getTransformations)
-    forcing      = property(__getForcing)
     dXdt         = property(getdXdt)
 
 def getUncertainties(model):
@@ -1070,11 +932,14 @@ def test():
     
     def force(A, t):
         return t*A
+    register_kin_func(force)
+##     pprint.pprint(__globs)
+
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = "B   ->  "  , "2*input1"
+    m.v4 = "B   ->  "  , "2*4*step(t,at,top)"
     m.v5 = "C ->", "4.5*C*step(t,at,top)"
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
@@ -1088,10 +953,10 @@ def test():
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
-    m.input1 = forcing(force)
     m.at = 1.0
     m.top = 2.0
     m.input2 = transf("4*step(t,at,top)")
+    m.input3 = transf("force(top, t)")
     
     m.setData('where', 'in model')
     m.setData('title', 'My first model')
@@ -1230,6 +1095,8 @@ def test():
     print 'calcstring for t2:\n', m.rateCalcString(m.t2.rate)
     print
     print 'calcstring for input2:\n', m.rateCalcString(m.input2.rate)
+    print
+    print 'calcstring for input3:\n', m.rateCalcString(m.input3.rate)
     print
 
     print '********** Testing rate and dXdt generating functions ******'

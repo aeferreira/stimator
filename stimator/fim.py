@@ -51,8 +51,6 @@ def add_dSdt_to_model(m, pars):
         _symbs[x.name] = sympy.Symbol(str(x.name))
     for p in m.parameters:
         _symbs[p.name] = sympy.Symbol(str(p.name))
-    for f in m.forcing:
-        _symbs[f.name] = sympy.Symbol(str(f.name))
     for p in pars:
         if not _symbs.has_key(p):
             _symbs[p] = sympy.Symbol(str(p))
