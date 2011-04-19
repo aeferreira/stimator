@@ -38,6 +38,28 @@ def test_react2():
     check, msg = m.checkRates()
     assert check 
 
+def test_react2b():
+    """test react(string, string) with math functions"""
+    m = Model("My first model")
+    m.v1 = react("A->B", " 4*sqrt(A)/(p1+sin(A))-B ")
+    m.p1 = 2
+    assert m.v1.name == 'v1'
+    assert isinstance(m.v1, model.Reaction)
+    assert m.v1.rate== "4*sqrt(A)/(p1+sin(A))-B"
+    check, msg = m.checkRates()
+    assert check 
+
+def test_react2c():
+    """test react(string, string) with kinetics functions"""
+    m = Model("My first model")
+    m.v1 = react("A->B", " 4*A*step(t,1.0)")
+    m.p1 = 2
+    assert m.v1.name == 'v1'
+    assert isinstance(m.v1, model.Reaction)
+    assert m.v1.rate== "4*A*step(t,1.0)"
+    check, msg = m.checkRates()
+    assert check 
+
 @raises(model.BadStoichError)
 def test_react3():
     """test Bad stoichiometry"""
@@ -173,13 +195,11 @@ def test_transf2():
 def test_printmodel():
     """test print(model)"""
     import math
-    def force(A, t):
-        return t*A
     m = Model('My first model')
     m.v1 = react("A+B -> C"  , 3)
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*input1")
+    m.v4 = react("B   ->  "  , "2*B")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
@@ -191,20 +211,17 @@ def test_printmodel():
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
-    m.input1 = forcing(force)
     #print should not raise an Exception
     print m
 
 def test_clonemodel():
     """test model.clone()"""
     import math
-    def force(A, t):
-        return t*A
     m = Model('My first model')
     m.v1 = react("A+B -> C"  , 3)
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*input1")
+    m.v4 = react("B   ->  "  , "2*B")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
@@ -216,7 +233,6 @@ def test_clonemodel():
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
-    m.input1 = forcing(force)
     mstr = str(m)
     m2 = m.clone()
     m2str = str(m2)
