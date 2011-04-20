@@ -328,9 +328,9 @@ class Solutions(object):
         for sol in self.solutions:
             sol.orderByNames(varnames)
 
-    def orderByModelVars(self, model):
-        varnames = [x.name for x in model.variables]
-        self.orderByNames(varnames)
+    def orderByModelVars(self, amodel):
+        vnames = [x for x in model.varnames(amodel)]
+        self.orderByNames(vnames)
 
 def readTCs(source, filedir = None, intvarsorder = None, names = None, verbose = False):
     tcs = Solutions()

@@ -47,9 +47,9 @@ def add_dSdt_to_model(m, pars):
     npars = len(pars)
     
     _symbs = {}
-    for x in m.variables:
+    for x in variables(m):
         _symbs[x.name] = sympy.Symbol(str(x.name))
-    for p in m.parameters:
+    for p in parameters(m):
         _symbs[p.name] = sympy.Symbol(str(p.name))
     for p in pars:
         if not _symbs.has_key(p):
@@ -60,11 +60,11 @@ def add_dSdt_to_model(m, pars):
     for i in range(nvars):
         Smatrix.append([])
         for j in range(npars):
-            Sname = "d_%s_d_%s" % (m.variables[i].name, pars[j])
+            Sname = "d_%s_d_%s" % (variables(m)[i].name, pars[j])
             _symbs[Sname] = sympy.Symbol(str(Sname))
             Smatrix[i].append(Sname)
     for i in range(nvars):
-        vname = m.variables[i].name
+        vname = variables(m)[i].name
         for j in range(npars):
             #compute string for dS/dt
             if init_of[j] is None:
@@ -111,7 +111,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     
     #ensure m has init attr
     inits = {}
-    for x in m.variables:
+    for x in variables(m):
         inits[str(x.name)] = 0.0
     setattr(m, 'init', state(**inits))
     
@@ -144,7 +144,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     #keep indexes of variables considered
     xindexes = []
     for vname in vars:
-        for i,y in enumerate(m.variables):
+        for i,y in enumerate(variables(m)):
             if y.name == vname:
                 xindexes.append(i)
     xindexes = array(xindexes)
@@ -152,7 +152,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     # search pattern d_<var name>_d_<parname> in variable names
     indexes = []
     for vname in vars:
-        for i,y in enumerate(m.variables):
+        for i,y in enumerate(variables(m)):
             dnames = y.name.split('_')
             if len(dnames) < 3: continue
             if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':

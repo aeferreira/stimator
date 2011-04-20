@@ -319,7 +319,7 @@ class StimatorParser:
         try2close(self.textlines)
 
         # check the validity of rate laws
-        check, msg = self.model.checkRates()
+        check, msg = self.model._Model__checkRates()
         if not check:
             m = syntaxErrormatch.match(msg)
             if m:
@@ -358,7 +358,7 @@ class StimatorParser:
     def rateDefParse(self, line, loc, match):
         #process name
         name = match.group('name')
-        if model.findWithName(name, self.model.reactions): #repeated declaration
+        if model.findWithName(name, model.reactions(self.model)): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         #process rate
@@ -368,7 +368,7 @@ class StimatorParser:
         if rate.endswith('..'):
             rate = rate[:-2]
             
-            localsdict = dict([(p.name, p) for p in self.model.parameters])
+            localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
             resstring, value = test_with_consts(rate, localsdict)
             if resstring != "":
                 loc.start = match.start('rate')
@@ -394,7 +394,7 @@ class StimatorParser:
     def dxdtDefParse(self, line, loc, match):
         name = match.group('name')
         dxdtname = "d_%s_dt"%name
-        if model.findWithName(dxdtname, self.model.reactions): #repeated declaration
+        if model.findWithName(dxdtname, model.reactions(self.model)): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
@@ -406,7 +406,7 @@ class StimatorParser:
     
     def transfDefParse(self, line, loc, match):
         name = match.group('name')
-        if model.findWithName(name, self.model.transf): #repeated declaration
+        if model.findWithName(name, model.transformations(self.model)): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
@@ -426,7 +426,7 @@ class StimatorParser:
     
     def stateDefParse(self, line, loc, match):
         name = match.group('name')
-        if model.findWithName(name, self.model.reactions): #repeated declaration
+        if model.findWithName(name, model.reactions(self.model)): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         state = match.group('value')
@@ -442,11 +442,11 @@ class StimatorParser:
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
-        if model.findWithName(name, self.model.parameters): #repeated declaration
+        if model.findWithName(name, model.parameters(self.model)): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         
-        localsdict = dict([(p.name, p) for p in self.model.parameters])
+        localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
 
         resstring, value = test_with_consts(valueexpr, localsdict)
         if resstring != "":
@@ -479,7 +479,7 @@ class StimatorParser:
         name = match.group('name')
         found = False
 
-        localsdict = dict([(p.name, p) for p in self.model.parameters])
+        localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
 
         lulist = ['lower', 'upper']
         flulist = []

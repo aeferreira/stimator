@@ -18,7 +18,7 @@ import pylab as p
 
 def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None, whichdXdt = 0):
     salg=integrate._odepack.odeint
-    names = [x.name for x in model.variables]
+    names = [x for x in varnames(model)]
 
     #get initial values, possibly from a state in the model
     if isinstance(initial, str) or isinstance(initial, StateArray):

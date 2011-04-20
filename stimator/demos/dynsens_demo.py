@@ -36,7 +36,7 @@ print '\nAdding sensitivity ODEs -------------------------'
 pars = "V1 Km1".split()
 npars = len(pars)
 print 'npars =', npars
-nvars = len(m.variables)
+nvars = len(variables(m))
 print 'nvars =', nvars
 nsens = npars * nvars
 print 'nsens =', nsens

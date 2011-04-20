@@ -40,7 +40,7 @@ class DeODESolver(de.DESolver):
         #reorder variables according to model
         self.tc.orderByModelVars(self.model)
 
-        pars = model.uncertain
+        pars = uncertain(model)
         mins = array([u.min for u in pars])
         maxs = array([u.max for u in pars])
         
@@ -74,10 +74,10 @@ class DeODESolver(de.DESolver):
         
         # find uncertain initial values
         self.mapinit2trial = []
-        for iu, u in enumerate(self.model.uncertain):
+        for iu, u in enumerate(uncertain(self.model)):
             if u.name.startswith('init'):
                 varname = u.name.split('.')[-1]
-                ix = findWithNameIndex(varname, self.model.variables)
+                ix = findWithNameIndex(varname, variables(self.model))
                 self.mapinit2trial.append((ix,iu))
         
         self.criterium = dyncriteria.getCriteriumFunction(weights, self.tc)
@@ -168,8 +168,8 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best['timecourses']['data'] = []
 
-        varnames = [x.name for x in self.model.variables]
-        pars = [self.model.uncertain[i].name for i in range(len(self.bestSolution))]
+        varnames = [x.name for x in variables(self.model)]
+        pars = [uncertain(self.model)[i].name for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
         self.model.set_uncertain(self.bestSolution)
@@ -194,7 +194,7 @@ class DeODESolver(de.DESolver):
                 yexp = line
                 nnan = len(yexp[isnan(yexp)])
                 if nnan >= nt-1: continue
-                varnames.append(str(self.model.variables[iline].name))
+                varnames.append(str(variables(self.model)[iline].name))
                 varindexes.append(iline)
             #print len(varindexes), varnames
         best['timecourses']['format'] = "%s\t%d\t%g"
@@ -220,7 +220,7 @@ class DeODESolver(de.DESolver):
             STDerrors = {}
             for i,p in enumerate(pars):
                 STDerrors[p] =invFIM1[i,i]**0.5
-            best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "%g"%STDerrors[self.model.uncertain[i].name]) for (i,value) in enumerate(self.bestSolution)]
+            best['parameters']['data'] = [(uncertain(self.model)[i].name, "%g"%value, "%g"%STDerrors[uncertain(self.model)[i].name]) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
 
