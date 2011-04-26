@@ -13,8 +13,6 @@ The class ('StimatorParser') parses text representing a valid model.
 The result is a Model object. 
 The parsing loop relies on regular expressions."""
 
-import os
-import os.path
 import StringIO
 import re
 import math
@@ -519,7 +517,7 @@ reaction Glx2 : SDLTSH ->  ,  \\
 pi   = 3.1416
 pi2  = 2*pi
 pipi = pi**2  #this is pi square
-
+KmMG = sqrt(1e-2)
 Vmax1 = 0.0001
 find Vmax1 in [1e-9, 1e-3]
 find   KmMG  in [1e-5, 1]

@@ -413,7 +413,7 @@ def test():
     v2 = B ->  , rate = V2*B/(Km2 + B)
     V1  = 1
     Km1 = 1
-    V2  = 2
+    V2  = sqrt(4.0)
     Km2 = 0.2
     find Km2 in [0, 1.2]
     init = state(B = 0.4, A = 1)

@@ -10,8 +10,6 @@
 import re
 import math
 from kinetics import *
-from numpy import *
-import pprint
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -22,9 +20,7 @@ for k, v in globals().items():
     if hasattr(v,"is_rate"):
         __haskinetics[k] = v
 __globs.update(__haskinetics)
-## pprint.pprint(__globs)
 __globs.update(vars(math))
-## pprint.pprint(__globs)
 
 def register_kin_func(f):
     f.is_rate = True
@@ -542,7 +538,6 @@ def test():
     def force(A, t):
         return t*A
     register_kin_func(force)
-##     pprint.pprint(__globs)
 
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
