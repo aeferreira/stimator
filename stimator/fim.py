@@ -8,6 +8,7 @@ S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
 from model import *
+from dynamics import *
 from analysis import *
 import timecourse
 import expcov
@@ -40,8 +41,8 @@ def add_dSdt_to_model(m, pars):
             newpars.append(p)
     pars = newpars
 
-    J = m.Jacobian_strings()
-    dfdpstrs = m.dfdp_strings(pars)
+    J = Jacobian_strings(m)
+    dfdpstrs = dfdp_strings(m, pars)
             
     nvars = len(J)
     npars = len(pars)

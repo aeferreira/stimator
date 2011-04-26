@@ -11,7 +11,7 @@ stimatorDate = "22 Apr 2010"
 import sys
 import os
 import os.path
-import re
+## import re
 import time
 import thread
 import wx

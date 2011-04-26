@@ -319,7 +319,7 @@ class StimatorParser:
         try2close(self.textlines)
 
         # check the validity of rate laws
-        check, msg = self.model._Model__checkRates()
+        check, msg = self.model.checkRates()
         if not check:
             m = syntaxErrormatch.match(msg)
             if m:

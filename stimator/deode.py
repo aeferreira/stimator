@@ -10,6 +10,7 @@ import de
 from numpy import *
 from scipy import integrate
 from model import *
+from dynamics import *
 from modelparser import read_model
 from analysis import *
 import fim
@@ -59,7 +60,7 @@ class DeODESolver(de.DESolver):
         scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
         t0 = self.tc[0].t[0]
         
-        self.calcDerivs = model.getdXdt(scale=scale, with_uncertain=True, t0=t0)
+        self.calcDerivs = getdXdt(model, scale=scale, with_uncertain=True, t0=t0)
         self.salg=integrate._odepack.odeint
         
         # store initial values and (scaled) time points

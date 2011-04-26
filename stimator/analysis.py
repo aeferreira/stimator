@@ -9,6 +9,7 @@
 #----------------------------------------------------------------------------
 import math
 from model import *
+from dynamics import *
 from modelparser import read_model
 from numpy import *
 from scipy import integrate
@@ -22,7 +23,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
 
     #get initial values, possibly from a state in the model
     if isinstance(initial, str) or isinstance(initial, StateArray):
-        y0 = copy(model.vectorize(initial))
+        y0 = copy(state2array(model,initial))
     else:
         y0 = copy(initial)
     if times is None:
@@ -33,9 +34,9 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     #scale = 1.0
     
     if whichdXdt == 0:
-        f = model.getdXdt(scale=scale, t0=t0)
+        f = getdXdt(model, scale=scale, t0=t0)
     else:
-        f = model.getdXdt2(scale=scale, t0=t0)
+        f = getdXdt2(model,scale=scale, t0=t0)
     t  = (times-t0)/scale  # this scales time points
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
@@ -56,7 +57,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         sol.apply_transf(f,names)
     elif isinstance(outputs, str) or callable(outputs): 
         #a filter string or transformation function
-        f = model.genTransformationFunction(outputs)
+        f = genTransformationFunction(model, outputs)
         sol.apply_transf(f, f.names)
     else:
         raise TypeError("'outputs' parameter is of the wrong type")

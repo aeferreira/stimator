@@ -24,7 +24,7 @@ def test_react1():
     assert m.v2.name == 'v2'
     assert m.v1.rate== str(float(4))+ "*A"
     assert m.v2.rate== str(float(2.0))+"*B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert check 
 
 def test_react2():
@@ -35,7 +35,7 @@ def test_react2():
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
     assert m.v1.rate== "4*A/(p1+A)-B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert check 
 
 def test_react2b():
@@ -46,7 +46,7 @@ def test_react2b():
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
     assert m.v1.rate== "4*sqrt(A)/(p1+sin(A))-B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert check 
 
 def test_react2c():
@@ -57,7 +57,7 @@ def test_react2c():
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
     assert m.v1.rate== "4*A*step(t,1.0)"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert check 
 
 @raises(model.BadStoichError)
@@ -74,7 +74,7 @@ def test_react4():
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
     assert m.v1.rate== "4*A/(p2+A)-B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert not check 
 
 def test_react5():
@@ -85,7 +85,7 @@ def test_react5():
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
     assert m.v1.rate== "4*A/(p1+A-B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert not check 
 
 def test_react6():
@@ -96,7 +96,7 @@ def test_react6():
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
     assert m.v1.rate== "1e100**10000 * 4*A/(p1+A)-B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert not check 
 
 def test_par1():
@@ -176,7 +176,7 @@ def test_transf1():
     assert m.t2.name== 't2'
     assert m.t1.rate== str(float(4))
     assert m.t2.rate== str(float(2.0))
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     assert check 
 
 def test_transf2():
@@ -188,7 +188,7 @@ def test_transf2():
     assert isinstance(m.t1, model.Transformation)
     assert m.t1.name == 't1'
     assert m.t1.rate== "4*A/(p1+A)-B"
-    check, msg = m._Model__checkRates()
+    check, msg = m.checkRates()
     print msg
     assert check 
 
