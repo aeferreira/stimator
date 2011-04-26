@@ -250,3 +250,58 @@ def test_init1():
     assert m.init.x == 1.0
     assert m.init.y == 2.0
 
+def test_iter_reactions():
+    """test iteration of reactions using reactions()"""
+    import math
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = react("B   ->  "  , "2*B")
+    rr = reactions(m)
+    assert isinstance(rr, list)
+    assert len(rr) == 4
+    names = [v.name for v in reactions(m)]
+    rates = [v.rate for v in reactions(m)]
+    reags = [v.reagents for v in reactions(m)]
+    assert names[0] == 'v1'
+    assert names[1] == 'v2'
+    assert names[2] == 'v3'
+    assert names[3] == 'v4'
+    assert rates[0] == '3.0*A*B'
+    assert rates[3] == '2*B'
+    assert reags[0][0][0] == 'A'
+    assert reags[0][0][1] == 1.0
+    assert reags[0][1][0] == 'B'
+    assert reags[0][1][1] == 1.0
+    assert len(reags[1]) == 0
+    assert len(reags[2]) == 1
+    assert len(reags[3]) == 1
+
+##     print '********** Testing iteration of components *****************'
+##     print 'iterating reactions(m)'
+##     for v in reactions(m):
+##         print v.name, ':', v.rate, '|', v.reagents, '->', v.products
+##     print '\niterating transformations(m)'
+##     for v in transformations(m):
+##         print v.name, ':', v.rate
+##     print '\niterating variables(m)'
+##     for x in variables(m):
+##         print x.name
+##     print '\niterating extvariables(m)'
+##     for x in extvariables(m):
+##         print x.name
+##     print '\niterating parameters(m)'
+##     for p in parameters(m):
+##         print p.name , '=',  p, 'bounds=', p.bounds
+##     print '\niterating uncertain(m)'
+##     for x in uncertain(m):
+##         print '\t', x.name, 'in (', x.min, ',', x.max, ')'
+##     
+##     print '\niterating m.init'
+##     for name, x in m.init:
+##         print '\t', name, '=', x
+##     print
+
+
+
