@@ -252,15 +252,15 @@ def test_init1():
 
 def test_iter_reactions():
     """test iteration of reactions using reactions()"""
-    import math
     m = Model('My first model')
     m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v2 = react("    -> A"  , rate = 1.0)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.v4 = react("B   ->  "  , "2*B")
+    m.D  = variable("-2 * D")
     rr = reactions(m)
     assert isinstance(rr, list)
-    assert len(rr) == 4
+    assert len(rr) == 5
     names = [v.name for v in reactions(m)]
     rates = [v.rate for v in reactions(m)]
     reags = [v.reagents for v in reactions(m)]
@@ -268,6 +268,7 @@ def test_iter_reactions():
     assert names[1] == 'v2'
     assert names[2] == 'v3'
     assert names[3] == 'v4'
+    assert names[4] == 'd_D_dt'
     assert rates[0] == '3.0*A*B'
     assert rates[3] == '2*B'
     assert reags[0][0][0] == 'A'
@@ -277,6 +278,53 @@ def test_iter_reactions():
     assert len(reags[1]) == 0
     assert len(reags[2]) == 1
     assert len(reags[3]) == 1
+
+def test_iter_transf():
+    """test iteration of transformations using transformations()"""
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = 1.0)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.D  = variable("-2 * D")
+    m.t1 = transf("A*4 + C")
+    m.t2 = transf("sqrt(2*A)")
+    rr = transformations(m)
+    assert isinstance(rr, list)
+    assert len(rr) == 2
+    names = [v.name for v in transformations(m)]
+    rates = [v.rate for v in transformations(m)]
+    assert names[0] == 't1'
+    assert names[1] == 't2'
+    assert rates[0] == 'A*4 + C'
+    assert rates[1] == 'sqrt(2*A)'
+
+def test_iter_variables():
+    """test iteration of variables using variables() and varnames()"""
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = 1.0)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.D  = variable("-2 * D")
+    xx = variables(m)
+    assert isinstance(xx, list)
+    assert len(xx) == 4
+    names = [x.name for x in variables(m)]
+    names2 = [x for x in varnames(m)]
+    assert names == ['A', 'B', 'C', 'D']
+    assert names2 == names
+
+def test_iter_extvariables():
+    """test iteration of external variables using extvariables()"""
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = 1.0)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.B  = 0.5
+    xx = extvariables(m)
+    assert isinstance(xx, list)
+    assert len(xx) == 1
+    names = [x.name for x in extvariables(m)]
+    assert names == ['B']
 
 ##     print '********** Testing iteration of components *****************'
 ##     print 'iterating reactions(m)'
