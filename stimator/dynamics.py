@@ -311,40 +311,7 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
             v[i] = eval(r)
         return dot(v,NT)
     return f2
-    
-##     def getdXdt2(self, with_uncertain = False, scale = 1.0, t0=0.0):
-##         """Generate function to compute rhs of SODE for this model.
-##         
-##            Function has signature f(variables, t)
-##            This is compatible with scipy.integrate.odeint"""
-
-##         check, msg = self.checkRates()
-##         if not check:
-##             print "vars = "
-##             print [x.name for x in self.variables]
-##             raise BadRateError(msg)
-##         
-##         x = empty(len(self.variables))
-##         nforce = len(self.forcing)
-##         forcing_function = empty(nforce)
-##         m_Parameters = self.__m_Parameters
-##        
-##         ODEstr = "def f4(variables,t):\n"
-##         #ODEstr += '\tm_Parameters = self.__m_Parameters\n'
-##         if nforce >0:
-##             ODEstr += '\tt = t*scale + t0\n'
-
-##         for i, xstr in enumerate(self.dXdt_strings()):
-##             ODEstr += "\tx[%d] = "% i + self.rateCalcString(xstr[1], with_uncertain = with_uncertain)+'\n'
-##         #ODEstr += "\tself.fcount+=1\n"            
-##         #ODEstr += "\tprint self.fcount\n"            
-##         ODEstr += "\treturn x"            
-##         
-##         #print ODEstr
-##         dct = locals()
-##         exec ODEstr in dct#{'self':self, 'nforce':nforce, 'x':x, 'forcing_function': forcing_function}
-##         return f4
-        
+            
 def dXdt_with(m, uncertainparameters, scale = 1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     

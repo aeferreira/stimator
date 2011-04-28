@@ -9,7 +9,6 @@
 #----------------------------------------------------------------------------
 import os.path
 import re
-import math
 from numpy import *
 import model
 import modelparser

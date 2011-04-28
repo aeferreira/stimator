@@ -13,11 +13,11 @@ from dynamics import *
 from modelparser import read_model
 from numpy import *
 from scipy import integrate
-from timecourse import SolutionTimeCourse
+from timecourse import SolutionTimeCourse, Solutions
 
 import pylab as p
 
-def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None, whichdXdt = 0):
+def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None):
     salg=integrate._odepack.odeint
     names = [x for x in varnames(model)]
 
@@ -33,10 +33,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     scale = float(times[-1] - times[0])
     #scale = 1.0
     
-    if whichdXdt == 0:
-        f = getdXdt(model, scale=scale, t0=t0)
-    else:
-        f = getdXdt2(model,scale=scale, t0=t0)
+    f = getdXdt(model, scale=scale, t0=t0)
     t  = (times-t0)/scale  # this scales time points
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
@@ -63,14 +60,11 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         raise TypeError("'outputs' parameter is of the wrong type")
     return sol
 
-
-def transform(solution, f, outputs=False, title = None):
-    pass
-    #~ times = copy(solution.t)
-    
-    #~ sol = SolutionTimeCourse (times, Y.T, names, title)
-    
 def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, superimpose = False, legend=True):
+    if isinstance(solutions, SolutionTimeCourse):
+        s = Solutions()
+        s.append(solutions)
+        solutions = s
     p.figure()
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
     ntc = len(solutions)

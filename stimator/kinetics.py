@@ -7,7 +7,6 @@
 # S-timator kinetics functions
 # Copyright António Ferreira 2006-2011
 #----------------------------------------------------------------------------
-from math import *
 
 def step (t, at, top=1.0):
     if t < at:

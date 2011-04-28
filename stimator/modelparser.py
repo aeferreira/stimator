@@ -18,7 +18,6 @@ import re
 import math
 import model
 import timecourse
-import utils
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -222,7 +221,6 @@ def try2read_model(text):
     try:
         m= read_model(text)
         tc = m.getData('timecourses')
-        os = m.getData('optSettings')
         print '\n-------- Model %s successfuly read ------------------'% m.getData('title')
         print m
         if len(tc.filenames) >0:
@@ -432,7 +430,7 @@ class StimatorParser:
         try:
             value = eval(state)
             setattr(self.model, name, value)
-        except Exception, e:
+        except Exception:
            self.setError("Bad '%s' state definition"%name, loc) 
            return
            
@@ -475,7 +473,6 @@ class StimatorParser:
 
     def findDefParse(self, line, loc, match):
         name = match.group('name')
-        found = False
 
         localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
 
