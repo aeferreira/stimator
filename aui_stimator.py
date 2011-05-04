@@ -285,6 +285,10 @@ class MyFrame(wx.Frame):
         self._mgr.AddPane(SettingsPanel(self, self), wx.aui.AuiPaneInfo().
                           Name("settings").Caption("Dock Manager Settings").
                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
+        
+        self._mgr.AddPane(self.CreateResFrame(), wx.aui.AuiPaneInfo().
+                          Name("results").Caption("Results").
+                          Right().Layer(0).Position(0).CloseButton(True).MaximizeButton(True))
 
         # create some center panes
 
@@ -329,6 +333,7 @@ class MyFrame(wx.Frame):
         #self._mgr.GetPane("test8").Show().Left().Layer(0).Row(0).Position(0)
         self._mgr.GetPane("test10").Show().Bottom().Layer(0).Row(0).Position(0)
         self._mgr.GetPane("html_content").Show()
+        self._mgr.GetPane("results").Show()
 
         perspective_default = self._mgr.SavePerspective()
 
@@ -347,6 +352,7 @@ class MyFrame(wx.Frame):
 
         self._mgr.GetPane("test8").Hide()
         self._mgr.GetPane("grid_content").Hide()
+        self._mgr.GetPane("results").Show()
 
         # "commit" all changes made to FrameManager   
         self._mgr.Update()
@@ -876,6 +882,11 @@ class MyFrame(wx.Frame):
                 
         return ed
 
+    def CreateResFrame(self):
+        win = resultsframe.DemoPlotPanel(self, size=(400, 250))
+        self.rframe = win
+        return win
+
     def CreateTreeCtrl(self):
 
         tree = wx.TreeCtrl(self, -1, wx.Point(0, 0), wx.Size(160, 250),
@@ -982,7 +993,7 @@ class MyFrame(wx.Frame):
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
         win.loadBestData(self.model, solver)
         win.Show(True)
-    
+
     def generationTick(self, generation, energy):
         evt = UpdateGenerationEvent(generation = generation, energy = energy)
         wx.PostEvent(self, evt)

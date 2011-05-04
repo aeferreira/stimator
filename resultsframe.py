@@ -272,10 +272,12 @@ flag, and the actual resizing of the figure is triggered by an Idle event."""
         self.canvas = FigureCanvasWxAgg( self, -1, self.figure )
         self.SetColor( color )
 
+        if 'size' in kwargs.keys():
+            self.SetClientSize(kwargs['size'])
+            self._resizeflag = True
+        else:
+            self._resizeflag = False
         self._SetSize()
-#        self.draw()
-
-        self._resizeflag = False
 
         self.Bind(wx.EVT_IDLE, self._onIdle)
         self.Bind(wx.EVT_SIZE, self._onSize)
@@ -324,7 +326,7 @@ class DemoPlotPanel(PlotPanel):
         self.subplot.plot(x,y, '-b')
         #Set some plot attributes
         #self.subplot.set_title("A polar flower (%s points)" % len(x), fontsize = 12)
-        self.subplot.set_title("Results for %s" % self.model.getData('title'))
+        self.subplot.set_title("Flower plot")
         self.subplot.set_xlabel("Flower is from  http://www.physics.emory.edu/~weeks/ideas/rose.html")
         self.subplot.set_xlim([-400, 400])
         self.subplot.set_ylim([-400, 400])
