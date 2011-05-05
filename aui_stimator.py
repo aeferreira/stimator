@@ -233,7 +233,7 @@ class MyFrame(wx.Frame):
                       
         self._mgr.AddPane(self.CreateLog(), wx.aui.AuiPaneInfo().
                           Name("test10").Caption("Log Pane").
-                          Bottom().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).CloseButton(True).MaximizeButton(True))
 
 ##         self._mgr.AddPane(SettingsPanel(self, self), wx.aui.AuiPaneInfo().
 ##                           Name("settings").Caption("Settings").
@@ -242,9 +242,10 @@ class MyFrame(wx.Frame):
 ##                           Name("settings").Caption("Dock Manager Settings").
 ##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
         
-##         self._mgr.AddPane(self.CreateResFrame(), wx.aui.AuiPaneInfo().
-##                           Name("results").Caption("Results").
+        self._mgr.AddPane(self.CreateResFrame(), wx.aui.AuiPaneInfo().
+                          Name("results").Caption("Results").
 ##                           Right().Layer(0).Position(0).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
 
         # create some center panes
 
@@ -569,12 +570,10 @@ class MyFrame(wx.Frame):
         del self._mgr
         self.Destroy()
 
-
     def OnExitMenu(self, event):
         self.Close()
 
     def OnAbout(self, event):
-
         msg = "wx.aui Demo\n" + \
               "An advanced window management library for wxWidgets\n" + \
               "(c) Copyright 2005-2006, Kirix Corporation"
@@ -588,53 +587,38 @@ class MyFrame(wx.Frame):
         pass
 
     def GetDockArt(self):
-
         return self._mgr.GetArtProvider()
 
-
     def DoUpdate(self):
-
         self._mgr.Update()
 
-
     def OnEraseBackground(self, event):
-
         event.Skip()
-
 
     def OnSize(self, event):
-
         event.Skip()
 
-
     def OnSettings(self, event):
-
         # show the settings pane, and float it
         floating_pane = self._mgr.GetPane("settings").Float().Show()
-
         if floating_pane.floating_pos == wx.DefaultPosition:
             floating_pane.FloatingPosition(self.GetStartPosition())
-
         self._mgr.Update()
 
 
     def OnGradient(self, event):
-
         gradient = 0
-
         if event.GetId() == ID_NoGradient:
             gradient = wx.aui.AUI_GRADIENT_NONE
         elif event.GetId() == ID_VerticalGradient:
             gradient = wx.aui.AUI_GRADIENT_VERTICAL
         elif event.GetId() == ID_HorizontalGradient:
             gradient = wx.aui.AUI_GRADIENT_HORIZONTAL
-
         self._mgr.GetArtProvider().SetMetric(wx.aui.AUI_DOCKART_GRADIENT_TYPE, gradient)
         self._mgr.Update()
 
 
     def OnManagerFlag(self, event):
-
         flag = 0
         eid = event.GetId()
 
@@ -666,7 +650,6 @@ class MyFrame(wx.Frame):
 
 
     def OnUpdateUI(self, event):
-
         flags = self._mgr.GetFlags()
         eid = event.GetId()
         
@@ -706,42 +689,30 @@ class MyFrame(wx.Frame):
             event.Check((flags & wx.aui.AUI_MGR_NO_VENETIAN_BLINDS_FADE) != 0);
 
     def OnCreatePerspective(self, event):
-
         dlg = wx.TextEntryDialog(self, "Enter a name for the new perspective:", "AUI Test")
-        
         dlg.SetValue(("Perspective %d")%(len(self._perspectives)+1))
         if dlg.ShowModal() != wx.ID_OK:
             return
-        
         if len(self._perspectives) == 0:
             self._perspectives_menu.AppendSeparator()
-        
         self._perspectives_menu.Append(ID_FirstPerspective + len(self._perspectives), dlg.GetValue())
         self._perspectives.append(self._mgr.SavePerspective())
 
 
     def OnCopyPerspective(self, event):
-
         s = self._mgr.SavePerspective()
-        
         if wx.TheClipboard.Open():
-        
             wx.TheClipboard.SetData(wx.TextDataObject(s))
             wx.TheClipboard.Close()
         
     def OnRestorePerspective(self, event):
-
         self._mgr.LoadPerspective(self._perspectives[event.GetId() - ID_FirstPerspective])
 
-
     def GetStartPosition(self):
-
         self.x = self.x + 20
         x = self.x
         pt = self.ClientToScreen(wx.Point(0, 0))
-        
         return wx.Point(pt.x + x, pt.y + x)
-
 
     def OnCreateTree(self, event):
         self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().
@@ -749,7 +720,6 @@ class MyFrame(wx.Frame):
                           Float().FloatingPosition(self.GetStartPosition()).
                           FloatingSize(wx.Size(150, 300)).CloseButton(True).MaximizeButton(True))
         self._mgr.Update()
-
 
     def OnCreateGrid(self, event):
         self._mgr.AddPane(self.CreateGrid(), wx.aui.AuiPaneInfo().
@@ -775,7 +745,6 @@ class MyFrame(wx.Frame):
         self._mgr.Update()
 
     def OnChangeContentPane(self, event):
-
         self._mgr.GetPane("grid_content").Show(event.GetId() == ID_GridContent)
         self._mgr.GetPane("text_content").Show(event.GetId() == ID_TextContent)
         self._mgr.GetPane("tree_content").Show(event.GetId() == ID_TreeContent)
@@ -785,21 +754,17 @@ class MyFrame(wx.Frame):
 
 
     def CreateTextCtrl(self):
-
         text = ("This is text box %d")%(self.n + 1)
-
         return wx.TextCtrl(self,-1, text, wx.Point(0, 0), wx.Size(150, 90),
                            wx.NO_BORDER | wx.TE_MULTILINE)
 
     def CreateGrid(self):
-
         grid = wx.grid.Grid(self, -1, wx.Point(0, 0), wx.Size(150, 250),
                            wx.NO_BORDER | wx.WANTS_CHARS)
         grid.CreateGrid(50, 20)
         return grid
 
     def CreateEditor(self):
-
         global ID_ME; ID_ME = wx.NewId()
         ed = resultsframe.SDLeditor(self, ID_ME , self)
         self.ModelEditor = ed
@@ -813,12 +778,10 @@ class MyFrame(wx.Frame):
         ed.SetSelBackground(True, 'PLUM')
         ed.SetWrapMode(True)
         ed.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction title")
-
         return ed
 
     def CreateLog(self):
         global ID_LT; ID_LT = wx.NewId()
-
         ed = resultsframe.SDLeditor(self, ID_LT , self)
         self.LogText = ed
         ed.SetText(u"")
@@ -835,7 +798,6 @@ class MyFrame(wx.Frame):
         ed.StyleClearAll()
         ed.SetSelBackground(True, 'PLUM')
         ed.SetWrapMode(True)
-                
         return ed
 
     def CreateResFrame(self):
@@ -844,10 +806,8 @@ class MyFrame(wx.Frame):
         return win
 
     def CreateTreeCtrl(self):
-
         tree = wx.TreeCtrl(self, -1, wx.Point(0, 0), wx.Size(160, 250),
                            wx.TR_DEFAULT_STYLE | wx.NO_BORDER)
-        
         root = tree.AddRoot("AUI Project")
         items = []
 
@@ -949,6 +909,17 @@ class MyFrame(wx.Frame):
         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
         win.loadBestData(self.model, solver)
         win.Show(True)
+        # generate report
+        reportText = "\n"
+        sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
+        for section in sections:
+            reportText += "%-20s --------------------------------\n" % section['name'].upper()
+            if section['header']:
+                reportText += '\t'.join(section['header'])+'\n'
+            reportText += "\n".join([section['format'] % i for i in section['data']])
+            reportText += '\n\n'
+        self.write(reportText)
+
 
     def generationTick(self, generation, energy):
         evt = UpdateGenerationEvent(generation = generation, energy = energy)

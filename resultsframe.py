@@ -348,12 +348,8 @@ class resultsFrame(wx.Frame):
 
         self.notebook = wx.Notebook(self, -1, style=0)
 
-        global ID_RT; ID_RT = wx.NewId()
-        self.ReportEditor = SDLeditor(self.notebook, ID_RT, self)
-        
         self.plotpanel = BestPlotPanel(self.notebook, color=[255.0]*3)
         
-        self.notebook.AddPage(self.ReportEditor, "Results")
         self.notebook.AddPage(self.plotpanel, "Plots") 
 
         self.Bind(wx.EVT_CLOSE, self.OnCloseWindow)
@@ -366,13 +362,13 @@ class resultsFrame(wx.Frame):
         #self.SetBackgroundColour(wx.Colour(229, 229, 229))
         
 
-        # statusbar configuration
-        self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
-        self.mainstatusbar.SetStatusWidths([-1])
-        mainstatusbar_fields = ["Results frame"]
-        for i in range(len(mainstatusbar_fields)):
-            self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
-        #self.maintoolbar.Realize()
+##         # statusbar configuration
+##         self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
+##         self.mainstatusbar.SetStatusWidths([-1])
+##         mainstatusbar_fields = ["Results frame"]
+##         for i in range(len(mainstatusbar_fields)):
+##             self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
+##         #self.maintoolbar.Realize()
 
 
 ##------------- Initialization and __del__ functions
@@ -390,20 +386,6 @@ class resultsFrame(wx.Frame):
 
         self.SetTitle("Results for %s" % model.getData('title'))
 
-        # generate report
-        reportText = ""
-        sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-        for section in sections:
-            reportText += "%-20s --------------------------------\n" % section['name'].upper()
-            if section['header']:
-                reportText += '\t'.join(section['header'])+'\n'
-            reportText += "\n".join([section['format'] % i for i in section['data']])
-            reportText += '\n\n'
-        
-        self.ReportEditor.SetText(reportText)
-        self.ReportEditor.EmptyUndoBuffer()
-               
-
 ##------------- Init Subwindows
 
     def updateButtons(self):
@@ -416,19 +398,6 @@ class resultsFrame(wx.Frame):
 
     def OnExitMenu(self, event):
         self.Close()
-
-    def OnCutSelection(self, event):
-        self.ReportEditor.Cut()
-
-    def OnCopySelection(self, event):
-        self.ReportEditor.Copy()
-
-    def OnPaste(self, event):
-        self.ReportEditor.Paste()
-
-    def OnSaveResults(self, event):
-        self.write("'SaveResults' not implemented!")
-        event.Skip()
 
 # end of class resultsFrame
 
