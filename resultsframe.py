@@ -205,6 +205,7 @@ class SDLeditor(stc.StyledTextCtrl):
             #self.Refresh(True, wxRect(pt.x, pt.y, 5,5))
             #print pt
             #self.Refresh(False)
+        self.log.updateButtons()
 
 
     def OnStartDrag(self, evt):
@@ -405,80 +406,13 @@ class resultsFrame(wx.Frame):
 
 ##------------- Init Subwindows
 
-
-    def MakeMenus(self):
-        self.mainmenu = wx.MenuBar()
-        self.AddMenus(self.mainmenu)
-        self.SetMenuBar(self.mainmenu)
-
-    def MakeToolbar(self):
-        self.maintoolbar = wx.ToolBar(self, -1, style=wx.TB_HORIZONTAL|wx.TB_TEXT|wx.TB_NOICONS)
-        self.SetToolBar(self.maintoolbar)
-        buttonId = wx.NewId()
-        self.maintoolbar.AddLabelTool(buttonId, "Compute", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
-        self.Bind(wx.EVT_TOOL, self.OnComputeButton, id=buttonId)
-        buttonId = wx.NewId()
-        self.maintoolbar.AddLabelTool(buttonId, "Abort", wx.NullBitmap, wx.NullBitmap, wx.ITEM_NORMAL, "", "")
-        self.Bind(wx.EVT_TOOL, self.OnAbortButton, id=buttonId)
-
-    def AddMenuItem(self, menu, itemText, itemDescription, itemHandler):
-        menuId = wx.NewId()
-        menu.Append(menuId, itemText, itemDescription)
-        self.Bind(wx.EVT_MENU, itemHandler, id=menuId)
-        return menuId
-
-    def AddMenus(self, menu):
-        # File menu
-        fileMenu = wx.Menu()
-        self.AddMenuItem(fileMenu, '&New\tCtrl-N', 'New File', self.OnNewMenu)
-        self.AddMenuItem(fileMenu, '&Open\tCtrl-O', 'Open File', self.OnOpenMenu)
-        self.AddMenuItem(fileMenu, '&Save\tCtrl-S', 'Save File', self.OnSaveMenu)
-        self.AddMenuItem(fileMenu, 'Save &As\tCtrl-A', 'Save File As',self.OnSaveAsMenu)
-        self.AddMenuItem(fileMenu, 'E&xit\tAlt-X', 'Exit', self.OnExitMenu)
-        menu.Append(fileMenu, 'File')
-
-        # Edit menu
-        editMenu = wx.Menu()
-        self.AddMenuItem(editMenu, 'Cut\tCtrl-X', 'Cut', self.OnCutSelection)
-        self.AddMenuItem(editMenu, '&Copy\tCtrl-C', 'Copy', self.OnCopySelection)
-        self.AddMenuItem(editMenu, 'Paste\tCtrl-V', 'Paste', self.OnPaste)
-        menu.Append(editMenu, 'Edit')
-
-        # Results menu
-        ResultsMenu = wx.Menu()
-        self.AddMenuItem(ResultsMenu, 'Save Results As...', 'Save results file as', self.OnSaveResults)
-        if wx.Platform == '__WXMSW__':
-              self.AddMenuItem(ResultsMenu, 'Generate XLS ', 'Generate Excel file form results', self.OnGenXLS)
-        menu.Append(ResultsMenu, 'Results')
-
-        # Help menu
-        helpMenu = wx.Menu()
-        self.AddMenuItem(helpMenu, 'About', 'About the program', self.OnAboutMenu)
-        menu.Append(helpMenu, 'Help')
-
-
+    def updateButtons(self):
+        pass
 
 ##---------------- Event handlers
 
     def OnCloseWindow(self, event):
         self.Destroy()
-
-    def OnSaveMenu(self, event):
-        if self.fileName is None:
-            return self.OnSaveAsMenu(event)
-        #wx.LogMessage("Saving %s..." % self.fileName)
-        if self.SaveFile(self.fileName) is not True:
-            self.SaveFileError(self.fileName)
-        self.ReportEditor.SetFocus()
-
-    def OnSaveAsMenu(self, event):
-        fileName = self.SelectFileDialog(False, self.GetFileDir(),self.GetFileName())
-        if fileName is not None:
-            self.fileName = fileName
-            #wx.LogMessage("Saving %s..." % self.fileName)
-            if self.SaveFile(self.fileName) is not True:
-                self.SaveFileError(self.fileName)
-        self.ReportEditor.SetFocus()
 
     def OnExitMenu(self, event):
         self.Close()
@@ -495,18 +429,6 @@ class resultsFrame(wx.Frame):
     def OnSaveResults(self, event):
         self.write("'SaveResults' not implemented!")
         event.Skip()
-
-    def OnGenXLS(self, event):
-        os.chdir(self.GetFileDir())
-        if not os.path.exists("best.dat"):
-           self.MessageDialog("best.dat was not found", "Error")
-           return
-        try:
-          import best2xls
-          best2xls.genXLS("best.dat")
-        except:
-           self.MessageDialog("An error ocurred while generating the Excel file", "Error")
-        pass
 
 # end of class resultsFrame
 
