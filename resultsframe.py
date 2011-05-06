@@ -12,8 +12,12 @@ from numpy import arange, sin, pi, cos, isnan
 import matplotlib
 matplotlib.interactive(True)
 matplotlib.use('WXAgg')
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg #as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
+
+## from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+## from matplotlib.figure import Figure
 
 ##------------- Fonts to be used.
 if wx.Platform == '__WXMSW__':
@@ -40,7 +44,6 @@ class SDLeditor(stc.StyledTextCtrl):
         stc.StyledTextCtrl.__init__(self, parent, ID)
         self.log = log
         self.SetLexer(stc.STC_LEX_PYTHON)
-        self.SetKeyWords(0, "TIMECOURSES OPTIMIZATION PARAMETERS")
 
         # Highlight tab/space mixing (shouldn't be any)
         self.SetProperty("tab.timmy.whinge.level", "1")
@@ -258,8 +261,6 @@ class PlotPanel (wx.Panel):
     """The PlotPanel has a Figure and a Canvas. OnSize events simply set a 
 flag, and the actual resizing of the figure is triggered by an Idle event."""
     def __init__( self, parent, color=None, dpi=None, **kwargs ):
-        from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
-        from matplotlib.figure import Figure
         self.solver = None
         self.model = None
 
@@ -316,6 +317,45 @@ flag, and the actual resizing of the figure is triggered by an Idle event."""
 
     def draw(self): pass # abstract, to be overridden by child classes
 
+class YetAnotherPlot(wx.Panel):
+    def __init__(self, parent, id = -1, color=None, dpi = None, **kwargs):
+        self.solver = None
+        self.model = None
+
+        wx.Panel.__init__(self, parent, id=id, **kwargs)
+
+        self.figure = Figure( None, dpi )
+        self.canvas = FigureCanvasWxAgg( self, -1, self.figure )
+
+##         if 'size' in kwargs.keys():
+##             self.SetClientSize(kwargs['size'])
+##             self._resizeflag = True
+##         else:
+##             self._resizeflag = False
+        self.SetColor( color )
+
+        self.toolbar = Toolbar(self.canvas)
+        self.toolbar.Realize()
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.toolbar, 0 , wx.LEFT | wx.EXPAND)
+        sizer.Add(self.canvas,1,wx.EXPAND)
+        self.SetSizer(sizer)
+
+    def draw(self):
+        #self._SetSize()    #?????
+        if self.solver:
+            self.solver.draw(self.figure)
+
+    def SetColor( self, rgbtuple=None ):
+        """Set figure and canvas colours to be the same."""
+        if rgbtuple is None:
+            rgbtuple = wx.SystemSettings.GetColour( wx.SYS_COLOUR_BTNFACE ).Get()
+        clr = [c/255. for c in rgbtuple]
+        self.figure.set_facecolor( clr )
+        self.figure.set_edgecolor( clr )
+        self.canvas.SetBackgroundColour( wx.Colour( *rgbtuple ) )
+
 class DemoPlotPanel(PlotPanel):
     """An example plotting panel. The only method that needs 
     overriding is the draw method"""
@@ -344,6 +384,7 @@ class BestPlotPanel(PlotPanel):
         #self._SetSize()    #?????
         if self.solver:
             self.solver.draw(self.figure)
+
 
 ##------------- Results Frame
 

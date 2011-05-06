@@ -39,16 +39,6 @@ ID_File_New = wx.NewId()
 ID_File_Open = wx.NewId()
 ID_File_Save_As = wx.NewId()
 
-ID_CreateTree = wx.NewId()
-ID_CreateGrid = wx.NewId()
-ID_CreateText = wx.NewId()
-ID_CreateHTML = wx.NewId()
-ID_CreateSizeReport = wx.NewId()
-ID_GridContent = wx.NewId()
-ID_TextContent = wx.NewId()
-ID_TreeContent = wx.NewId()
-ID_HTMLContent = wx.NewId()
-ID_SizeReportContent = wx.NewId()
 ID_CreatePerspective = wx.NewId()
 ID_CopyPerspective = wx.NewId()
 
@@ -118,19 +108,6 @@ class MyFrame(wx.Frame):
         edit_menu.Append(wx.ID_COPY, '&Copy\tCtrl-C', 'Copy')
         edit_menu.Append(wx.ID_PASTE, 'Paste\tCtrl-V', 'Paste')
 
-        view_menu = wx.Menu()
-        view_menu.Append(ID_CreateText, "Create Text Control")
-        view_menu.Append(ID_CreateHTML, "Create HTML Control")
-        view_menu.Append(ID_CreateTree, "Create Tree")
-        view_menu.Append(ID_CreateGrid, "Create Grid")
-        view_menu.Append(ID_CreateSizeReport, "Create Size Reporter")
-        view_menu.AppendSeparator()
-        view_menu.Append(ID_GridContent, "Use a Grid for the Content Pane")
-        view_menu.Append(ID_TextContent, "Use a Text Control for the Content Pane")
-        view_menu.Append(ID_HTMLContent, "Use an HTML Control for the Content Pane")
-        view_menu.Append(ID_TreeContent, "Use a Tree Control for the Content Pane")
-        view_menu.Append(ID_SizeReportContent, "Use a Size Reporter for the Content Pane")    
-           
         options_menu = wx.Menu()
         options_menu.AppendRadioItem(ID_TransparentHint, "Transparent Hint")
         options_menu.AppendRadioItem(ID_VenetianBlindsHint, "Venetian Blinds Hint")
@@ -146,8 +123,8 @@ class MyFrame(wx.Frame):
         options_menu.AppendRadioItem(ID_NoGradient, "No Caption Gradient")
         options_menu.AppendRadioItem(ID_VerticalGradient, "Vertical Caption Gradient")
         options_menu.AppendRadioItem(ID_HorizontalGradient, "Horizontal Caption Gradient")
-        options_menu.AppendSeparator();
-        options_menu.Append(ID_Settings, "Settings Pane")
+##         options_menu.AppendSeparator();
+##         options_menu.Append(ID_Settings, "Settings Pane")
 
         self._perspectives_menu = wx.Menu()
         self._perspectives_menu.Append(ID_CreatePerspective, "Create Perspective")
@@ -161,7 +138,6 @@ class MyFrame(wx.Frame):
         
         mb.Append(file_menu, "File")
         mb.Append(edit_menu, "Edit")
-        mb.Append(view_menu, "View")
         mb.Append(self._perspectives_menu, "Perspectives")
         mb.Append(options_menu, "Options")
         mb.Append(help_menu, "Help")
@@ -242,23 +218,14 @@ class MyFrame(wx.Frame):
 ##                           Name("settings").Caption("Dock Manager Settings").
 ##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
         
-        self.plotpanel = resultsframe.BestPlotPanel(self, color=[255.0]*3, size=(400, 250))
+        self.plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=(400, 250))
         self._mgr.AddPane(self.plotpanel, wx.aui.AuiPaneInfo().
                           Name("results").Caption("Results").
-##                           Right().Layer(0).Position(0).CloseButton(True).MaximizeButton(True))
                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
+        #self.plotpanel.draw()
 
-        # create some center panes
-
-        self._mgr.AddPane(self.CreateGrid(), wx.aui.AuiPaneInfo().Name("grid_content").
-                          CenterPane().Hide())
-
-        self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().Name("tree_content").
-                          CenterPane().Hide())
-                      
-        self._mgr.AddPane(self.CreateTextCtrl(), wx.aui.AuiPaneInfo().Name("text_content").
-                          CenterPane().Hide())
-                               
+        # create  center pane
+            
         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").
                           CenterPane().Caption("Editor"))
         # add the toolbars to the manager
@@ -329,10 +296,6 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnCopySelection, id=wx.ID_COPY)
         self.Bind(wx.EVT_MENU, self.OnPaste, id=wx.ID_PASTE)
 
-        self.Bind(wx.EVT_MENU, self.OnCreateTree, id=ID_CreateTree)
-        self.Bind(wx.EVT_MENU, self.OnCreateGrid, id=ID_CreateGrid)
-        self.Bind(wx.EVT_MENU, self.OnCreateText, id=ID_CreateText)
-        self.Bind(wx.EVT_MENU, self.OnCreateHTML, id=ID_CreateHTML)
         self.Bind(wx.EVT_MENU, self.OnCreatePerspective, id=ID_CreatePerspective)
         self.Bind(wx.EVT_MENU, self.OnCopyPerspective, id=ID_CopyPerspective)
 
@@ -349,11 +312,6 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnGradient, id=ID_NoGradient)
         self.Bind(wx.EVT_MENU, self.OnGradient, id=ID_VerticalGradient)
         self.Bind(wx.EVT_MENU, self.OnGradient, id=ID_HorizontalGradient)
-##         self.Bind(wx.EVT_MENU, self.OnSettings, id=ID_Settings)
-        self.Bind(wx.EVT_MENU, self.OnChangeContentPane, id=ID_GridContent)
-        self.Bind(wx.EVT_MENU, self.OnChangeContentPane, id=ID_TreeContent)
-        self.Bind(wx.EVT_MENU, self.OnChangeContentPane, id=ID_TextContent)
-        self.Bind(wx.EVT_MENU, self.OnChangeContentPane, id=ID_HTMLContent)
         self.Bind(wx.EVT_MENU, self.OnExitMenu, id=wx.ID_EXIT)
         self.Bind(wx.EVT_MENU, self.OnAboutMenu, id=ID_About)
 
@@ -721,49 +679,6 @@ class MyFrame(wx.Frame):
                           FloatingSize(wx.Size(150, 300)).CloseButton(True).MaximizeButton(True))
         self._mgr.Update()
 
-    def OnCreateGrid(self, event):
-        self._mgr.AddPane(self.CreateGrid(), wx.aui.AuiPaneInfo().
-                          Caption("Grid").
-                          Float().FloatingPosition(self.GetStartPosition()).
-                          FloatingSize(wx.Size(300, 200)).CloseButton(True).MaximizeButton(True))
-        self._mgr.Update()
-
-
-    def OnCreateHTML(self, event):
-        self._mgr.AddPane(self.CreateHTMLCtrl(), wx.aui.AuiPaneInfo().
-                          Caption("HTML Content").
-                          Float().FloatingPosition(self.GetStartPosition()).
-                          FloatingSize(wx.Size(300, 200)).CloseButton(True).MaximizeButton(True))
-        self._mgr.Update()
-
-
-    def OnCreateText(self, event):
-        self._mgr.AddPane(self.CreateTextCtrl(), wx.aui.AuiPaneInfo().
-                          Caption("Text Control").
-                          Float().FloatingPosition(self.GetStartPosition()).
-                          CloseButton(True).MaximizeButton(True))
-        self._mgr.Update()
-
-    def OnChangeContentPane(self, event):
-        self._mgr.GetPane("grid_content").Show(event.GetId() == ID_GridContent)
-        self._mgr.GetPane("text_content").Show(event.GetId() == ID_TextContent)
-        self._mgr.GetPane("tree_content").Show(event.GetId() == ID_TreeContent)
-        self._mgr.GetPane("sizereport_content").Show(event.GetId() == ID_SizeReportContent)
-        self._mgr.GetPane("html_content").Show(event.GetId() == ID_HTMLContent)
-        self._mgr.Update()
-
-
-    def CreateTextCtrl(self):
-        text = ("This is text box %d")%(self.n + 1)
-        return wx.TextCtrl(self,-1, text, wx.Point(0, 0), wx.Size(150, 90),
-                           wx.NO_BORDER | wx.TE_MULTILINE)
-
-    def CreateGrid(self):
-        grid = wx.grid.Grid(self, -1, wx.Point(0, 0), wx.Size(150, 250),
-                           wx.NO_BORDER | wx.WANTS_CHARS)
-        grid.CreateGrid(50, 20)
-        return grid
-
     def CreateEditor(self):
         global ID_ME; ID_ME = wx.NewId()
         ed = resultsframe.SDLeditor(self, ID_ME , self)
@@ -794,10 +709,12 @@ class MyFrame(wx.Frame):
             face = 'Courier'
             pb = 12
 
-        ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "size:%d,face:%s" % (pb, face))
         ed.StyleClearAll()
+        ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "size:%d,face:%s" % (pb, face))
+        ed.StyleSetSpec(wx.stc.STC_P_WORD, "fore:#00007F,bold")
         ed.SetSelBackground(True, 'PLUM')
         ed.SetWrapMode(True)
+        ed.SetKeyWords(0, "TIMECOURSES OPTIMIZATION PARAMETERS")
         return ed
 
 
@@ -851,6 +768,7 @@ class MyFrame(wx.Frame):
            return
         self.LogText.Clear()
         self.LogText.Refresh()
+        self._mgr.GetPane("test10").Show()
         self._mgr.GetPane("results").Hide()
 
         # "commit" all changes made to FrameManager   
@@ -921,10 +839,9 @@ class MyFrame(wx.Frame):
         self.write(reportText)
         self.plotpanel.model = self.model
         self.plotpanel.solver = solver
-        #wx.PostEvent(self.plotpanel, wx.SizeEvent())
-        self._mgr.GetPane("results").Show()
+        self.plotpanel.draw()
 
-        # "commit" all changes made to FrameManager   
+        self._mgr.GetPane("results").Show()
         self._mgr.Update()
 
 
