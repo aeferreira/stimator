@@ -242,7 +242,8 @@ class MyFrame(wx.Frame):
 ##                           Name("settings").Caption("Dock Manager Settings").
 ##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
         
-        self._mgr.AddPane(self.CreateResFrame(), wx.aui.AuiPaneInfo().
+        self.plotpanel = resultsframe.BestPlotPanel(self, color=[255.0]*3, size=(400, 250))
+        self._mgr.AddPane(self.plotpanel, wx.aui.AuiPaneInfo().
                           Name("results").Caption("Results").
 ##                           Right().Layer(0).Position(0).CloseButton(True).MaximizeButton(True))
                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
@@ -257,10 +258,7 @@ class MyFrame(wx.Frame):
                       
         self._mgr.AddPane(self.CreateTextCtrl(), wx.aui.AuiPaneInfo().Name("text_content").
                           CenterPane().Hide())
-
-##         self._mgr.AddPane(self.CreateHTMLCtrl(), wx.aui.AuiPaneInfo().Name("html_content").
-##                           CenterPane())
-                                
+                               
         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").
                           CenterPane().Caption("Editor"))
         # add the toolbars to the manager
@@ -289,6 +287,7 @@ class MyFrame(wx.Frame):
         self._mgr.GetPane("test10").Show().Bottom().Layer(0).Row(0).Position(0)
         self._mgr.GetPane("model_editor").Show()
         self._mgr.GetPane("results").Show()
+        self._mgr.GetPane("tb3").Hide()
 
         perspective_default = self._mgr.SavePerspective()
 
@@ -306,7 +305,8 @@ class MyFrame(wx.Frame):
 
         self._mgr.GetPane("test8").Hide()
         self._mgr.GetPane("grid_content").Hide()
-        self._mgr.GetPane("results").Show()
+        self._mgr.GetPane("results").Hide()
+        self._mgr.GetPane("tb3").Hide()
 
         # "commit" all changes made to FrameManager   
         self._mgr.Update()
@@ -800,10 +800,6 @@ class MyFrame(wx.Frame):
         ed.SetWrapMode(True)
         return ed
 
-    def CreateResFrame(self):
-        win = resultsframe.DemoPlotPanel(self, size=(400, 250))
-        self.rframe = win
-        return win
 
     def CreateTreeCtrl(self):
         tree = wx.TreeCtrl(self, -1, wx.Point(0, 0), wx.Size(160, 250),
@@ -855,6 +851,10 @@ class MyFrame(wx.Frame):
            return
         self.LogText.Clear()
         self.LogText.Refresh()
+        self._mgr.GetPane("results").Hide()
+
+        # "commit" all changes made to FrameManager   
+        self._mgr.Update()
 
         textlines = [self.ModelEditor.GetLine(i) for i in range(self.ModelEditor.GetLineCount())]
         
@@ -906,9 +906,9 @@ class MyFrame(wx.Frame):
 
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
-        win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-        win.loadBestData(self.model, solver)
-        win.Show(True)
+##         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
+##         win.loadBestData(self.model, solver)
+##         win.Show(True)
         # generate report
         reportText = "\n"
         sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
@@ -919,6 +919,13 @@ class MyFrame(wx.Frame):
             reportText += "\n".join([section['format'] % i for i in section['data']])
             reportText += '\n\n'
         self.write(reportText)
+        self.plotpanel.model = self.model
+        self.plotpanel.solver = solver
+        #wx.PostEvent(self.plotpanel, wx.SizeEvent())
+        self._mgr.GetPane("results").Show()
+
+        # "commit" all changes made to FrameManager   
+        self._mgr.Update()
 
 
     def generationTick(self, generation, energy):

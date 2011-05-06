@@ -260,6 +260,8 @@ flag, and the actual resizing of the figure is triggered by an Idle event."""
     def __init__( self, parent, color=None, dpi=None, **kwargs ):
         from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
         from matplotlib.figure import Figure
+        self.solver = None
+        self.model = None
 
         # initialize Panel
         if 'id' not in kwargs.keys():
@@ -301,6 +303,9 @@ flag, and the actual resizing of the figure is triggered by an Idle event."""
             self._SetSize()
             self.draw()
 
+    def SetNeedsRepaint(self, needs = True):
+        self._resizeflag = needs
+
     def _SetSize( self ):
         pixels = tuple( self.GetClientSize() )
         #pixels = tuple( self.parent.GetClientSize() )
@@ -336,8 +341,9 @@ class BestPlotPanel(PlotPanel):
     """Plots best data."""
     #TODO: implement graph settings
     def draw(self):
-        self._SetSize()    #?????
-        self.solver.draw(self.figure)
+        #self._SetSize()    #?????
+        if self.solver:
+            self.solver.draw(self.figure)
 
 ##------------- Results Frame
 
@@ -385,11 +391,6 @@ class resultsFrame(wx.Frame):
         self.plotpanel.solver = solver
 
         self.SetTitle("Results for %s" % model.getData('title'))
-
-##------------- Init Subwindows
-
-    def updateButtons(self):
-        pass
 
 ##---------------- Event handlers
 
