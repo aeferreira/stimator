@@ -40,8 +40,8 @@ else:
 ##------------- Editor class
 
 class SDLeditor(stc.StyledTextCtrl):
-    def __init__(self, parent, ID, log):
-        stc.StyledTextCtrl.__init__(self, parent, ID)
+    def __init__(self, parent, ID, log, pos=wx.DefaultPosition, size=wx.DefaultSize):
+        stc.StyledTextCtrl.__init__(self, parent, ID, pos, size)
         self.log = log
         self.SetLexer(stc.STC_LEX_PYTHON)
 

@@ -207,9 +207,10 @@ class MyFrame(wx.Frame):
                           Name("test8").Caption("Tree Pane").
                           Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
                       
+        sz = self.GetClientSize()
         self._mgr.AddPane(self.CreateLog(), wx.aui.AuiPaneInfo().
                           Name("test10").Caption("Log Pane").
-                          Bottom().Layer(0).Row(0).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
 
 ##         self._mgr.AddPane(SettingsPanel(self, self), wx.aui.AuiPaneInfo().
 ##                           Name("settings").Caption("Settings").
@@ -218,7 +219,7 @@ class MyFrame(wx.Frame):
 ##                           Name("settings").Caption("Dock Manager Settings").
 ##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
         
-        self.plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=(400, 250))
+        self.plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=(400, 500))
         self._mgr.AddPane(self.plotpanel, wx.aui.AuiPaneInfo().
                           Name("results").Caption("Results").
                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
@@ -697,7 +698,7 @@ class MyFrame(wx.Frame):
 
     def CreateLog(self):
         global ID_LT; ID_LT = wx.NewId()
-        ed = resultsframe.SDLeditor(self, ID_LT , self)
+        ed = resultsframe.SDLeditor(self, ID_LT , self, size = wx.Size(300,800))
         self.LogText = ed
         ed.SetText(u"")
         ed.EmptyUndoBuffer()
