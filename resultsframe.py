@@ -327,12 +327,8 @@ class YetAnotherPlot(wx.Panel):
         self.figure = Figure( None, dpi )
         self.canvas = FigureCanvasWxAgg( self, -1, self.figure )
 
-##         if 'size' in kwargs.keys():
-##             self.SetClientSize(kwargs['size'])
-##             self._resizeflag = True
-##         else:
-##             self._resizeflag = False
-        self.SetColor( color )
+        if color:
+            self.SetColor( color )
 
         self.toolbar = Toolbar(self.canvas)
         self.toolbar.Realize()

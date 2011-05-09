@@ -146,11 +146,16 @@ class MyFrame(wx.Frame):
         self.SetMenuBar(mb)
 
         # statusbar configuration
-        self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
-        self.mainstatusbar.SetStatusWidths([-1])
-        mainstatusbar_fields = ["S-timator %s"%(stimatorVersion)]
-        for i in range(len(mainstatusbar_fields)):
-            self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
+##         self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
+##         self.mainstatusbar.SetStatusWidths([-1])
+##         mainstatusbar_fields = ["S-timator %s"%(stimatorVersion)]
+##         for i in range(len(mainstatusbar_fields)):
+##             self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
+        self.mainstatusbar = wx.StatusBar(self, -1)
+        self.mainstatusbar.SetFieldsCount(2)
+        self.mainstatusbar.SetStatusText("S-timator %s"%(stimatorVersion), 0)
+        self.mainstatusbar.SetStatusText("", 1)
+        self.SetStatusBar(self.mainstatusbar)
 
 
         # min size for the frame itself isn't completely done.
