@@ -8,18 +8,13 @@ stimatorVersion = "0.91"
 stimatorDate = "22 Apr 2010"
 
 import wx
-import wx.grid
-import wx.html
 import wx.aui
-import wx.stc  as  stc
-import cStringIO
 import sys
 import os
 import os.path
 import time
 import thread
 import wx.lib.newevent
-import wx.stc  as  stc
 import resultsframe
 import stimator.modelparser
 import stimator.deode
@@ -527,7 +522,7 @@ class MyFrame(wx.Frame):
             if dlg.ShowModal() in [wx.ID_NO, wx.ID_CANCEL]:
                 event.Veto()
             dlg.Destroy()
-        
+
 
     def OnClose(self, event):
         self._mgr.UnInit()
@@ -562,12 +557,12 @@ class MyFrame(wx.Frame):
     def OnSize(self, event):
         event.Skip()
 
-    def OnSettings(self, event):
-        # show the settings pane, and float it
-        floating_pane = self._mgr.GetPane("settings").Float().Show()
-        if floating_pane.floating_pos == wx.DefaultPosition:
-            floating_pane.FloatingPosition(self.GetStartPosition())
-        self._mgr.Update()
+##     def OnSettings(self, event):
+##         # show the settings pane, and float it
+##         floating_pane = self._mgr.GetPane("settings").Float().Show()
+##         if floating_pane.floating_pos == wx.DefaultPosition:
+##             floating_pane.FloatingPosition(self.GetStartPosition())
+##         self._mgr.Update()
 
 
     def OnGradient(self, event):
@@ -776,8 +771,6 @@ class MyFrame(wx.Frame):
         self.LogText.Refresh()
         self._mgr.GetPane("test10").Show()
         self._mgr.GetPane("results").Hide()
-
-        # "commit" all changes made to FrameManager   
         self._mgr.Update()
 
         textlines = [self.ModelEditor.GetLine(i) for i in range(self.ModelEditor.GetLineCount())]
@@ -785,7 +778,6 @@ class MyFrame(wx.Frame):
         oldout = sys.stdout #parser may need to print messages
         sys.stdout = self
         try:
-            #~ self.model, self.tc, self.optSettings = stimator.modelparser.read_model(textlines, True)
             self.model = stimator.modelparser.read_model(textlines)
             self.tc = self.model.getData('timecourses')
             self.optSettings = self.model.getData('optSettings')
@@ -796,7 +788,6 @@ class MyFrame(wx.Frame):
 
         ntcread = self.tc.loadTimeCourses (self.GetFileDir(), names = self.tc.defaultnames, verbose=True)
         if ntcread == 0:
-           #self.IndicateError(parser.error, parser.errorLoc)
            sys.stdout = oldout
            return
         
@@ -822,26 +813,21 @@ class MyFrame(wx.Frame):
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
-            #~ #print >> self, "Optimization took %f s"% (time.time()-self.time0) #this works too!
-            #~ self.write("Optimization took %f s"% (time.time()-self.time0))
-            #self.bestData = evt.bestData
             self.PostProcessEnded()
         self.optimizerThread = None
 
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
-##         win = resultsframe.resultsFrame(self, -1, "Results", size=(350, 200), style = wx.DEFAULT_FRAME_STYLE)
-##         win.loadBestData(self.model, solver)
-##         win.Show(True)
         # generate report
-        reportText = "\n"
-        sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-        for section in sections:
-            reportText += "%-20s --------------------------------\n" % section['name'].upper()
-            if section['header']:
-                reportText += '\t'.join(section['header'])+'\n'
-            reportText += "\n".join([section['format'] % i for i in section['data']])
-            reportText += '\n\n'
+        reportText = solver.reportResults()
+##         reportText = "\n"
+##         sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
+##         for section in sections:
+##             reportText += "%-20s --------------------------------\n" % section['name'].upper()
+##             if section['header']:
+##                 reportText += '\t'.join(section['header'])+'\n'
+##             reportText += "\n".join([section['format'] % i for i in section['data']])
+##             reportText += '\n\n'
         self.write(reportText)
         self.plotpanel.model = self.model
         self.plotpanel.solver = solver

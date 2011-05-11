@@ -226,7 +226,7 @@ class DeODESolver(de.DESolver):
         self.optimum = best
 
     def reportResults(self):
-        reportText = ""
+        reportText = "\n"
         sections = [self.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
         for section in sections:
             reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
