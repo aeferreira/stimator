@@ -30,12 +30,12 @@ class DeODESolver(de.DESolver):
     """
     
     def __init__(self, model, optSettings, tcs, weights = None,
-                    aGenerationTicker=None, anEndComputationTicker=None, 
+                    aMsgTicker=None, anEndComputationTicker=None, 
                     dump_pars=False):
         self.model = model
         self.tc    = tcs
-        self.generationTicker = aGenerationTicker
         self.endTicker        = anEndComputationTicker
+        self.aMsgTicker       = aMsgTicker
         self.dump_pars        = dump_pars
         
         #reorder variables according to model
@@ -124,15 +124,34 @@ class DeODESolver(de.DESolver):
         globalscore = self.timecourse_scores.sum()
         return globalscore
 
-    def reportGeneration (self):
-        if not self.generationTicker:
-            print self.reportGenerationString()
+    def reportInitial (self):
+        msg = "\nSolving %s..."%self.model.getData('title')
+        if not self.aMsgTicker:
+            print msg
         else:
-            self.generationTicker(self.generation, float(self.bestEnergy))
+            self.aMsgTicker(msg)
+
+    def reportGeneration (self):
+        msg = "%-4d: %f" % (self.generation, float(self.bestEnergy))
+        if not self.aMsgTicker:
+            print msg
+        else:
+            self.aMsgTicker(msg)
         if self.dump_pars:
             for par in range(self.parameterCount):
                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
                 print >>self.parfilehandes[par], " ".join(parvector)
+
+
+##     def reportGeneration (self):
+##         if not self.generationTicker:
+##             print self.reportGenerationString()
+##         else:
+##             self.generationTicker(self.generation, float(self.bestEnergy))
+##         if self.dump_pars:
+##             for par in range(self.parameterCount):
+##                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
+##                 print >>self.parfilehandes[par], " ".join(parvector)
             
     
     def reportFinal (self):
@@ -295,9 +314,6 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     solver = DeODESolver(m1,optSettings, timecourses)
     solver.Solve()
     
-    print
-    print '---------------------------------------------------------'
-    print "Results for %s\n" % m1.getData('title')
     print solver.reportResults()
 
     #--- an example with unknown initial values --------------------
@@ -321,9 +337,6 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     solver = DeODESolver(m2,optSettings, timecourses)
     solver.Solve()
 
-    print
-    print '---------------------------------------------------------'
-    print "Results for %s\n" % m2.getData('title')
     print solver.reportResults()
 
 if __name__ == "__main__":

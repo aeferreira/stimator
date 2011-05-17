@@ -54,8 +54,8 @@ ID_Settings = wx.NewId()
 ID_About = wx.NewId()
 ID_FirstPerspective = ID_CreatePerspective+1000
 
-(UpdateGenerationEvent, EVT_UPDATE_GENERATION) = wx.lib.newevent.NewEvent()
 (EndComputationEvent, EVT_END_COMPUTATION) = wx.lib.newevent.NewEvent()
+(MsgEvent, EVT_MSG) = wx.lib.newevent.NewEvent()
 
 debug = 1
 
@@ -141,17 +141,11 @@ class MyFrame(wx.Frame):
         self.SetMenuBar(mb)
 
         # statusbar configuration
-##         self.mainstatusbar = self.CreateStatusBar(1, wx.ST_SIZEGRIP)
-##         self.mainstatusbar.SetStatusWidths([-1])
-##         mainstatusbar_fields = ["S-timator %s"%(stimatorVersion)]
-##         for i in range(len(mainstatusbar_fields)):
-##             self.mainstatusbar.SetStatusText(mainstatusbar_fields[i], i)
         self.mainstatusbar = wx.StatusBar(self, -1)
         self.mainstatusbar.SetFieldsCount(2)
         self.mainstatusbar.SetStatusText("S-timator %s"%(stimatorVersion), 0)
         self.mainstatusbar.SetStatusText("", 1)
         self.SetStatusBar(self.mainstatusbar)
-
 
         # min size for the frame itself isn't completely done.
         # see the end up FrameManager::Update() for the test
@@ -332,7 +326,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU_RANGE, self.OnRestorePerspective, id=ID_FirstPerspective,
                   id2=ID_FirstPerspective+1000)
 
-        self.Bind(EVT_UPDATE_GENERATION, self.OnUpdateGeneration)
+        self.Bind(EVT_MSG, self.OnMsg)
         self.Bind(EVT_END_COMPUTATION, self.OnEndComputation)
         
         wx.Log_SetActiveTarget(MyLog(self.LogText))
@@ -511,14 +505,11 @@ class MyFrame(wx.Frame):
         self.ModelEditor.Redo()
 
     def OnPaneClose(self, event):
-
         caption = event.GetPane().caption
-
         if caption in ["Tree Pane", "Dock Manager Settings", "Fixed Pane"]:
             msg = "Are You Sure You Want To Close This Pane?"
             dlg = wx.MessageDialog(self, msg, "AUI Question",
                                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
-
             if dlg.ShowModal() in [wx.ID_NO, wx.ID_CANCEL]:
                 event.Veto()
             dlg.Destroy()
@@ -531,15 +522,6 @@ class MyFrame(wx.Frame):
 
     def OnExitMenu(self, event):
         self.Close()
-
-    def OnAbout(self, event):
-        msg = "wx.aui Demo\n" + \
-              "An advanced window management library for wxWidgets\n" + \
-              "(c) Copyright 2005-2006, Kirix Corporation"
-        dlg = wx.MessageDialog(self, msg, "About wx.aui Demo",
-                               wx.OK | wx.ICON_INFORMATION)
-        dlg.ShowModal()
-        dlg.Destroy()        
 
     def OnAboutMenu(self, event):
         self.MessageDialog(ABOUT_TEXT, "About S-timator")
@@ -673,13 +655,6 @@ class MyFrame(wx.Frame):
         pt = self.ClientToScreen(wx.Point(0, 0))
         return wx.Point(pt.x + x, pt.y + x)
 
-    def OnCreateTree(self, event):
-        self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().
-                          Caption("Tree Control").
-                          Float().FloatingPosition(self.GetStartPosition()).
-                          FloatingSize(wx.Size(150, 300)).CloseButton(True).MaximizeButton(True))
-        self._mgr.Update()
-
     def CreateEditor(self):
         global ID_ME; ID_ME = wx.NewId()
         ed = resultsframe.SDLeditor(self, ID_ME , self)
@@ -781,6 +756,8 @@ class MyFrame(wx.Frame):
             self.model = stimator.modelparser.read_model(textlines)
             self.tc = self.model.getData('timecourses')
             self.optSettings = self.model.getData('optSettings')
+            if self.model.getData('title') == "":
+               self.model.setData('title', self.GetFileName())
         except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout
@@ -795,18 +772,11 @@ class MyFrame(wx.Frame):
 
         #os.chdir(self.GetFileDir())
         
-        if self.model.getData('title') == "":
-           self.model.setData('title', self.GetFileName())
-
-        self.write("-------------------------------------------------------")
-        self.write("Solving %s..."%self.model.getData('title'))
-        self.time0 = time.time()
-
-        self.optimizerThread=CalcOptmThread()
-        self.optimizerThread.Start(self.model, self.optSettings, self.tc, self.generationTick, self.finalTick)
+        self.optimizerThread=CalcThread()
+        self.optimizerThread.Start(self.model, self.optSettings, self.tc, self.msgTick, self.finalTick)
         
-    def OnUpdateGeneration(self, evt):
-        self.write("%-4d: %f" % (evt.generation, evt.energy))
+    def OnMsg(self, evt):
+        self.write(evt.msg)
 
     def OnEndComputation(self, evt):
         if evt.exitCode == -1:
@@ -818,16 +788,7 @@ class MyFrame(wx.Frame):
 
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
-        # generate report
         reportText = solver.reportResults()
-##         reportText = "\n"
-##         sections = [solver.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-##         for section in sections:
-##             reportText += "%-20s --------------------------------\n" % section['name'].upper()
-##             if section['header']:
-##                 reportText += '\t'.join(section['header'])+'\n'
-##             reportText += "\n".join([section['format'] % i for i in section['data']])
-##             reportText += '\n\n'
         self.write(reportText)
         self.plotpanel.model = self.model
         self.plotpanel.solver = solver
@@ -836,11 +797,10 @@ class MyFrame(wx.Frame):
         self._mgr.GetPane("results").Show()
         self._mgr.Update()
 
-
-    def generationTick(self, generation, energy):
-        evt = UpdateGenerationEvent(generation = generation, energy = energy)
+    def msgTick(self, msg):
+        evt = MsgEvent(msg = msg)
         wx.PostEvent(self, evt)
-    
+
     def finalTick(self, exitCode):
         evt = EndComputationEvent(exitCode = exitCode)
         wx.PostEvent(self, evt)
@@ -865,10 +825,10 @@ class MyLog(wx.PyLog):
 
 ##------------- Optimization thread class
 
-class CalcOptmThread:
+class CalcThread:
 
-    def Start(self, model, optSettings, timecoursecollection, aGenerationTicker, anEndComputationTicker):
-        self.solver = stimator.deode.DeODESolver(model,optSettings, timecoursecollection, None, aGenerationTicker, anEndComputationTicker)
+    def Start(self, model, optSettings, timecoursecollection, aMsgTicker = None, anEndComputationTicker=None):
+        self.solver = stimator.deode.DeODESolver(model,optSettings, timecoursecollection, None, aMsgTicker, anEndComputationTicker)
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
 

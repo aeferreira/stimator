@@ -76,10 +76,11 @@ class DESolver:
     "Too many generations with no improvement",
     "Solution found by convergence criterium")
 
+    def reportInitialString (self):
+        return "Solving..."
+
     def reportGenerationString (self):
         return "%-4d: %f" % (self.generation, self.bestEnergy)
-        #~ return "generation %d: best energy = %f\nbest solution: %s" \
-        #~ % (self.generation, self.bestEnergy, self.bestSolution)
 
     def reportFinalString (self):
         res = "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
@@ -90,6 +91,9 @@ class DESolver:
         else:
             res += "\nOptimization took %.3f s"% (self.elapsed)
         return res
+
+    def reportInitial (self):
+        print self.reportInitialString ()
 
     def reportGeneration (self):
         print self.reportGenerationString ()
@@ -143,6 +147,7 @@ class DESolver:
             return
         
         if self.generation == 0:      #compute energies for generation 0
+            self.reportInitial()
             for candidate in range(self.populationSize):
                 trialEnergy, self.atSolution = self.EnergyFunction(numpy.copy(self.population[candidate]))
                 self.popEnergy[candidate] = trialEnergy

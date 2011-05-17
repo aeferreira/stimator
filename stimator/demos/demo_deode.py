@@ -31,9 +31,6 @@ timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], '../../models', names = ['SDLT
 solver = DeODESolver(m1,optSettings, timecourses)
 solver.Solve()
 
-print
-print '---------------------------------------------------------'
-print "Results for %s\n" % m1.getData('title')
 print solver.reportResults()
 
 fig1 = pl.figure()
@@ -61,9 +58,6 @@ timecourses = readTCs(['TSH2a.txt'], '../../models', names = ['SDLTSH', 'HTA'], 
 solver = DeODESolver(m2,optSettings, timecourses)
 solver.Solve()
 
-print
-print '---------------------------------------------------------'
-print "Results for %s\n" % m2.getData('title')
 print solver.reportResults()
 
 fig2 = pl.figure()
