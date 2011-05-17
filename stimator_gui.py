@@ -772,8 +772,9 @@ class MyFrame(wx.Frame):
 
         #os.chdir(self.GetFileDir())
         
+        solver = stimator.deode.DeODESolver(self.model,self.optSettings, self.tc, None, self.msgTick, self.finalTick)
         self.optimizerThread=CalcThread()
-        self.optimizerThread.Start(self.model, self.optSettings, self.tc, self.msgTick, self.finalTick)
+        self.optimizerThread.Start(self.solver)
         
     def OnMsg(self, evt):
         self.write(evt.msg)
@@ -805,7 +806,6 @@ class MyFrame(wx.Frame):
         evt = EndComputationEvent(exitCode = exitCode)
         wx.PostEvent(self, evt)
 
-
 ##------------- Log class
 
 class MyLog(wx.PyLog):
@@ -827,8 +827,8 @@ class MyLog(wx.PyLog):
 
 class CalcThread:
 
-    def Start(self, model, optSettings, timecoursecollection, aMsgTicker = None, anEndComputationTicker=None):
-        self.solver = stimator.deode.DeODESolver(model,optSettings, timecoursecollection, None, aMsgTicker, anEndComputationTicker)
+    def Start(self, solver):
+        self.solver = solver
         self.keepGoing = self.running = True
         thread.start_new_thread(self.Run, ())
 
