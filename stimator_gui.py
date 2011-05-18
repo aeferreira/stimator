@@ -12,13 +12,13 @@ import wx.aui
 import sys
 import os
 import os.path
-import time
 import thread
 import wx.lib.newevent
 import resultsframe
 import stimator.modelparser
 import stimator.deode
 import images
+from wx.py.shell import Shell
 
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
@@ -157,7 +157,7 @@ class MyFrame(wx.Frame):
         tb2 = wx.ToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
                          wx.TB_FLAT | wx.TB_NODIVIDER)
         tb2.SetToolBitmapSize(wx.Size(20,20))
-        tb2_bmp1 = wx.ArtProvider_GetBitmap(wx.ART_QUESTION, wx.ART_OTHER, wx.Size(20, 20))
+##        tb2_bmp1 = wx.ArtProvider_GetBitmap(wx.ART_QUESTION, wx.ART_OTHER, wx.Size(20, 20))
         tb2.AddTool(ID_File_Open, images.get_rt_openBitmap(), shortHelpString="Open")
         tb2.AddTool(wx.ID_SAVE, images.get_rt_saveBitmap(), shortHelpString="Save")
         tb2.AddSeparator()
@@ -774,7 +774,7 @@ class MyFrame(wx.Frame):
         
         solver = stimator.deode.DeODESolver(self.model,self.optSettings, self.tc, None, self.msgTick, self.finalTick)
         self.optimizerThread=CalcThread()
-        self.optimizerThread.Start(self.solver)
+        self.optimizerThread.Start(solver)
         
     def OnMsg(self, evt):
         self.write(evt.msg)
