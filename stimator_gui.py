@@ -201,10 +201,10 @@ class MyFrame(wx.Frame):
 ##                           Name("shell").Caption("Tree Pane").
 ##                           Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
         
-        sz = self.GetClientSize()
-        self._mgr.AddPane(self.CreateLog(), wx.aui.AuiPaneInfo().
-                          Name("log_pane").Caption("Log Pane").
-                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
+##         sz = self.GetClientSize()
+##         self._mgr.AddPane(self.CreateLog(), wx.aui.AuiPaneInfo().
+##                           Name("log_pane").Caption("Log Pane").
+##                           Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
 
 ##         self._mgr.AddPane(SettingsPanel(self, self), wx.aui.AuiPaneInfo().
 ##                           Name("settings").Caption("Settings").
@@ -214,15 +214,16 @@ class MyFrame(wx.Frame):
 ##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
         
 
-        self.shell = Shell(parent=self, introText="Stimator OK!")
+        sz = self.GetClientSize()
+        self.shell = Shell(parent=self)
         self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
                           Name("shell").Caption("Shell").
-                          Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
 
         self.plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=(400, 500))
         self._mgr.AddPane(self.plotpanel, wx.aui.AuiPaneInfo().
                           Name("results").Caption("Results").
-                          Bottom().Layer(0).Row(0).Position(2).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
 
         # create  center pane
             
@@ -251,7 +252,7 @@ class MyFrame(wx.Frame):
             if not all_panes[ii].IsToolbar():
                 all_panes[ii].Hide()
                 
-        self._mgr.GetPane("log_pane").Show()
+##         self._mgr.GetPane("log_pane").Show()
         self._mgr.GetPane("model_editor").Show()
         self._mgr.GetPane("tb3").Hide()
         self._mgr.GetPane("shell").Show()
@@ -335,7 +336,7 @@ class MyFrame(wx.Frame):
         self.Bind(EVT_MSG, self.OnMsg)
         self.Bind(EVT_END_COMPUTATION, self.OnEndComputation)
         
-        wx.Log_SetActiveTarget(MyLog(self.LogText))
+        wx.Log_SetActiveTarget(MyLog(self.shell))
 
 
 ##------------- Write funcs
@@ -748,9 +749,9 @@ class MyFrame(wx.Frame):
         if self.optimizerThread is not None:
            self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
            return
-        self.LogText.Clear()
-        self.LogText.Refresh()
-        self._mgr.GetPane("log_pane").Show()
+##         self.LogText.Clear()
+##         self.LogText.Refresh()
+##         self._mgr.GetPane("log_pane").Show()
         self._mgr.GetPane("results").Hide()
         self._mgr.Update()
 
@@ -784,21 +785,21 @@ class MyFrame(wx.Frame):
         
     def OnMsg(self, evt):
         self.write(evt.msg)
-        self.shell.write("%s\n"%(evt.msg))
+##         self.shell.write("%s\n"%(evt.msg))
 
     def OnEndComputation(self, evt):
         if evt.exitCode == -1:
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
-            self.shell.write(self.optimizerThread.solver.reportFinalString())
+##             self.shell.write(self.optimizerThread.solver.reportFinalString())
             self.PostProcessEnded()
         self.optimizerThread = None
 
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
         reportText = solver.reportResults()
-        self.write(reportText)
+##         self.write(reportText)
         self.plotpanel.model = self.model
         self.plotpanel.solver = solver
         self.plotpanel.draw()
