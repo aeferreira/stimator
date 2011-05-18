@@ -197,14 +197,14 @@ class MyFrame(wx.Frame):
 
         # add a bunch of panes
                       
-        self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().
-                          Name("test8").Caption("Tree Pane").
-                          Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
-                      
+##         self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().
+##                           Name("shell").Caption("Tree Pane").
+##                           Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
+        
         sz = self.GetClientSize()
         self._mgr.AddPane(self.CreateLog(), wx.aui.AuiPaneInfo().
-                          Name("test10").Caption("Log Pane").
-                          Bottom().Layer(0).Row(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
+                          Name("log_pane").Caption("Log Pane").
+                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
 
 ##         self._mgr.AddPane(SettingsPanel(self, self), wx.aui.AuiPaneInfo().
 ##                           Name("settings").Caption("Settings").
@@ -213,11 +213,16 @@ class MyFrame(wx.Frame):
 ##                           Name("settings").Caption("Dock Manager Settings").
 ##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
         
+
+        self.shell = Shell(parent=self, introText="Stimator OK!")
+        self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
+                          Name("shell").Caption("Shell").
+                          Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
+
         self.plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=(400, 500))
         self._mgr.AddPane(self.plotpanel, wx.aui.AuiPaneInfo().
                           Name("results").Caption("Results").
-                          Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
-        #self.plotpanel.draw()
+                          Bottom().Layer(0).Row(0).Position(2).CloseButton(True).MaximizeButton(True))
 
         # create  center pane
             
@@ -246,26 +251,27 @@ class MyFrame(wx.Frame):
             if not all_panes[ii].IsToolbar():
                 all_panes[ii].Hide()
                 
-        self._mgr.GetPane("test10").Show().Bottom().Layer(0).Row(0).Position(0)
+        self._mgr.GetPane("log_pane").Show()
         self._mgr.GetPane("model_editor").Show()
-        self._mgr.GetPane("results").Show()
         self._mgr.GetPane("tb3").Hide()
+        self._mgr.GetPane("shell").Show()
+        self._mgr.GetPane("results").Show()
 
         perspective_default = self._mgr.SavePerspective()
 
-        for ii in xrange(len(all_panes)):
-            if not all_panes[ii].IsToolbar():
-                all_panes[ii].Hide()
+##         for ii in xrange(len(all_panes)):
+##             if not all_panes[ii].IsToolbar():
+##                 all_panes[ii].Hide()
 
-        self._mgr.GetPane("grid_content").Show()
-        self._mgr.GetPane("test8").Show().Left().Layer(0).Row(0).Position(0)
-        self._mgr.GetPane("test10").Show().Bottom().Layer(0).Row(0).Position(0)
-        self._mgr.GetPane("model_editor").Show()
+##         self._mgr.GetPane("grid_content").Show()
+##         self._mgr.GetPane("shell").Show().Left().Layer(0).Row(0).Position(0)
+##         self._mgr.GetPane("log_pane").Show().Bottom().Layer(0).Row(0).Position(0)
+##         self._mgr.GetPane("model_editor").Show()
 
         self._perspectives.append(perspective_default)
         self._perspectives.append(perspective_all)
 
-        self._mgr.GetPane("test8").Hide()
+##         self._mgr.GetPane("shell").Show()
         self._mgr.GetPane("grid_content").Hide()
         self._mgr.GetPane("results").Hide()
         self._mgr.GetPane("tb3").Hide()
@@ -744,7 +750,7 @@ class MyFrame(wx.Frame):
            return
         self.LogText.Clear()
         self.LogText.Refresh()
-        self._mgr.GetPane("test10").Show()
+        self._mgr.GetPane("log_pane").Show()
         self._mgr.GetPane("results").Hide()
         self._mgr.Update()
 
@@ -778,12 +784,14 @@ class MyFrame(wx.Frame):
         
     def OnMsg(self, evt):
         self.write(evt.msg)
+        self.shell.write("%s\n"%(evt.msg))
 
     def OnEndComputation(self, evt):
         if evt.exitCode == -1:
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
+            self.shell.write(self.optimizerThread.solver.reportFinalString())
             self.PostProcessEnded()
         self.optimizerThread = None
 
@@ -794,6 +802,9 @@ class MyFrame(wx.Frame):
         self.plotpanel.model = self.model
         self.plotpanel.solver = solver
         self.plotpanel.draw()
+        
+        self.shell.write(reportText)
+        self.shell.prompt()
 
         self._mgr.GetPane("results").Show()
         self._mgr.Update()
