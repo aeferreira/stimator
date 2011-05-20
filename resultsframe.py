@@ -141,6 +141,13 @@ class SDLeditor(stc.StyledTextCtrl):
     def IsModified(self):
         return self.GetModify()
 
+    def IsSelecting(self):
+        """Return true if text is selected and can be cut."""
+        if self.GetSelectionStart() != self.GetSelectionEnd():
+            return True
+        else:
+            return False
+
     def Clear(self):
         self.ClearAll()
 

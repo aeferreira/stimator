@@ -179,6 +179,10 @@ class MyFrame(wx.Frame):
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
+        buttonId = wx.NewId()
+        b = wx.Button(tb2, buttonId, "Script", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
+        tb2.AddControl(b)
+        self.Bind(wx.EVT_BUTTON, self.OnScriptButton, b)
         tb2.Realize()
         self.tb2 = tb2
        
@@ -317,6 +321,15 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnExitMenu, id=wx.ID_EXIT)
         self.Bind(wx.EVT_MENU, self.OnAboutMenu, id=ID_About)
 
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=ID_File_New)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=ID_File_Open)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=ID_File_Save_As)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_UNDO)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_REDO)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_CUT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_COPY)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=wx.ID_PASTE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=ID_TransparentHint)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=ID_VenetianBlindsHint)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI, id=ID_RectangleHint)
@@ -443,12 +456,20 @@ class MyFrame(wx.Frame):
         canUndo = self.ModelEditor.CanUndo()
         canRedo = self.ModelEditor.CanRedo()
         canSave = self.ModelEditor.IsModified()
+        canCutCopy = self.ModelEditor.IsSelecting()
+        canPaste = self.ModelEditor.CanPaste()
         self.tb2.EnableTool(wx.ID_UNDO, canUndo)
         self.tb2.EnableTool(wx.ID_REDO, canRedo)
         self.tb2.EnableTool(wx.ID_SAVE, canSave)
+        self.tb2.EnableTool(wx.ID_CUT, canCutCopy)
+        self.tb2.EnableTool(wx.ID_COPY, canCutCopy)
+        self.tb2.EnableTool(wx.ID_PASTE, canPaste)
         self.mb.Enable(wx.ID_UNDO, canUndo)
         self.mb.Enable(wx.ID_REDO, canRedo)
         self.mb.Enable(wx.ID_SAVE, canSave)
+        self.mb.Enable(wx.ID_CUT, canCutCopy)
+        self.mb.Enable(wx.ID_COPY, canCutCopy)
+        self.mb.Enable(wx.ID_PASTE, canPaste)
 
     def OnNewMenu(self, event):
         if self.ModelEditor.GetModify():
@@ -478,6 +499,12 @@ class MyFrame(wx.Frame):
         if self.OpenFile(fileName) is False:
             self.OpenFileError(fileName)
         self.ModelEditor.SetFocus()
+        
+    def OnScriptButton(self, event):
+        oldout = sys.stdout
+        sys.stdout = self.shell
+        execfile('bof.py')
+        sys.stdout = oldout
 
     def OnSaveMenu(self, event):
         if self.fileName is None:
@@ -635,6 +662,8 @@ class MyFrame(wx.Frame):
 
         elif eid == ID_NoVenetianFade:
             event.Check((flags & wx.aui.AUI_MGR_NO_VENETIAN_BLINDS_FADE) != 0);
+        else:
+            self.updateButtons()
 
     def OnCreatePerspective(self, event):
         dlg = wx.TextEntryDialog(self, "Enter a name for the new perspective:", "AUI Test")
@@ -734,9 +763,11 @@ class MyFrame(wx.Frame):
             locmsg = "Error in line %d of model definition" % (expt.physloc.nendline+1)
         else:
             locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline+1,expt.physloc.nendline+1)
+        self.shell.write(os.linesep)
         self.write(locmsg)
         self.write(str(expt))
         self.ModelEditor.SetSelection(expt.physloc.start, expt.physloc.end)
+        self.shell.prompt()
 
     def OnAbortButton(self, event):
         if self.optimizerThread is None:
@@ -799,12 +830,11 @@ class MyFrame(wx.Frame):
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
         reportText = solver.reportResults()
-##         self.write(reportText)
+        self.write(reportText)
         self.plotpanel.model = self.model
         self.plotpanel.solver = solver
         self.plotpanel.draw()
         
-        self.shell.write(reportText)
         self.shell.prompt()
 
         self._mgr.GetPane("results").Show()
