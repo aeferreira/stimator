@@ -355,8 +355,8 @@ class MyFrame(wx.Frame):
 ##------------- Write funcs
 
     def WriteText(self, text):
-        if text[-1:] == '\n':
-            text = text[:-1]
+##         if text[-1:] == '\n':
+##             text = text[:-1]
         wx.LogMessage(text)
 
     def write(self, txt):
@@ -500,12 +500,6 @@ class MyFrame(wx.Frame):
             self.OpenFileError(fileName)
         self.ModelEditor.SetFocus()
         
-    def OnScriptButton(self, event):
-        oldout = sys.stdout
-        sys.stdout = self.shell
-        execfile('bof.py')
-        sys.stdout = oldout
-
     def OnSaveMenu(self, event):
         if self.fileName is None:
             return self.OnSaveAsMenu(event)
@@ -810,20 +804,21 @@ class MyFrame(wx.Frame):
 
         #os.chdir(self.GetFileDir())
         
-        solver = stimator.deode.DeODESolver(self.model,self.optSettings, self.tc, None, self.msgTick, self.finalTick)
+        self.oldout = sys.stdout
+        sys.stdout = MyWriter(self)
+        solver = stimator.deode.DeODESolver(self.model,self.optSettings, self.tc, None, None,  self.finalTick)#, self.msgTick, self.finalTick)
         self.optimizerThread=CalcThread()
         self.optimizerThread.Start(solver)
         
     def OnMsg(self, evt):
         self.write(evt.msg)
-##         self.shell.write("%s\n"%(evt.msg))
 
     def OnEndComputation(self, evt):
+        sys.stdout = self.oldout
         if evt.exitCode == -1:
             self.write("\nOptimization aborted by user!")
         else:
             self.write(self.optimizerThread.solver.reportFinalString())
-##             self.shell.write(self.optimizerThread.solver.reportFinalString())
             self.PostProcessEnded()
         self.optimizerThread = None
 
@@ -841,14 +836,45 @@ class MyFrame(wx.Frame):
         self._mgr.Update()
 
     def msgTick(self, msg):
-        evt = MsgEvent(msg = msg)
+        evt = MsgEvent(msg = msg+'\n')
         wx.PostEvent(self, evt)
 
     def finalTick(self, exitCode):
         evt = EndComputationEvent(exitCode = exitCode)
         wx.PostEvent(self, evt)
 
-##------------- Log class
+    def OnScriptButton(self, event):
+        self.write('\n')
+        oldout = sys.stdout
+        sys.stdout = MyImmediateWriter(self)
+        fcode = open('bof.py')
+        codelines = fcode.read()
+        fcode.close()
+        cbytes = compile(codelines,'<string>', 'exec')
+        print cbytes
+        exec cbytes in locals()
+##         execfile('bof.py')
+        sys.stdout = oldout
+        self.shell.prompt()
+
+
+##------------- Writer classes
+
+class MyWriter(object):
+    def __init__(self, output_window):
+        self.owin = output_window
+
+    def write(self, txt):
+        evt = MsgEvent(msg = txt)
+        wx.PostEvent(self.owin, evt)
+
+class MyImmediateWriter(object):
+    def __init__(self, output_window):
+        self.owin = output_window
+
+    def write(self, txt):
+        self.owin.write(txt)
+        self.owin.Update()
 
 class MyLog(wx.PyLog):
     def __init__(self, textCtrl, logTime=0):
@@ -862,7 +888,7 @@ class MyLog(wx.PyLog):
         #    message = time.strftime("%X", time.localtime(timeStamp)) + \
         #              ": " + message
         if self.tc:
-            self.tc.AppendText(message + '\n')
+            self.tc.AppendText(message)
             self.tc.GotoLine(self.tc.GetLineCount())
 
 ##------------- Optimization thread class

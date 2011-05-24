@@ -35,7 +35,7 @@ class DeODESolver(de.DESolver):
         self.model = model
         self.tc    = tcs
         self.endTicker        = anEndComputationTicker
-        self.aMsgTicker       = aMsgTicker
+        self.msgTicker        = aMsgTicker
         self.dump_pars        = dump_pars
         
         #reorder variables according to model
@@ -126,17 +126,17 @@ class DeODESolver(de.DESolver):
 
     def reportInitial (self):
         msg = "\nSolving %s..."%self.model.getData('title')
-        if not self.aMsgTicker:
+        if not self.msgTicker:
             print msg
         else:
-            self.aMsgTicker(msg)
+            self.msgTicker(msg)
 
     def reportGeneration (self):
         msg = "%-4d: %f" % (self.generation, float(self.bestEnergy))
-        if not self.aMsgTicker:
+        if not self.msgTicker:
             print msg
         else:
-            self.aMsgTicker(msg)
+            self.msgTicker(msg)
         if self.dump_pars:
             for par in range(self.parameterCount):
                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
