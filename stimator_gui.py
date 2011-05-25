@@ -56,6 +56,7 @@ ID_FirstPerspective = ID_CreatePerspective+1000
 
 (EndComputationEvent, EVT_END_COMPUTATION) = wx.lib.newevent.NewEvent()
 (MsgEvent, EVT_MSG) = wx.lib.newevent.NewEvent()
+(EndScriptEvent, EVT_END_SCRIPT) = wx.lib.newevent.NewEvent()
 
 debug = 1
 
@@ -348,6 +349,7 @@ class MyFrame(wx.Frame):
 
         self.Bind(EVT_MSG, self.OnMsg)
         self.Bind(EVT_END_COMPUTATION, self.OnEndComputation)
+        self.Bind(EVT_END_SCRIPT, self.OnEndScript)
         
         wx.Log_SetActiveTarget(MyLog(self.shell))
 
@@ -843,20 +845,50 @@ class MyFrame(wx.Frame):
         evt = EndComputationEvent(exitCode = exitCode)
         wx.PostEvent(self, evt)
 
+    def endScript(self):
+        evt = EndScriptEvent()
+        wx.PostEvent(self, evt)
+    def OnEndScript(self, event):
+##         sys.stdout = oldout
+        self.shell.prompt()
+        self.calcThread = None
+
     def OnScriptButton(self, event):
         self.write('\n')
         oldout = sys.stdout
-        sys.stdout = MyImmediateWriter(self)
-        fcode = open('bof.py')
+        fcode = open('bof2.py')
         codelines = fcode.read()
         fcode.close()
         cbytes = compile(codelines,'<string>', 'exec')
-        print cbytes
-        exec cbytes in locals()
-##         execfile('bof.py')
-        sys.stdout = oldout
-        self.shell.prompt()
-
+        lcls = {}
+        g = gui_facade(self)
+        lcls['gui'] = g
+        sys.stdout = MyWriter(self)
+        self.calcThread=CalcScriptThread()
+        self.calcThread.Start(cbytes, lcls, self)
+##         sys.stdout = MyImmediateWriter(self)
+##         try:
+##             exec cbytes in lcls
+##         except:
+##             print 'Interrupted'
+##         #execfile('bof2.py')
+##         sys.stdout = oldout
+##         self.shell.prompt()
+    
+##------------- a facade, available to scripts to control the GUI
+class gui_facade(object):
+    def __init__(self, sframe):
+        self.sframe = sframe
+        self.reset()
+    def reset(self):
+        self.nticks = 0
+        self.maxticks = 50
+    def checkpoint(self):
+        self.nticks +=1
+        if self.nticks == self.maxticks:
+            raise KeyboardInterrupt
+        else:
+            print 'OK'
 
 ##------------- Writer classes
 
@@ -892,6 +924,35 @@ class MyLog(wx.PyLog):
             self.tc.GotoLine(self.tc.GetLineCount())
 
 ##------------- Optimization thread class
+
+class CalcScriptThread:
+
+    def Start(self, code, lcls, caller):
+        self.code = code
+        self.lcls = lcls
+        self.caller = caller
+        self.keepGoing = self.running = True
+        thread.start_new_thread(self.Run, ())
+
+    def Stop(self):
+        self.keepGoing = False
+
+    def IsRunning(self):
+        return self.running
+
+    def Run(self):
+##         exec self.code in locals()
+##         self.keepGoing = False
+        while self.keepGoing:
+            try:
+                exec self.code in self.lcls
+            except:
+                print 'Interrupted'
+            self.Stop()
+
+        #self.solver.finalize()
+        self.caller.endScript()
+        self.running = False
 
 class CalcThread:
 
