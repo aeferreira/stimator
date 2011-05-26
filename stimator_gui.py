@@ -78,6 +78,7 @@ class MyFrame(wx.Frame):
         self._perspectives = []
         self.n = 0
         self.x = 0
+        self.nplots = 0
         self.fileName = None
         self.optimizerThread = None
         
@@ -225,11 +226,6 @@ class MyFrame(wx.Frame):
                           Name("shell").Caption("Shell").
                           Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
 
-        self.plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=(400, 500))
-        self._mgr.AddPane(self.plotpanel, wx.aui.AuiPaneInfo().
-                          Name("results").Caption("Results").
-                          Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
-
         # create  center pane
             
         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").
@@ -257,29 +253,17 @@ class MyFrame(wx.Frame):
             if not all_panes[ii].IsToolbar():
                 all_panes[ii].Hide()
                 
-##         self._mgr.GetPane("log_pane").Show()
         self._mgr.GetPane("model_editor").Show()
         self._mgr.GetPane("tb3").Hide()
         self._mgr.GetPane("shell").Show()
-        self._mgr.GetPane("results").Show()
 
         perspective_default = self._mgr.SavePerspective()
 
-##         for ii in xrange(len(all_panes)):
-##             if not all_panes[ii].IsToolbar():
-##                 all_panes[ii].Hide()
-
-##         self._mgr.GetPane("grid_content").Show()
-##         self._mgr.GetPane("shell").Show().Left().Layer(0).Row(0).Position(0)
-##         self._mgr.GetPane("log_pane").Show().Bottom().Layer(0).Row(0).Position(0)
-##         self._mgr.GetPane("model_editor").Show()
 
         self._perspectives.append(perspective_default)
         self._perspectives.append(perspective_all)
 
-##         self._mgr.GetPane("shell").Show()
         self._mgr.GetPane("grid_content").Hide()
-        self._mgr.GetPane("results").Hide()
         self._mgr.GetPane("tb3").Hide()
 
         # "commit" all changes made to FrameManager   
@@ -725,6 +709,19 @@ class MyFrame(wx.Frame):
         ed.SetKeyWords(0, "TIMECOURSES OPTIMIZATION PARAMETERS")
         return ed
 
+    def CreateResPanel(self, model, solver):
+        self.nplots += 1
+        name = "results%d"%self.nplots
+        plotpanel = resultsframe.YetAnotherPlot(self, color=[255.0]*3, size=wx.Size(800, 500))
+        plotpanel.model = model
+        plotpanel.solver = solver
+        self._mgr.AddPane(plotpanel, wx.aui.AuiPaneInfo().
+                          Name(name).Caption("Results").
+                          DestroyOnClose().
+                          Dockable(True).Float().Show().CloseButton(True).MaximizeButton(True))
+##                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
+        plotpanel.draw()
+
 
     def CreateTreeCtrl(self):
         tree = wx.TreeCtrl(self, -1, wx.Point(0, 0), wx.Size(160, 250),
@@ -779,7 +776,7 @@ class MyFrame(wx.Frame):
 ##         self.LogText.Clear()
 ##         self.LogText.Refresh()
 ##         self._mgr.GetPane("log_pane").Show()
-        self._mgr.GetPane("results").Hide()
+        #self._mgr.GetPane("results").Hide()
         self._mgr.Update()
 
         textlines = [self.ModelEditor.GetLine(i) for i in range(self.ModelEditor.GetLineCount())]
@@ -828,9 +825,7 @@ class MyFrame(wx.Frame):
         solver = self.optimizerThread.solver        
         reportText = solver.reportResults()
         self.write(reportText)
-        self.plotpanel.model = self.model
-        self.plotpanel.solver = solver
-        self.plotpanel.draw()
+        self.CreateResPanel(self.model, solver)
         
         self.shell.prompt()
 
@@ -862,7 +857,7 @@ class MyFrame(wx.Frame):
         cbytes = compile(codelines,'<string>', 'exec')
         lcls = {}
         g = gui_facade(self)
-        lcls['gui'] = g
+        lcls['ui'] = g
         sys.stdout = MyWriter(self)
         self.calcThread=CalcScriptThread()
         self.calcThread.Start(cbytes, lcls, self)
@@ -887,8 +882,12 @@ class gui_facade(object):
         self.nticks +=1
         if self.nticks == self.maxticks:
             raise KeyboardInterrupt
-        else:
-            print 'OK'
+##         else:
+##             print 'OK'
+    
+    def ok_cancel(self,title,text):
+        res = self.sframe.OkCancelDialog(title,text)
+        return res
 
 ##------------- Writer classes
 

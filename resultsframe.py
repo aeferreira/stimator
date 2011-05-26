@@ -328,8 +328,12 @@ class YetAnotherPlot(wx.Panel):
     def __init__(self, parent, id = -1, color=None, dpi = None, **kwargs):
         self.solver = None
         self.model = None
-
-        wx.Panel.__init__(self, parent, id=id, **kwargs)
+        # initialize Panel
+        if 'id' not in kwargs.keys():
+            kwargs['id'] = wx.ID_ANY
+        if 'style' not in kwargs.keys():
+            kwargs['style'] = wx.NO_FULL_REPAINT_ON_RESIZE
+        wx.Panel.__init__( self, parent, **kwargs )
 
         self.figure = Figure( None, dpi )
         self.canvas = FigureCanvasWxAgg( self, -1, self.figure )
@@ -358,6 +362,17 @@ class YetAnotherPlot(wx.Panel):
         self.figure.set_facecolor( clr )
         self.figure.set_edgecolor( clr )
         self.canvas.SetBackgroundColour( wx.Colour( *rgbtuple ) )
+
+    def OnSize(self, event):
+        event.Skip()
+        wx.CallAfter(self.ResizeCanvas)
+
+    def ResizeCanvas(self):
+        size = self.parent.GetClientSize()
+        self.figure.set_figwidth(size[0]/(1.0*self.fig.get_dpi()))
+        self.figure.set_figheight(size[1]/(1.0*self.fig.get_dpi()))
+        self.canvas.resize(size[0],size[1])
+        self.canvas.draw() 
 
 class DemoPlotPanel(PlotPanel):
     """An example plotting panel. The only method that needs 
