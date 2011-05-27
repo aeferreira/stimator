@@ -13,6 +13,7 @@ import sys
 import os
 import os.path
 import thread
+import traceback
 import wx.lib.newevent
 import resultsframe
 import stimator.modelparser
@@ -78,6 +79,8 @@ class MyFrame(wx.Frame):
         self._perspectives = []
         self.n = 0
         self.x = 0
+        self.ui = gui_facade(self)
+
         self.nplots = 0
         self.fileName = None
         self.optimizerThread = None
@@ -341,8 +344,6 @@ class MyFrame(wx.Frame):
 ##------------- Write funcs
 
     def WriteText(self, text):
-##         if text[-1:] == '\n':
-##             text = text[:-1]
         wx.LogMessage(text)
 
     def write(self, txt):
@@ -722,6 +723,15 @@ class MyFrame(wx.Frame):
 ##                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
         plotpanel.draw()
 
+    def CreateResPanelFromFigure(self, figure):
+        self.nplots += 1
+        name = "results%d"%self.nplots
+        plotpanel = resultsframe.PlotPanelFromFigure(self, figure, color=[255.0]*3, size=wx.Size(800, 500))
+        self._mgr.AddPane(plotpanel, wx.aui.AuiPaneInfo().
+                          Name(name).Caption("Results").
+                          DestroyOnClose().
+                          Dockable(True).Float().Show().CloseButton(True).MaximizeButton(True))
+##                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
 
     def CreateTreeCtrl(self):
         tree = wx.TreeCtrl(self, -1, wx.Point(0, 0), wx.Size(160, 250),
@@ -829,7 +839,7 @@ class MyFrame(wx.Frame):
         
         self.shell.prompt()
 
-        self._mgr.GetPane("results").Show()
+##         self._mgr.GetPane("results").Show()
         self._mgr.Update()
 
     def msgTick(self, msg):
@@ -845,19 +855,27 @@ class MyFrame(wx.Frame):
         wx.PostEvent(self, evt)
     def OnEndScript(self, event):
 ##         sys.stdout = oldout
+        for f in self.ui.figures:
+            self.CreateResPanelFromFigure(f)
+        self._mgr.Update()
         self.shell.prompt()
         self.calcThread = None
 
     def OnScriptButton(self, event):
+        fileName = os.path.join(os.path.dirname(__file__),'stimator','demos', 'ui_analysis_demo.py')
+        if not os.path.exists(fileName) or not os.path.isfile(fileName):
+            self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
+            return
+
         self.write('\n')
+        self.ui.reset()
         oldout = sys.stdout
-        fcode = open('bof2.py')
+        fcode = open(fileName)
         codelines = fcode.read()
         fcode.close()
         cbytes = compile(codelines,'<string>', 'exec')
         lcls = {}
-        g = gui_facade(self)
-        lcls['ui'] = g
+        lcls['ui'] = self.ui
         sys.stdout = MyWriter(self)
         self.calcThread=CalcScriptThread()
         self.calcThread.Start(cbytes, lcls, self)
@@ -878,16 +896,24 @@ class gui_facade(object):
     def reset(self):
         self.nticks = 0
         self.maxticks = 50
+        self.figures = []
     def checkpoint(self):
         self.nticks +=1
         if self.nticks == self.maxticks:
             raise KeyboardInterrupt
-##         else:
-##             print 'OK'
     
     def ok_cancel(self,title,text):
         res = self.sframe.OkCancelDialog(title,text)
         return res
+    
+    def demo_plot(self):
+        self.figures.append(resultsframe.newDemoFigure())
+    
+    def new_figure(self):
+        newfig = resultsframe.newFigure()
+        self.figures.append(newfig)
+        return newfig
+        
 
 ##------------- Writer classes
 
@@ -922,7 +948,7 @@ class MyLog(wx.PyLog):
             self.tc.AppendText(message)
             self.tc.GotoLine(self.tc.GetLineCount())
 
-##------------- Optimization thread class
+##------------- Computation thread classes
 
 class CalcScriptThread:
 
@@ -942,11 +968,19 @@ class CalcScriptThread:
     def Run(self):
 ##         exec self.code in locals()
 ##         self.keepGoing = False
+
+##         while self.keepGoing:
+##             exec self.code in self.lcls
+##             self.Stop()
         while self.keepGoing:
             try:
                 exec self.code in self.lcls
             except:
-                print 'Interrupted'
+                print "Exception in user code:"
+                print '-'*60
+                traceback.print_exc(file=sys.stdout)
+                print '-'*60
+
             self.Stop()
 
         #self.solver.finalize()

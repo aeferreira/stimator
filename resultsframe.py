@@ -374,6 +374,73 @@ class YetAnotherPlot(wx.Panel):
         self.canvas.resize(size[0],size[1])
         self.canvas.draw() 
 
+def newDemoFigure():
+    figure = Figure()
+    subplot = figure.add_subplot(111)
+    theta = arange(0, 45*2*pi, 0.02)
+    rad = (0.8*theta/(2*pi)+1)
+    r = rad*(8 + sin(theta*7+rad/1.8))
+    x = r*cos(theta)
+    y = r*sin(theta)
+    #Now draw it
+    subplot.plot(x,y, '-b')
+    #Set some plot attributes
+    #self.subplot.set_title("A polar flower (%s points)" % len(x), fontsize = 12)
+    subplot.set_title("Flower plot")
+    subplot.set_xlabel("Flower is from  http://www.physics.emory.edu/~weeks/ideas/rose.html")
+    subplot.set_xlim([-400, 400])
+    subplot.set_ylim([-400, 400])
+    return figure
+
+def newFigure():
+    figure = Figure()
+    return figure
+    
+class PlotPanelFromFigure(wx.Panel):
+    def __init__(self, parent, figure, id = -1, color=None, dpi = None, **kwargs):
+        self.figure = figure
+        # initialize Panel
+        if 'id' not in kwargs.keys():
+            kwargs['id'] = wx.ID_ANY
+        if 'style' not in kwargs.keys():
+            kwargs['style'] = wx.NO_FULL_REPAINT_ON_RESIZE
+        wx.Panel.__init__( self, parent, **kwargs )
+
+##         self.figure = newDemoFigure()
+##         self.figure = Figure( None, dpi )
+        self.canvas = FigureCanvasWxAgg( self, -1, self.figure )
+
+        if color:
+            self.SetColor( color )
+
+        self.toolbar = Toolbar(self.canvas)
+        self.toolbar.Realize()
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.toolbar, 0 , wx.LEFT | wx.EXPAND)
+        sizer.Add(self.canvas,1,wx.EXPAND)
+        self.SetSizer(sizer)
+
+    def SetColor( self, rgbtuple=None ):
+        """Set figure and canvas colours to be the same."""
+        if rgbtuple is None:
+            rgbtuple = wx.SystemSettings.GetColour( wx.SYS_COLOUR_BTNFACE ).Get()
+        clr = [c/255. for c in rgbtuple]
+        self.figure.set_facecolor( clr )
+        self.figure.set_edgecolor( clr )
+        self.canvas.SetBackgroundColour( wx.Colour( *rgbtuple ) )
+
+    def OnSize(self, event):
+        event.Skip()
+        wx.CallAfter(self.ResizeCanvas)
+
+    def ResizeCanvas(self):
+        size = self.parent.GetClientSize()
+        self.figure.set_figwidth(size[0]/(1.0*self.fig.get_dpi()))
+        self.figure.set_figheight(size[1]/(1.0*self.fig.get_dpi()))
+        self.canvas.resize(size[0],size[1])
+        self.canvas.draw() 
+
 class DemoPlotPanel(PlotPanel):
     """An example plotting panel. The only method that needs 
     overriding is the draw method"""

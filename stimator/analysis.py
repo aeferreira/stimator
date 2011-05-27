@@ -65,7 +65,8 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
         s = Solutions()
         s.append(solutions)
         solutions = s
-    p.figure()
+    if figure is None:
+        figure = p.figure()
     colours = ['r-', 'b-', 'g-', 'k-', 'y-']
     ntc = len(solutions)
     ncols = int(math.ceil(math.sqrt(ntc)))
@@ -73,7 +74,7 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
     first = True
     
     if superimpose:
-        p.subplot(1,1,1)
+        curraxis=figure.add_subplot(1,1,1)
         icolour = 0                
         for isolution,solution in enumerate(solutions):
             rangelines = range(len(solution))
@@ -85,37 +86,41 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
                     label = "%s"%(solution.title)
                 else:
                     label = "%s, %s"%(names[i], solution.title)
-                p.plot(solution.t, solution[i], colours[icolour], label = label)
+                curraxis.plot(solution.t, solution[i], colours[icolour], label = label)
                 icolour +=1
                 if icolour == len(colours):
                     icolour = 0
-        p.grid()
-        if legend: p.legend(loc='best')
-        p.xlabel('')
-        p.ylabel('')
-        p.title(solutions.title)
+        curraxis.grid()
+        h, l = curraxis.get_legend_handles_labels()
+        curraxis.legend(h, l, loc='best')
+        curraxis.set_xlabel('')
+        curraxis.set_ylabel('')
+        if hasattr(solutions, 'title'):
+            curraxis.set_title(solutions.title)
     else:
         for isolution,solution in enumerate(solutions):
-            p.subplot(nrows,ncols,isolution+1)
+            curraxis=figure.add_subplot(nrows,ncols,isolution+1)
             icolour = 0
             rangelines = range(len(solution))
             names = ['n/a' for i in rangelines]
             for i, name in enumerate(solution.names):
                 names[i] = name
             for i in rangelines:
-                p.plot(solution.t, solution[i], colours[icolour], label=names[i])
+                curraxis.plot(solution.t, solution[i], colours[icolour], label=names[i])
                 icolour += 1
                 if icolour == len(colours):
                     icolour = 0 
-            p.grid()
-            if legend: p.legend(loc='best')
-            p.xlabel('')
-            p.ylabel('')
+            curraxis.grid()
+            h, l = curraxis.get_legend_handles_labels()
+            curraxis.legend(h, l, loc='best')
+
+            curraxis.set_xlabel('')
+            curraxis.set_ylabel('')
             if titles is not None:
-                p.title(titles[isolution])
+                curraxis.set_title(titles[isolution])
             else:
-                p.title(solution.title)
-            yscale = p.ylim()
+                curraxis.set_title(solution.title)
+            yscale = curraxis.get_ylim()
             if first:
                 yscale_all = list(yscale)
                 first = False
@@ -125,8 +130,8 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
 
     if not superimpose and ynormalize:
         for isolution in range(ntc):
-            p.subplot(nrows,ncols,isolution+1)
-            p.ylim(yscale_all)
+            curraxis=figure.add_subplot(nrows,ncols,isolution+1)
+            curraxis.set_ylim(yscale_all)
     if show:
         p.show()
 
@@ -218,7 +223,7 @@ def test():
 
     solution4.apply_transf(transformation)
 
-    plot ([solution1, solution2, solution3, solution4], show = True)
+    plot ([solution1, solution2, solution3, solution4], superimpose=False, show = True)
 
 if __name__ == "__main__":
     test()
