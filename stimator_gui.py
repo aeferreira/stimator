@@ -7,13 +7,14 @@ S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 stimatorVersion = "0.95"
 stimatorDate = "13 May 2011"
 
-import wx
-import wx.aui
 import sys
 import os
 import os.path
 import thread
 import traceback
+import keyword
+import wx
+import wx.aui
 import wx.lib.newevent
 import resultsframe
 import stimator.modelparser
@@ -233,6 +234,8 @@ class MyFrame(wx.Frame):
             
         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").
                           CenterPane().Caption("Editor"))
+        self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
+                          Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/2,200)).CloseButton(True).MaximizeButton(True))
         # add the toolbars to the manager
                         
         self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
@@ -259,6 +262,7 @@ class MyFrame(wx.Frame):
         self._mgr.GetPane("model_editor").Show()
         self._mgr.GetPane("tb3").Hide()
         self._mgr.GetPane("shell").Show()
+        self._mgr.GetPane("script_editor").Show()
 
         perspective_default = self._mgr.SavePerspective()
 
@@ -688,6 +692,28 @@ class MyFrame(wx.Frame):
         ed.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction title")
         return ed
 
+    def CreateScriptEditor(self):
+        global ID_SE; ID_SE = wx.NewId()
+        ed = resultsframe.SDLeditor(self, ID_SE , self)
+        self.ScriptEditor = ed
+        
+        ed.SetText(u"#Create script here...")
+        ed.EmptyUndoBuffer()
+        # Set up the numbers in the margin for margin #1
+        ed.SetMarginType(1, wx.stc.STC_MARGIN_NUMBER)
+        # Reasonable value for, say, 4-5 digits using a mono font (40 pix)
+        ed.SetMarginWidth(1, 40)
+        ed.SetSelBackground(True, 'PLUM')
+        ed.SetWrapMode(True)
+        ed.SetKeyWords(0, " ".join(keyword.kwlist))
+
+        ed.SetProperty("fold", "1")
+        ed.SetProperty("tab.timmy.whinge.level", "1")
+        ed.SetMargins(0,0)
+
+        ed.SetViewWhiteSpace(False)
+        return ed
+
     def CreateLog(self):
         global ID_LT; ID_LT = wx.NewId()
         ed = resultsframe.SDLeditor(self, ID_LT , self, size = wx.Size(300,800))
@@ -873,6 +899,7 @@ class MyFrame(wx.Frame):
         fcode = open(fileName)
         codelines = fcode.read()
         fcode.close()
+        self.ScriptEditor.SetText(codelines)
         cbytes = compile(codelines,'<string>', 'exec')
         lcls = {}
         lcls['ui'] = self.ui
