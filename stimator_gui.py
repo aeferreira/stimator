@@ -36,6 +36,12 @@ ID_File_New = wx.NewId()
 ID_File_Open = wx.NewId()
 ID_File_Save_As = wx.NewId()
 
+ID_File_OpenScript = wx.NewId()
+ID_File_SaveScript = wx.NewId()
+ID_File_SaveScript_As = wx.NewId()
+
+ID_Actions_RunScript = wx.NewId()
+
 ID_CreatePerspective = wx.NewId()
 ID_CopyPerspective = wx.NewId()
 
@@ -95,10 +101,17 @@ class MyFrame(wx.Frame):
         # File menu
         file_menu = wx.Menu()
 
-        file_menu.Append(ID_File_New, '&New\tCtrl-N', 'New File')
-        file_menu.Append(ID_File_Open, '&Open\tCtrl-O', 'Open File')
-        file_menu.Append(wx.ID_SAVE, '&Save\tCtrl-S', 'Save File')
-        file_menu.Append(ID_File_Save_As, 'Save &As\tCtrl-A', 'Save File As')
+        file_menu.Append(ID_File_New, '&New Model\tCtrl-N', 'New Model')
+        file_menu.Append(ID_File_Open, '&Open Model\tCtrl-O', 'Open Model')
+        file_menu.Append(wx.ID_SAVE, '&Save Model\tCtrl-S', 'Save Model')
+        file_menu.Append(ID_File_Save_As, 'Save Model &As\tCtrl-A', 'Save Model As')
+        file_menu.AppendSeparator()
+        file_menu.Append(ID_File_OpenScript, 'Open Script', 'Open Script')
+        file_menu.Append(ID_File_SaveScript, 'Save Script', 'Save Script')
+        file_menu.Append(ID_File_SaveScript_As, 'Save Script As', 'Save Script As')
+        file_menu.AppendSeparator()
+        file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
+        file_menu.AppendSeparator()
         file_menu.Append(wx.ID_EXIT, 'E&xit\tAlt-X', 'Exit')
 
         # Edit menu
@@ -188,7 +201,7 @@ class MyFrame(wx.Frame):
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Script", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
-        self.Bind(wx.EVT_BUTTON, self.OnScriptButton, b)
+        self.Bind(wx.EVT_BUTTON, self.OnRunScript, b)
         tb2.Realize()
         self.tb2 = tb2
        
@@ -232,8 +245,9 @@ class MyFrame(wx.Frame):
 
         # create  center pane
             
-        self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").
-                          CenterPane().Caption("Editor"))
+        self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
+                          Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
+##                           CenterPane().Caption("Model"))
         self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
                           Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/2,200)).CloseButton(True).MaximizeButton(True))
         # add the toolbars to the manager
@@ -272,6 +286,9 @@ class MyFrame(wx.Frame):
 
         self._mgr.GetPane("grid_content").Hide()
         self._mgr.GetPane("tb3").Hide()
+        flag = wx.aui.AUI_MGR_ALLOW_ACTIVE_PANE
+        
+        self._mgr.SetFlags(self._mgr.GetFlags() ^ flag)
 
         # "commit" all changes made to FrameManager   
         self._mgr.Update()
@@ -287,6 +304,10 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpenMenu, id=ID_File_Open)
         self.Bind(wx.EVT_MENU, self.OnSaveMenu, id=wx.ID_SAVE)
         self.Bind(wx.EVT_MENU, self.OnSaveAsMenu, id=ID_File_Save_As)
+
+        self.Bind(wx.EVT_MENU, self.OnOpenScript, id=ID_File_OpenScript)
+
+        self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
 
         self.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         self.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
@@ -441,6 +462,13 @@ class MyFrame(wx.Frame):
              self.SetTitle("S-timator [%s]" % self.GetFileName())
         return sucess
 
+    def OpenScriptFile(self, fileName):
+        sucess = self.ScriptEditor.LoadFile(fileName)
+        if sucess:
+             self.scriptfileName = fileName
+##              self.SetTitle("S-timator [%s]" % self.GetFileName())
+        return sucess
+
 ##---------------- Event handlers
 
     def updateButtons(self):
@@ -478,6 +506,16 @@ class MyFrame(wx.Frame):
             if self.OpenFile(fileName) is False:
                 self.OpenFileError(fileName)
         self.ModelEditor.SetFocus()
+
+    def OnOpenScript(self, event):
+        if self.ScriptEditor.GetModify():
+            if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
+                return
+        fileName = self.SelectFileDialog(True, self.GetFileDir())
+        if fileName is not None:
+            if self.OpenScriptFile(fileName) is False:
+                self.OpenFileError(fileName)
+        self.ScriptEditor.SetFocus()
 
     def OnExampleButton(self, event):
         if self.ModelEditor.GetModify():
@@ -887,19 +925,19 @@ class MyFrame(wx.Frame):
         self.shell.prompt()
         self.calcThread = None
 
-    def OnScriptButton(self, event):
-        fileName = os.path.join(os.path.dirname(__file__),'stimator','demos', 'ui_analysis_demo.py')
-        if not os.path.exists(fileName) or not os.path.isfile(fileName):
-            self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
-            return
+    def OnRunScript(self, event):
+##         fileName = os.path.join(os.path.dirname(__file__),'stimator','demos', 'ui_analysis_demo.py')
+##         if not os.path.exists(fileName) or not os.path.isfile(fileName):
+##             self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
+##             return
 
         self.write('\n')
         self.ui.reset()
         oldout = sys.stdout
-        fcode = open(fileName)
-        codelines = fcode.read()
-        fcode.close()
-        self.ScriptEditor.SetText(codelines)
+        codelines = "\n".join([self.ScriptEditor.
+                GetLine(i).
+                rstrip() 
+                for i in range(self.ScriptEditor.GetLineCount())])
         cbytes = compile(codelines,'<string>', 'exec')
         lcls = {}
         lcls['ui'] = self.ui
