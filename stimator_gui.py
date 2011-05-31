@@ -26,7 +26,7 @@ from wx.py.shell import Shell
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
 
 demoText = """\
-Write your model here...
+#Write your model here...
 
 """
 ##------------- NewEvent objects and a EVT binder functions
@@ -35,10 +35,6 @@ Write your model here...
 ID_File_New = wx.NewId()
 ID_File_Open = wx.NewId()
 ID_File_Save_As = wx.NewId()
-
-ID_File_OpenScript = wx.NewId()
-ID_File_SaveScript = wx.NewId()
-ID_File_SaveScript_As = wx.NewId()
 
 ID_Actions_RunScript = wx.NewId()
 
@@ -72,7 +68,7 @@ debug = 1
 
 class MyFrame(wx.Frame):
 
-    def __init__(self, parent, id=-1, title="S-timator [untitled]", 
+    def __init__(self, parent, id=-1, title="S-timator", 
                 pos=wx.DefaultPosition,
                 size=(1024, 768), style= wx.DEFAULT_FRAME_STYLE |
                                         wx.SUNKEN_BORDER |
@@ -90,6 +86,7 @@ class MyFrame(wx.Frame):
 
         self.nplots = 0
         self.fileName = None
+        self.scriptfileName = None
         self.optimizerThread = None
         
         self.SetIcon(images.getMondrianIcon())
@@ -101,14 +98,10 @@ class MyFrame(wx.Frame):
         # File menu
         file_menu = wx.Menu()
 
-        file_menu.Append(ID_File_New, '&New Model\tCtrl-N', 'New Model')
-        file_menu.Append(ID_File_Open, '&Open Model\tCtrl-O', 'Open Model')
-        file_menu.Append(wx.ID_SAVE, '&Save Model\tCtrl-S', 'Save Model')
-        file_menu.Append(ID_File_Save_As, 'Save Model &As\tCtrl-A', 'Save Model As')
-        file_menu.AppendSeparator()
-        file_menu.Append(ID_File_OpenScript, 'Open Script', 'Open Script')
-        file_menu.Append(ID_File_SaveScript, 'Save Script', 'Save Script')
-        file_menu.Append(ID_File_SaveScript_As, 'Save Script As', 'Save Script As')
+        file_menu.Append(ID_File_New, '&New\tCtrl-N', 'New')
+        file_menu.Append(ID_File_Open, '&Open\tCtrl-O', 'Open')
+        file_menu.Append(wx.ID_SAVE, '&Save\tCtrl-S', 'Save')
+        file_menu.Append(ID_File_Save_As, 'Save &As\tCtrl-A', 'Save As')
         file_menu.AppendSeparator()
         file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
         file_menu.AppendSeparator()
@@ -305,8 +298,6 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnSaveMenu, id=wx.ID_SAVE)
         self.Bind(wx.EVT_MENU, self.OnSaveAsMenu, id=ID_File_Save_As)
 
-        self.Bind(wx.EVT_MENU, self.OnOpenScript, id=ID_File_OpenScript)
-
         self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
 
         self.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
@@ -364,6 +355,8 @@ class MyFrame(wx.Frame):
         self.Bind(EVT_END_SCRIPT, self.OnEndScript)
         
         wx.Log_SetActiveTarget(MyLog(self.shell))
+        self.ModelEditor.GotoPos(self.ModelEditor.GetLastPosition())
+        self.ModelEditor.SetFocus()
 
 
 ##------------- Write funcs
@@ -434,49 +427,64 @@ class MyFrame(wx.Frame):
 
 ##---------------- Utility functions
 
-    def GetFileDir(self):
-        if self.fileName is not None:
-            return os.path.split(self.fileName)[0]
+    def GetModelFileDir(self, editor):
+        if editor == self.ModelEditor:
+            filename = self.fileName
+        if editor == self.ScriptEditor:
+            filename = self.scriptfileName
+        if filename is not None:
+            return os.path.split(filename)[0]
         return "."
 
-    def GetFileName(self):
-        if self.fileName is not None:
-            return os.path.split(self.fileName)[1]
+    def GetFileName(self, editor):
+        if editor == self.ModelEditor:
+            filename = self.fileName
+        if editor == self.ScriptEditor:
+            filename = self.scriptfileName
+        if filename is not None:
+            return os.path.split(filename)[1]
         return ""
 
-    def NewFile(self):
-        self.ModelEditor.SetText("")
-        self.fileName = None
-        self.SetTitle("S-timator [untitled]")
-
-    def SaveFile(self, fileName):
-        sucess = self.ModelEditor.SaveFile(fileName)
+    def SaveFile(self, fileName, editor):
+        sucess = editor.SaveFile(fileName)
         if sucess:
-             self.SetTitle("S-timator [%s]" % self.GetFileName())
+            self.setTitle2File(self.GetFileName(editor), editor)
         return sucess
 
-    def OpenFile(self, fileName):
-        sucess = self.ModelEditor.LoadFile(fileName)
+    def setTitle2File(self, filename, editor):
+        if len(filename) > 0:
+            filename = ' [%s]'%filename
+        if editor == self.ModelEditor:
+            self._mgr.GetPane("model_editor").Caption("Model"+filename)
+        if editor == self.ScriptEditor:
+            self._mgr.GetPane("script_editor").Caption("Script"+filename)
+        self._mgr.Update()
+    
+    def OpenFile(self, fileName, editor):
+        sucess = editor.LoadFile(fileName)
         if sucess:
-             self.fileName = fileName
-             self.SetTitle("S-timator [%s]" % self.GetFileName())
-        return sucess
-
-    def OpenScriptFile(self, fileName):
-        sucess = self.ScriptEditor.LoadFile(fileName)
-        if sucess:
-             self.scriptfileName = fileName
-##              self.SetTitle("S-timator [%s]" % self.GetFileName())
+            if editor == self.ModelEditor:
+                self.fileName = fileName
+            if editor == self.ScriptEditor:
+                self.scriptfileName = fileName
+            self.setTitle2File(self.GetFileName(editor), editor)
         return sucess
 
 ##---------------- Event handlers
 
     def updateButtons(self):
-        canUndo = self.ModelEditor.CanUndo()
-        canRedo = self.ModelEditor.CanRedo()
-        canSave = self.ModelEditor.IsModified()
-        canCutCopy = self.ModelEditor.IsSelecting()
-        canPaste = self.ModelEditor.CanPaste()
+        canUndo = False
+        canRedo = False
+        canSave = False
+        canCutCopy = False
+        canPaste = False
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            canUndo = win.CanUndo()
+            canRedo = win.CanRedo()
+            canSave = win.IsModified()
+            canCutCopy = win.IsSelecting()
+            canPaste = win.CanPaste()
         self.tb2.EnableTool(wx.ID_UNDO, canUndo)
         self.tb2.EnableTool(wx.ID_REDO, canRedo)
         self.tb2.EnableTool(wx.ID_SAVE, canSave)
@@ -491,31 +499,32 @@ class MyFrame(wx.Frame):
         self.mb.Enable(wx.ID_PASTE, canPaste)
 
     def OnNewMenu(self, event):
-        if self.ModelEditor.GetModify():
-            if not self.OkCancelDialog("New file - abandon changes?", "New File"):
-                return
-        self.NewFile()
-        self.ModelEditor.SetFocus()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            if win.GetModify():
+                if not self.OkCancelDialog("New file - abandon changes?", "New File"):
+                    return
+            win.SetText("")
+            if win == self.ModelEditor:
+                self.fileName = None
+            if win == self.ScriptEditor:
+                self.scriptfileName = None
+            self.setTitle2File(self.GetFileName(win), win)
+            win.SetFocus()
 
     def OnOpenMenu(self, event):
-        if self.ModelEditor.GetModify():
+        win = wx.Window.FindFocus()
+        if not isinstance(win, resultsframe.SDLeditor):
+            self.ModelEditor.SetFocus()
+            win = self.ModelEditor
+        if win.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
                 return
-        fileName = self.SelectFileDialog(True, self.GetFileDir())
+        fileName = self.SelectFileDialog(True, self.GetModelFileDir(win))
         if fileName is not None:
-            if self.OpenFile(fileName) is False:
+            if self.OpenFile(fileName, win) is False:
                 self.OpenFileError(fileName)
-        self.ModelEditor.SetFocus()
-
-    def OnOpenScript(self, event):
-        if self.ScriptEditor.GetModify():
-            if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
-                return
-        fileName = self.SelectFileDialog(True, self.GetFileDir())
-        if fileName is not None:
-            if self.OpenScriptFile(fileName) is False:
-                self.OpenFileError(fileName)
-        self.ScriptEditor.SetFocus()
+        win.SetFocus()
 
     def OnExampleButton(self, event):
         if self.ModelEditor.GetModify():
@@ -525,41 +534,62 @@ class MyFrame(wx.Frame):
         if not os.path.exists(fileName) or not os.path.isfile(fileName):
             self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
             return
-        if self.OpenFile(fileName) is False:
+        if self.OpenFile(fileName, self.ModelEditor) is False:
             self.OpenFileError(fileName)
         self.ModelEditor.SetFocus()
         
     def OnSaveMenu(self, event):
-        if self.fileName is None:
-            return self.OnSaveAsMenu(event)
-        #wx.LogMessage("Saving %s..." % self.fileName)
-        if self.SaveFile(self.fileName) is not True:
-            self.SaveFileError(self.fileName)
-        self.ModelEditor.SetFocus()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            if win == self.ModelEditor:
+                filename = self.fileName
+            if win == self.ScriptEditor:
+                filename = self.scriptfileName
+            if filename is None:
+                self.OnSaveAsMenu(event)
+                return
+            if self.SaveFile(filename, win) is not True:
+                self.SaveFileError(filename)
+            win.SetFocus()
 
     def OnSaveAsMenu(self, event):
-        fileName = self.SelectFileDialog(False, self.GetFileDir(),self.GetFileName())
-        if fileName is not None:
-            self.fileName = fileName
-            #wx.LogMessage("Saving %s..." % self.fileName)
-            if self.SaveFile(self.fileName) is not True:
-                self.SaveFileError(self.fileName)
-        self.ModelEditor.SetFocus()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            fileName = self.SelectFileDialog(False, self.GetModelFileDir(win),self.GetFileName(win))
+            if fileName is not None:
+                if self.SaveFile(fileName, win) is not True:
+                    self.SaveFileError(fileName)
+                    return
+                if win == self.ModelEditor:
+                    self.fileName = fileName
+                if win == self.ScriptEditor:
+                    self.scriptfileName = fileName
+            win.SetFocus()
 
     def OnCutSelection(self, event):
-        self.ModelEditor.Cut()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            win.Cut()
 
     def OnCopySelection(self, event):
-        self.ModelEditor.Copy()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            win.Copy()
 
     def OnPaste(self, event):
-        self.ModelEditor.Paste()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            win.Paste()
 
     def OnUndo(self, event):
-        self.ModelEditor.Undo()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            win.Undo()
 
     def OnRedo(self, event):
-        self.ModelEditor.Redo()
+        win = wx.Window.FindFocus()
+        if isinstance(win, resultsframe.SDLeditor):
+            win.Redo()
 
     def OnPaneClose(self, event):
         caption = event.GetPane().caption
@@ -862,20 +892,18 @@ class MyFrame(wx.Frame):
             self.tc = self.model.getData('timecourses')
             self.optSettings = self.model.getData('optSettings')
             if self.model.getData('title') == "":
-               self.model.setData('title', self.GetFileName())
+               self.model.setData('title', self.GetFileName(self.ModelEditor))
         except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout
                 return
 
-        ntcread = self.tc.loadTimeCourses (self.GetFileDir(), names = self.tc.defaultnames, verbose=True)
+        ntcread = self.tc.loadTimeCourses (self.GetModelFileDir(self.ModelEditor), names = self.tc.defaultnames, verbose=True)
         if ntcread == 0:
            sys.stdout = oldout
            return
         
         sys.stdout = oldout
-
-        #os.chdir(self.GetFileDir())
         
         self.oldout = sys.stdout
         sys.stdout = MyWriter(self)
@@ -917,6 +945,7 @@ class MyFrame(wx.Frame):
     def endScript(self):
         evt = EndScriptEvent()
         wx.PostEvent(self, evt)
+
     def OnEndScript(self, event):
 ##         sys.stdout = oldout
         for f in self.ui.figures:
