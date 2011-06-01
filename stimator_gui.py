@@ -62,6 +62,8 @@ ID_FirstPerspective = ID_CreatePerspective+1000
 (MsgEvent, EVT_MSG) = wx.lib.newevent.NewEvent()
 (EndScriptEvent, EVT_END_SCRIPT) = wx.lib.newevent.NewEvent()
 
+scriptglock = thread.allocate_lock()
+
 debug = 1
 
 ##------------- Main frame class
@@ -82,12 +84,15 @@ class MyFrame(wx.Frame):
         self._perspectives = []
         self.n = 0
         self.x = 0
-        self.ui = gui_facade(self)
+        self.ui = gui_facade(self, scriptglock)
 
         self.nplots = 0
         self.fileName = None
         self.scriptfileName = None
+
         self.optimizerThread = None
+        self.calcscriptThread = None
+        self.stop_script = False
         
         self.SetIcon(images.getMondrianIcon())
         self.SetBackgroundColour(wx.Colour(229, 229, 229))
@@ -186,15 +191,28 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnComputeButton, b)
         #~ b.SetDefault()
         b.SetSize(b.GetBestSize())
-        
+
+
+
+        buttonId = wx.NewId()
+        b = wx.Button(tb2, buttonId, "Abort", (20, 20), style=wx.NO_BORDER)
+        tb2.AddControl(b)
+        self.Bind(wx.EVT_BUTTON, self.OnAbortButton, b)
+
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
         buttonId = wx.NewId()
+        tb2.AddSeparator()
         b = wx.Button(tb2, buttonId, "Script", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnRunScript, b)
+        buttonId = wx.NewId()
+        b = wx.Button(tb2, buttonId, "End Script", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
+        tb2.AddControl(b)
+        self.Bind(wx.EVT_BUTTON, self.OnStopScript, b)
+
         tb2.Realize()
         self.tb2 = tb2
        
@@ -952,7 +970,8 @@ class MyFrame(wx.Frame):
             self.CreateResPanelFromFigure(f)
         self._mgr.Update()
         self.shell.prompt()
-        self.calcThread = None
+        self.calcscriptThread = None
+        self.ui.reset()
 
     def OnRunScript(self, event):
 ##         fileName = os.path.join(os.path.dirname(__file__),'stimator','demos', 'ui_analysis_demo.py')
@@ -971,8 +990,8 @@ class MyFrame(wx.Frame):
         lcls = {}
         lcls['ui'] = self.ui
         sys.stdout = MyWriter(self)
-        self.calcThread=CalcScriptThread()
-        self.calcThread.Start(cbytes, lcls, self)
+        self.calcscriptThread=CalcScriptThread()
+        self.calcscriptThread.Start(cbytes, lcls, self)
 ##         sys.stdout = MyImmediateWriter(self)
 ##         try:
 ##             exec cbytes in lcls
@@ -981,20 +1000,31 @@ class MyFrame(wx.Frame):
 ##         #execfile('bof2.py')
 ##         sys.stdout = oldout
 ##         self.shell.prompt()
+    def OnStopScript(self,event):
+        if self.calcscriptThread is None:
+            self.MessageDialog("S-timator is NOT performing a computation!", "Error")
+            return
+        scriptglock.acquire()
+        self.stop_script = True
+        scriptglock.release()
     
 ##------------- a facade, available to scripts to control the GUI
 class gui_facade(object):
-    def __init__(self, sframe):
+    def __init__(self, sframe, glock):
         self.sframe = sframe
+        self.glock = glock
         self.reset()
     def reset(self):
         self.nticks = 0
         self.maxticks = 50
         self.figures = []
     def checkpoint(self):
-        self.nticks +=1
-        if self.nticks == self.maxticks:
-            raise KeyboardInterrupt
+        self.glock.acquire()
+        mustexit = self.sframe.stop_script
+        self.sframe.stop_script = False
+        self.glock.release()
+        if mustexit:
+            raise ScriptInterruptSignal()
     
     def ok_cancel(self,title,text):
         res = self.sframe.OkCancelDialog(title,text)
@@ -1044,6 +1074,12 @@ class MyLog(wx.PyLog):
 
 ##------------- Computation thread classes
 
+class ScriptInterruptSignal(Exception):
+    def __init__(self):
+        pass
+    def __str__(self):
+        return "Script interrupted by user"
+
 class CalcScriptThread:
 
     def Start(self, code, lcls, caller):
@@ -1060,24 +1096,19 @@ class CalcScriptThread:
         return self.running
 
     def Run(self):
-##         exec self.code in locals()
-##         self.keepGoing = False
-
-##         while self.keepGoing:
-##             exec self.code in self.lcls
-##             self.Stop()
         while self.keepGoing:
             try:
                 exec self.code in self.lcls
+            except ScriptInterruptSignal, e:
+                print e
             except:
-                print "Exception in user code:"
+                print "Exception in script code:"
                 print '-'*60
                 traceback.print_exc(file=sys.stdout)
                 print '-'*60
 
             self.Stop()
 
-        #self.solver.finalize()
         self.caller.endScript()
         self.running = False
 

@@ -15,6 +15,7 @@ ui.checkpoint()
 print 
 for i in range(50):
     for j in [1,2,3]:
+        ui.checkpoint()
         print 'Hi',i+1, j
 
 ui.checkpoint()

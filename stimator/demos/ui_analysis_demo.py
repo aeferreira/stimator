@@ -89,8 +89,7 @@ def transformation(vars,t):
 
 solution4.apply_transf(transformation)
 
-figure = ui.new_figure()
-plot ([solution1, solution2, solution3, solution4], figure=figure)
+plot ([solution1, solution2, solution3, solution4], figure=ui.new_figure())
 
 m = read_model("""
 title Calcium Spikes
@@ -121,7 +120,6 @@ for stimulus in 0.0, 0.2, 0.4, 0.78:
     s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
 
 print 'done in', time()-time0, 's'
-figure = ui.new_figure()
 
-plot(s,figure=figure, ynormalize = True)
+plot(s,figure=ui.new_figure(), ynormalize = True)
 #plot(s, superimpose=True)
