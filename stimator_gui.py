@@ -89,6 +89,15 @@ class MyFrame(wx.Frame):
         self.nplots = 0
         self.fileName = None
         self.scriptfileName = None
+        
+        self.originaldir = os.getcwd()
+        self.cwd = os.getcwd()
+        self.oldcwd = self.cwd
+        dirname = os.path.join(os.path.dirname(__file__),'stimator','demos')
+        os.chdir(dirname)
+        self.cwd = os.getcwd()
+        self.oldcwd = self.cwd
+
 
         self.optimizerThread = None
         self.calcscriptThread = None
@@ -548,7 +557,7 @@ class MyFrame(wx.Frame):
         if self.ModelEditor.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
                 return
-        fileName = os.path.join(os.path.dirname(__file__),'models','glxs_hta.mdl')
+        fileName = os.path.join(self.originaldir,'models','glxs_hta.mdl')
         if not os.path.exists(fileName) or not os.path.isfile(fileName):
             self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
             return
@@ -795,9 +804,112 @@ class MyFrame(wx.Frame):
 
         ed.SetProperty("fold", "1")
         ed.SetProperty("tab.timmy.whinge.level", "1")
-        ed.SetMargins(0,0)
+##         ed.SetMargins(0,0)
 
         ed.SetViewWhiteSpace(False)
+
+
+        # Set left and right margins
+        ed.SetMargins(2,2)
+    
+        # Set up the numbers in the margin for margin #1
+        ed.SetMarginType(1, wx.stc.STC_MARGIN_NUMBER)
+    
+        # Indentation and tab stuff
+        ed.SetIndent(4)               # Proscribed indent size for wx
+        ed.SetIndentationGuides(True) # Show indent guides
+        ed.SetBackSpaceUnIndents(True)# Backspace unindents rather than delete 1 space
+        ed.SetTabIndents(True)        # Tab key indents
+        ed.SetTabWidth(4)             # Proscribed tab size for wx
+        ed.SetUseTabs(False)          # Use spaces rather than tabs, or
+                                        # TabTimmy will complain!    
+    
+        # EOL: Since we are loading/saving ourselves, and the
+        # strings will always have \n's in them, set the STC to
+        # edit them that way.            
+        ed.SetEOLMode(wx.stc.STC_EOL_LF)
+        ed.SetViewEOL(False)
+        
+        # No right-edge mode indicator
+        ed.SetEdgeMode(wx.stc.STC_EDGE_NONE)
+    
+        # Setup a margin to hold fold markers
+        ed.SetMarginType(2, wx.stc.STC_MARGIN_SYMBOL)
+        ed.SetMarginMask(2, wx.stc.STC_MASK_FOLDERS)
+        ed.SetMarginSensitive(2, True)
+        ed.SetMarginWidth(2, 12)
+    
+        # and now set up the fold markers
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDEREND,     wx.stc.STC_MARK_BOXPLUSCONNECTED,  "white", "black")
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDEROPENMID, wx.stc.STC_MARK_BOXMINUSCONNECTED, "white", "black")
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDERMIDTAIL, wx.stc.STC_MARK_TCORNER,  "white", "black")
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDERTAIL,    wx.stc.STC_MARK_LCORNER,  "white", "black")
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDERSUB,     wx.stc.STC_MARK_VLINE,    "white", "black")
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDER,        wx.stc.STC_MARK_BOXPLUS,  "white", "black")
+        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDEROPEN,    wx.stc.STC_MARK_BOXMINUS, "white", "black")
+    
+        # Global default style
+        if wx.Platform == '__WXMSW__':
+            ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, 
+                              'fore:#000000,back:#FFFFFF,face:Courier New')
+        elif wx.Platform == '__WXMAC__':
+            # TODO: if this looks fine on Linux too, remove the Mac-specific case 
+            # and use this whenever OS != MSW.
+            ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, 
+                              'fore:#000000,back:#FFFFFF,face:Monaco')
+        else:
+            defsize = wx.SystemSettings.GetFont(wx.SYS_ANSI_FIXED_FONT).GetPointSize()
+            ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, 
+                              'fore:#000000,back:#FFFFFF,face:Courier,size:%d'%defsize)
+
+        # Clear styles and revert to default.
+        ed.StyleClearAll()
+
+        # Following style specs only indicate differences from default.
+        # The rest remains unchanged.
+
+        # Line numbers in margin
+        ed.StyleSetSpec(wx.stc.STC_STYLE_LINENUMBER,'fore:#000000,back:#99A9C2')    
+        # Highlighted brace
+        ed.StyleSetSpec(wx.stc.STC_STYLE_BRACELIGHT,'fore:#00009D,back:#FFFF00')
+        # Unmatched brace
+        ed.StyleSetSpec(wx.stc.STC_STYLE_BRACEBAD,'fore:#00009D,back:#FF0000')
+        # Indentation guide
+        ed.StyleSetSpec(wx.stc.STC_STYLE_INDENTGUIDE, "fore:#CDCDCD")
+
+        # Python styles
+        ed.StyleSetSpec(wx.stc.STC_P_DEFAULT, 'fore:#000000')
+        # Comments
+        ed.StyleSetSpec(wx.stc.STC_P_COMMENTLINE,  'fore:#008000,back:#F0FFF0')
+        ed.StyleSetSpec(wx.stc.STC_P_COMMENTBLOCK, 'fore:#008000,back:#F0FFF0')
+        # Numbers
+        ed.StyleSetSpec(wx.stc.STC_P_NUMBER, 'fore:#008080')
+        # Strings and characters
+        ed.StyleSetSpec(wx.stc.STC_P_STRING, 'fore:#800080')
+        ed.StyleSetSpec(wx.stc.STC_P_CHARACTER, 'fore:#800080')
+        # Keywords
+        ed.StyleSetSpec(wx.stc.STC_P_WORD, 'fore:#000080,bold')
+        # Triple quotes
+        ed.StyleSetSpec(wx.stc.STC_P_TRIPLE, 'fore:#800080,back:#FFFFEA')
+        ed.StyleSetSpec(wx.stc.STC_P_TRIPLEDOUBLE, 'fore:#800080,back:#FFFFEA')
+        # Class names
+        ed.StyleSetSpec(wx.stc.STC_P_CLASSNAME, 'fore:#0000FF,bold')
+        # Function names
+        ed.StyleSetSpec(wx.stc.STC_P_DEFNAME, 'fore:#008080,bold')
+        # Operators
+        ed.StyleSetSpec(wx.stc.STC_P_OPERATOR, 'fore:#800000,bold')
+        # Identifiers. I leave this as not bold because everything seems
+        # to be an identifier if it doesn't match the above criterae
+        ed.StyleSetSpec(wx.stc.STC_P_IDENTIFIER, 'fore:#000000')
+
+        # Caret color
+        ed.SetCaretForeground("BLUE")
+        # Selection background
+        ed.SetSelBackground(1, '#66CCFF')
+
+        ed.SetSelBackground(True, wx.SystemSettings_GetColour(wx.SYS_COLOUR_HIGHLIGHT))
+        ed.SetSelForeground(True, wx.SystemSettings_GetColour(wx.SYS_COLOUR_HIGHLIGHTTEXT))
+
         return ed
 
     def CreateLog(self):
@@ -972,6 +1084,8 @@ class MyFrame(wx.Frame):
         self.shell.prompt()
         self.calcscriptThread = None
         self.ui.reset()
+##         self.cwd = self.oldcwd
+##         os.chdir(self.cwd)
 
     def OnRunScript(self, event):
 ##         fileName = os.path.join(os.path.dirname(__file__),'stimator','demos', 'ui_analysis_demo.py')
@@ -982,6 +1096,13 @@ class MyFrame(wx.Frame):
         self.write('\n')
         self.ui.reset()
         oldout = sys.stdout
+        self.oldcwd = os.getcwd()
+        swd = self.GetModelFileDir(self.ScriptEditor)
+        if swd == '.':
+            self.cwd = os.getcwd()
+        else:
+            self.cwd = swd
+        os.chdir(self.cwd)
         codelines = "\n".join([self.ScriptEditor.
                 GetLine(i).
                 rstrip() 
