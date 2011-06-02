@@ -525,24 +525,52 @@ class MyFrame(wx.Frame):
         self.mb.Enable(wx.ID_COPY, canCutCopy)
         self.mb.Enable(wx.ID_PASTE, canPaste)
 
+    def GetActivePaneName(self):
+        for p in self._mgr.GetAllPanes():
+            if p.HasFlag(wx.aui.AuiPaneInfo.optionActive):
+                return p.name
+
+    def GetActiveEditor(self):
+        gwin = self.GetActivePaneName()
+        if gwin not in ["script_editor", "model_editor"]:
+            return None
+        if gwin == "model_editor":
+            win = self.ModelEditor
+        if gwin == "script_editor":
+            win = self.ScriptEditor
+        return win
+            
+    
     def OnNewMenu(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            if win.GetModify():
-                if not self.OkCancelDialog("New file - abandon changes?", "New File"):
-                    return
-            win.SetText("")
-            if win == self.ModelEditor:
-                self.fileName = None
-            if win == self.ScriptEditor:
-                self.scriptfileName = None
-            self.setTitle2File(self.GetFileName(win), win)
-            win.SetFocus()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        if win.GetModify():
+            if not self.OkCancelDialog("New file - abandon changes?", "New File"):
+                return
+        win.SetText("")
+        if win == self.ModelEditor:
+            self.fileName = None
+        if win == self.ScriptEditor:
+            self.scriptfileName = None
+        self.setTitle2File(self.GetFileName(win), win)
+        win.SetFocus()
+##         win = wx.Window.FindFocus()
+##         if isinstance(win, resultsframe.SDLeditor):
+##             if win.GetModify():
+##                 if not self.OkCancelDialog("New file - abandon changes?", "New File"):
+##                     return
+##             win.SetText("")
+##             if win == self.ModelEditor:
+##                 self.fileName = None
+##             if win == self.ScriptEditor:
+##                 self.scriptfileName = None
+##             self.setTitle2File(self.GetFileName(win), win)
+##             win.SetFocus()
 
     def OnOpenMenu(self, event):
-        win = wx.Window.FindFocus()
-        if not isinstance(win, resultsframe.SDLeditor):
-            self.ModelEditor.SetFocus()
+        win = self.GetActiveEditor()
+        if win is None:
             win = self.ModelEditor
         if win.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
@@ -566,57 +594,64 @@ class MyFrame(wx.Frame):
         self.ModelEditor.SetFocus()
         
     def OnSaveMenu(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            if win == self.ModelEditor:
-                filename = self.fileName
-            if win == self.ScriptEditor:
-                filename = self.scriptfileName
-            if filename is None:
-                self.OnSaveAsMenu(event)
-                return
-            if self.SaveFile(filename, win) is not True:
-                self.SaveFileError(filename)
-            win.SetFocus()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        if win == self.ModelEditor:
+            filename = self.fileName
+        if win == self.ScriptEditor:
+            filename = self.scriptfileName
+        if filename is None:
+            self.OnSaveAsMenu(event)
+            return
+        if self.SaveFile(filename, win) is not True:
+            self.SaveFileError(filename)
+        win.SetFocus()
 
     def OnSaveAsMenu(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            fileName = self.SelectFileDialog(False, self.GetModelFileDir(win),self.GetFileName(win))
-            if fileName is not None:
-                if self.SaveFile(fileName, win) is not True:
-                    self.SaveFileError(fileName)
-                    return
-                if win == self.ModelEditor:
-                    self.fileName = fileName
-                if win == self.ScriptEditor:
-                    self.scriptfileName = fileName
-            win.SetFocus()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        fileName = self.SelectFileDialog(False, self.GetModelFileDir(win),self.GetFileName(win))
+        if fileName is not None:
+            if self.SaveFile(fileName, win) is not True:
+                self.SaveFileError(fileName)
+                return
+            if win == self.ModelEditor:
+                self.fileName = fileName
+            if win == self.ScriptEditor:
+                self.scriptfileName = fileName
+        win.SetFocus()
 
     def OnCutSelection(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            win.Cut()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        win.Cut()
 
     def OnCopySelection(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            win.Copy()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        win.Copy()
 
     def OnPaste(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            win.Paste()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        win.Paste()
 
     def OnUndo(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            win.Undo()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        win.Undo()
 
     def OnRedo(self, event):
-        win = wx.Window.FindFocus()
-        if isinstance(win, resultsframe.SDLeditor):
-            win.Redo()
+        win = self.GetActiveEditor()
+        if win is None:
+            return
+        win.Redo()
 
     def OnPaneClose(self, event):
         caption = event.GetPane().caption
@@ -627,7 +662,6 @@ class MyFrame(wx.Frame):
             if dlg.ShowModal() in [wx.ID_NO, wx.ID_CANCEL]:
                 event.Veto()
             dlg.Destroy()
-
 
     def OnClose(self, event):
         self._mgr.UnInit()
