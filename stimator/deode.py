@@ -308,7 +308,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
     #print m1
     optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../models', names = ['SDLTSH', 'HTA'], verbose = True)
+    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../examples', names = ['SDLTSH', 'HTA'], verbose = True)
     #intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m1,optSettings, timecourses)
@@ -331,7 +331,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     ## VERY IMPORTANT:
     ## only one time course can be used: 
     ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTCs(['TSH2a.txt'], '../models', names = ['SDLTSH', 'HTA'], verbose = True)
+    timecourses = timecourse.readTCs(['TSH2a.txt'], '../examples', names = ['SDLTSH', 'HTA'], verbose = True)
     #, intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m2,optSettings, timecourses)

@@ -93,7 +93,7 @@ class MyFrame(wx.Frame):
         self.originaldir = os.getcwd()
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
-        dirname = os.path.join(os.path.dirname(__file__),'stimator','demos')
+        dirname = os.path.join(os.path.dirname(__file__),'examples')
         os.chdir(dirname)
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
@@ -557,7 +557,7 @@ class MyFrame(wx.Frame):
         if self.ModelEditor.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
                 return
-        fileName = os.path.join(self.originaldir,'models','glxs_hta.mdl')
+        fileName = os.path.join(self.originaldir,'examples','glxs_hta.mdl')
         if not os.path.exists(fileName) or not os.path.isfile(fileName):
             self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
             return
