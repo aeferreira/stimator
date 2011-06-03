@@ -37,6 +37,7 @@ ID_File_Open = wx.NewId()
 ID_File_Save_As = wx.NewId()
 
 ID_Actions_RunScript = wx.NewId()
+ID_Actions_FindParameters = wx.NewId()
 
 ID_CreatePerspective = wx.NewId()
 ID_CopyPerspective = wx.NewId()
@@ -104,6 +105,7 @@ class MyFrame(wx.Frame):
         self.stop_script = False
         
         self.SetIcon(images.getMondrianIcon())
+##         getMondrianIcon())
         self.SetBackgroundColour(wx.Colour(229, 229, 229))
 
         # create menu
@@ -182,26 +184,19 @@ class MyFrame(wx.Frame):
 
         tb2 = wx.ToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
                          wx.TB_FLAT | wx.TB_NODIVIDER)
-        tb2.SetToolBitmapSize(wx.Size(20,20))
-##        tb2_bmp1 = wx.ArtProvider_GetBitmap(wx.ART_QUESTION, wx.ART_OTHER, wx.Size(20, 20))
-        tb2.AddTool(ID_File_Open, images.get_rt_openBitmap(), shortHelpString="Open")
-        tb2.AddTool(wx.ID_SAVE, images.get_rt_saveBitmap(), shortHelpString="Save")
+        tb2.SetToolBitmapSize(wx.Size(30,30))
+        tb2.AddTool(ID_File_Open, images.getdi_folderBitmap(), shortHelpString="Open")
+        tb2.AddTool(wx.ID_SAVE, images.getdi_saveBitmap(), shortHelpString="Save")
         tb2.AddSeparator()
-        tb2.AddTool(wx.ID_CUT, images.get_rt_cutBitmap(), shortHelpString="Cut")
-        tb2.AddTool(wx.ID_COPY, images.get_rt_copyBitmap(), shortHelpString="Copy")
-        tb2.AddTool(wx.ID_PASTE, images.get_rt_pasteBitmap(), shortHelpString="Paste")
+        tb2.AddTool(wx.ID_CUT, images.getdi_cutBitmap(), shortHelpString="Cut")
+        tb2.AddTool(wx.ID_COPY, images.getdi_copyBitmap(), shortHelpString="Copy")
+        tb2.AddTool(wx.ID_PASTE, images.getdi_pasteBitmap(), shortHelpString="Paste")
         tb2.AddSeparator()
         tb2.AddTool(wx.ID_UNDO, images.get_rt_undoBitmap(), shortHelpString="Undo")
         tb2.AddTool(wx.ID_REDO, images.get_rt_redoBitmap(), shortHelpString="Redo")
         tb2.AddSeparator()
-        buttonId = wx.NewId()
-        b = wx.Button(tb2, buttonId, "Compute", (20, 20), style=wx.NO_BORDER)
-        tb2.AddControl(b)
-        self.Bind(wx.EVT_BUTTON, self.OnComputeButton, b)
-        #~ b.SetDefault()
-        b.SetSize(b.GetBestSize())
-
-
+        
+        tb2.AddTool(ID_Actions_FindParameters, images.getdi_flagBitmap(), shortHelpString="Find Parameters")
 
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Abort", (20, 20), style=wx.NO_BORDER)
@@ -326,6 +321,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnSaveAsMenu, id=ID_File_Save_As)
 
         self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
+        self.Bind(wx.EVT_MENU, self.OnComputeButton, id=ID_Actions_FindParameters)
 
         self.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         self.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
@@ -542,6 +538,9 @@ class MyFrame(wx.Frame):
             
     
     def OnNewMenu(self, event):
+##         self.tb2.InsertTool(1, wx.ID_SAVE, images.getdi_saveBitmap(), shortHelpString="Save")
+##         self.tb2.InsertTool(1, wx.ID_SAVE, images.get_rt_saveBitmap(), shortHelpString="Save")
+##         self.tb2.Realize()
         win = self.GetActiveEditor()
         if win is None:
             return
