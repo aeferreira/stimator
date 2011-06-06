@@ -348,6 +348,150 @@ getdi_wdeleteImage = di_wdelete.GetImage
 getdi_wdeleteBitmap = di_wdelete.GetBitmap
 
 #----------------------------------------------------------------------
+di_process = PyEmbeddedImage(
+    "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")
+getdi_processData = di_process.GetData
+getdi_processImage = di_process.GetImage
+getdi_processBitmap = di_process.GetBitmap
+
+#----------------------------------------------------------------------
+di_processdelete = PyEmbeddedImage(
+    "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"
+    "0WOXZ2r8B7xLGUhm/T60AAAAAElFTkSuQmCC")
+getdi_processdeleteData = di_processdelete.GetData
+getdi_processdeleteImage = di_processdelete.GetImage
+getdi_processdeleteBitmap = di_processdelete.GetBitmap
+
+#----------------------------------------------------------------------
+di_folderprocess = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlw"
+    "SFlzAAAK8AAACvABQqw0mAAAABh0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzT7MfTgAA"
+    "BHRJREFUSImVlVtsFFUcxr9zZmZnb7PdttsttHTpZYs2AQQV1AiJSkJ8Msb4oInxwQcTIg+Y"
+    "CEQfKgHfUAPEmBij0QSQBzW++IDxAbxE8YIFIxex0g270LLb3bbbzs7Mufx9WCmUshv6T05m"
+    "5szJ9zvf9z+TYUSEpdT721gklVmxOtm1+aFlmcGt3Zme5e1dsY2IPH9HIdYI4M2WYuOjX3fV"
+    "psf63Jn8YOBN38OMyEAk0bfSac90JlpCiXjECHFuXwqln1nVaEPm7RMTf334aOBV3q1M5rPC"
+    "K7eB2wjHVyDVuxUtHYNwHBMGuwaICZBgEEI3jWARgFHwonBzG5UM0HnvC2hdvh6hSBomuw4m"
+    "zoO8AjRpQCuADADNI14E0DqQWvowI91I9jyJ8Wt5IPgF/T1FkKyCwAHSN8dSAZwBgdCYcl3I"
+    "YBYi8BDMToFBQRMDSM2LE2kwgDUD8EUzRCAiKKUBMCglEfg+AF0fN8Tn72mJAOgbJGitIJUC"
+    "NwCQXBjNfDzNI7qjgxsXpRTY/y5AGowkOPPBDQVoAWgB02juYFEPbnUgpUQgBLRSAAIoxFGc"
+    "SUPNXUC8dQi5axEw7xzWppfggOjmuSaqQ0j5kNLDrJ/GpNuPKb0BsyoLXzu4fGWOfvv5xJaD"
+    "Bw4O3RVAEwVsQUQSsDpweeJ+TFZbYZs1OC3tGBvLI+FYGFzzRG/MSX2byfSc2jM83N0UUDm7"
+    "qyNqB49oUiAQiDSUkiDuQOg4JNmwQhZKpRkossC5BcO0TTAOKcTU0aOHp5oCjNZNw5H4soeV"
+    "8MDAoDXBtm0o4YEzDSEEvvryCxQuHEG79SuK4zkoVY+xI52ePXzkWPftmgsf4mtMRLIABWCc"
+    "w7IscM4RjiYgpcTJEz8gHRvFU093Y3W2it7kn7g+UQJjDHEnPuR5tYvfHD++s3EPSBBI1F8w"
+    "hlDIBuccc3NVjI7+C9+bxpZNK4GqgPSA7g7AQhnVOQ9aa1QqZcqNjVm3Si44phYHTFZvMGMM"
+    "pmUiGokCBEip0d6WhG1NgZSa/9CcsMSkH0CLGvL5wrFXtm9/q6GDn/4pGmfyFYQtA4wxhG0b"
+    "nu+jXClDaYm2jhVwfQuMyfoudFCueny0PFmEVBKO46x7e//+oYaArtD5anf4MiRZAAiMc2IA"
+    "pJR1u2YINb4WWngwyP19vJJ6tjgTIssETNNEzXWHLl28+HLDiFbJ74dLYnk+0OEHKrWWqpLB"
+    "tr7+fiQSiaun/zjdzhizr5Q6wPhjkpj93d8Ff59lVLOMWzgzMjI9WSweKBWvH71Vs+Ev8+SP"
+    "5zY/uC7zcSwW37t3z5sjfQMDZ2OxGHzPg2FFkXCi8P0aiAiu6+JKLpfb/fobvbfrNARUq9Xo"
+    "+MSEGMxmBQAcemffZ5KsVFuq83HTMAzOOTQRyqVSYFpW6GqhoE3THNizd9/YXQHuVJvW94ef"
+    "e2nHhVKp5CSTyQKANVcLhc9rbu0D152rfvTJp6fu2kGjeu3VHRtmpqfvS3V2FkOW9V4sHt+/"
+    "c9fuQ43W/weKBlWg8RiueQAAAABJRU5ErkJggg==")
+getdi_folderprocessData = di_folderprocess.GetData
+getdi_folderprocessImage = di_folderprocess.GetImage
+getdi_folderprocessBitmap = di_folderprocess.GetBitmap
+
+#----------------------------------------------------------------------
+di_delete = PyEmbeddedImage(
+    "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")
+getdi_deleteData = di_delete.GetData
+getdi_deleteImage = di_delete.GetImage
+getdi_deleteBitmap = di_delete.GetBitmap
+
+#----------------------------------------------------------------------
 def get_rt_alignleftData():
     return \
 '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10\x08\x06\

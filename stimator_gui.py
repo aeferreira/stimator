@@ -36,8 +36,12 @@ ID_File_New = wx.NewId()
 ID_File_Open = wx.NewId()
 ID_File_Save_As = wx.NewId()
 
+ID_File_OpenScript = wx.NewId()
+
 ID_Actions_RunScript = wx.NewId()
 ID_Actions_FindParameters = wx.NewId()
+ID_Actions_StopComputation = wx.NewId()
+ID_Actions_StopScript = wx.NewId()
 
 ID_CreatePerspective = wx.NewId()
 ID_CopyPerspective = wx.NewId()
@@ -116,6 +120,7 @@ class MyFrame(wx.Frame):
 
         file_menu.Append(ID_File_New, '&New\tCtrl-N', 'New')
         file_menu.Append(ID_File_Open, '&Open\tCtrl-O', 'Open')
+        file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
         file_menu.Append(wx.ID_SAVE, '&Save\tCtrl-S', 'Save')
         file_menu.Append(ID_File_Save_As, 'Save &As\tCtrl-A', 'Save As')
         file_menu.AppendSeparator()
@@ -186,6 +191,7 @@ class MyFrame(wx.Frame):
                          wx.TB_FLAT | wx.TB_NODIVIDER)
         tb2.SetToolBitmapSize(wx.Size(30,30))
         tb2.AddTool(ID_File_Open, images.getdi_folderBitmap(), shortHelpString="Open")
+        tb2.AddTool(ID_File_OpenScript, images.getdi_folderprocessBitmap(), shortHelpString="Open script")
         tb2.AddTool(wx.ID_SAVE, images.getdi_saveBitmap(), shortHelpString="Save")
         tb2.AddSeparator()
         tb2.AddTool(wx.ID_CUT, images.getdi_cutBitmap(), shortHelpString="Cut")
@@ -197,29 +203,27 @@ class MyFrame(wx.Frame):
         tb2.AddSeparator()
         
         tb2.AddTool(ID_Actions_FindParameters, images.getdi_flagBitmap(), shortHelpString="Find Parameters")
-
-        buttonId = wx.NewId()
-        b = wx.Button(tb2, buttonId, "Abort", (20, 20), style=wx.NO_BORDER)
-        tb2.AddControl(b)
-        self.Bind(wx.EVT_BUTTON, self.OnAbortButton, b)
+        tb2.AddTool(ID_Actions_StopComputation, images.getdi_deleteBitmap(), shortHelpString="Stop Computation")
+        tb2.AddSeparator()
 
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
-        buttonId = wx.NewId()
-        tb2.AddSeparator()
-        b = wx.Button(tb2, buttonId, "Script", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
-        tb2.AddControl(b)
-        self.Bind(wx.EVT_BUTTON, self.OnRunScript, b)
-        buttonId = wx.NewId()
-        b = wx.Button(tb2, buttonId, "End Script", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
-        tb2.AddControl(b)
-        self.Bind(wx.EVT_BUTTON, self.OnStopScript, b)
+        tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
+        tb2.AddTool(ID_Actions_StopScript, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
 
         tb2.Realize()
         self.tb2 = tb2
-       
+
+        self.Bind(wx.EVT_MENU, self.OnOpenScript, id=ID_File_OpenScript)
+        
+        self.Bind(wx.EVT_MENU, self.OnComputeButton, id=ID_Actions_FindParameters)
+        self.Bind(wx.EVT_MENU, self.OnAbortButton, id=ID_Actions_StopComputation)
+        self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
+        self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopScript)
+
+
         tb3 = wx.ToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
                          wx.TB_FLAT | wx.TB_NODIVIDER)
         tb3.SetToolBitmapSize(wx.Size(16,16))
@@ -322,6 +326,7 @@ class MyFrame(wx.Frame):
 
         self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
         self.Bind(wx.EVT_MENU, self.OnComputeButton, id=ID_Actions_FindParameters)
+        self.Bind(wx.EVT_MENU, self.OnAbortButton, id=ID_Actions_StopComputation)
 
         self.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         self.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
@@ -538,9 +543,6 @@ class MyFrame(wx.Frame):
             
     
     def OnNewMenu(self, event):
-##         self.tb2.InsertTool(1, wx.ID_SAVE, images.getdi_saveBitmap(), shortHelpString="Save")
-##         self.tb2.InsertTool(1, wx.ID_SAVE, images.get_rt_saveBitmap(), shortHelpString="Save")
-##         self.tb2.Realize()
         win = self.GetActiveEditor()
         if win is None:
             return
@@ -554,23 +556,20 @@ class MyFrame(wx.Frame):
             self.scriptfileName = None
         self.setTitle2File(self.GetFileName(win), win)
         win.SetFocus()
-##         win = wx.Window.FindFocus()
-##         if isinstance(win, resultsframe.SDLeditor):
-##             if win.GetModify():
-##                 if not self.OkCancelDialog("New file - abandon changes?", "New File"):
-##                     return
-##             win.SetText("")
-##             if win == self.ModelEditor:
-##                 self.fileName = None
-##             if win == self.ScriptEditor:
-##                 self.scriptfileName = None
-##             self.setTitle2File(self.GetFileName(win), win)
-##             win.SetFocus()
 
     def OnOpenMenu(self, event):
-        win = self.GetActiveEditor()
-        if win is None:
-            win = self.ModelEditor
+        win = self.ModelEditor
+        if win.GetModify():
+            if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
+                return
+        fileName = self.SelectFileDialog(True, self.GetModelFileDir(win))
+        if fileName is not None:
+            if self.OpenFile(fileName, win) is False:
+                self.OpenFileError(fileName)
+        win.SetFocus()
+    
+    def OnOpenScript(self, event):
+        win = self.ScriptEditor
         if win.GetModify():
             if not self.OkCancelDialog("Open file - abandon changes?", "Open File"):
                 return

@@ -21,6 +21,10 @@ command_lines = [
     "-a -u -n  di_wsearch bmp_source/window_search.png images.py",
     "-a -u -n  di_wnext bmp_source/window_next.png images.py",
     "-a -u -n  di_wdelete bmp_source/window_delete.png images.py",
+    "-a -u -n  di_process bmp_source/process.png images.py",
+    "-a -u -n  di_processdelete bmp_source/process_delete.png images.py",
+    "-a -u -n  di_folderprocess bmp_source/folder_process.png images.py",
+    "-a -u -n  di_delete bmp_source/delete.png images.py",
 
     #~ "-a -u -n Background bmp_source/backgrnd.png images.py",
     #~ "-a -u -n TestStar -m #FFFFFF bmp_source/teststar.png images.py",
