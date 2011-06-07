@@ -203,25 +203,23 @@ class MyFrame(wx.Frame):
         tb2.AddSeparator()
         
         tb2.AddTool(ID_Actions_FindParameters, images.getdi_flagBitmap(), shortHelpString="Find Parameters")
-        tb2.AddTool(ID_Actions_StopComputation, images.getdi_deleteBitmap(), shortHelpString="Stop Computation")
-        tb2.AddSeparator()
 
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
+        
+        tb2.AddSeparator()
         tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
-        tb2.AddTool(ID_Actions_StopScript, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
+        tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
 
         tb2.Realize()
         self.tb2 = tb2
 
         self.Bind(wx.EVT_MENU, self.OnOpenScript, id=ID_File_OpenScript)
-        
         self.Bind(wx.EVT_MENU, self.OnComputeButton, id=ID_Actions_FindParameters)
-        self.Bind(wx.EVT_MENU, self.OnAbortButton, id=ID_Actions_StopComputation)
         self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
-        self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopScript)
+        self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopComputation)
 
 
         tb3 = wx.ToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
@@ -323,10 +321,6 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpenMenu, id=ID_File_Open)
         self.Bind(wx.EVT_MENU, self.OnSaveMenu, id=wx.ID_SAVE)
         self.Bind(wx.EVT_MENU, self.OnSaveAsMenu, id=ID_File_Save_As)
-
-        self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
-        self.Bind(wx.EVT_MENU, self.OnComputeButton, id=ID_Actions_FindParameters)
-        self.Bind(wx.EVT_MENU, self.OnAbortButton, id=ID_Actions_StopComputation)
 
         self.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         self.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
@@ -1028,15 +1022,30 @@ class MyFrame(wx.Frame):
         self.ModelEditor.SetSelection(expt.physloc.start, expt.physloc.end)
         self.shell.prompt()
 
-    def OnAbortButton(self, event):
-        if self.optimizerThread is None:
-           self.MessageDialog("S-timator is NOT performing a computation!", "Error")
-           return
+    def OnStopScript(self,event):
+        if (self.calcscriptThread is None) and (self.optimizerThread is None):
+            print self.calcscriptThread
+            print self.optimizerThread
+            
+            self.MessageDialog("S-timator is NOT performing a computation!", "Error")
+            return
+        if self.calcscriptThread is not None:
+            scriptglock.acquire()
+            self.stop_script = True
+            scriptglock.release()
+            return
+        if self.optimizerThread is not None:
+            self.optimizerThread.Stop()
+    
+##     def OnAbortButton(self, event):
+##         if self.optimizerThread is None:
+##            self.MessageDialog("S-timator is NOT performing a computation!", "Error")
+##            return
 
-        self.optimizerThread.Stop()
+##         self.optimizerThread.Stop()
 
     def OnComputeButton(self, event):
-        if self.optimizerThread is not None:
+        if (self.optimizerThread is not None) or (self.optimizerThread is not None):
            self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
            return
 ##         self.LogText.Clear()
@@ -1070,7 +1079,7 @@ class MyFrame(wx.Frame):
         self.oldout = sys.stdout
         sys.stdout = MyWriter(self)
         solver = stimator.deode.DeODESolver(self.model,self.optSettings, self.tc, None, None,  self.finalTick)#, self.msgTick, self.finalTick)
-        self.optimizerThread=CalcThread()
+        self.optimizerThread=CalcOptmThread()
         self.optimizerThread.Start(solver)
         
     def OnMsg(self, evt):
@@ -1081,19 +1090,17 @@ class MyFrame(wx.Frame):
         if evt.exitCode == -1:
             self.write("\nOptimization aborted by user!")
         else:
-            self.write(self.optimizerThread.solver.reportFinalString())
             self.PostProcessEnded()
         self.optimizerThread = None
 
     def PostProcessEnded(self):
         solver = self.optimizerThread.solver        
+        self.write(solver.reportFinalString())
         reportText = solver.reportResults()
         self.write(reportText)
         self.CreateResPanel(self.model, solver)
         
         self.shell.prompt()
-
-##         self._mgr.GetPane("results").Show()
         self._mgr.Update()
 
     def msgTick(self, msg):
@@ -1109,21 +1116,17 @@ class MyFrame(wx.Frame):
         wx.PostEvent(self, evt)
 
     def OnEndScript(self, event):
-##         sys.stdout = oldout
         for f in self.ui.figures:
             self.CreateResPanelFromFigure(f)
         self._mgr.Update()
         self.shell.prompt()
         self.calcscriptThread = None
         self.ui.reset()
-##         self.cwd = self.oldcwd
-##         os.chdir(self.cwd)
 
     def OnRunScript(self, event):
-##         fileName = os.path.join(os.path.dirname(__file__),'stimator','demos', 'ui_analysis_demo.py')
-##         if not os.path.exists(fileName) or not os.path.isfile(fileName):
-##             self.MessageDialog("File \n%s\ndoes not exist"% fileName, "Error")
-##             return
+        if (self.optimizerThread is not None) or (self.optimizerThread is not None):
+           self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
+           return
 
         self.write('\n')
         self.ui.reset()
@@ -1153,14 +1156,7 @@ class MyFrame(wx.Frame):
 ##         #execfile('bof2.py')
 ##         sys.stdout = oldout
 ##         self.shell.prompt()
-    def OnStopScript(self,event):
-        if self.calcscriptThread is None:
-            self.MessageDialog("S-timator is NOT performing a computation!", "Error")
-            return
-        scriptglock.acquire()
-        self.stop_script = True
-        scriptglock.release()
-    
+
 ##------------- a facade, available to scripts to control the GUI
 class gui_facade(object):
     def __init__(self, sframe, glock):
@@ -1217,10 +1213,6 @@ class MyLog(wx.PyLog):
         self.logTime = logTime
 
     def DoLogString(self, message, timeStamp):
-        #print message, timeStamp
-        #if self.logTime:
-        #    message = time.strftime("%X", time.localtime(timeStamp)) + \
-        #              ": " + message
         if self.tc:
             self.tc.AppendText(message)
             self.tc.GotoLine(self.tc.GetLineCount())
@@ -1265,7 +1257,7 @@ class CalcScriptThread:
         self.caller.endScript()
         self.running = False
 
-class CalcThread:
+class CalcOptmThread:
 
     def Start(self, solver):
         self.solver = solver
