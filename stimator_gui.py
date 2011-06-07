@@ -1037,20 +1037,11 @@ class MyFrame(wx.Frame):
         if self.optimizerThread is not None:
             self.optimizerThread.Stop()
     
-##     def OnAbortButton(self, event):
-##         if self.optimizerThread is None:
-##            self.MessageDialog("S-timator is NOT performing a computation!", "Error")
-##            return
-
-##         self.optimizerThread.Stop()
 
     def OnComputeButton(self, event):
         if (self.optimizerThread is not None) or (self.optimizerThread is not None):
            self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
            return
-##         self.LogText.Clear()
-##         self.LogText.Refresh()
-##         self._mgr.GetPane("log_pane").Show()
         #self._mgr.GetPane("results").Hide()
         self._mgr.Update()
 
@@ -1175,6 +1166,20 @@ class gui_facade(object):
         if mustexit:
             raise ScriptInterruptSignal()
     
+    def set_model_text(self,text):
+        self.sframe.ModelEditor.SetText(text)
+        
+    def load_model(self,filename):
+        self.sframe.OpenFile(filename, self.sframe.ModelEditor)
+        textlines = [self.sframe.ModelEditor.GetLine(i) for i in range(self.sframe.ModelEditor.GetLineCount())]
+        
+        try:
+            model = stimator.modelparser.read_model(textlines)
+        except stimator.modelparser.StimatorParserError, expt:
+                self.sframe.IndicateError(expt)
+                raise
+        return model
+
     def ok_cancel(self,title,text):
         res = self.sframe.OkCancelDialog(title,text)
         return res
