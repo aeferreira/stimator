@@ -28,6 +28,10 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
         y0 = copy(initial)
     if times is None:
         times = linspace (t0, tf, npoints)
+##     elif 
+##         if isinstance(times, list):
+            
+    
     # scale times to maximum time in data
     t0 = times[0]
     scale = float(times[-1] - times[0])
