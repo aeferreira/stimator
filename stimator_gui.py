@@ -1013,9 +1013,9 @@ class MyFrame(wx.Frame):
     def IndicateError(self, expt):
         #self.MessageDialog("The model description contains errors.\nThe computation was aborted.", "Error")
         if expt.physloc.nstartline == expt.physloc.nendline:
-            locmsg = "Error in line %d of model definition" % (expt.physloc.nendline+1)
+            locmsg = "Error in line %d of model definition\n" % (expt.physloc.nendline+1)
         else:
-            locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline+1,expt.physloc.nendline+1)
+            locmsg = "Error in lines %d-%d of model definition\n" % (expt.physloc.nstartline+1,expt.physloc.nendline+1)
         self.shell.write(os.linesep)
         self.write(locmsg)
         self.write(str(expt))
@@ -1026,7 +1026,6 @@ class MyFrame(wx.Frame):
         if (self.calcscriptThread is None) and (self.optimizerThread is None):
             print self.calcscriptThread
             print self.optimizerThread
-            
             self.MessageDialog("S-timator is NOT performing a computation!", "Error")
             return
         if self.calcscriptThread is not None:
@@ -1171,13 +1170,16 @@ class gui_facade(object):
         
     def load_model(self,filename):
         self.sframe.OpenFile(filename, self.sframe.ModelEditor)
+        return self.model()
+
+    def model(self):
         textlines = [self.sframe.ModelEditor.GetLine(i) for i in range(self.sframe.ModelEditor.GetLineCount())]
-        
         try:
             model = stimator.modelparser.read_model(textlines)
         except stimator.modelparser.StimatorParserError, expt:
+                print "In file", filename, ':'
                 self.sframe.IndicateError(expt)
-                raise
+                raise ScriptModelError()
         return model
 
     def ok_cancel(self,title,text):
@@ -1230,6 +1232,12 @@ class ScriptInterruptSignal(Exception):
     def __str__(self):
         return "Script interrupted by user"
 
+class ScriptModelError(Exception):
+    def __init__(self):
+        pass
+    def __str__(self):
+        return ""
+
 class CalcScriptThread:
 
     def Start(self, code, lcls, caller):
@@ -1251,6 +1259,8 @@ class CalcScriptThread:
                 exec self.code in self.lcls
             except ScriptInterruptSignal, e:
                 print e
+            except ScriptModelError, e:
+                pass
             except:
                 print "Exception in script code:"
                 print '-'*60
