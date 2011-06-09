@@ -9,9 +9,8 @@ print """The deode module combines ODE solving with DE (differential evolution)
 """
 
 m1 = ui.load_model("glxs_hta.mdl")
-tc          = m1.getData('timecourses')
 optSettings = m1.getData('optSettings')
-ntcread = tc.loadTimeCourses ('.', names = tc.defaultnames, verbose=True)
+tc = readTCs(m1, ".", verbose=True)
 
 solver = DeODESolver(m1,optSettings, tc)
 #solver.Solve()
@@ -19,7 +18,6 @@ while solver.exitCode ==0:
     ui.checkpoint()
     solver.computeGeneration()
 solver.finalize()
-
 print solver.reportResults()
 
 fig1 = ui.new_figure()
@@ -51,7 +49,6 @@ while solver.exitCode ==0:
     ui.checkpoint()
     solver.computeGeneration()
 solver.finalize()
-
 print solver.reportResults()
 
 fig2 = ui.new_figure()
