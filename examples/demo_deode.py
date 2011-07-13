@@ -36,6 +36,9 @@ print solver.reportResults()
 fig1 = pl.figure()
 solver.draw(fig1)
 
+redsols = solver.optimum['best timecourses']['data']
+redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], '.', verbose=True)
+
 #--- an example with unknown initial values --------------------
 
 m2 = m1.clone()

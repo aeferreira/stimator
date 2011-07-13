@@ -188,7 +188,34 @@ class SolutionTimeCourse(object):
         self.names = header[1:]
         self.t = data[:,0].T
         self.data = data[:,1:].T
-    
+
+    def write_to(self, filename):
+        """Writes a time course to a file or file-like object.
+        """
+        
+        header = []
+        nvars = 0
+        rows = []
+        headerFound = False
+        t0found = False
+
+        if hasattr(filename, 'read'):
+            f = filename
+            isname = False
+        else:
+            f = open(filename, "w") # could be a name,instead of an open file
+            isname = True
+            
+        f.write("%s %s\n"%('t', " ".join(self.names)))
+        npoints = len(self.t)
+        for i in range(npoints):
+            row = [self.t[i]]
+            row.extend(self.data[:,i])
+            row = " ".join([str(j) for j in row])
+            f.write("%s\n"%row)
+        if isname:
+            f.close()
+
     def clone(self):
         """Clones the entire solution."""
         tc = SolutionTimeCourse(self.t.copy(), self.data.copy(), self.names[:], self.title)
@@ -249,7 +276,7 @@ class Solutions(object):
         self.shortnames     = []
         self.filenames      = []
         self.basedir        = None
-        self.defaultnames   = None # list of names to use if headersare missing
+        self.defaultnames   = None # list of names to use if headers are missing
 
     def __str__(self):
         if len(self.filenames) >0:
@@ -322,6 +349,28 @@ class Solutions(object):
             sol.filename = self.filenames[i]
         os.chdir(cwd)
         return nTCsOK
+
+    def saveTimeCoursesTo (self, filenames, filedir = None, verbose = False):
+        if len(self) == 0 :
+           print "No time courses to save!"
+           return 0
+                
+        # check and load timecourses
+        cwd = os.getcwdu()
+        if filedir is not None:
+            self.basedir = filedir
+        else:
+            self.basedir = cwd
+        os.chdir(self.basedir)
+        pathlist = [os.path.abspath(k) for k in filenames]
+
+        if verbose:
+            print "-------------------------------------------------------"
+        for fn, sol in zip(pathlist, self.solutions):
+            sol.write_to(fn)
+            if verbose:
+                print "%d time points for %d variables written to file %s" % (sol.ntimes, len(sol), fn)
+        os.chdir(cwd)
     
     def orderByNames(self, varnames):
         for sol in self.solutions:
@@ -372,7 +421,7 @@ nothing really usefull here
 
 """
     demodata_noheader = """
-#this is demo data with a header
+#this is demo data without a header
 #t x y z
 0       1 0         0
 0.1                  0.1
@@ -501,8 +550,20 @@ nothing really usefull here
     except ValueError, msg:
         print msg
     print
+    print '\n- testing write_to() ----------------'
+    sol.write_to('../examples/exp.txt')
+    print '\n- reading back from file ------------'
+    sol.load_from('../examples/exp.txt')
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
     
-    sol.load_from('../models/TSH2b.txt')
+    
+    sol.load_from('../examples/TSH2b.txt')
     print '\n- using load_from() ----------------'
     print '\nnames:'
     print sol.names
@@ -562,7 +623,7 @@ nothing really usefull here
     print
 
     print "-Reading tcs, using readTCs() -----------"
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models', verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../examples', verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names
@@ -573,7 +634,7 @@ nothing really usefull here
         print
     
     print "Providing default names HTA SDLTSH ------------------------"
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../models', names = "SDLTSH HTA".split(), verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../examples', names = "SDLTSH HTA".split(), verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names
@@ -594,6 +655,11 @@ nothing really usefull here
         print tc.shortname
         print
     
+    print "saving to different files"
+    tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'], '../examples', verbose=True)
+    
+    
+    
     m = modelparser.read_model("""
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
@@ -603,6 +669,8 @@ nothing really usefull here
     """)
     #print m
     
+    print
+    print
     print "After changing order according to model variables ------"
     
     tcs.orderByModelVars(m)
@@ -616,7 +684,7 @@ nothing really usefull here
         print
 
     print "- Reading tcs using info declared in a model def -"
-    tcs = readTCs(m, '../models', verbose=True)
+    tcs = readTCs(m, '../examples', verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names
@@ -628,8 +696,8 @@ nothing really usefull here
     m = modelparser.read_model("""
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
-    timecourse ../models/TSH2b.txt
-    timecourse ../models/TSH2a.txt
+    timecourse ../examples/TSH2b.txt
+    timecourse ../examples/TSH2a.txt
     variables SDLTSH HTA
     """)
 

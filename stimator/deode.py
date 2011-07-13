@@ -283,7 +283,6 @@ class DeODESolver(de.DESolver):
                 subplot.plot(expsol.t,yexp, '-b')
                 subplot.plot(expsol.t,ysim, '-r')
 
-
 def test():
     m1 = read_model("""
 title Glyoxalase system in L. Infantum
