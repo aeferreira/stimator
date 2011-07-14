@@ -188,7 +188,7 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best['timecourses']['data'] = []
 
-        varnames = [x.name for x in variables(self.model)]
+        allvarnames = [x.name for x in variables(self.model)]
         pars = [uncertain(self.model)[i].name for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
@@ -203,7 +203,7 @@ class DeODESolver(de.DESolver):
             else:
                 score = 1.0E300
             nt = tc.ntimes
-            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, varnames)
+            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, allvarnames)
             sols += sol
             best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].ntimes, score))
             
