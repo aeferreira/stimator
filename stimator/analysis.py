@@ -95,8 +95,9 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
                 if icolour == len(colours):
                     icolour = 0
         curraxis.grid()
-        h, l = curraxis.get_legend_handles_labels()
-        curraxis.legend(h, l, loc='best')
+        if legend:
+            h, l = curraxis.get_legend_handles_labels()
+            curraxis.legend(h, l, loc='best')
         curraxis.set_xlabel('')
         curraxis.set_ylabel('')
         if hasattr(solutions, 'title'):
@@ -115,8 +116,9 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
                 if icolour == len(colours):
                     icolour = 0 
             curraxis.grid()
-            h, l = curraxis.get_legend_handles_labels()
-            curraxis.legend(h, l, loc='best')
+            if legend:
+                h, l = curraxis.get_legend_handles_labels()
+                curraxis.legend(h, l, loc='best')
 
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
