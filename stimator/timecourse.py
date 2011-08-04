@@ -545,6 +545,13 @@ nothing really usefull here
         print sol.last
         print 'sol.last.x'
         print sol.last.x
+        print 'for i in range(len(sol)): print sol[i]'
+        for i in range(len(sol)):
+            print sol[i]
+        print 'for i in sol: print i'
+        for i in sol:
+            print i
+        
         print "sol['k']"
         print sol['k']
     except ValueError, msg:
