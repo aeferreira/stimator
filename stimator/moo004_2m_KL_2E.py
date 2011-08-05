@@ -61,7 +61,7 @@ def compute():
     #TODO: how to set the energy functions to be used in the optimization?
     objectiveFunction = 'KL'
     populationSize = 200
-    maxGenerations = 5000
+    maxGenerations = 200
     DEStrategy = 'Rand1Bin'
     diffScale = 0.5
     crossoverProb = 0.7
