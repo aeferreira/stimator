@@ -101,44 +101,56 @@ def compute():
     print [len(i) for i in solver.completeListOfSolutions]
     print
     print 'Final front:'
+    
+    f = open ('results/final_frontKLs.txt', 'w')
+    
     for s,o in zip(finalSolutions[0][-1], finalSolutions[1][-1]):
         print s, '---->',o
+        sstr = ' '.join([str(i) for i in s])
+        ostr = ' '.join([str(i) for i in o])
+        f.write('%s %s\n'%(sstr, ostr))
     
-    aString = 'Asolutions = {'
-    for i in allSolutions[0]:
-        aString += '{'
-        for j in i:
-            aString += str(j) + ','
-        aString = aString[:-1] + '},'
-    aString = aString[:-1] + '}'
-    write2file(r'results/candSolsKLs2M.txt', aString)
-
-    bString = '{'
-    for i in allSolutions[1]:
-        bString += '{'
-        for j in i:
-            bString += str(j) + ','
-        bString = bString[:-1] + '},'
-    bString = bString[:-1] + '}'
-    write2file(r'results/candObjsKLs2M.txt', bString)
+    f.close()
     
-    fString = 'solutions = {'
-    for i in finalSolutions[0]:
-        fString += '{'
-        for j in i:
-            fString += str(j) + ','
-        fString = fString[:-1] + '},'
-    fString = fString[:-1] + '}'
-    write2file(r'results/finalSolsKLs2M.txt', fString)
+    write2file('results/times.txt', '\n'.join([str(t) for t in solver.ftimes]))
 
-    gString = '{'
-    for i in finalSolutions[1]:
-        gString += '{'
-        for j in i:
-            gString += str(j) + ','
-        gString = gString[:-1] + '},'
-    gString = gString[:-1] + '}'
-    write2file(r'results/finalObjsKLs2M.txt', gString)
+##     # generate Mathemetica vectors
+
+##     aString = 'Asolutions = {'
+##     for i in allSolutions[0]:
+##         aString += '{'
+##         for j in i:
+##             aString += str(j) + ','
+##         aString = aString[:-1] + '},'
+##     aString = aString[:-1] + '}'
+##     write2file(r'results/candSolsKLs2M.txt', aString)
+
+##     bString = '{'
+##     for i in allSolutions[1]:
+##         bString += '{'
+##         for j in i:
+##             bString += str(j) + ','
+##         bString = bString[:-1] + '},'
+##     bString = bString[:-1] + '}'
+##     write2file(r'results/candObjsKLs2M.txt', bString)
+##     
+##     fString = 'solutions = {'
+##     for i in finalSolutions[0]:
+##         fString += '{'
+##         for j in i:
+##             fString += str(j) + ','
+##         fString = fString[:-1] + '},'
+##     fString = fString[:-1] + '}'
+##     write2file(r'results/finalSolsKLs2M.txt', fString)
+
+##     gString = '{'
+##     for i in finalSolutions[1]:
+##         gString += '{'
+##         for j in i:
+##             gString += str(j) + ','
+##         gString = gString[:-1] + '},'
+##     gString = gString[:-1] + '}'
+##     write2file(r'results/finalObjsKLs2M.txt', gString)
   
   
 if __name__ == "__main__":

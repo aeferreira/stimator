@@ -137,6 +137,14 @@ class GDE3Solver(DESolver):
         if self.objFunc == 'L2':
             self.distance_func = tcdif.L2
         
+        if self.distance_func is not None:
+            self.model_indexes = []
+            for i in range(self.nmodels-1):
+                for j in range(i+1, self.nmodels):
+                    self.model_indexes.append((i,j))
+            if self.objFunc in ['KLs', 'KL']:
+                self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
+        
         # working storage arrays
         self.newGenerationEnergyList = [[] for i in range(self.populationSize)]
         
@@ -154,7 +162,7 @@ class GDE3Solver(DESolver):
         energies = [f(trialDic) for f in self.objFuncList]
         
         if self.distance_func is not None:
-            energies = self.distance_func(energies, self.deltaT)
+            energies = self.distance_func(energies, self.deltaT, self.model_indexes)
         return energies, False
 
     def computeGeneration(self):
@@ -174,6 +182,8 @@ class GDE3Solver(DESolver):
         if self.generation == 0:      #compute energies for generation 0
             print '\n\nComputing generation 0.\n'
             self.ftimes = []
+            time0 = time()
+
             self.generationEnergyList = []
             for candidate in range(self.populationSize):
                 trialEnergies, self.atSolution = self.EnergyFunction(self.population[candidate]) #This argument must include the optimization candidates AND the fixed initial values
@@ -192,6 +202,10 @@ class GDE3Solver(DESolver):
                     self.generationEnergyList.append(difs)
                 else:
                     self.generationEnergyList.append(trialEnergies)
+            timeElapsed = time() - time0
+            print 'generation took', timeElapsed, 's'
+            self.ftimes.append(timeElapsed)
+        
         else: # generation >= 1
             time0 = time()
             print '\n\ngeneration', self.generation, '\n'

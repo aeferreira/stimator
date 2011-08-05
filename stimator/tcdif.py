@@ -74,35 +74,53 @@ def objDif(models, trial, t0, npoints, tf, objFunc, bias, measurementErrors):
 ##     result = plusKLlist + minusKLlist
 ##     return result
 
-def KLDiscrepancies(modelTCs, deltaT):
-    plusKLlist = []
-    minusKLlist = []
-    for i in range(len(modelTCs)-1):
-        for j in range(i+1, len(modelTCs)):
-            m = modelTCs[i].data
-            n = modelTCs[j].data
-            plusKL = -deltaT * nansum(float64(m*(log(m/n)+n/m-1)))
-            minusKL = -deltaT * nansum(float64(n*(log(n/m)+m/n-1)))
-            plusKLlist.append(plusKL)
-            minusKLlist.append(minusKL)
-    result = plusKLlist + minusKLlist
+## def KLDiscrepancies(modelTCs, deltaT):
+##     plusKLlist = []
+##     minusKLlist = []
+##     for i in range(len(modelTCs)-1):
+##         for j in range(i+1, len(modelTCs)):
+##             m = modelTCs[i].data
+##             n = modelTCs[j].data
+##             plusKL = -deltaT * nansum(float64(m*(log(m/n)+n/m-1)))
+##             minusKL = -deltaT * nansum(float64(n*(log(n/m)+m/n-1)))
+##             plusKLlist.append(plusKL)
+##             minusKLlist.append(minusKL)
+##     result = plusKLlist + minusKLlist
+##     return result
+
+def KLDiscrepancies(modelTCs, deltaT, indexes):
+    result = []
+    for (i,j) in indexes:
+        m = modelTCs[i].data
+        n = modelTCs[j].data
+        dif = -deltaT * nansum(float64(m*(log(m/n)+n/m-1)))
+        result.append(dif)
     return result
 
-def KLs(modelTCs, deltaT):
-    plusKLlist = []
-    minusKLlist = []
-    for i in range(len(modelTCs)-1):
-        for j in range(i+1, len(modelTCs)):
-            m = modelTCs[i].data
-            n = modelTCs[j].data
-            plusKL = -deltaT * nansum(float64(m*log(m/n)))
-            minusKL = -deltaT * nansum(float64(n*log(n/m)))
-            plusKLlist.append(plusKL)
-            minusKLlist.append(minusKL)
-    result = plusKLlist + minusKLlist
+def KLs(modelTCs, deltaT, indexes):
+    result = []
+    for (i,j) in indexes:
+        m = modelTCs[i].data
+        n = modelTCs[j].data
+        dif = -deltaT * nansum(float64(m*log(m/n)))
+        result.append(dif)
     return result
 
-def kremling(modelTCs, deltaT):
+## def KLs(modelTCs, deltaT):
+##     plusKLlist = []
+##     minusKLlist = []
+##     for i in range(len(modelTCs)-1):
+##         for j in range(i+1, len(modelTCs)):
+##             m = modelTCs[i].data
+##             n = modelTCs[j].data
+##             plusKL = -deltaT * nansum(float64(m*log(m/n)))
+##             minusKL = -deltaT * nansum(float64(n*log(n/m)))
+##             plusKLlist.append(plusKL)
+##             minusKLlist.append(minusKL)
+##     result = plusKLlist + minusKLlist
+##     return result
+
+def kremling(modelTCs, deltaT, indexes):
     #Maximizing this function is basically the same as maximizing a weighted L2 distance.
     result = []
     for i in range(len(modelTCs)-1):
@@ -114,7 +132,7 @@ def kremling(modelTCs, deltaT):
             result.append(numResult)
     return result
 
-def L2(modelTCs, deltaT):
+def L2(modelTCs, deltaT, indexes):
     #Maximizes this function is the same as maximizing the L2 distance.
     result = []
     for i in range(len(modelTCs)-1):
@@ -148,7 +166,6 @@ class Objective:
         self.lenEstimatedPar = len(parameters(model)) #len(model.parameters)
         self.objFunc = objFunc
         
-##         self.varNames = [i.name for i in model.variables]
         self.varNames = varnames(model)
         
         self.model = model
@@ -160,10 +177,6 @@ class Objective:
         
         self.obsIndex = []
         self.ordObsVarNames = []
-##         for xname in self.varNames:
-##             if xname in self.observed:
-##                 self.obsIndex.append(self.varNames.index(xname))
-##                 self.ordObsVarNames.append(xname)
         for (i,xname) in enumerate(self.varNames):
             if xname in self.observed:
                 self.obsIndex.append(i)
@@ -178,19 +191,6 @@ class Objective:
         """Returns the result of the evaluation of the objective function for the particular trial candidate solution."""
         self.trial = trial # trial is a dicionary of optname:value items
                     
-##         self.initTrial = []
-        
-##         for j in range(len(self.varNames)):
-##             if self.varNames[j] in self.optvars:
-##                 self.initTrial.append(self.trial[self.varNames[j]])
-##             else:
-##                 self.initTrial.append(self.vector[j])
-##         self.initTrialArray = array(self.initTrial)
-
-##         self.initTrialArray = copy(self.vector)
-##         trialvec = array([self.trial[name] for name in self.optvars])
-##         self.initTrialArray[self.optvarsindexes] = trialvec
-
         self.initTrialArray = copy(self.vector)
         for name,i in zip(self.optvars, self.optvarsindexes):
             self.initTrialArray[i] = value = self.trial[name]
@@ -200,12 +200,6 @@ class Objective:
         if self.objFunc in ['KL','kremling','KLs','L2']:
             #Notice: the solution is returned and the actual objective is computed in the caller
             self.result = self.regularSimulation.copy(self.ordObsVarNames)
-##             self.result = []
-##             index = 0
-##             for i in self.regularSimulation:
-##                 if index in self.obsIndex:
-##                     self.result.append(copy(i))
-##                 index += 1
         elif self.objFunc in ['AIC', 'AICc', 'AICu']:
             self.result = self.objective(self.model, self.bias, self.measurementErrors)
         elif self.objFunc in ['criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE']:
