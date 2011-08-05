@@ -83,11 +83,12 @@ def compute():
                            diffScale, 
                            crossoverProb, 
                            cutoffEnergy, 
-                           useClassRandomNumberMethods)#, dif = '-')
+                           useClassRandomNumberMethods,
+                           keep_track = True)#, dif = '-')
 
     solver.Solve()
-    allSolutions = (solver.completeListOfSolutions,
-                    solver.completeListOfObjectives)
+##     allSolutions = (solver.completeListOfSolutions,
+##                     solver.completeListOfObjectives)
     finalSolutions = (solver.fronts, solver.frontObj)
     
     print 
@@ -97,8 +98,8 @@ def compute():
 ##     print '\n\nfinalSolutions\n', finalSolutions
 ##     print "%d fronts"%(len(finalSolutions[0]))
     print '%d generations'%(solver.generation-1)
-    print 'front lengths:'
-    print [len(i) for i in solver.completeListOfSolutions]
+##     print 'front lengths:'
+##     print [len(i) for i in solver.completeListOfSolutions]
     print
     print 'Final front:'
     

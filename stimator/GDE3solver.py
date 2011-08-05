@@ -71,8 +71,10 @@ class GDE3Solver(DESolver):
                  crossoverProb, 
                  cutoffEnergy, 
                  useClassRandomNumberMethods, 
-                 dif = None):
+                 dif = None,
+                 keep_track = False):
         
+        self.keep_track = keep_track
         self.models = models
         self.npoints = npoints
         self.t0 = t0
@@ -120,8 +122,6 @@ class GDE3Solver(DESolver):
         # threshold for improvement based on 5 % of new solution count
         self.roomForImprovement = int(round(0.05 * populationSize))
         
-##         self.fTime = open('results/times.txt','w')
-        
         if self.objFunc in ('kremling','L2'):  #symetric measures
             self.trueMetric = True
         else:
@@ -152,8 +152,8 @@ class GDE3Solver(DESolver):
         self.fronts = [[]]    # holds fronts created in current generation
         self.frontObj = [[]]  # holds objectives for current generation
         self.ftimes = []
-        self.completeListOfSolutions  = [] # holds all fronts
-        self.completeListOfObjectives = [] # holds all objectives
+##         self.completeListOfSolutions  = [] # holds all fronts
+##         self.completeListOfObjectives = [] # holds all objectives
 
     def EnergyFunction(self, trial):
         trialDic = {}
@@ -182,6 +182,10 @@ class GDE3Solver(DESolver):
         if self.generation == 0:      #compute energies for generation 0
             print '\n\nComputing generation 0.\n'
             self.ftimes = []
+            if self.keep_track:
+                self.frontsfile = open('fronts.txt', 'w')
+                self.objsfile = open('objectives.txt', 'w')
+            
             time0 = time()
 
             self.generationEnergyList = []
@@ -356,15 +360,23 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
             self.ftimes.append(timeElapsed)
-            self.completeListOfSolutions.extend(self.fronts)
-            self.completeListOfObjectives.extend(self.frontObj)
+##             self.completeListOfSolutions.extend(self.fronts)
+##             self.completeListOfObjectives.extend(self.frontObj)
+            
+            if self.keep_track:
+                for front in self.fronts:
+                    print >> self.frontsfile, [list(elem) for elem in front]
+                for objs in self.frontObj:
+                    print >> self.objsfile, [list(elem) for elem in objs]
         
         self.generation += 1
         print 'generations with no improvement:', self.generationsWithNoImprovement
         return
 
     def finalize(self):
-        pass
+        if self.keep_track:
+            self.frontsfile.close()
+            self.objsfile.close()
 
     #------------------------------------------------------------------------------------------------------------------------------------
     #This code is an adaptation of the non-dominated sorting algorithm with delayed insertion published in

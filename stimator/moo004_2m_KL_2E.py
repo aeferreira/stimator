@@ -83,7 +83,8 @@ def compute():
                            diffScale, 
                            crossoverProb, 
                            cutoffEnergy, 
-                           useClassRandomNumberMethods)#, dif = '-')
+                           useClassRandomNumberMethods,
+                           keep_track = True)#, dif = '-')
     solver.Solve()
     allSolutions = (solver.completeListOfSolutions,
                     solver.completeListOfObjectives)
@@ -96,8 +97,8 @@ def compute():
 ##     print '\n\nfinalSolutions\n', finalSolutions
 ##     print "%d fronts"%(len(finalSolutions[0]))
     print '%d generations'%(solver.generation-1)
-    print 'front lengths:'
-    print [len(i) for i in solver.completeListOfSolutions]
+##     print 'front lengths:'
+##     print [len(i) for i in solver.completeListOfSolutions]
     print
     print 'Final front:'
     
@@ -113,6 +114,8 @@ def compute():
 
     write2file('results/times.txt', '\n'.join([str(t) for t in solver.ftimes]))
     
+##     # generate Mathemetica vectors
+
 ##     aString = 'Asolutions = {'
 ##     for i in allSolutions[0]:
 ##         aString += '{'
