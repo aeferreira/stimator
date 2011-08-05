@@ -1,4 +1,5 @@
 from model import *
+from analysis import *
 from GDE3solver import *
 from util import write2file
 
@@ -49,7 +50,7 @@ def compute():
     
     models = [m1, m2]#, m3]
     
-    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[0, 2e-3], "e2":[0, 4e-4]}
+    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[0, 2*10**-3], "e2":[0, 4*10**-4]}#, "hta":[0, 1.2]}
     
     observed = 'sdlt'
     
@@ -58,7 +59,7 @@ def compute():
     biasStandardDeviation = 0.03
 
     #TODO: how to set the energy functions to be used in the optimization?
-    objectiveFunction = 'KLs'
+    objectiveFunction = 'L2'#, 'AICm3') #Other examples: ('AICm1', 'AICm2')... and then the adequate function is selected among the ones defined in the class.
     populationSize = 200
     maxGenerations = 5000
     DEStrategy = 'Rand1Bin'
@@ -69,13 +70,11 @@ def compute():
     simulatedError = 3
     absoluteMeasurementError = 0.00175
     
-    allTime1 = time()
     solver = GDE3Solver(models, 
                            absoluteMeasurementError, 
                            toOpt, 
                            objectiveFunction, 
-                           observed, 
-                           npoints, t0, tf, 
+                           observed, npoints, t0, tf, 
                            populationSize, maxGenerations, 
                            biasedCurveNumber, 
                            biasStandardDeviation, 
@@ -84,7 +83,6 @@ def compute():
                            crossoverProb, 
                            cutoffEnergy, 
                            useClassRandomNumberMethods)#, dif = '-')
-
     solver.Solve()
     allSolutions = (solver.completeListOfSolutions,
                     solver.completeListOfObjectives)
@@ -111,7 +109,7 @@ def compute():
             aString += str(j) + ','
         aString = aString[:-1] + '},'
     aString = aString[:-1] + '}'
-    write2file(r'results/candSolsKLs2M.txt', aString)
+    write2file(r'results/candSolsKrem2M.txt', aString)
 
     bString = '{'
     for i in allSolutions[1]:
@@ -120,7 +118,7 @@ def compute():
             bString += str(j) + ','
         bString = bString[:-1] + '},'
     bString = bString[:-1] + '}'
-    write2file(r'results/candObjsKLs2M.txt', bString)
+    write2file(r'results/candObjsKrem2M.txt', bString)
     
     fString = 'solutions = {'
     for i in finalSolutions[0]:
@@ -129,7 +127,7 @@ def compute():
             fString += str(j) + ','
         fString = fString[:-1] + '},'
     fString = fString[:-1] + '}'
-    write2file(r'results/finalSolsKLs2M.txt', fString)
+    write2file(r'results/finalSolsKrem2M.txt', fString)
 
     gString = '{'
     for i in finalSolutions[1]:
@@ -138,8 +136,7 @@ def compute():
             gString += str(j) + ','
         gString = gString[:-1] + '},'
     gString = gString[:-1] + '}'
-    write2file(r'results/finalObjsKLs2M.txt', gString)
-  
-  
+    write2file(r'results/finalObjsKrem2M.txt', gString)
+    
 if __name__ == "__main__":
     compute()

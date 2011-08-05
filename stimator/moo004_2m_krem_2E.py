@@ -1,4 +1,5 @@
 from model import *
+from analysis import *
 from GDE3solver import *
 from util import write2file
 
@@ -49,7 +50,7 @@ def compute():
     
     models = [m1, m2]#, m3]
     
-    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[0, 2e-3], "e2":[0, 4e-4]}
+    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[0, 2*10**-3], "e2":[0, 4*10**-4]}#, "hta":[0, 1.2]}
     
     observed = 'sdlt'
     
@@ -58,7 +59,7 @@ def compute():
     biasStandardDeviation = 0.03
 
     #TODO: how to set the energy functions to be used in the optimization?
-    objectiveFunction = 'KLs'
+    objectiveFunction = 'kremling'#, 'AICm3') #Other examples: ('AICm1', 'AICm2')... and then the adequate function is selected among the ones defined in the class.
     populationSize = 200
     maxGenerations = 5000
     DEStrategy = 'Rand1Bin'
@@ -69,13 +70,11 @@ def compute():
     simulatedError = 3
     absoluteMeasurementError = 0.00175
     
-    allTime1 = time()
     solver = GDE3Solver(models, 
                            absoluteMeasurementError, 
                            toOpt, 
                            objectiveFunction, 
-                           observed, 
-                           npoints, t0, tf, 
+                           observed, npoints, t0, tf, 
                            populationSize, maxGenerations, 
                            biasedCurveNumber, 
                            biasStandardDeviation, 
@@ -84,7 +83,6 @@ def compute():
                            crossoverProb, 
                            cutoffEnergy, 
                            useClassRandomNumberMethods)#, dif = '-')
-
     solver.Solve()
     allSolutions = (solver.completeListOfSolutions,
                     solver.completeListOfObjectives)
@@ -104,42 +102,50 @@ def compute():
     for s,o in zip(finalSolutions[0][-1], finalSolutions[1][-1]):
         print s, '---->',o
     
-    aString = 'Asolutions = {'
-    for i in allSolutions[0]:
-        aString += '{'
-        for j in i:
-            aString += str(j) + ','
-        aString = aString[:-1] + '},'
-    aString = aString[:-1] + '}'
-    write2file(r'results/candSolsKLs2M.txt', aString)
+    #~ aString = 'Asolutions = {'
+    #~ for i in allSolutions[0]:
+        #~ aString += '{'
+        #~ for j in i:
+            #~ aString += str(j) + ','
+        #~ aString = aString[:-1] + '},'
+    #~ aString = aString[:-1] + '}'
+    #~ a = open(r'results/candSolsKrem2M.txt', 'w') 
+    #~ a.write(aString)
+    #~ a.close()
 
-    bString = '{'
-    for i in allSolutions[1]:
-        bString += '{'
-        for j in i:
-            bString += str(j) + ','
-        bString = bString[:-1] + '},'
-    bString = bString[:-1] + '}'
-    write2file(r'results/candObjsKLs2M.txt', bString)
+    #~ bString = '{'
+    #~ for i in allSolutions[1]:
+        #~ bString += '{'
+        #~ for j in i:
+            #~ bString += str(j) + ','
+        #~ bString = bString[:-1] + '},'
+    #~ bString = bString[:-1] + '}'
+    #~ b = open(r'results/candObjsKrem2M.txt', 'w') 
+    #~ b.write(bString) 
+    #~ b.close()
     
-    fString = 'solutions = {'
-    for i in finalSolutions[0]:
-        fString += '{'
-        for j in i:
-            fString += str(j) + ','
-        fString = fString[:-1] + '},'
-    fString = fString[:-1] + '}'
-    write2file(r'results/finalSolsKLs2M.txt', fString)
+    
+    #~ fString = 'solutions = {'
+    #~ for i in finalSolutions[0]:
+        #~ fString += '{'
+        #~ for j in i:
+            #~ fString += str(j) + ','
+        #~ fString = fString[:-1] + '},'
+    #~ fString = fString[:-1] + '}'
+    #~ f = open(r'results/finalSolsKrem2M.txt', 'w') 
+    #~ f.write(fString) 
+    #~ f.close()
 
-    gString = '{'
-    for i in finalSolutions[1]:
-        gString += '{'
-        for j in i:
-            gString += str(j) + ','
-        gString = gString[:-1] + '},'
-    gString = gString[:-1] + '}'
-    write2file(r'results/finalObjsKLs2M.txt', gString)
-  
-  
+    #~ gString = '{'
+    #~ for i in finalSolutions[1]:
+        #~ gString += '{'
+        #~ for j in i:
+            #~ gString += str(j) + ','
+        #~ gString = gString[:-1] + '},'
+    #~ gString = gString[:-1] + '}'
+    #~ g = open(r'results/finalObjsKrem2M.txt', 'w') 
+    #~ g.write(gString) 
+    #~ g.close() 
+    
 if __name__ == "__main__":
     compute()

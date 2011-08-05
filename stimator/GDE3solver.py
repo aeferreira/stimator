@@ -12,10 +12,11 @@
 #    License: BSD-style (see LICENSE.txt in main source directory)
 
 
-import numpy, random, tcdif, rmcrowded
+import numpy, tcdif
 from de import DESolver
-from numpy import transpose, array, float64, zeros
+from numpy import transpose, array, float64, zeros, empty
 from time import time
+import random
 
 
 def dominanceComparison(energyListOld, energyListNew):
@@ -118,7 +119,9 @@ class GDE3Solver(DESolver):
         
         # threshold for improvement based on 5 % of new solution count
         self.roomForImprovement = int(round(0.05 * populationSize))
-        self.fTime = open('results/times.txt','w')
+        
+##         self.fTime = open('results/times.txt','w')
+        
         if self.objFunc in ('kremling','L2'):  #symetric measures
             self.trueMetric = True
         else:
@@ -134,8 +137,13 @@ class GDE3Solver(DESolver):
         if self.objFunc == 'L2':
             self.distance_func = tcdif.L2
         
+        # working storage arrays
+        self.newGenerationEnergyList = [[] for i in range(self.populationSize)]
+        
+        # storage arrays
         self.fronts = [[]]    # holds fronts created in current generation
         self.frontObj = [[]]  # holds objectives for current generation
+        self.ftimes = []
         self.completeListOfSolutions  = [] # holds all fronts
         self.completeListOfObjectives = [] # holds all objectives
 
@@ -165,6 +173,7 @@ class GDE3Solver(DESolver):
             return
         if self.generation == 0:      #compute energies for generation 0
             print '\n\nComputing generation 0.\n'
+            self.ftimes = []
             self.generationEnergyList = []
             for candidate in range(self.populationSize):
                 trialEnergies, self.atSolution = self.EnergyFunction(self.population[candidate]) #This argument must include the optimization candidates AND the fixed initial values
@@ -194,7 +203,6 @@ class GDE3Solver(DESolver):
             solutionDic = {}
             
             self.newPopulation = []
-            self.newGenerationEnergyList = []
             
             newPopulationList = []
             oldPopulationList = [list(i) for i in self.population]
@@ -228,16 +236,17 @@ class GDE3Solver(DESolver):
                     for i in range(self.nmodels):
                         for j in range(i+1,self.nmodels):
                             difs.append(trialEnergies[i] - trialEnergies[j])
-                    self.newGenerationEnergyList.append(difs)
+                    self.newGenerationEnergyList[candidate] = difs
                 elif self.dif == '-':
                     difs = []
                     for i in range(self.nmodels):
                         for j in range(i+1,self.nmodels):
                             difs.append(trialEnergies[j] - trialEnergies[i])
-                    self.newGenerationEnergyList.append(difs)
+                    self.newGenerationEnergyList[candidate] = difs
                 else:
-                    self.newGenerationEnergyList.append(trialEnergies)
-                
+                    self.newGenerationEnergyList[candidate] = trialEnergies
+              
+##             print self.generation,': len new energy list', len(self.newGenerationEnergyList)
             
             print "finished generating new candidates"
             energyComparison = dominanceComparison(self.newGenerationEnergyList, self.generationEnergyList)
@@ -289,7 +298,7 @@ class GDE3Solver(DESolver):
                         for k in tempFront:
                             tempObjDic[k] = objectiveDic[k]
                         while len(self.population) + len(tempObjDic.keys()) != self.populationSize:
-                            tempObjDic = rmcrowded.removeMostCrowded(tempObjDic, 3)
+                            tempObjDic = removeMostCrowded(tempObjDic, 3)
                         full = True
                         break
                     elif len(self.population) == self.populationSize:
@@ -332,7 +341,7 @@ class GDE3Solver(DESolver):
                 self.generationsWithNoImprovement = 0
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
-            self.fTime.write('\n%s'%str(timeElapsed))
+            self.ftimes.append(timeElapsed)
             self.completeListOfSolutions.extend(self.fronts)
             self.completeListOfObjectives.extend(self.frontObj)
         
@@ -341,7 +350,7 @@ class GDE3Solver(DESolver):
         return
 
     def finalize(self):
-        self.fTime.close()
+        pass
 
     #------------------------------------------------------------------------------------------------------------------------------------
     #This code is an adaptation of the non-dominated sorting algorithm with delayed insertion published in
@@ -491,6 +500,97 @@ class GDE3Solver(DESolver):
         return dominanceTestResult
     #------------------------------------------------------------------------------------------------------------------------------------
     #End of non-dominated sorted algorithm methods
+
+def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
+
+    """
+    Removes a point with the smaller crowiding distance measured as
+    the sum of the distances of the points to their k-nearest neighbours.
+    x is a dictionary which values are the lists of objective values for each solution.
+    distance_fn
+    is an optional function that takes two points and returns the
+    distance between them.  If distance_fn is None (the default), the
+    Euclidean distance is used.
+    This function was written by extensive modification of the Calculate function
+    in the kNN module of the Biopython package.
+    """
+    
+    if len(x) < 3:
+        x.popitem()
+        return x
+    else:
+        keys = x.keys()
+        keys.sort()
+        extremes = []
+        for i in range(len(random.choice(x.values()))):
+            maximum = x[keys[0]][i]
+            tempMax = [keys[0]]
+            minimum = x[keys[0]][i]
+            tempMin = [keys[0]]
+            for j in keys:
+                if x[j][i] < minimum:
+                    tempMin = []
+                    minimum = x[j][i]
+                    tempMin.append(j)
+                elif x[j][i] == minimum and j not in tempMin:
+                    tempMin.append(j)                
+                elif x[j][i] > maximum:
+                    tempMax = []
+                    maximum = x[j][i]
+                    tempMax.append(j)
+                elif x[j][i] == maximum and j not in tempMax:
+                    tempMax.append(j)                
+            for k in tempMin:
+                if k not in extremes:
+                    extremes.append(k)
+            for k in tempMax:
+                if k not in extremes:
+                    extremes.append(k)
+        for i in keys:
+            x[i] = array(x[i])
+        lista =[]
+        #Use a fast implementation of the Euclidean distance
+        temp = numpy.zeros(len(random.choice(x.values())))
+        # Predefining temp allows reuse of this array, making this
+        # function about twice as fast.
+        distanceMatrix = []
+        for i in range(len(keys)):
+            distances = []  # list of (distance, index)
+            for j in range(len(keys)):
+                if j < i:
+                    distances.append(distanceMatrix[j][i])
+                elif j ==i:
+                    distances.append(0)
+                elif j > i:
+                    temp[:] = x[keys[i]] - x[keys[j]]
+                    dist = numpy.sqrt(numpy.dot(temp,temp))
+                    distances.append(dist)
+            distanceMatrix.append(numpy.copy(distances))
+            distances.sort()
+            if knumber < len(distances):
+                lista.append(distances[1:knumber+1])
+            if knumber >= len(distances):
+                lista.append(distances[1:])
+        distancesAndKeys = []
+        tolook = []
+        extremes.sort()
+        if keys != extremes:
+            for i in range(len(lista)):
+                if keys[i] in extremes:
+                    distancesAndKeys.append((10**300, keys[i]))
+                    tolook.append(('inf', keys[i]))
+                else:
+                    distancesAndKeys.append(((sum(lista[i])), keys[i]))
+                    tolook.append(((sum(lista[i])), keys[i]))
+        else:
+            for i in range(len(lista)):
+                distancesAndKeys.append(((sum(lista[i])), keys[i]))        
+        if pop_removed == True:
+            print 'distancesAndKeys minimum', x[min(distancesAndKeys)[1]]
+        del x[min(distancesAndKeys)[1]]
+        for i in x.keys(): #Confirmar se este objecto deve ser retornado com listas ou arrays
+            x[i] = list(x[i]) #de modo a ser usado pelas outras funções na geração seguinte.
+        return x
 
 
 #________________________________________________________________
