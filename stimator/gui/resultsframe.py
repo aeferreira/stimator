@@ -10,8 +10,8 @@ import wx.stc  as  stc
 from numpy import arange, sin, pi, cos, isnan
 
 import matplotlib
-matplotlib.interactive(True)
-matplotlib.use('WXAgg')
+## matplotlib.interactive(True)
+## matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg #as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar

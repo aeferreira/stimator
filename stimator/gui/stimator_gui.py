@@ -13,6 +13,7 @@ import os.path
 import thread
 import traceback
 import keyword
+import resultsframe
 import wx
 import wx.aui
 import wx.lib.newevent
@@ -1300,7 +1301,11 @@ class CalcOptmThread:
         self.solver.finalize()
         self.running = False
 
-app = wx.App()
-frame = MyFrame(None)
-frame.Show()
-app.MainLoop()
+def run_gui():
+    app = wx.App()
+    frame = MyFrame(None)
+    frame.Show()
+    app.MainLoop()
+
+if __name__ == "__main__":
+    run_gui()
