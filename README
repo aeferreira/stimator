@@ -1,0 +1,6 @@
+PROJECT S-TIMATOR
+
+a Python package for the analysis of ODE models.
+
+Copyright 2005-2011 António Ferreira
+S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows.
