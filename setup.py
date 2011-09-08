@@ -8,7 +8,7 @@ setup(name = "stimator",
     author_email = "aeferreira@fc.ul.pt",
     url = "http://enzymology.fc.ul.pt/software.htm",
     packages = ['stimator', 'stimator.gui'],
-    package_data={'stimator': ['stimator/examples/*.*']},
+    package_data={'stimator': ['examples/*.*']},
     scripts = ["stimator_gui.py"],
     long_description = """S-timator : a Python package for the analysis of ODE models.
 
