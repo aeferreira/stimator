@@ -1,1 +1,2 @@
 recursive-include stimator/examples *.*
+recursive-include stimator/tests *.py

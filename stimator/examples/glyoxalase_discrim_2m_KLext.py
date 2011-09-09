@@ -1,7 +1,7 @@
-from model import *
-from analysis import *
-from GDE3solver import *
-from util import write2file
+from stimator import Model, react, state
+from stimator.GDE3solver import GDE3Solver
+from time import time
+from stimator.utils import write2file
 
 def compute():
 
@@ -9,7 +9,6 @@ def compute():
     t0 = 0.0
     tf = 120
     
-    #TODO: set estimated parameter values
     m1 = Model('model 1')
     m1.rf = react("mgo + gsh -> hta", 0.34)
     m1.rr = react("hta -> mgo + gsh", 1.01)
@@ -21,8 +20,7 @@ def compute():
     m1.km1 = 0.223
     m1.kcat2 = 315
     m1.km2 = 2.86
-    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 0, e2 = 0) #init state must however be defined here so that there are values to replace by the function generateRSS
-    #m1.lenEstimatedParameters = len(("v1", "km1"))
+    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 0, e2 = 0)
 
     m2 = m1.clone()
     m2.title = 'model 2'
@@ -30,25 +28,8 @@ def compute():
     m2.kcat1 = 17046
     m2.km11 = 0.875
     m2.km12 = 1.178
-    #m2.v2 = 0.658
-    #m2.km2 = 0.0347
-    #m2.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4)
-    #m2.lenEstimatedParameters = len(("v1", "km11", "km12"))
     
-    #~ m3 = m1.clone()
-    #~ m3.title = 'model 3'
-    #~ m3.r1 = react("hta -> sdlt"  , "kcat1 * hta / (km1 * (1 + gsh/Ki) + hta)")
-    #~ #m3.r12= react("mgo + gsh -> sdlt"  , "v1b * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
-    #~ #m3.v1a = 0.164
-    #~ m3.km1 = 0.208
-    #~ m3.Ki = 4.106
-    #~ #m3.v1b = 0.025
-    #~ #m3.km11 = 0.481
-    #~ #m3.km12 = 0.301
-    #~ #m3.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh =4)
-    #~ #m3.lenEstimatedParameters = len(("v1a", "v1b", "km1", "km11", "km12"))
-    
-    models = [m1, m2]#, m3]
+    models = [m1, m2]
     
     toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
     
@@ -58,7 +39,6 @@ def compute():
     
     biasStandardDeviation = 0.03
 
-    #TODO: how to set the energy functions to be used in the optimization?
     objectiveFunction = 'KL'
     populationSize = 200
     maxGenerations = 200
@@ -102,7 +82,7 @@ def compute():
     print
     print 'Final front:'
     
-    f = open ('results/final_frontKL.txt', 'w')
+    f = open ('glyoxalase_discrim_2m_KLext_final_front.txt', 'w')
     
     for s,o in zip(finalSolutions[0][-1], finalSolutions[1][-1]):
         print s, '---->',o
@@ -112,45 +92,7 @@ def compute():
     
     f.close()
 
-    write2file('results/times.txt', '\n'.join([str(t) for t in solver.ftimes]))
-    
-##     # generate Mathemetica vectors
-
-##     aString = 'Asolutions = {'
-##     for i in allSolutions[0]:
-##         aString += '{'
-##         for j in i:
-##             aString += str(j) + ','
-##         aString = aString[:-1] + '},'
-##     aString = aString[:-1] + '}'
-##     write2file(r'results/candSolsExKL2M.txt', aString)
-
-##     bString = '{'
-##     for i in allSolutions[1]:
-##         bString += '{'
-##         for j in i:
-##             bString += str(j) + ','
-##         bString = bString[:-1] + '},'
-##     bString = bString[:-1] + '}'
-##     write2file(r'results/candObjsExKL2M.txt', bString)
-##     
-##     fString = 'solutions = {'
-##     for i in finalSolutions[0]:
-##         fString += '{'
-##         for j in i:
-##             fString += str(j) + ','
-##         fString = fString[:-1] + '},'
-##     fString = fString[:-1] + '}'
-##     write2file(r'results/finalSolsExKL2M.txt', fString)
-
-##     gString = '{'
-##     for i in finalSolutions[1]:
-##         gString += '{'
-##         for j in i:
-##             gString += str(j) + ','
-##         gString = gString[:-1] + '},'
-##     gString = gString[:-1] + '}'
-##     write2file(r'results/finalObjsExKL2M.txt', gString)
+    write2file('glyoxalase_discrim_2m_KLext_times.txt', '\n'.join([str(t) for t in solver.ftimes]))
     
 if __name__ == "__main__":
     compute()

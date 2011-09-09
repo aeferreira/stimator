@@ -3,7 +3,7 @@
 #Neste ficheiro serao escritas as funçoes objectivo alternativas, i.e. L2, ...
 
 import analysis
-from numpy import log, transpose, array, mean, std, float64, random, copy, diag, dot, linalg, trace, pi, append, abs, linspace, nansum, isnan, compress
+from numpy import log, transpose, array, mean, std, float64, random, copy, diag, dot, linalg, trace, pi, append, abs, linspace, nansum, isnan, compress, where, NaN
 from numpy.random import uniform
 from numpy.linalg import inv, det, eigvals
 from scipy import stats
@@ -93,6 +93,8 @@ def KLDiscrepancies(modelTCs, deltaT, indexes):
     for (i,j) in indexes:
         m = modelTCs[i].data
         n = modelTCs[j].data
+        m = where(m<=0.0,NaN, m)
+        n = where(n<=0.0,NaN, n)
         dif = -deltaT * nansum(float64(m*(log(m/n)+n/m-1)))
         result.append(dif)
     return result
@@ -102,6 +104,8 @@ def KLs(modelTCs, deltaT, indexes):
     for (i,j) in indexes:
         m = modelTCs[i].data
         n = modelTCs[j].data
+        m = where(m<=0.0,NaN, m)
+        n = where(n<=0.0,NaN, n)
         dif = -deltaT * nansum(float64(m*log(m/n)))
         result.append(dif)
     return result
