@@ -4,5 +4,3 @@ from model import Model, react, transf, state, variable, register_kin_func, unce
 from analysis import solve, plot
 from timecourse import readTCs, Solutions, TimeCourses
 from modelparser import read_model
-## from gui import run_gui
-
