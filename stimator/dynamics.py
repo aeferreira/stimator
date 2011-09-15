@@ -46,14 +46,20 @@ def genStoichiometryMatrix(m):
                     continue # there are no rows for extvariables in stoich. matrix
     return N
 
-def rateCalcString(m, rateString, with_uncertain = False):
+def rateCalcString(m, rateString, with_uncertain = False, changing_pars = None):
     # replace varnames
     for i,v in enumerate(variables(m)):
         rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
-    # replace uncertain parameters
+
+    # replace uncertain parameters or changing parameters
     if with_uncertain:
         for i,u in enumerate(uncertain(m)):
             rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
+    else:
+        if changing_pars is not None:
+            for i,u in enumerate(changing_pars):
+                rateString = re.sub(r"\b"+ u+r"\b", "m_Parameters[%d]"%i, rateString)
+
     # replace parameters
     for p in parameters(m):
         if p.bounds and with_uncertain:
@@ -283,7 +289,7 @@ def genTransformationFunction(m, f):
         result.names = names
         return result
 
-def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
+def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
     """Generate function to compute rhs of SODE for this model.
     
        Function has signature f(variables, t)
@@ -295,7 +301,10 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
         print [x.name for x in variables(m)]
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = [compile(rateCalcString(m, v.rate, with_uncertain = with_uncertain), '<string>','eval') for v in reactions(m)]
+    ratebytecode = [compile(rateCalcString(m, v.rate, 
+                                           with_uncertain = with_uncertain, 
+                                           changing_pars=changing_pars), 
+                                           '<string>','eval') for v in reactions(m)]
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
     N *= scale

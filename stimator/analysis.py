@@ -17,7 +17,15 @@ from timecourse import SolutionTimeCourse, Solutions
 
 import pylab as p
 
-def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = None, outputs=False, title = None):
+def solve(model, 
+          tf = 1.0, 
+          npoints = 500, 
+          t0 = 0.0, 
+          initial = 'init', 
+          times = None, 
+          outputs=False, 
+          title = None):
+    
     salg=integrate._odepack.odeint
     names = [x for x in varnames(model)]
 
@@ -34,7 +42,7 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     
     # scale times to maximum time in data
     t0 = times[0]
-    scale = float(times[-1] - times[0])
+    scale = float(times[-1] - t0)
     #scale = 1.0
     
     f = getdXdt(model, scale=scale, t0=t0)
@@ -63,6 +71,71 @@ def solve(model, tf = 1.0, npoints = 500, t0 = 0.0, initial = 'init', times = No
     else:
         raise TypeError("'outputs' parameter is of the wrong type")
     return sol
+
+class ModelSolver(object):
+    def __init__(self,
+          model, 
+          tf = 1.0, 
+          npoints = 500, 
+          t0 = 0.0, 
+          initial = 'init', 
+          times = None, 
+          outputs=False, 
+          title = None,
+          changing_pars = None):
+        self.model = model
+        self.salg=integrate._odepack.odeint
+        self.names = [x for x in varnames(model)]
+
+        #get initial values, possibly from a state in the model
+        if isinstance(initial, str) or isinstance(initial, StateArray):
+            self.y0 = copy(state2array(model,initial))
+        else:
+            self.y0 = copy(initial)
+        self.times = times
+        if self.times is None:
+            self.times = linspace (t0, tf, npoints)
+        
+        # scale times to maximum time in data
+        t0 = self.times[0]
+        scale = float(self.times[-1] - t0)
+        #scale = 1.0
+        if isinstance(changing_pars, str):
+            changing_pars = changing_pars.split()
+        self.f = getdXdt(model, scale=scale, t0=t0, changing_pars = changing_pars)
+        self.t  = (self.times-t0)/scale  # this scales time points
+        self.title = title
+        if self.title is None:
+            self.title = self.model.getData('title')
+        self.tranf_f = None
+        self.tranf_names = None
+        #get outputs
+        if outputs is False: # variables are output
+            pass
+        elif outputs is True: #transformations are output
+            #compute model transformations
+            self.tranf_f     = self.model.transf_func()
+            self.tranf_names = [x.name for x in self.model.transf]
+        elif isinstance(outputs, str) or callable(outputs): 
+            #a filter string or transformation function
+            self.tranf_f = genTransformationFunction(self.model, outputs)
+            self.tranf_names = self.tranf_f.names
+        else:
+            raise TypeError("'outputs' parameter is of the wrong type")
+    
+    def solve(self, par_values = None):
+        self.model.set_uncertain(array(par_values))
+        y0 = copy(self.y0)
+        output = integrate._odepack.odeint(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
+                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+        if output[-1] < 0: return None
+        Y = output[0]
+        sol = SolutionTimeCourse (self.times, Y.T, self.names, self.title)
+        
+        if self.tranf_f is not None:
+            sol.apply_transf(self.tranf_f, self.tranf_names)
+        return sol
+
 
 def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, superimpose = False, legend=True):
     if isinstance(solutions, SolutionTimeCourse):
@@ -203,7 +276,9 @@ def test():
 
     #print m3
 
-    solution3 = solve(m3, tf = 8.0, npoints = 2000)
+    ms = ModelSolver(m3, tf = 8.0, npoints = 2000)
+    solution3 = ms.solve()
+##     solution3 = solve(m3, tf = 8.0, npoints = 2000)
 
     print '---------------- EXAMPLE 4 ------------------'
     m4 = read_model("""

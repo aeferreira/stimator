@@ -74,12 +74,14 @@ class DeODESolver(de.DESolver):
         self.timecourse_scores = empty(len(self.tc))
         
         # find uncertain initial values
-        self.mapinit2trial = []
+        mapinit2trial = []
         for iu, u in enumerate(uncertain(self.model)):
             if u.name.startswith('init'):
                 varname = u.name.split('.')[-1]
                 ix = findWithNameIndex(varname, variables(self.model))
-                self.mapinit2trial.append((ix,iu))
+                mapinit2trial.append((ix,iu))
+        self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
+        self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
         
         self.criterium = dyncriteria.getCriteriumFunction(weights, self.tc)
 
@@ -92,12 +94,11 @@ class DeODESolver(de.DESolver):
         
         y0 = copy(self.X0[i])
         # fill uncertain initial values
-        for varindex, trialindex in self.mapinit2trial:
-            y0[varindex] = trial[trialindex]
+        y0[self.vars_initindexes] = trial[self.trial_initindexes]
             
-        t  = copy(self.times[i])
-        #~ Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-        output = self.salg(self.calcDerivs, y0, t, (), None, 0, -1, -1, 0, None, 
+##         t  = copy(self.times[i])
+##         Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
+        output = self.salg(self.calcDerivs, y0, self.times[i], (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         #~ if infodict['message'] != 'Integration successful.':
@@ -307,7 +308,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
     #print m1
     optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], '../examples', names = ['SDLTSH', 'HTA'], verbose = True)
+    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], 'examples', names = ['SDLTSH', 'HTA'], verbose = True)
     #intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m1,optSettings, timecourses)
@@ -330,7 +331,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     ## VERY IMPORTANT:
     ## only one time course can be used: 
     ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTCs(['TSH2a.txt'], '../examples', names = ['SDLTSH', 'HTA'], verbose = True)
+    timecourses = timecourse.readTCs(['TSH2a.txt'], 'examples', names = ['SDLTSH', 'HTA'], verbose = True)
     #, intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m2,optSettings, timecourses)
