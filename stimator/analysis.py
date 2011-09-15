@@ -124,7 +124,7 @@ class ModelSolver(object):
             raise TypeError("'outputs' parameter is of the wrong type")
     
     def solve(self, par_values = None):
-        self.model.set_uncertain(array(par_values))
+        self.model.set_uncertain(par_values)
         y0 = copy(self.y0)
         output = integrate._odepack.odeint(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)

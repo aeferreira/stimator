@@ -25,9 +25,9 @@ s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
 print m
 
 time0 = time()
-ms = ModelSolver(m,tf = 6.0, npoints = 50, outputs="Ca CaComp", changing_pars = "B") 
+ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
 print 'starting'
-for stimulus in linspace(0.0,1.0,100):
+for stimulus in linspace(0.0,1.0,150):
     s += ms.solve(par_values = [stimulus])
 
 print 'using ModelSolver done in', time()-time0, 's'
@@ -35,9 +35,9 @@ print 'using ModelSolver done in', time()-time0, 's'
 s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
 
 time0 = time()
-for stimulus in linspace(0.0,1.0,100):
+for stimulus in linspace(0.0,1.0,150):
     m.B = stimulus
-    s += solve(m, tf = 6.0, npoints = 50, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+    s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
 
 print 'using solve done in', time()-time0, 's'
 

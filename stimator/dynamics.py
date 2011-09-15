@@ -289,6 +289,36 @@ def genTransformationFunction(m, f):
         result.names = names
         return result
 
+## def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
+##     """Generate function to compute rhs of SODE for this model.
+##     
+##        Function has signature f(variables, t)
+##        This is compatible with scipy.integrate.odeint"""
+
+##     check, msg = m.checkRates()
+##     if not check:
+##         print "vars = "
+##         print [x.name for x in variables(m)]
+##         raise BadRateError(msg)
+##     #compile rhs
+##     
+##     rhsides = dXdt_strings(m)
+##     ratebytecode = [compile(rateCalcString(m, "%g *(%s)"%(scale,rhs), 
+##                                            with_uncertain = with_uncertain, 
+##                                            changing_pars=changing_pars), 
+##                                            '<string>','eval') for (xname,rhs) in rhsides]
+##     # create array to hold v's
+##     x = empty(len(variables(m)))
+##     en = list(enumerate(ratebytecode))
+##     
+##     def f2(variables, t):
+##         m_Parameters = m._Model__m_Parameters
+##         t = t*scale + t0
+##         for i,r in en:
+##             x[i] = eval(r)
+##         return x
+##     return f2
+
 def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
     """Generate function to compute rhs of SODE for this model.
     
@@ -311,6 +341,7 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None
     NT = N.transpose()
     # create array to hold v's
     v = empty(len(reactions(m)))
+    x = empty(len(variables(m)))
     en = list(enumerate(ratebytecode))
     
     def f2(variables, t):
@@ -318,9 +349,11 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None
         t = t*scale + t0
         for i,r in en:
             v[i] = eval(r)
-        return dot(v,NT)
+        dot(v,NT,x)
+        return x
     return f2
-            
+
+
 def dXdt_with(m, uncertainparameters, scale = 1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     
