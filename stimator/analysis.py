@@ -83,13 +83,32 @@ class ModelSolver(object):
           outputs=False, 
           title = None,
           changing_pars = None):
-        self.model = model
+        self.model = model.clone()
         self.salg=integrate._odepack.odeint
-        self.names = [x for x in varnames(model)]
+        self.names = [x for x in varnames(self.model)]
+        self.changing_pars = changing_pars
+        if self.changing_pars is None:
+            self.changing_pars = []
+        if isinstance(self.changing_pars, str):
+            self.changing_pars = self.changing_pars.split()
+        self.par_enumeration = []
+
+        # find initial values in changing parameters
+        mapinit2pars = []
+        for ipar, parname in enumerate(self.changing_pars):
+            if parname.startswith('init'):
+                varname = parname.split('.')[-1]
+                ix = findWithNameIndex(varname, variables(self.model))
+                mapinit2pars.append((ix,ipar))
+            else:
+                self.par_enumeration.append((ipar,parname))
+                
+        self.pars_initindexes = array([j for (i,j) in mapinit2pars], dtype=int)
+        self.vars_initindexes = array([i for (i,j) in mapinit2pars], dtype=int)
 
         #get initial values, possibly from a state in the model
         if isinstance(initial, str) or isinstance(initial, StateArray):
-            self.y0 = copy(state2array(model,initial))
+            self.y0 = copy(state2array(self.model,initial))
         else:
             self.y0 = copy(initial)
         self.times = times
@@ -98,11 +117,12 @@ class ModelSolver(object):
         
         # scale times to maximum time in data
         t0 = self.times[0]
+        self.t0 = t0
         scale = float(self.times[-1] - t0)
+        self.scale = scale
         #scale = 1.0
-        if isinstance(changing_pars, str):
-            changing_pars = changing_pars.split()
-        self.f = getdXdt(model, scale=scale, t0=t0, changing_pars = changing_pars)
+        self.expose_enum = [0.0 for i in range(len(reactions(self.model)))]
+        self.f = getdXdt_exposing_rbc(self.model, self.expose_enum, scale=scale, t0=t0)
         self.t  = (self.times-t0)/scale  # this scales time points
         self.title = title
         if self.title is None:
@@ -123,14 +143,23 @@ class ModelSolver(object):
         else:
             raise TypeError("'outputs' parameter is of the wrong type")
     
-    def solve(self, par_values = None):
-        self.model.set_uncertain(par_values)
+    def solve(self, title = None, par_values = None):
         y0 = copy(self.y0)
+        if par_values is not None:
+            par_values = array(par_values)
+            for (ip, pname) in self.par_enumeration:
+                setattr(self.model, pname, par_values[ip])
+            y0[self.vars_initindexes] = par_values[self.pars_initindexes]
+        vs = reactions(self.model)
+        for i in range(len(reactions(self.model))):
+            self.expose_enum[i] = (i,compile(rateCalcString(self.model, vs[i].rate),'<string>','eval'))
         output = integrate._odepack.odeint(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         Y = output[0]
-        sol = SolutionTimeCourse (self.times, Y.T, self.names, self.title)
+        if title is None:
+            title = self.title
+        sol = SolutionTimeCourse (self.times, Y.T, self.names, title)
         
         if self.tranf_f is not None:
             sol.apply_transf(self.tranf_f, self.tranf_names)

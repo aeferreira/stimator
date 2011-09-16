@@ -46,27 +46,6 @@ def genStoichiometryMatrix(m):
                     continue # there are no rows for extvariables in stoich. matrix
     return N
 
-def rateCalcString(m, rateString, with_uncertain = False, changing_pars = None):
-    # replace varnames
-    for i,v in enumerate(variables(m)):
-        rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
-
-    # replace uncertain parameters or changing parameters
-    if with_uncertain:
-        for i,u in enumerate(uncertain(m)):
-            rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
-    else:
-        if changing_pars is not None:
-            for i,u in enumerate(changing_pars):
-                rateString = re.sub(r"\b"+ u+r"\b", "m_Parameters[%d]"%i, rateString)
-
-    # replace parameters
-    for p in parameters(m):
-        if p.bounds and with_uncertain:
-            continue
-        rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString) 
-    return rateString
-
 def rates_strings(m):
     """Generate a tuple of tuples of
        (name, rate) where
@@ -192,6 +171,22 @@ def dfdp_strings(m, _parnames, _scale = 1.0):
                 #~ print _jfuncs
     return _jfuncs
         
+def rateCalcString(m, rateString, with_uncertain = False):
+    # replace varnames
+    for i,v in enumerate(variables(m)):
+        rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
+
+    # replace uncertain parameters
+    if with_uncertain:
+        for i,u in enumerate(uncertain(m)):
+            rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
+    # replace parameters
+    for p in parameters(m):
+        if p.bounds and with_uncertain:
+            continue
+        rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString) 
+    return rateString
+
 def rates_func(m, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
     """Generate function to compute rate vector for this model.
     
@@ -297,17 +292,14 @@ def genTransformationFunction(m, f):
 
 ##     check, msg = m.checkRates()
 ##     if not check:
-##         print "vars = "
-##         print [x.name for x in variables(m)]
 ##         raise BadRateError(msg)
-##     #compile rhs
 ##     
+##     #compile rhs
 ##     rhsides = dXdt_strings(m)
 ##     ratebytecode = [compile(rateCalcString(m, "%g *(%s)"%(scale,rhs), 
-##                                            with_uncertain = with_uncertain, 
-##                                            changing_pars=changing_pars), 
+##                                            with_uncertain = with_uncertain), 
 ##                                            '<string>','eval') for (xname,rhs) in rhsides]
-##     # create array to hold v's
+##     # create array to hold dX/dt
 ##     x = empty(len(variables(m)))
 ##     en = list(enumerate(ratebytecode))
 ##     
@@ -319,7 +311,7 @@ def genTransformationFunction(m, f):
 ##         return x
 ##     return f2
 
-def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
+def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     
        Function has signature f(variables, t)
@@ -327,14 +319,11 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None
 
     check, msg = m.checkRates()
     if not check:
-        print "vars = "
-        print [x.name for x in variables(m)]
         raise BadRateError(msg)
     #compile rate laws
     ratebytecode = [compile(rateCalcString(m, v.rate, 
-                                           with_uncertain = with_uncertain, 
-                                           changing_pars=changing_pars), 
-                                           '<string>','eval') for v in reactions(m)]
+                           with_uncertain = with_uncertain), 
+                           '<string>','eval') for v in reactions(m)]
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
     N *= scale
@@ -348,6 +337,38 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None
         m_Parameters = m._Model__m_Parameters
         t = t*scale + t0
         for i,r in en:
+            v[i] = eval(r)
+        dot(v,NT,x)
+        return x
+    return f2
+
+def getdXdt_exposing_rbc(m, expose_enum, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
+    """Generate function to compute rhs of SODE for this model.
+    
+       Function has signature f(variables, t)
+       This is compatible with scipy.integrate.odeint"""
+
+    check, msg = m.checkRates()
+    if not check:
+        raise BadRateError(msg)
+    #compile rate laws
+    ratebytecode = [compile(rateCalcString(m, v.rate, 
+                           with_uncertain = with_uncertain), 
+                           '<string>','eval') for v in reactions(m)]
+    # compute stoichiometry matrix, scale and transpose
+    N  = genStoichiometryMatrix(m)
+    N *= scale
+    NT = N.transpose()
+    # create array to hold v's
+    v = empty(len(reactions(m)))
+    x = empty(len(variables(m)))
+    for i in range(len(reactions(m))):
+        expose_enum[i] = (i,ratebytecode[i])
+    
+    def f2(variables, t):
+        m_Parameters = m._Model__m_Parameters
+        t = t*scale + t0
+        for i,r in expose_enum:
             v[i] = eval(r)
         dot(v,NT,x)
         return x

@@ -21,35 +21,70 @@ v3         = CaComp -> Ca, \
 init       = state(Ca = 0.1, CaComp = 0.63655)
 """)
 
-s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
 print m
 
-time0 = time()
-ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
-print 'starting'
-for stimulus in linspace(0.0,1.0,150):
-    s += ms.solve(par_values = [stimulus])
+def run_normal():
+    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    time0 = time()
+    ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
+    print 'starting'
+    for stimulus in linspace(0.0,1.0,200):
+        s += ms.solve(title = 'stimulus = %g'% stimulus, par_values = [stimulus])
 
-print 'using ModelSolver done in', time()-time0, 's'
+    print 'using ModelSolver done in', time()-time0, 's'
 
-s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
 
-time0 = time()
-for stimulus in linspace(0.0,1.0,150):
-    m.B = stimulus
-    s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+    time0 = time()
+    for stimulus in linspace(0.0,1.0,200):
+        m.B = stimulus
+        s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
 
-print 'using solve done in', time()-time0, 's'
+    print 'using solve done in', time()-time0, 's'
 
-s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
 
-ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
-for stimulus in 0.0, 0.2, 0.4, 0.78:
-    s += ms.solve(par_values = [stimulus])
+    ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
+    for stimulus in 0.0, 0.2, 0.4, 0.78:
+        s += ms.solve(title = 'stimulus = %g'% stimulus, par_values = [stimulus])
 
-for stimulus in 0.0, 0.2, 0.4, 0.78:
-    m.B = stimulus
-    s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+    for stimulus in 0.0, 0.2, 0.4, 0.78:
+        m.B = stimulus
+        s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
 
-plot(s,ynormalize = True, show = True)
-#plot(s, superimpose=True)
+    plot(s,ynormalize = True, show = True)
+    #plot(s, superimpose=True)
+
+def test():
+    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
+    print 'starting'
+    for stimulus in linspace(0.0,1.0,200):
+        s += ms.solve(par_values = [stimulus])
+
+def test2():
+    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    for stimulus in linspace(0.0,1.0,200):
+        m.B = stimulus
+        s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+
+def profile_test():
+    # This is the main function for profiling 
+    import cProfile, pstats, StringIO
+    prof = cProfile.Profile()
+    prof = prof.runctx("test2()", globals(), locals())
+    stream = StringIO.StringIO()
+    stats = pstats.Stats(prof, stream=stream)
+    stats.sort_stats("time")  # Or cumulative
+    stats.print_stats(40)  # 40 = how many to print
+    # The rest is optional.
+    #stats.print_callees()
+    #stats.print_callers()
+    print stream.getvalue()
+    #logging.info("Profile data:\n%s", stream.getvalue())
+
+
+if __name__ == "__main__":
+##     profile_test()
+    run_normal()
+

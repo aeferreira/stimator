@@ -96,6 +96,12 @@ sleep(1.0)
 
 plot ([solution1, solution2, solution3, solution4])
 
+s = Solutions("Rossler model: sensitivity to initial conditions")
+ms = ModelSolver(m4,tf = 100.0, npoints = 2000, outputs="x1", changing_pars = "init.X1") 
+for stimulus in 19.0, 19.02, 19.04:
+    s += ms.solve(title = 'init.X1 = %g'% stimulus, par_values = [stimulus])
+plot(s,superimpose=True)
+
 m = read_model("""
 title Calcium Spikes
 v0         = -> Ca, 1
@@ -122,7 +128,7 @@ time0 = time()
 print 'starting'
 ms = ModelSolver(m,tf = 6.0, npoints = 10000, outputs="Ca CaComp", changing_pars = "B") 
 for stimulus in 0.0, 0.2, 0.4, 0.78:
-    s += ms.solve(par_values = [stimulus])
+    s += ms.solve(title = 'stimulus = %g'% stimulus, par_values = [stimulus])
 
 ## for stimulus in 0.0, 0.2, 0.4, 0.78:
 ##     m.B = stimulus
