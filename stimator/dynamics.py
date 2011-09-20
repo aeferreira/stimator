@@ -456,9 +456,15 @@ def test():
     print 'rates_strings(): -------------------------'
     for v in rates_strings(m):
         print v
-    print '\ndXdt_strings(): -------------------------'
-    for dxdt in dXdt_strings(m):
-        print dxdt
+    print '\ndXdt_strings(): --------------------------'
+    for xname,dxdt in dXdt_strings(m):
+        print '(d%s/dt) ='%(xname),dxdt
+    print
+    print 'Jacobian_strings(): -------------------------'
+    vnames = varnames(m)
+    for i,vec in enumerate(Jacobian_strings(m)):
+        for j, dxdx in enumerate(vec):
+            print '(d d%s/dt / d%s) ='%(vnames[i],vnames[j]), dxdx
     print
     print '********** Testing stoichiometry matrix ********************'
     print 'Stoichiometry matrix:'
@@ -468,7 +474,7 @@ def test():
         print x.name, N[i, :]
     print
     print '********** Testing state2array()****************************'
-    print 'vectorize(m,"init"):'
+    print 'state2array(m,"init"):'
     v = state2array(m,"init")
     print v, 'of type', type(v)
     print

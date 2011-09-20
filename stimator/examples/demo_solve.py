@@ -5,7 +5,7 @@ from time import time, sleep
 from numpy import append, linspace
 
 print __doc__
-print "S-timator version", __version__fullversion, "(%s)"%__version__.date
+print "S-timator version", __version__.fullversion, "(%s)"%__version__.date
 print
 print '---------------- EXAMPLE 1 ------------------'
 m1 = read_model("""
