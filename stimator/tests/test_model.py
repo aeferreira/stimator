@@ -326,30 +326,85 @@ def test_iter_extvariables():
     names = [x.name for x in extvariables(m)]
     assert names == ['B']
 
-##     print '********** Testing iteration of components *****************'
-##     print 'iterating reactions(m)'
-##     for v in reactions(m):
-##         print v.name, ':', v.rate, '|', v.reagents, '->', v.products
-##     print '\niterating transformations(m)'
-##     for v in transformations(m):
-##         print v.name, ':', v.rate
-##     print '\niterating variables(m)'
-##     for x in variables(m):
-##         print x.name
-##     print '\niterating extvariables(m)'
-##     for x in extvariables(m):
-##         print x.name
-##     print '\niterating parameters(m)'
-##     for p in parameters(m):
-##         print p.name , '=',  p, 'bounds=', p.bounds
-##     print '\niterating uncertain(m)'
-##     for x in uncertain(m):
-##         print '\t', x.name, 'in (', x.min, ',', x.max, ')'
-##     
-##     print '\niterating m.init'
-##     for name, x in m.init:
-##         print '\t', name, '=', x
-##     print
+def test_iter_parameters():
+    """test iteration of parameters using parameters()"""
+    import math
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = react("B   ->  "  , "2*B")
+    m.D  = variable("-2 * D")
+    m.B  = 2.2
+    m.myconstant = 2 * m.B / 1.1 # should be 4.0
+    m.V3 = 0.5
+    m.V3 = [0.1, 1.0]
+    m.Km3 = 4
+    m.init = state(A = 1.0, C = 1, D = 1)
+    m.afterwards = state(A = 1.0, C = 2, D = 1)
+    m.afterwards.C.uncertainty(1,3)
+    pp = parameters(m)
+    assert isinstance(pp, list)
+    assert len(pp) == 4
+    names = [x.name for x in parameters(m)]
+    assert names == ['B', 'myconstant', 'V3', 'Km3']
+    values = [x for x in parameters(m)]
+    should_values = [2.2, 4.0, 0.5, 4.0]
+    for v1,v2 in zip(values, should_values):
+        assert_almost_equal(v1, v2)
 
+def test_iter_uncertain():
+    """test iteration of uncertain parameters using uncertain()"""
+    import math
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = react("B   ->  "  , "2*B")
+    m.D  = variable("-2 * D")
+    m.B  = 2.2
+    m.myconstant = 2 * m.B / 1.1 # should be 4.0
+    m.V3 = 0.5
+    m.V3 = [0.1, 1.0]
+    m.Km3 = 4
+    m.Km3.uncertainty(0,5)
+    m.init = state(A = 1.0, C = 1, D = 1)
+    m.afterwards = state(A = 1.0, C = 2, D = 1)
+    m.afterwards.C.uncertainty(1,3)
+    uu = uncertain(m)
+    assert isinstance(uu, list)
+    assert len(uu) == 3
+    names = [x.name for x in uncertain(m)]
+    assert names == ['V3', 'Km3', 'afterwards.C']
+    should_values = [(0.1, 1.0), (0.0,5.0), (1.0,3.0)]
+    for v1,v2 in zip(uu, should_values):
+        assert_almost_equal(v1.min, v2[0])
+        assert_almost_equal(v1.max, v2[1])
+
+def test_iter_state():
+    """test iteration of states"""
+    import math
+    m = Model('My first model')
+    m.v1 = react("A+B -> C"  , 3)
+    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = react("B   ->  "  , "2*B")
+    m.D  = variable("-2 * D")
+    m.B  = 2.2
+    m.myconstant = 2 * m.B / 1.1 # should be 4.0
+    m.V3 = 0.5
+    m.V3 = [0.1, 1.0]
+    m.Km3 = 4
+    m.Km3.uncertainty(0,5)
+    m.init = state(A = 1.0, C = 1, D = 1)
+    m.afterwards = state(C = 2, D = 1)
+    m.afterwards.C.uncertainty(1,3)
+    initnames = [i[0] for i in m.init]
+    assert len(initnames) == len(varnames(m))
+    afternames = [i[0] for i in m.afterwards]
+    assert len(afternames) == 2
+    initlist = [(i,j) for i,j in m.init]
+    assert ('A', 1.0) in m.init
+    assert ('D', 1.0) in m.init
 
 

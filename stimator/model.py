@@ -255,7 +255,7 @@ class StateArray(object):
         if name in self.varvalues:
             return self.varvalues[name]
         else:
-            raise AttributeError( name + ' is not a member of state'+ self.__dict__['name'])
+            raise AttributeError( name + ' is not a member of state '+ self.__dict__['name'])
     def __setattr__(self, name, value):
         if name != 'name' and name != 'varvalues':
             value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
