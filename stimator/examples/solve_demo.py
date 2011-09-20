@@ -1,10 +1,12 @@
 """S-timator : DEMO of analysis module."""
 from stimator import *
+from stimator import __version__, __versiondate__
 from time import time, sleep
 from numpy import append, linspace
 
 print __doc__
-
+print "S-timator version", __version__, "(%s)"%__versiondate__
+print
 print '---------------- EXAMPLE 1 ------------------'
 m1 = read_model("""
 title Glyoxalase system

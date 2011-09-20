@@ -6,4 +6,5 @@ from timecourse import readTCs, Solutions, TimeCourses
 from modelparser import read_model
 
 
-__version__ = '0.9.8'+"$Revision$"[9:-1].trim()
+__version__ = '0.9.8.'+"$Revision$"[10:-1].strip()
+__versiondate__ = "$Date$"[6:-1].strip()
