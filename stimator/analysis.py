@@ -235,6 +235,8 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
             else:
                 if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
                 if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
+        if hasattr(solutions, 'title'):
+            figure.suptitle(solutions.title)
 
     if not superimpose and ynormalize:
         for isolution in range(ntc):
