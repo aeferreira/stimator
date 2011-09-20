@@ -94,16 +94,25 @@ def transformation(vars,t):
 
 solution4.apply_transf(transformation)
 
-sleep(1.0)
-
 plot ([solution1, solution2, solution3, solution4])
 
-s = Solutions("Rossler model: sensitivity to initial conditions")
-ms = ModelSolver(m4,tf = 100.0, npoints = 2000, outputs="x1", changing_pars = "init.X1") 
-for stimulus in 19.0, 19.02, 19.04:
-    s += ms.solve(title = 'init.X1 = %g'% stimulus, par_values = [stimulus])
+print '---------------- EXAMPLE 5 ------------------'
+m5 = read_model("""
+title Lorentz model: sensitivity to initial conditions
+x' = 10*(y-x)
+y' = x*(28-z)-y
+z' = x*y - (8/3)*z
+init = state(x = 1, y = 1, z = 1)
+""")
+print m5.getData('title')
+s = Solutions(m5.getData('title'))
+ms = ModelSolver(m5,tf = 20.0, npoints = 20000, outputs="x", changing_pars = "init.x") 
+for stimulus in 1.0, 1.01, 1.02:
+    s += ms.solve(title = 'x(0) = %g'% stimulus, par_values = [stimulus])
 plot(s,superimpose=True)
 
+print '---------------- EXAMPLE 6 ------------------'
+scantitle = "CICR model: Effect of stimulus on citosolic calcium"
 m = read_model("""
 title Calcium Spikes
 v0         = -> Ca, 1
@@ -120,8 +129,8 @@ v3         = CaComp -> Ca, \
 init       = state(Ca = 0.1, CaComp = 0.63655)
 """)
 
-s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
-print m
+s = Solutions(scantitle)
+## print m
 def mytransformation(B, Ca, CaComp):
     return B, Ca, CaComp
 mytransformation.names = "stimulus", "Ca cit", 'Ca comp'
