@@ -136,15 +136,25 @@ def findWithNameIndex(name, alist):
 #----------------------------------------------------------------------------
 #         Model and Model component classes
 #----------------------------------------------------------------------------
-class Reaction(object):
-    def __init__(self, reagents, products, rate, irreversible = False):
-        self.reagents = reagents
-        self.products = products
-        self.rate = rate.strip()
-        self.irreversible = irreversible
+
+class _HasRate(object):
+    def __init__(self, rate):
+        self.__rate = rate.strip()
         self.name = '?'
     def __str__(self):
-        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self.rate)) 
+        return "%s:\n  rate = %s\n" % (self.name, str(self()))
+    def __call__(self):
+        return self.__rate
+
+
+class Reaction(_HasRate):
+    def __init__(self, reagents, products, rate, irreversible = False):
+        _HasRate.__init__(self, rate)
+        self.reagents = reagents
+        self.products = products
+        self.irreversible = irreversible
+    def __str__(self):
+        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self())) 
 
 def react(stoichiometry, rate = 0.0):
     res = processStoich(stoichiometry)
@@ -155,30 +165,23 @@ def react(stoichiometry, rate = 0.0):
     return Reaction(res[0], res[1], rate, res[2])
 
 
-class Variable_dXdt(object):
-    def __init__(self, rate = 0.0):
-        self.rate = rate
-        self.name = '?'
-    def __str__(self):
-        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
+class Variable_dXdt(_HasRate):
+    def __init__(self, rate):
+        _HasRate.__init__(self, rate)
+
+class Transformation(_HasRate):
+    def __init__(self, rate):
+        _HasRate.__init__(self, rate)
 
 def variable(rate = 0.0):
     if isinstance(rate, float) or isinstance(rate, int):
-        rate = str(rate)
+        rate = str(float(rate))
     return Variable_dXdt(rate)
-
-class Transformation(object):
-    def __init__(self, rate):
-        self.rate = rate.strip()
-        self.name = '?'
-    def __str__(self):
-        return "%s:\n  rate = %s\n" % (self.name, str(self.rate))
 
 def transf(rate = 0.0):
     if isinstance(rate, float) or isinstance(rate, int):
         rate = str(float(rate))
     return Transformation(rate)
-
 
 class ConstValue(float):
     def __new__(cls, value):
@@ -199,7 +202,6 @@ class ConstValue(float):
         if self.bounds:
             res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
         return res
-
 
 def constValue(value = None, name = None, into = None):
     if isinstance(value, float) or isinstance(value, int):
@@ -327,7 +329,7 @@ class Model(object):
             react_name = 'd_%s_dt'% name
             stoich = ' -> %s'% name
             name = react_name # hope this works...
-            value = react(stoich, value.rate)
+            value = react(stoich, value())
         r = _ConvertPair2Reaction(value)
         if r:
             value = r
@@ -428,9 +430,9 @@ class Model(object):
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
             for v in collection:
-                resstring, value = _test_with_everything(v.rate,self)
+                resstring, value = _test_with_everything(v(),self)
                 if resstring != "":
-                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v.rate)
+                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v())
         return True, 'OK'
 
     def __str__(self):
@@ -459,11 +461,11 @@ class Model(object):
     def clone(self):
         m = Model(self['title'])
         for r in reactions(self):
-            setattr(m, r.name, Reaction(r.reagents, r.products, r.rate, r.irreversible))
+            setattr(m, r.name, Reaction(r.reagents, r.products, r(), r.irreversible))
         for p in parameters(self):
             setattr(m, p.name, constValue(p))
         for t in transformations(self):
-            setattr(m, t.name, Transformation(t.rate))
+            setattr(m, t.name, Transformation(t()))
         for s in self.__states:
             newdict= {}
             for i in s:
@@ -597,10 +599,10 @@ def test():
     print '********** Testing iteration of components *****************'
     print 'iterating reactions(m)'
     for v in reactions(m):
-        print v.name, ':', v.rate, '|', v.reagents, '->', v.products
+        print v.name, ':', v(), '|', v.reagents, '->', v.products
     print '\niterating transformations(m)'
     for v in transformations(m):
-        print v.name, ':', v.rate
+        print v.name, ':', v()
     print '\niterating variables(m)'
     for x in variables(m):
         print x.name

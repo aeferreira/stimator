@@ -22,8 +22,8 @@ def test_react1():
     assert isinstance(m.v2, model.Reaction)
     assert m.v1.name == 'v1'
     assert m.v2.name == 'v2'
-    assert m.v1.rate== str(float(4))+ "*A"
-    assert m.v2.rate== str(float(2.0))+"*B"
+    assert m.v1()== str(float(4))+ "*A"
+    assert m.v2()== str(float(2.0))+"*B"
     check, msg = m.checkRates()
     assert check 
 
@@ -34,7 +34,7 @@ def test_react2():
     m.p1 = 2
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
-    assert m.v1.rate== "4*A/(p1+A)-B"
+    assert m.v1()== "4*A/(p1+A)-B"
     check, msg = m.checkRates()
     assert check 
 
@@ -45,7 +45,7 @@ def test_react2b():
     m.p1 = 2
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
-    assert m.v1.rate== "4*sqrt(A)/(p1+sin(A))-B"
+    assert m.v1()== "4*sqrt(A)/(p1+sin(A))-B"
     check, msg = m.checkRates()
     assert check 
 
@@ -56,7 +56,7 @@ def test_react2c():
     m.p1 = 2
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
-    assert m.v1.rate== "4*A*step(t,1.0)"
+    assert m.v1()== "4*A*step(t,1.0)"
     check, msg = m.checkRates()
     assert check 
 
@@ -73,7 +73,7 @@ def test_react4():
     m.p1 = 2
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
-    assert m.v1.rate== "4*A/(p2+A)-B"
+    assert m.v1()== "4*A/(p2+A)-B"
     check, msg = m.checkRates()
     assert not check 
 
@@ -84,7 +84,7 @@ def test_react5():
     m.p1 = 2
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
-    assert m.v1.rate== "4*A/(p1+A-B"
+    assert m.v1()== "4*A/(p1+A-B"
     check, msg = m.checkRates()
     assert not check 
 
@@ -95,7 +95,7 @@ def test_react6():
     m.p1 = 2
     assert m.v1.name == 'v1'
     assert isinstance(m.v1, model.Reaction)
-    assert m.v1.rate== "1e100**10000 * 4*A/(p1+A)-B"
+    assert m.v1()== "1e100**10000 * 4*A/(p1+A)-B"
     check, msg = m.checkRates()
     assert not check 
 
@@ -174,8 +174,8 @@ def test_transf1():
     assert isinstance(m.t2, model.Transformation)
     assert m.t1.name == 't1'
     assert m.t2.name== 't2'
-    assert m.t1.rate== str(float(4))
-    assert m.t2.rate== str(float(2.0))
+    assert m.t1()== str(float(4))
+    assert m.t2()== str(float(2.0))
     check, msg = m.checkRates()
     assert check 
 
@@ -187,7 +187,7 @@ def test_transf2():
     m.p1 = 2
     assert isinstance(m.t1, model.Transformation)
     assert m.t1.name == 't1'
-    assert m.t1.rate== "4*A/(p1+A)-B"
+    assert m.t1()== "4*A/(p1+A)-B"
     check, msg = m.checkRates()
     print msg
     assert check 
@@ -262,7 +262,7 @@ def test_iter_reactions():
     assert isinstance(rr, list)
     assert len(rr) == 5
     names = [v.name for v in reactions(m)]
-    rates = [v.rate for v in reactions(m)]
+    rates = [v() for v in reactions(m)]
     reags = [v.reagents for v in reactions(m)]
     assert names[0] == 'v1'
     assert names[1] == 'v2'
@@ -292,7 +292,7 @@ def test_iter_transf():
     assert isinstance(rr, list)
     assert len(rr) == 2
     names = [v.name for v in transformations(m)]
-    rates = [v.rate for v in transformations(m)]
+    rates = [v() for v in transformations(m)]
     assert names[0] == 't1'
     assert names[1] == 't2'
     assert rates[0] == 'A*4 + C'

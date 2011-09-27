@@ -55,7 +55,7 @@ def rates_strings(m):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
-    return tuple([(v.name, v.rate) for v in reactions(m)])
+    return tuple([(v.name, v()) for v in reactions(m)])
 
 def dXdt_strings(m):
     """Generate a tuple of tuples of
@@ -75,7 +75,7 @@ def dXdt_strings(m):
         for j,v in enumerate(reactions(m)):
             coef = N[i,j]
             if coef == 0.0: continue
-            ratestring = '(%s)'% v.rate
+            ratestring = '(%s)'% v()
             if coef == 1.0:
                 ratestring = '+'+ratestring
             else:
@@ -201,7 +201,7 @@ def rates_func(m, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
         collection = reactions(m)
 
     #compile rate laws
-    ratebytecode = [compile(rateCalcString(m, v.rate, with_uncertain=with_uncertain), '<string>','eval') for v in collection]
+    ratebytecode = [compile(rateCalcString(m, v(), with_uncertain=with_uncertain), '<string>','eval') for v in collection]
     # create array to hold v's
     v = empty(len(collection))
     en = list(enumerate(ratebytecode))
@@ -245,9 +245,9 @@ def genTransformationFunction(m, f):
         elif collection == 'variables':
             data.append(('v', i))
         elif collection == 'transf':
-            data.append(('t', compile(rateCalcString(m, transformations(m)[i].rate), '<string>','eval')))
+            data.append(('t', compile(rateCalcString(m, transformations(m)[i]()), '<string>','eval')))
         elif collection == 'reactions':
-            data.append(('r', compile(rateCalcString(m, reactions(m)[i].rate), '<string>','eval')))
+            data.append(('r', compile(rateCalcString(m, reactions(m)[i]()), '<string>','eval')))
         else:
             raise AttributeError(a + ' is not a component in this model')
     args = [0.0]*nargs
@@ -321,7 +321,7 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
     if not check:
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = [compile(rateCalcString(m, v.rate, 
+    ratebytecode = [compile(rateCalcString(m, v(), 
                            with_uncertain = with_uncertain), 
                            '<string>','eval') for v in reactions(m)]
     # compute stoichiometry matrix, scale and transpose
@@ -352,7 +352,7 @@ def getdXdt_exposing_rbc(m, expose_enum, with_uncertain = False, scale = 1.0, t0
     if not check:
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = [compile(rateCalcString(m, v.rate, 
+    ratebytecode = [compile(rateCalcString(m, v(), 
                            with_uncertain = with_uncertain), 
                            '<string>','eval') for v in reactions(m)]
     # compute stoichiometry matrix, scale and transpose
@@ -385,7 +385,7 @@ def dXdt_with(m, uncertainparameters, scale = 1.0, t0=0.0):
     if not check:
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = [compile(rateCalcString(m, v.rate, with_uncertain = True), '<string>','eval') for v in reactions(m)]
+    ratebytecode = [compile(rateCalcString(m, v(), with_uncertain = True), '<string>','eval') for v in reactions(m)]
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
     N *= scale
@@ -479,15 +479,15 @@ def test():
     print v, 'of type', type(v)
     print
     print '********** Testing rateCalcString **************************'
-    print 'calcstring for v1:\n', rateCalcString(m, m.v1.rate)
+    print 'calcstring for v1:\n', rateCalcString(m, m.v1())
     print
-    print 'calcstring for v2:\n', rateCalcString(m, m.v2.rate)
+    print 'calcstring for v2:\n', rateCalcString(m, m.v2())
     print
-    print 'calcstring for v2 with uncertain parameters:\n', rateCalcString(m, m.v2.rate, True)
+    print 'calcstring for v2 with uncertain parameters:\n', rateCalcString(m, m.v2(), True)
     print
-    print 'calcstring for t1:\n', rateCalcString(m, m.t1.rate)
+    print 'calcstring for t1:\n', rateCalcString(m, m.t1())
     print
-    print 'calcstring for t2:\n', rateCalcString(m, m.t2.rate)
+    print 'calcstring for t2:\n', rateCalcString(m, m.t2())
     print
 
     print '********** Testing rate and dXdt generating functions ******'
@@ -508,17 +508,17 @@ def test():
     vratesfunc = rates_func(m)
     vrates = vratesfunc(varvalues,t)
     for v,r in zip(reactions(m), vrates):
-        print "%s = %-20s = %s" % (v.name, v.rate, r)
+        print "%s = %-20s = %s" % (v.name, v(), r)
 
     print '---- transformations using rates_func(m, transf = True) --'
     tratesfunc = rates_func(m,transf = True)
     trates = tratesfunc(varvalues,t)
     for v,r in zip(transformations(m), trates):
-        print "%s = %-20s = %s" % (v.name, v.rate, r)
+        print "%s = %-20s = %s" % (v.name, v(), r)
     print '---- same, at t = 2.0 --'
     trates = tratesfunc(varvalues,2.0)
     for v,r in zip(transformations(m), trates):
-        print "%s = %-20s = %s" % (v.name, v.rate, r)
+        print "%s = %-20s = %s" % (v.name, v(), r)
 
     print '---- dXdt using getdXdt(m) --------------------------------'
     f = getdXdt(m)

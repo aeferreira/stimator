@@ -152,7 +152,7 @@ class ModelSolver(object):
             y0[self.vars_initindexes] = par_values[self.pars_initindexes]
         vs = reactions(self.model)
         for i in range(len(reactions(self.model))):
-            self.expose_enum[i] = (i,compile(rateCalcString(self.model, vs[i].rate),'<string>','eval'))
+            self.expose_enum[i] = (i,compile(rateCalcString(self.model, vs[i]()),'<string>','eval'))
         output = integrate._odepack.odeint(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None

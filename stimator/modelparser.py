@@ -332,7 +332,7 @@ class StimatorParser:
                     msg = msg.replace('in rate of', 'in the definition of')
                     
                 self.setError(msg, self.rateloc[indx])
-                expr = getattr(self.model, vn).rate
+                expr = getattr(self.model, vn)()
                 self.setIfNameError(msg, expr, self.errorloc)
                 return
 
@@ -607,7 +607,7 @@ timecourse anotherfile.txt
 
     #~ modelText = '\n'.join(textlines)
     
-    filename = "../examples/ca.txt"
+    filename = "examples/ca.txt"
     try2read_model(filename)
 
 
