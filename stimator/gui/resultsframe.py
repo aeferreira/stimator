@@ -516,7 +516,7 @@ class resultsFrame(wx.Frame):
         self.plotpanel.model = model
         self.plotpanel.solver = solver
 
-        self.SetTitle("Results for %s" % model.getData('title'))
+        self.SetTitle("Results for %s" % model['title'])
 
 ##---------------- Event handlers
 

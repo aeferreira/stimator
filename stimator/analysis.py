@@ -52,7 +52,7 @@ def solve(model,
     if output[-1] < 0: return None
     Y = output[0]
     if title is None:
-        title = model.getData('title')
+        title = model['title']
     
     sol = SolutionTimeCourse (times, Y.T, names, title)
     
@@ -126,7 +126,7 @@ class ModelSolver(object):
         self.t  = (self.times-t0)/scale  # this scales time points
         self.title = title
         if self.title is None:
-            self.title = self.model.getData('title')
+            self.title = self.model['title']
         self.tranf_f = None
         self.tranf_names = None
         #get outputs

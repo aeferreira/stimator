@@ -1058,10 +1058,10 @@ class MyFrame(wx.Frame):
         sys.stdout = self
         try:
             self.model = stimator.modelparser.read_model(textlines)
-            self.tc = self.model.getData('timecourses')
-            self.optSettings = self.model.getData('optSettings')
-            if self.model.getData('title') == "":
-               self.model.setData('title', self.GetFileName(self.ModelEditor))
+            self.tc = self.model['timecourses']
+            self.optSettings = self.model['optSettings']
+            if self.model['title'] == "":
+               self.model['title'] = self.GetFileName(self.ModelEditor)
         except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout

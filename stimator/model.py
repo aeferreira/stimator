@@ -54,7 +54,7 @@ def _test_with_everything(valueexpr, model):
     return "", value
 
 #----------------------------------------------------------------------------
-#         Regular expressions for grammar elements and dispatchers
+#         Regular expressions for stoichiometry patterns
 #----------------------------------------------------------------------------
 stoichiompattern   = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
 chemcomplexpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
@@ -284,7 +284,7 @@ def isPairOfNums(value):
         return True
     return False
 
-def ConvertPair2Reaction(value):
+def _ConvertPair2Reaction(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
         if isinstance(value[0], str):
             good2nd = False
@@ -315,7 +315,7 @@ class Model(object):
         self.__dict__['_Model__metadata']          = {}
         #self.__dict__['title']                     = title
         self.__dict__['_Model__m_Parameters']      = None
-        self.setData('title', title)
+        self['title'] = title
     
     def __setattr__(self, name, value):
         for numtype in (float,int,long):
@@ -328,7 +328,7 @@ class Model(object):
             stoich = ' -> %s'% name
             name = react_name # hope this works...
             value = react(stoich, value.rate)
-        r = ConvertPair2Reaction(value)
+        r = _ConvertPair2Reaction(value)
         if r:
             value = r
         assoc = ((Reaction,       '_Model__reactions'),
@@ -387,14 +387,28 @@ class Model(object):
             return c
         raise AttributeError( name + ' is not defined for this model')
     
-    def setData(self, name, value):
-        self.__metadata[name] = value
-    
-    def getData(self, name):
-        if not name in self.__metadata:
-            return None
-        return self.__metadata[name]
-        
+    def __setitem__(self, key, value):
+        if isinstance(key, str) or isinstance(key, unicode):
+            self.__metadata[key] = value
+        else:
+            raise TypeError( "Model keys must be strings.")
+
+    def __delitem__(self, key):
+        if isinstance(key, str) or isinstance(key, unicode):
+            if self.__metadata.has_key(key):
+                del(self.__metadata[key])
+        else:
+            raise TypeError( "Model keys must be strings.")
+
+    def __getitem__(self, key):
+        """retrieves info by name"""
+        if isinstance(key, str) or isinstance(key, unicode):
+            if not key in self.__metadata:
+                return None
+            return self.__metadata[key]
+        else:
+            raise TypeError( "Model keys must be strings.")
+
 
     def __findComponent(self, name):
         c = findWithNameIndex(name, self.__parameters)
@@ -423,7 +437,7 @@ class Model(object):
         check, msg = self.checkRates()
         if not check:
             raise BadRateError(msg)
-        res = "%s\n"% self.getData('title')
+        res = "%s\n"% self['title']
         #~ res = "%s\n"% self.title
         res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
         if len(self.__extvariables) > 0:
@@ -443,7 +457,7 @@ class Model(object):
         return res
     
     def clone(self):
-        m = Model(self.getData('title'))
+        m = Model(self['title'])
         for r in reactions(self):
             setattr(m, r.name, Reaction(r.reagents, r.products, r.rate, r.irreversible))
         for p in parameters(self):
@@ -465,7 +479,7 @@ class Model(object):
             else:
                 getattr(m, loc[0]).uncertainty(u.min, u.max)
         for k,v in self.__metadata.items():
-            m.setData(k,v)
+            m[k] = v
         return m
     
     def __refreshVars(self):
@@ -562,12 +576,18 @@ def test():
     m.input2 = transf("4*step(t,at,top)")
     m.input3 = transf("force(top, t)")
     
-    m.setData('where', 'in model')
-    m.setData('title', 'My first model')
+    m['where'] = 'in model'
+    m['for what'] = 'testing'
     
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'
     print m
+    print "access to info as keys---------"
+    print "m['for what'] =", m['for what']
+    del(m['where'])
+    print "\nafter del(m['where'])"
+    print "m['where'] =", m['where']
+    
     m2 = m.clone()
     print
     print '------- result of CLONING the model:\n'

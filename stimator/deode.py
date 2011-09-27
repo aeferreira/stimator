@@ -126,7 +126,7 @@ class DeODESolver(de.DESolver):
         return globalscore
 
     def reportInitial (self):
-        msg = "\nSolving %s..."%self.model.getData('title')
+        msg = "\nSolving %s..."%self.model['title']
         if not self.msgTicker:
             print msg
         else:

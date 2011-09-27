@@ -385,7 +385,7 @@ def readTCs(source, filedir = None, intvarsorder = None, names = None, verbose =
     tcsnames = None
     if isinstance(source, model.Model):
         #retrieve info from model declaration
-        stcs = source.getData('timecourses')
+        stcs = source['timecourses']
         tcs.filenames = stcs.filenames
         tcsnames = stcs.defaultnames
     else:
@@ -558,9 +558,9 @@ nothing really usefull here
         print msg
     print
     print '\n- testing write_to() ----------------'
-    sol.write_to('../examples/exp.txt')
+    sol.write_to('examples/exp.txt')
     print '\n- reading back from file ------------'
-    sol.load_from('../examples/exp.txt')
+    sol.load_from('examples/exp.txt')
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -570,7 +570,7 @@ nothing really usefull here
     print
     
     
-    sol.load_from('../examples/TSH2b.txt')
+    sol.load_from('examples/TSH2b.txt')
     print '\n- using load_from() ----------------'
     print '\nnames:'
     print sol.names
@@ -630,7 +630,7 @@ nothing really usefull here
     print
 
     print "-Reading tcs, using readTCs() -----------"
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../examples', verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples', verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names
@@ -641,7 +641,7 @@ nothing really usefull here
         print
     
     print "Providing default names HTA SDLTSH ------------------------"
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '../examples', names = "SDLTSH HTA".split(), verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples', names = "SDLTSH HTA".split(), verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names
@@ -663,7 +663,7 @@ nothing really usefull here
         print
     
     print "saving to different files"
-    tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'], '../examples', verbose=True)
+    tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'], 'examples', verbose=True)
     
     
     
@@ -691,7 +691,7 @@ nothing really usefull here
         print
 
     print "- Reading tcs using info declared in a model def -"
-    tcs = readTCs(m, '../examples', verbose=True)
+    tcs = readTCs(m, 'examples', verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
         print tc.names

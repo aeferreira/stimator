@@ -9,7 +9,7 @@ print """The deode module combines ODE solving with DE (differential evolution)
 """
 
 m1 = ui.load_model("glxs_hta.mdl")
-optSettings = m1.getData('optSettings')
+optSettings = m1['optSettings']
 tc = readTCs(m1, ".", verbose=True)
 
 solver = DeODESolver(m1,optSettings, tc)

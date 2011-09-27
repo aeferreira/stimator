@@ -210,8 +210,8 @@ def read_model(text):
     parser = StimatorParser()
     parser.parse(text)
     if parser.error is None:
-        parser.model.setData('timecourses', parser.tc)
-        parser.model.setData('optSettings', parser.optSettings)
+        parser.model['timecourses']= parser.tc
+        parser.model['optSettings'] = parser.optSettings
         return parser.model
     logloc = parser.errorloc
     ppos = getPhysicalLineData(text, logloc)
@@ -220,8 +220,8 @@ def read_model(text):
 def try2read_model(text):
     try:
         m= read_model(text)
-        tc = m.getData('timecourses')
-        print '\n-------- Model %s successfuly read ------------------'% m.getData('title')
+        tc = m['timecourses']
+        print '\n-------- Model %s successfuly read ------------------'% m['title']
         print m
         if len(tc.filenames) >0:
             print "the timecourses to load are", tc.filenames
@@ -275,7 +275,6 @@ class StimatorParser:
         self.errorloc = None
         
         self.model       = model.Model()
-        #~ self.model.setData('timecourses', timecourse.TimeCourseCollection())
         self.tc          = timecourse.TimeCourses()
         # default Differential Evolution num of generations and population size
         self.optSettings = {'generations':200, 'genomesize' :10}
@@ -492,7 +491,7 @@ class StimatorParser:
 
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
-        self.model.setData('title', title)
+        self.model['title'] = title
         #~ setattr(self.model, 'title', title)
 
 #----------------------------------------------------------------------------
@@ -608,7 +607,7 @@ timecourse anotherfile.txt
 
     #~ modelText = '\n'.join(textlines)
     
-    filename = "../models/ca.txt"
+    filename = "../examples/ca.txt"
     try2read_model(filename)
 
 

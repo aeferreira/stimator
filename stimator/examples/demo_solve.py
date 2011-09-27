@@ -104,8 +104,8 @@ y' = x*(28-z)-y
 z' = x*y - (8/3)*z
 init = state(x = 1, y = 1, z = 1)
 """)
-print m5.getData('title')
-s = Solutions(m5.getData('title'))
+print m5['title']
+s = Solutions(m5['title'])
 ms = ModelSolver(m5,tf = 20.0, npoints = 20000, outputs="x", changing_pars = "init.x") 
 for stimulus in 1.0, 1.01, 1.02:
     s += ms.solve(title = 'x(0) = %g'% stimulus, par_values = [stimulus])
