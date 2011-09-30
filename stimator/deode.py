@@ -76,8 +76,8 @@ class DeODESolver(de.DESolver):
         # find uncertain initial values
         mapinit2trial = []
         for iu, u in enumerate(uncertain(self.model)):
-            if u.name.startswith('init'):
-                varname = u.name.split('.')[-1]
+            if get_name(u).startswith('init'):
+                varname = get_name(u).split('.')[-1]
                 ix = findWithNameIndex(varname, variables(self.model))
                 mapinit2trial.append((ix,iu))
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
@@ -189,8 +189,8 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best['timecourses']['data'] = []
 
-        allvarnames = [x.name for x in variables(self.model)]
-        pars = [uncertain(self.model)[i].name for i in range(len(self.bestSolution))]
+        allvarnames = [get_name(x) for x in variables(self.model)]
+        pars = [get_name(uncertain(self.model)[i]) for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
         self.model.set_uncertain(self.bestSolution)
@@ -215,7 +215,7 @@ class DeODESolver(de.DESolver):
                 yexp = line
                 nnan = len(yexp[isnan(yexp)])
                 if nnan >= nt-1: continue
-                varnames.append(str(variables(self.model)[iline].name))
+                varnames.append(str(get_name(variables(self.model)[iline])))
                 varindexes.append(iline)
             #print len(varindexes), varnames
         best['timecourses']['format'] = "%s\t%d\t%g"
@@ -224,7 +224,7 @@ class DeODESolver(de.DESolver):
         
         
         if not (fim.sympy_installed):
-            best['parameters']['data'] = [(self.model.uncertain[i].name, "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
+            best['parameters']['data'] = [(get_name(self.model.uncertain[i]), "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
         else:
             consterror = [0.0 for i in range(len(varnames))]
             for ix, x in enumerate(varnames):
@@ -241,7 +241,7 @@ class DeODESolver(de.DESolver):
             STDerrors = {}
             for i,p in enumerate(pars):
                 STDerrors[p] =invFIM1[i,i]**0.5
-            best['parameters']['data'] = [(uncertain(self.model)[i].name, "%g"%value, "%g"%STDerrors[uncertain(self.model)[i].name]) for (i,value) in enumerate(self.bestSolution)]
+            best['parameters']['data'] = [(get_name(uncertain(self.model)[i]), "%g"%value, "%g"%STDerrors[get_name(uncertain(self.model)[i])]) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
 

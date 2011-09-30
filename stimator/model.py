@@ -30,7 +30,7 @@ def register_kin_func(f):
 def _test_with_everything(valueexpr, model): 
     locs = {}
     for p in parameters(model):
-        locs[p.name] = p #.value
+        locs[get_name(p)] = p #.value
     
     #part 1: nonpermissive, except for NameError
     try :
@@ -42,7 +42,7 @@ def _test_with_everything(valueexpr, model):
     #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
     for i in variables(model):
-        vardict[i.name]=1.0
+        vardict[get_name(i)]=1.0
     vardict['t'] = 1.0
     locs.update(vardict)
     try :
@@ -121,15 +121,15 @@ def massActionStr(k = 1.0, reagents = []):
         res = res + '*' + factors
     return res
 
-def findWithName(name, alist):
+def findWithName(aname, alist):
     for i in alist:
-        if i.name == name:
+        if get_name(i) == aname:
             return i
     return None
 
-def findWithNameIndex(name, alist):
+def findWithNameIndex(aname, alist):
     for i,elem in enumerate(alist):
-        if elem.name == name:
+        if get_name(elem) == aname:
             return i
     return -1
 
@@ -137,12 +137,46 @@ def findWithNameIndex(name, alist):
 #         Model and Model component classes
 #----------------------------------------------------------------------------
 
-class _HasRate(object):
+def get_name(obj):
+    return obj._ModelObject__name
+
+def set_name(obj, name):
+    obj._ModelObject__name = name
+
+class ModelObject(object):
+    def __init__(self, name = '?'):
+        self.__dict__['_ModelObject__metadata'] = {}
+        self.__dict__['_ModelObject__name'] = name
+    
+    def __setitem__(self, key, value):
+        if isinstance(key, str) or isinstance(key, unicode):
+            self.__metadata[key] = value
+        else:
+            raise TypeError( "Keys must be strings.")
+
+    def __delitem__(self, key):
+        if isinstance(key, str) or isinstance(key, unicode):
+            if self.__metadata.has_key(key):
+                del(self.__metadata[key])
+        else:
+            raise TypeError( "Keys must be strings.")
+
+    def __getitem__(self, key):
+        """retrieves info by name"""
+        if isinstance(key, str) or isinstance(key, unicode):
+            if not key in self.__metadata:
+                return None
+            return self.__metadata[key]
+        else:
+            raise TypeError( "Keys must be strings.")
+
+    
+class _HasRate(ModelObject):
     def __init__(self, rate):
+        ModelObject.__init__(self)
         self.__rate = rate.strip()
-        self.name = '?'
     def __str__(self):
-        return "%s:\n  rate = %s\n" % (self.name, str(self()))
+        return "%s:\n  rate = %s\n" % (get_name(self), str(self()))
     def __call__(self):
         return self.__rate
 
@@ -154,7 +188,7 @@ class Reaction(_HasRate):
         self.products = products
         self.irreversible = irreversible
     def __str__(self):
-        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (self.name, str(self.reagents), str(self.products), str(self())) 
+        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (get_name(self), str(self.reagents), str(self.products), str(self())) 
 
 def react(stoichiometry, rate = 0.0):
     res = processStoich(stoichiometry)
@@ -183,12 +217,16 @@ def transf(rate = 0.0):
         rate = str(float(rate))
     return Transformation(rate)
 
-class ConstValue(float):
+class ConstValue(float,ModelObject):
     def __new__(cls, value):
         return float.__new__(cls,value)
-##     def __init__(self):
-##         self.name = '?'
-##         self.bounds = None
+    def initialize(self, aname = '?', into = None):
+        ModelObject.__init__(self, aname)
+        self.bounds = None
+        if into:
+            set_name(self, get_name(into))
+            self.bounds = into.bounds
+    
     def uncertainty(self, *pars):
         if len(pars) == 0 or pars[0]==None:
             self.bounds = None
@@ -196,58 +234,52 @@ class ConstValue(float):
         if len(pars) != 2:
             return #TODO raise exception
         self.bounds = Bounds(float(pars[0]), float(pars[1]))
-        self.bounds.name = self.name
+        set_name(self.bounds, get_name(self))
     def pprint(self):
         res = float.__str__(self)
         if self.bounds:
             res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
         return res
 
-def constValue(value = None, name = None, into = None):
+def constValue(value = None, name = '?', into = None):
     if isinstance(value, float) or isinstance(value, int):
         v = float(value)
         res = ConstValue(v)
-        res.name = '?'
-        res.bounds = None
-        if into:
-            res.name = into.name
-            res.bounds = into.bounds
+        res.initialize(name)
     elif (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
         bounds = Bounds(float(value[0]), float(value[1]))
         v = (bounds.min + bounds.max)/2.0
         if into:
             res = ConstValue(into)
-            res.name = into.name
+            res.initialize(name, into = into)
         else:
             res = ContsValue(v)
-            res.name = '?'
+            res.initialize(name)
         res.bounds = bounds
     else:
         raise TypeError( value + ' is not a float or pair of floats')
-    if name:
-        res.name = name
     if res.bounds:
-        res.bounds.name = res.name        
+        set_name(res.bounds, get_name(res))
     return res
         
 
-class Bounds(object):
+class Bounds(ModelObject):
     def __init__(self, min = 0.0, max = 1.0):
+        ModelObject.__init__(self)
         self.min = min
         self.max = max
-        self.name = '?'
     def __str__(self):
         return "(min=%f, max=%f)" % (self.min, self.max)
 
-class Variable(object):
+class Variable(ModelObject):
     def __init__(self, name):
-        self.name = name
+        ModelObject.__init__(self,name)
     def __str__(self):
-        return self.name
+        return get_name(self)
 
-class StateArray(object):
+class StateArray(ModelObject):
     def __init__(self, varvalues, name):
-        self.__dict__['name'] = name
+        ModelObject.__init__(self,name)
         for k,v in varvalues.items():
             varvalues[k] = constValue(value = v, name = k)
         self.__dict__['varvalues'] = varvalues
@@ -259,7 +291,7 @@ class StateArray(object):
         else:
             raise AttributeError( name + ' is not a member of state '+ self.__dict__['name'])
     def __setattr__(self, name, value):
-        if name != 'name' and name != 'varvalues':
+        if name != 'varvalues' and name != '_ModelObject__name': #and name != 'name'
             value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
             self.__dict__['varvalues'][name]=value
         else:
@@ -306,7 +338,7 @@ def _ConvertPair2Reaction(value):
             return Reaction(res[0], res[1], rate, res[2])
     return False
 
-class Model(object):
+class Model(ModelObject):
     def __init__(self, title = ""):
         self.__dict__['_Model__reactions']         = []
         self.__dict__['_Model__variables']         = []
@@ -314,10 +346,10 @@ class Model(object):
         self.__dict__['_Model__parameters']        = []
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__states']            = []
-        self.__dict__['_Model__metadata']          = {}
-        #self.__dict__['title']                     = title
+        ModelObject.__init__(self)
         self.__dict__['_Model__m_Parameters']      = None
         self['title'] = title
+        set_name(self, title)
     
     def __setattr__(self, name, value):
         for numtype in (float,int,long):
@@ -342,7 +374,7 @@ class Model(object):
             c = findWithNameIndex(name, self.__dict__[listname])
             if c > -1:
                 if isinstance(value, t) or (isinstance(value, Bounds) and listname == '_Model__parameters'):
-                    value.name = name
+                    set_name(value,name)
                     if isinstance(value, Bounds):
                         self.__dict__[listname][c].bounds = value
                     else:
@@ -354,13 +386,13 @@ class Model(object):
         # append new object to proper list
         for t, listname in assoc:
             if isinstance(value, t):
-                value.name = name
+                set_name(value,name)
                 self.__dict__[listname].append(value)
                 self.__refreshVars()
                 return
         if isinstance (value, Bounds):
-            value.name = name
-            newvalue = constValue((float(value.min)+float(value.max))/2.0, name)
+            set_name(value,name)
+            newvalue = constValue((float(value.min)+float(value.max))/2.0, name=name)
             newvalue.bounds = value
             self.__dict__['_Model__parameters'].append(newvalue)
             self.__refreshVars()
@@ -380,7 +412,7 @@ class Model(object):
             return c
         c = findWithName(name, self.__variables)
         if c :
-            return c.name
+            return get_name(c)
         c = findWithName(name, self.__transf)
         if c :
             return c
@@ -389,29 +421,6 @@ class Model(object):
             return c
         raise AttributeError( name + ' is not defined for this model')
     
-    def __setitem__(self, key, value):
-        if isinstance(key, str) or isinstance(key, unicode):
-            self.__metadata[key] = value
-        else:
-            raise TypeError( "Model keys must be strings.")
-
-    def __delitem__(self, key):
-        if isinstance(key, str) or isinstance(key, unicode):
-            if self.__metadata.has_key(key):
-                del(self.__metadata[key])
-        else:
-            raise TypeError( "Model keys must be strings.")
-
-    def __getitem__(self, key):
-        """retrieves info by name"""
-        if isinstance(key, str) or isinstance(key, unicode):
-            if not key in self.__metadata:
-                return None
-            return self.__metadata[key]
-        else:
-            raise TypeError( "Model keys must be strings.")
-
-
     def __findComponent(self, name):
         c = findWithNameIndex(name, self.__parameters)
         if c>=0 :
@@ -432,7 +441,7 @@ class Model(object):
             for v in collection:
                 resstring, value = _test_with_everything(v(),self)
                 if resstring != "":
-                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v())
+                    return False, '%s\nin rate of %s: %s' % (resstring, get_name(v), v())
         return True, 'OK'
 
     def __str__(self):
@@ -441,46 +450,46 @@ class Model(object):
             raise BadRateError(msg)
         res = "%s\n"% self['title']
         #~ res = "%s\n"% self.title
-        res += "\nVariables: %s\n" % " ".join([i.name for i in self.__variables])
+        res += "\nVariables: %s\n" % " ".join([get_name(i) for i in self.__variables])
         if len(self.__extvariables) > 0:
-            res += "External variables: %s\n" % " ".join([i.name for i in self.__extvariables])
+            res += "External variables: %s\n" % " ".join([get_name(i) for i in self.__extvariables])
         for collection in (self.__reactions, self.__transf):
             for i in collection:
                 res += str(i)
         for p in self.__states:
-            res += p.name +': '+ str(p) + '\n'
+            res += get_name(p) +': '+ str(p) + '\n'
         for p in self.__parameters:
-            res += p.name +' = '+ str(p) + '\n'
+            res += get_name(p) +' = '+ str(p) + '\n'
         for u in uncertain(self):
-            res += u.name + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
+            res += get_name(u) + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
         
-        for k, v in self.__metadata.items():
+        for k, v in self._ModelObject__metadata.items():
             res += "%s: %s\n"%(str(k), str(v))
         return res
     
     def clone(self):
         m = Model(self['title'])
         for r in reactions(self):
-            setattr(m, r.name, Reaction(r.reagents, r.products, r(), r.irreversible))
+            setattr(m, get_name(r), Reaction(r.reagents, r.products, r(), r.irreversible))
         for p in parameters(self):
-            setattr(m, p.name, constValue(p))
+            setattr(m, get_name(p), constValue(p))
         for t in transformations(self):
-            setattr(m, t.name, Transformation(t()))
+            setattr(m, get_name(t), Transformation(t()))
         for s in self.__states:
             newdict= {}
             for i in s:
                 newdict[i[0]]=i[1]
-            setattr(m, s.name, StateArray(newdict, s.name))
+            setattr(m, get_name(s), StateArray(newdict, get_name(s)))
         #handle uncertainties
         for u in uncertain(self):
-            loc = u.name.split('.')
+            loc = get_name(u).split('.')
             if len(loc) >1:
                 s = getattr(m,loc[0])
                 var = getattr(s,loc[1])
                 var.uncertainty(u.min, u.max)
             else:
                 getattr(m, loc[0]).uncertainty(u.min, u.max)
-        for k,v in self.__metadata.items():
+        for k,v in self._ModelObject__metadata.items():
             m[k] = v
         return m
     
@@ -489,15 +498,15 @@ class Model(object):
         del(self.__extvariables[:])
         for v in self.__reactions:
             for rp in (v.reagents, v.products):
-                for (name, coef) in rp:
-                    if findWithName(name, self.__variables):
+                for (vname, coef) in rp:
+                    if findWithName(vname, self.__variables):
                         continue
                     else:
-                        if findWithName(name, self.__parameters):
-                            if not findWithName(name, self.__extvariables):
-                                self.__extvariables.append(Variable(name))
+                        if findWithName(vname, self.__parameters):
+                            if not findWithName(vname, self.__extvariables):
+                                self.__extvariables.append(Variable(vname))
                         else:
-                            self.__variables.append(Variable(name))
+                            self.__variables.append(Variable(vname))
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
@@ -512,7 +521,7 @@ def variables(model):
     return model._Model__variables
 
 def varnames(model):
-    return [i.name for i in variables(model)]
+    return [get_name(i) for i in variables(model)]
 
 def extvariables(model):
     return model._Model__extvariables
@@ -534,10 +543,11 @@ def iuncertain(model):
         if p.bounds:
             yield p.bounds
     for s in model._Model__states:
-        for name, value in s:
+        for iname, value in s:
+##             print iname, value
             if value.bounds:
                 ret = Bounds(value.bounds.min, value.bounds.max)
-                ret.name = s.name + '.' + value.name
+                set_name(ret, get_name(s) + '.' + iname)
                 yield ret
 
 class BadStoichError(Exception):
@@ -599,36 +609,36 @@ def test():
     print '********** Testing iteration of components *****************'
     print 'iterating reactions(m)'
     for v in reactions(m):
-        print v.name, ':', v(), '|', v.reagents, '->', v.products
+        print get_name(v), ':', v(), '|', v.reagents, '->', v.products
     print '\niterating transformations(m)'
     for v in transformations(m):
-        print v.name, ':', v()
+        print get_name(v), ':', v()
     print '\niterating variables(m)'
     for x in variables(m):
-        print x.name
+        print get_name(x)
     print '\niterating extvariables(m)'
     for x in extvariables(m):
-        print x.name
+        print get_name(x)
     print '\niterating parameters(m)'
     for p in parameters(m):
-        print p.name , '=',  p, 'bounds=', p.bounds
+        print get_name(p) , '=',  p, 'bounds=', p.bounds
     print '\niterating uncertain(m)'
     for x in uncertain(m):
-        print '\t', x.name, 'in (', x.min, ',', x.max, ')'
+        print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     
     print '\niterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x
+    for xname, x in m.init:
+        print '\t', xname, '=', x
     print
 
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
-    print 'm.K3.name :',m.Km3.name, '(a float with a name attr)'
+    print 'get_name(m.K3) :',get_name(m.Km3)
     print 'm.init:',m.init
     print 'm.init.A :',m.init.A
     print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x
+    for xname, x in m.init:
+        print '\t', xname, '=', x
 
 
     print '********** Testing component reassignment *****************'
@@ -651,7 +661,7 @@ def test():
     print 'm.V3.bounds:' , m.V3.bounds
     print 'iterating m.uncertain'
     for x in uncertain(m):
-        print '\t', x.name, 'in (', x.min, ',', x.max, ')'
+        print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print len(uncertain(m)), 'uncertain parameters total'
     print 'making m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
@@ -665,32 +675,32 @@ def test():
     print len(uncertain(m)), 'uncertain parameters total'
     print 'iterating m.uncertain'
     for x in uncertain(m):
-        print '\t', x.name, 'in (', x.min, ',', x.max, ')'
+        print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print 'making m.init.A = 5.0'
     m.init.A = 5.0
     print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x.pprint()
+    for xname, x in m.init:
+        print '\t', xname, '=', x.pprint()
     print 'flagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
     m.init.A = (0.5, 2.5)
     print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x.pprint()
+    for xname, x in m.init:
+        print '\t', xname, '=', x.pprint()
     print 'calling    m.init.A.uncertainy(0.5,3.0)'
     m.init.A.uncertainty(0.5,3.0)
     print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x.pprint()
+    for xname, x in m.init:
+        print '\t', xname, '=', x.pprint()
     print 'calling    m.init.A.uncertainy(None)'
     m.init.A.uncertainty(None)
     print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x.pprint()
+    for xname, x in m.init:
+        print '\t', xname, '=', x.pprint()
     print 'making m.init.A back to 1.0'
     m.init.A = 1.0
     print 'iterating m.init'
-    for name, x in m.init:
-        print '\t', name, '=', x.pprint()
+    for xname, x in m.init:
+        print '\t', xname, '=', x.pprint()
     print 
     m.Km3.uncertainty(None)
 

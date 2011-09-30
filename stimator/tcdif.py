@@ -210,7 +210,7 @@ class Objective:
             self.lenVariables = len(self.varNames)
             self.parNames = []
             for i in range(self.lenEstimatedPar):
-                self.parNames.append(self.model.parameters[i].name)
+                self.parNames.append(get_name(self.model.parameters[i]))
             self.senses = self.calculateSensitivities(self.model)
             self.sensModel = self.model.clone()
             self.addVars(self.sensModel, self.senses)

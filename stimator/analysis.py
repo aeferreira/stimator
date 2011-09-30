@@ -62,7 +62,7 @@ def solve(model,
     elif outputs is True: #transformations are output
         #compute model transformations
         f     = model.transf_func()
-        names = [x.name for x in model.transf]
+        names = [get_name(x) for x in model.transf]
         sol.apply_transf(f,names)
     elif isinstance(outputs, str) or callable(outputs): 
         #a filter string or transformation function
@@ -135,7 +135,7 @@ class ModelSolver(object):
         elif outputs is True: #transformations are output
             #compute model transformations
             self.tranf_f     = self.model.transf_func()
-            self.tranf_names = [x.name for x in self.model.transf]
+            self.tranf_names = [get_name(x) for x in self.model.transf]
         elif isinstance(outputs, str) or callable(outputs): 
             #a filter string or transformation function
             self.tranf_f = genTransformationFunction(self.model, outputs)

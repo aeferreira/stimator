@@ -49,9 +49,9 @@ def add_dSdt_to_model(m, pars):
     
     _symbs = {}
     for x in variables(m):
-        _symbs[x.name] = sympy.Symbol(str(x.name))
+        _symbs[get_name(x)] = sympy.Symbol(str(get_name(x)))
     for p in parameters(m):
-        _symbs[p.name] = sympy.Symbol(str(p.name))
+        _symbs[get_name(p)] = sympy.Symbol(str(get_name(p)))
     for p in pars:
         if not _symbs.has_key(p):
             _symbs[p] = sympy.Symbol(str(p))
@@ -61,11 +61,11 @@ def add_dSdt_to_model(m, pars):
     for i in range(nvars):
         Smatrix.append([])
         for j in range(npars):
-            Sname = "d_%s_d_%s" % (variables(m)[i].name, pars[j])
+            Sname = "d_%s_d_%s" % (get_name(variables(m)[i]), pars[j])
             _symbs[Sname] = sympy.Symbol(str(Sname))
             Smatrix[i].append(Sname)
     for i in range(nvars):
-        vname = variables(m)[i].name
+        vname = get_name(variables(m)[i])
         for j in range(npars):
             #compute string for dS/dt
             if init_of[j] is None:
@@ -113,7 +113,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     #ensure m has init attr
     inits = {}
     for x in variables(m):
-        inits[str(x.name)] = 0.0
+        inits[str(get_name(x))] = 0.0
     setattr(m, 'init', state(**inits))
     
     if isinstance(pars,dict):
@@ -146,7 +146,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     xindexes = []
     for vname in vars:
         for i,y in enumerate(variables(m)):
-            if y.name == vname:
+            if get_name(y) == vname:
                 xindexes.append(i)
     xindexes = array(xindexes)
     #compute indexes of sensitivities
@@ -154,7 +154,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     indexes = []
     for vname in vars:
         for i,y in enumerate(variables(m)):
-            dnames = y.name.split('_')
+            dnames = get_name(y).split('_')
             if len(dnames) < 3: continue
             if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':
                 indexes.append(i)
@@ -215,7 +215,7 @@ def computeStS_func(model, pars, vars, timecoursedata):
     #ensure m has init attr
     inits = {}
     for x in m.variables:
-        inits[str(x.name)] = 0.0
+        inits[str(get_name(x))] = 0.0
     setattr(m, 'init', state(**inits))
     
     if isinstance(pars,dict):
@@ -250,7 +250,7 @@ def computeStS_func(model, pars, vars, timecoursedata):
     xindexes = []
     for vname in vars:
         for i,y in enumerate(m.variables):
-            if y.name == vname:
+            if get_name(y) == vname:
                 xindexes.append(i)
     xindexes = array(xindexes)
     #compute indexes of sensitivities
@@ -258,7 +258,7 @@ def computeStS_func(model, pars, vars, timecoursedata):
     indexes = []
     for vname in vars:
         for i,y in enumerate(m.variables):
-            dnames = y.name.split('_')
+            dnames = get_name(y).split('_')
             if len(dnames) < 3: continue
             if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':
                 indexes.append(i)

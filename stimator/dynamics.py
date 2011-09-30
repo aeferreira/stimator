@@ -55,7 +55,7 @@ def rates_strings(m):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
-    return tuple([(v.name, v()) for v in reactions(m)])
+    return tuple([(get_name(v), v()) for v in reactions(m)])
 
 def dXdt_strings(m):
     """Generate a tuple of tuples of
@@ -70,7 +70,7 @@ def dXdt_strings(m):
     N = genStoichiometryMatrix(m)
     res = []
     for i,x in enumerate(variables(m)):
-        name = x.name
+        name = get_name(x)
         dXdtstring = ''
         for j,v in enumerate(reactions(m)):
             coef = N[i,j]
@@ -103,9 +103,9 @@ def Jacobian_strings(m, _scale = 1.0):
     _dxdtstrings = dXdt_strings(m)
     _symbs = {}
     for x in variables(m):
-        _symbs[x.name] = sympy.Symbol(str(x.name))
+        _symbs[get_name(x)] = sympy.Symbol(str(get_name(x)))
     for p in parameters(m):
-        _symbs[p.name] = sympy.Symbol(str(p.name))
+        _symbs[get_name(p)] = sympy.Symbol(str(get_name(p)))
     _nvars = len(variables(m))
     _jfuncs = []
     for _i in range(_nvars):
@@ -119,7 +119,7 @@ def Jacobian_strings(m, _scale = 1.0):
             for _j in range(_nvars):
                 _res = eval(_dxdtstrings[_i][1], None, _symbs)
                 _res = _res * _scale
-                _dres = str(sympy.diff(_res, _symbs[variables(m)[_j].name]))
+                _dres = str(sympy.diff(_res, _symbs[get_name(variables(m)[_j])]))
                 if _dres == '0':
                     _dres = '0.0'
                 _jfuncs[_i].append(_dres)
@@ -144,9 +144,9 @@ def dfdp_strings(m, _parnames, _scale = 1.0):
     _dxdtstrings = dXdt_strings(m)
     _symbs = {}
     for x in variables(m):
-        _symbs[x.name] = sympy.Symbol(str(x.name))
+        _symbs[get_name(x)] = sympy.Symbol(str(get_name(x)))
     for p in parameters(m):
-        _symbs[p.name] = sympy.Symbol(str(p.name))
+        _symbs[get_name(p)] = sympy.Symbol(str(get_name(p)))
     _nvars = len(variables(m))
     _npars = len(_parnames)
     _jfuncs = []
@@ -174,17 +174,17 @@ def dfdp_strings(m, _parnames, _scale = 1.0):
 def rateCalcString(m, rateString, with_uncertain = False):
     # replace varnames
     for i,v in enumerate(variables(m)):
-        rateString = re.sub(r"\b"+ v.name+r"\b", "variables[%d]"%i, rateString)
+        rateString = re.sub(r"\b"+ get_name(v)+r"\b", "variables[%d]"%i, rateString)
 
     # replace uncertain parameters
     if with_uncertain:
         for i,u in enumerate(uncertain(m)):
-            rateString = re.sub(r"\b"+ u.name+r"\b", "m_Parameters[%d]"%i, rateString)
+            rateString = re.sub(r"\b"+ get_name(u)+r"\b", "m_Parameters[%d]"%i, rateString)
     # replace parameters
     for p in parameters(m):
         if p.bounds and with_uncertain:
             continue
-        rateString = re.sub(r"\b"+ p.name + r"\b", "%g"% p, rateString) 
+        rateString = re.sub(r"\b"+ get_name(p) + r"\b", "%g"% p, rateString) 
     return rateString
 
 def rates_func(m, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
@@ -469,9 +469,9 @@ def test():
     print '********** Testing stoichiometry matrix ********************'
     print 'Stoichiometry matrix:'
     N = genStoichiometryMatrix(m)
-    print '  ', '  '.join([v.name for v in reactions(m)])
+    print '  ', '  '.join([get_name(v) for v in reactions(m)])
     for i,x in enumerate(variables(m)):
-        print x.name, N[i, :]
+        print get_name(x), N[i, :]
     print
     print '********** Testing state2array()****************************'
     print 'state2array(m,"init"):'
@@ -502,46 +502,46 @@ def test():
     print 'variables:'
     pprint.pprint(dict((n, value) for n,value in zip(varnames(m), varvalues)))
     print 'parameters:'
-    pprint.pprint(dict((p.name, p)     for p in parameters(m)))
+    pprint.pprint(dict((get_name(p), p)     for p in parameters(m)))
  
     print '---- rates using rates_func(m) -------------------------'
     vratesfunc = rates_func(m)
     vrates = vratesfunc(varvalues,t)
     for v,r in zip(reactions(m), vrates):
-        print "%s = %-20s = %s" % (v.name, v(), r)
+        print "%s = %-20s = %s" % (get_name(v), v(), r)
 
     print '---- transformations using rates_func(m, transf = True) --'
     tratesfunc = rates_func(m,transf = True)
     trates = tratesfunc(varvalues,t)
     for v,r in zip(transformations(m), trates):
-        print "%s = %-20s = %s" % (v.name, v(), r)
+        print "%s = %-20s = %s" % (get_name(v), v(), r)
     print '---- same, at t = 2.0 --'
     trates = tratesfunc(varvalues,2.0)
     for v,r in zip(transformations(m), trates):
-        print "%s = %-20s = %s" % (v.name, v(), r)
+        print "%s = %-20s = %s" % (get_name(v), v(), r)
 
     print '---- dXdt using getdXdt(m) --------------------------------'
     f = getdXdt(m)
     dXdt = f(varvalues,t)
     for x,s,r in zip(variables(m), dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (x.name, s,r)
+        print "d%s/dt = %s = %s" % (get_name(x), s,r)
 
     print '---- dXdt using getdXdt(m) setting uncertain parameters ---'
     print 'f = getdXdt(m, with_uncertain = True)'
     f = getdXdt(m, with_uncertain = True)
-    print 'setting uncertain as', dict((v.name, value) for v,value in zip(uncertain(m), pars))
+    print 'setting uncertain as', dict((get_name(v), value) for v,value in zip(uncertain(m), pars))
     print 'm.set_uncertain(pars)'
     m.set_uncertain(pars)
     dXdt = f(varvalues,t)
     for x,s,r in zip(variables(m), dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (x.name, s,r)
+        print "d%s/dt = %s = %s" % (get_name(x), s,r)
 
     print '---- dXdt using dXdt_with(m, pars) ------------------------'
     print 'f = dXdt_with(m, pars)'
     f = dXdt_with(m, pars)
     dXdt   = f(varvalues,t)
     for x,s,r in zip(variables(m), dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (x.name, s,r)
+        print "d%s/dt = %s = %s" % (get_name(x), s,r)
 
     print '---- dXdt using getdXdt(m) with a state argument (m.init) --'
     print 'm.init:', m.init
@@ -550,7 +550,7 @@ def test():
     print 'dXdt = f(state2array(m,"init"),t)'
     dXdt = f(state2array(m,"init"),t)
     for x,r in zip(variables(m), dXdt):
-        print "d%s/dt = %s" % (x.name, r)
+        print "d%s/dt = %s" % (get_name(x), r)
     print '---- same, changing state argument ---------------------------'
     m.init.A = 2.0
     print 'after m.init.A = 2.0'
@@ -558,7 +558,7 @@ def test():
     print 'dXdt = f(state2array(m,"init"),t)'
     dXdt = f(state2array(m,"init"),t)
     for x,r in zip(variables(m), dXdt):
-        print "d%s/dt = %s" % (x.name, r)
+        print "d%s/dt = %s" % (get_name(x), r)
 
 if __name__ == "__main__":
     test()

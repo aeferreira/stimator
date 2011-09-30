@@ -363,7 +363,7 @@ class StimatorParser:
         if rate.endswith('..'):
             rate = rate[:-2]
             
-            localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
+            localsdict = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
             resstring, value = test_with_consts(rate, localsdict)
             if resstring != "":
                 loc.start = match.start('rate')
@@ -441,7 +441,7 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         
-        localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
+        localsdict = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
 
         resstring, value = test_with_consts(valueexpr, localsdict)
         if resstring != "":
@@ -473,7 +473,7 @@ class StimatorParser:
     def findDefParse(self, line, loc, match):
         name = match.group('name')
 
-        localsdict = dict([(p.name, p) for p in model.parameters(self.model)])
+        localsdict = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
 
         lulist = ['lower', 'upper']
         flulist = []
