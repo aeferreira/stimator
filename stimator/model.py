@@ -282,24 +282,24 @@ class StateArray(ModelObject):
         ModelObject.__init__(self,name)
         for k,v in varvalues.items():
             varvalues[k] = constValue(value = v, name = k)
-        self.__dict__['varvalues'] = varvalues
+        self.__dict__['_varvalues'] = varvalues
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
-        if name in self.varvalues:
-            return self.varvalues[name]
+        if name in self.__dict__['_varvalues']:
+            return self.__dict__['_varvalues'][name]
         else:
-            raise AttributeError( name + ' is not a member of state '+ self.__dict__['name'])
+            raise AttributeError( name + ' is not a member of state '+ get_name(self))
     def __setattr__(self, name, value):
-        if name != 'varvalues' and name != '_ModelObject__name': #and name != 'name'
-            value = constValue(value = value, name = name, into = self.__dict__['varvalues'].get(name, None))
-            self.__dict__['varvalues'][name]=value
+        if name != '_varvalues' and name != '_ModelObject__name':
+            value = constValue(value = value, name = name, into = self.__dict__['_varvalues'].get(name, None))
+            self.__dict__['_varvalues'][name]=value
         else:
             object.__setattr__(self, name, value)
     def __str__(self):
-        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self.varvalues.items()])
+        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self._varvalues.items()])
     def __iter__(self):
-        return iter(self.varvalues.items())
+        return iter(self._varvalues.items())
 
 def state(**varvalues):
     return StateArray(varvalues, '?')
@@ -327,7 +327,7 @@ def _ConvertPair2Reaction(value):
                     good2nd = True
                     break
             if not good2nd:
-                return False
+                return value
             res = processStoich(value[0])
             if not res:
                 raise BadStoichError( "Bad stoichiometry definition:\n"+ value[0])
@@ -336,7 +336,7 @@ def _ConvertPair2Reaction(value):
                 if isinstance(rate, numtype):
                     rate = massActionStr(rate, res[0])
             return Reaction(res[0], res[1], rate, res[2])
-    return False
+    return value
 
 class Model(ModelObject):
     def __init__(self, title = ""):
@@ -362,14 +362,13 @@ class Model(ModelObject):
             stoich = ' -> %s'% name
             name = react_name # hope this works...
             value = react(stoich, value())
-        r = _ConvertPair2Reaction(value)
-        if r:
-            value = r
+        value = _ConvertPair2Reaction(value)
+
+        # find if the model has an existing  object with that name
         assoc = ((Reaction,       '_Model__reactions'),
                  (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
                  (StateArray,     '_Model__states'))
-        # find existing model object
         for t, listname in assoc:
             c = findWithNameIndex(name, self.__dict__[listname])
             if c > -1:
@@ -383,7 +382,7 @@ class Model(ModelObject):
                     return
                 else:
                     raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
-        # append new object to proper list
+        # else append new object to proper list
         for t, listname in assoc:
             if isinstance(value, t):
                 set_name(value,name)
@@ -397,6 +396,7 @@ class Model(ModelObject):
             self.__dict__['_Model__parameters'].append(newvalue)
             self.__refreshVars()
             return
+        # Fail safe. This is a first level model atribute
         object.__setattr__(self, name, value)
 
     def __getattr__(self, name):
@@ -636,6 +636,10 @@ def test():
     print 'get_name(m.K3) :',get_name(m.Km3)
     print 'm.init:',m.init
     print 'm.init.A :',m.init.A
+    try:
+        print 'm.init.B :',m.init.B
+    except AttributeError:
+        print 'm.init.B access raised exception AttributeError'
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x
