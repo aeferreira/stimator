@@ -184,11 +184,11 @@ class _HasRate(ModelObject):
 class Reaction(_HasRate):
     def __init__(self, reagents, products, rate, irreversible = False):
         _HasRate.__init__(self, rate)
-        self.reagents = reagents
-        self.products = products
-        self.irreversible = irreversible
+        self._reagents = reagents
+        self._products = products
+        self._irreversible = irreversible
     def __str__(self):
-        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (get_name(self), str(self.reagents), str(self.products), str(self())) 
+        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (get_name(self), str(self._reagents), str(self._products), str(self())) 
 
 def react(stoichiometry, rate = 0.0):
     res = processStoich(stoichiometry)
@@ -470,7 +470,7 @@ class Model(ModelObject):
     def clone(self):
         m = Model(self['title'])
         for r in reactions(self):
-            setattr(m, get_name(r), Reaction(r.reagents, r.products, r(), r.irreversible))
+            setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._irreversible))
         for p in parameters(self):
             setattr(m, get_name(p), constValue(p))
         for t in transformations(self):
@@ -497,7 +497,7 @@ class Model(ModelObject):
         del(self.__variables[:]) #can't use self.__variables= [] : Triggers __setattr__
         del(self.__extvariables[:])
         for v in self.__reactions:
-            for rp in (v.reagents, v.products):
+            for rp in (v._reagents, v._products):
                 for (vname, coef) in rp:
                     if findWithName(vname, self.__variables):
                         continue
@@ -609,7 +609,7 @@ def test():
     print '********** Testing iteration of components *****************'
     print 'iterating reactions(m)'
     for v in reactions(m):
-        print get_name(v), ':', v(), '|', v.reagents, '->', v.products
+        print get_name(v), ':', v(), '|', v._reagents, '->', v._products
     print '\niterating transformations(m)'
     for v in transformations(m):
         print get_name(v), ':', v()

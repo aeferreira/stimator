@@ -36,7 +36,7 @@ def genStoichiometryMatrix(m):
     vnames = varnames(m)
     N = zeros((len(variables(m)),len(reactions(m))), dtype=float)
     for j,v in enumerate(reactions(m)):
-        for rORp, signedunit in [(v.reagents,-1.0),(v.products,1.0)]:
+        for rORp, signedunit in [(v._reagents,-1.0),(v._products,1.0)]:
             for c in rORp:
                 coef, var = (c[1]*signedunit, c[0])
                 if var in vnames:
