@@ -175,10 +175,26 @@ class _HasRate(ModelObject):
     def __init__(self, rate):
         ModelObject.__init__(self)
         self.__rate = rate.strip()
+        self._ownparameters = {}
     def __str__(self):
         return "%s:\n  rate = %s\n" % (get_name(self), str(self()))
     def __call__(self):
         return self.__rate
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        if name in self.__dict__['_ownparameters']:
+            return self.__dict__['_ownparameters'][name]
+        else:
+            raise AttributeError( name + ' is not a member of state '+ get_name(self))
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            value = constValue(value = value, name = name, into = self.__dict__['_ownparameters'].get(name, None))
+            self.__dict__['_ownparameters'][name]=value
+        else:
+            object.__setattr__(self, name, value)
+    def __iter__(self):
+        return iter(self._ownparameters.items())
 
 
 class Reaction(_HasRate):

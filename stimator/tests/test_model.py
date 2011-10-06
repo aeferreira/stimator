@@ -263,7 +263,7 @@ def test_iter_reactions():
     assert len(rr) == 5
     names = [get_name(v) for v in reactions(m)]
     rates = [v() for v in reactions(m)]
-    reags = [v.reagents for v in reactions(m)]
+    reags = [v._reagents for v in reactions(m)]
     assert names[0] == 'v1'
     assert names[1] == 'v2'
     assert names[2] == 'v3'
