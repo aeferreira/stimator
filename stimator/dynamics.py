@@ -25,7 +25,7 @@ def state2array(m, state):
         if not hasattr(m, state):
             raise AttributeError( state + ' is not defined for this model')
         state = getattr(m, state)
-    newlist = [state._varvalues.get(var,0.0) for var in varnames(m)]
+    newlist = [state._ownparameters.get(var,0.0) for var in varnames(m)]
     return array(newlist)
 
 def genStoichiometryMatrix(m):

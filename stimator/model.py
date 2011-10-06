@@ -170,7 +170,54 @@ class ModelObject(object):
         else:
             raise TypeError( "Keys must be strings.")
 
+def setPar(obj, collection, name, value):
+    # accept only ContsValue's or Bounds
+    for numtype in (float,int,long):
+        if isinstance(value, numtype):
+            value = constValue(float(value))
+    if isPairOfNums(value):
+        value = Bounds(float(value[0]), float(value[1]))
+    if not (isinstance(value, ConstValue) or isinstance(value, Bounds)):
+        raise BadTypeComponent( "%s.%s"%(get_name(obj),name) + ' can not be assigned to ' + type(value).__name__)
     
+    already_exists = name in collection
+    if not already_exists:
+        if isinstance(value, ConstValue):
+            newvalue = constValue(value, name=name)
+        else: #Bounds object
+            newvalue = constValue((float(value.min)+float(value.max))/2.0, name=name)
+            newvalue.bounds = value
+            set_name(newvalue.bounds, name)
+    else: #aready exists
+        if isinstance(value, ConstValue):
+            newvalue = constValue(value, name=name)
+            newvalue.bounds = collection[name].bounds
+        else: #Bounds object
+            newvalue = constValue(collection[name], name=name)
+            newvalue.bounds = value
+            set_name(newvalue.bounds, name)
+    collection[name] = newvalue
+
+class _HasOwnParameters(ModelObject):
+    def __init__(self, name = '?'):
+        ModelObject.__init__(self)
+        self._ownparameters = {}
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        if name in self.__dict__['_ownparameters']:
+            return self.__dict__['_ownparameters'][name]
+        else:
+            raise AttributeError( name + ' is not a member of '+ get_name(self))
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            setPar(self, self.__dict__['_ownparameters'], name, value)
+        else:
+            object.__setattr__(self, name, value)
+    def __iter__(self):
+        return iter(self._ownparameters.items())
+        
+ 
 class _HasRate(ModelObject):
     def __init__(self, rate):
         ModelObject.__init__(self)
@@ -180,22 +227,6 @@ class _HasRate(ModelObject):
         return "%s:\n  rate = %s\n" % (get_name(self), str(self()))
     def __call__(self):
         return self.__rate
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        if name in self.__dict__['_ownparameters']:
-            return self.__dict__['_ownparameters'][name]
-        else:
-            raise AttributeError( name + ' is not a member of state '+ get_name(self))
-    def __setattr__(self, name, value):
-        if not name.startswith('_'):
-            value = constValue(value = value, name = name, into = self.__dict__['_ownparameters'].get(name, None))
-            self.__dict__['_ownparameters'][name]=value
-        else:
-            object.__setattr__(self, name, value)
-    def __iter__(self):
-        return iter(self._ownparameters.items())
-
 
 class Reaction(_HasRate):
     def __init__(self, reagents, products, rate, irreversible = False):
@@ -236,12 +267,9 @@ def transf(rate = 0.0):
 class ConstValue(float,ModelObject):
     def __new__(cls, value):
         return float.__new__(cls,value)
-    def initialize(self, aname = '?', into = None):
+    def initialize(self, aname = '?'):
         ModelObject.__init__(self, aname)
         self.bounds = None
-        if into:
-            set_name(self, get_name(into))
-            self.bounds = into.bounds
     
     def uncertainty(self, *pars):
         if len(pars) == 0 or pars[0]==None:
@@ -257,28 +285,15 @@ class ConstValue(float,ModelObject):
             res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
         return res
 
-def constValue(value = None, name = '?', into = None):
+def constValue(value = None, name = '?'):
     if isinstance(value, float) or isinstance(value, int):
         v = float(value)
         res = ConstValue(v)
         res.initialize(name)
-    elif (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
-        bounds = Bounds(float(value[0]), float(value[1]))
-        v = (bounds.min + bounds.max)/2.0
-        if into:
-            res = ConstValue(into)
-            res.initialize(name, into = into)
-        else:
-            res = ContsValue(v)
-            res.initialize(name)
-        res.bounds = bounds
     else:
-        raise TypeError( value + ' is not a float or pair of floats')
-    if res.bounds:
-        set_name(res.bounds, get_name(res))
+        raise TypeError( value + ' is not a float or int')
     return res
         
-
 class Bounds(ModelObject):
     def __init__(self, min = 0.0, max = 1.0):
         ModelObject.__init__(self)
@@ -293,29 +308,15 @@ class Variable(ModelObject):
     def __str__(self):
         return get_name(self)
 
-class StateArray(ModelObject):
+class StateArray(_HasOwnParameters):
     def __init__(self, varvalues, name):
-        ModelObject.__init__(self,name)
+        _HasOwnParameters.__init__(self,name)
         for k,v in varvalues.items():
-            varvalues[k] = constValue(value = v, name = k)
-        self.__dict__['_varvalues'] = varvalues
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        if name in self.__dict__['_varvalues']:
-            return self.__dict__['_varvalues'][name]
-        else:
-            raise AttributeError( name + ' is not a member of state '+ get_name(self))
-    def __setattr__(self, name, value):
-        if name != '_varvalues' and name != '_ModelObject__name':
-            value = constValue(value = value, name = name, into = self.__dict__['_varvalues'].get(name, None))
-            self.__dict__['_varvalues'][name]=value
-        else:
-            object.__setattr__(self, name, value)
+            setattr(self, k, constValue(value = v, name = k))
     def __str__(self):
-        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self._varvalues.items()])
+        return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self._ownparameters.items()])
     def __iter__(self):
-        return iter(self._varvalues.items())
+        return iter(self._ownparameters.items())
 
 def state(**varvalues):
     return StateArray(varvalues, '?')
@@ -722,7 +723,6 @@ def test():
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
     print 
-    m.Km3.uncertainty(None)
 
 if __name__ == "__main__":
     test()
