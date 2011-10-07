@@ -170,7 +170,7 @@ class ModelObject(object):
         else:
             raise TypeError( "Keys must be strings.")
 
-def setPar(obj, collection, name, value):
+def setPar(obj, collection, name, value, pos = None):
     # accept only ContsValue's or Bounds
     for numtype in (float,int,long):
         if isinstance(value, numtype):
@@ -180,7 +180,15 @@ def setPar(obj, collection, name, value):
     if not (isinstance(value, ConstValue) or isinstance(value, Bounds)):
         raise BadTypeComponent( "%s.%s"%(get_name(obj),name) + ' can not be assigned to ' + type(value).__name__)
     
-    already_exists = name in collection
+    is_dict = isinstance(collection, dict)
+    if is_dict:
+        already_exists = name in collection
+    else:
+        if pos is None:
+            c = findWithNameIndex(name, collection)
+        else:
+            c = pos
+        already_exists = (c > -1)
     if not already_exists:
         if isinstance(value, ConstValue):
             newvalue = constValue(value, name=name)
@@ -191,12 +199,24 @@ def setPar(obj, collection, name, value):
     else: #aready exists
         if isinstance(value, ConstValue):
             newvalue = constValue(value, name=name)
-            newvalue.bounds = collection[name].bounds
+            if is_dict:
+                newvalue.bounds = collection[name].bounds
+            else:
+                newvalue.bounds = collection[c].bounds
         else: #Bounds object
-            newvalue = constValue(collection[name], name=name)
+            if is_dict:
+                newvalue = constValue(collection[name], name=name)
+            else:
+                newvalue = constValue(collection[c], name=name)
             newvalue.bounds = value
             set_name(newvalue.bounds, name)
-    collection[name] = newvalue
+    if is_dict:
+        collection[name] = newvalue
+    else:
+        if not already_exists:
+            collection.append(newvalue)
+        else:
+            collection[c] = newvalue
 
 class _HasOwnParameters(ModelObject):
     def __init__(self, name = '?'):
@@ -369,11 +389,9 @@ class Model(ModelObject):
         set_name(self, title)
     
     def __setattr__(self, name, value):
-        for numtype in (float,int,long):
-            if isinstance(value, numtype):
-                value = constValue(float(value))
-        if isPairOfNums(value):
-            value = Bounds(float(value[0]), float(value[1]))
+        if name in self.__dict__:
+            object.__setattr__(self, name, value)
+            return
         if isinstance(value,Variable_dXdt):
             react_name = 'd_%s_dt'% name
             stoich = ' -> %s'% name
@@ -382,39 +400,35 @@ class Model(ModelObject):
         value = _ConvertPair2Reaction(value)
 
         # find if the model has an existing  object with that name
+        # start with strict types
         assoc = ((Reaction,       '_Model__reactions'),
-                 (ConstValue,     '_Model__parameters'),
                  (Transformation, '_Model__transf'),
                  (StateArray,     '_Model__states'))
         for t, listname in assoc:
             c = findWithNameIndex(name, self.__dict__[listname])
             if c > -1:
-                if isinstance(value, t) or (isinstance(value, Bounds) and listname == '_Model__parameters'):
+                if isinstance(value, t):
                     set_name(value,name)
-                    if isinstance(value, Bounds):
-                        self.__dict__[listname][c].bounds = value
-                    else:
-                        self.__dict__[listname][c] = value
+                    self.__dict__[listname][c] = value
                     self.__refreshVars()
                     return
                 else:
                     raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
+        # move on to parameters, accepting ConstValue, numbers or pairs of numbers
+        c = findWithNameIndex(name, self.__dict__['_Model__parameters'])
+        if c > -1:
+            setPar(self, self.__dict__['_Model__parameters'], name, value, pos = c)
+            
         # else append new object to proper list
+        # start with strict types
         for t, listname in assoc:
             if isinstance(value, t):
                 set_name(value,name)
                 self.__dict__[listname].append(value)
                 self.__refreshVars()
                 return
-        if isinstance (value, Bounds):
-            set_name(value,name)
-            newvalue = constValue((float(value.min)+float(value.max))/2.0, name=name)
-            newvalue.bounds = value
-            self.__dict__['_Model__parameters'].append(newvalue)
-            self.__refreshVars()
-            return
-        # Fail safe. This is a first level model atribute
-        object.__setattr__(self, name, value)
+        # move on to parameters, accepting ConstValue, numbers or pairs of numbers
+        setPar(self, self.__dict__['_Model__parameters'], name, value)
 
     def __getattr__(self, name):
         if name == '__m_Parameters':
@@ -665,17 +679,24 @@ def test():
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
     print len(parameters(m)), 'parameters total'
-    print 'making m.myconstant = 5.0'
+    print '\nmaking m.myconstant = 5.0'
     m.myconstant = 5.0
     print 'm.myconstant :',m.myconstant
     print len(parameters(m)), 'parameters total'
 
-    print 'making m.myconstant = react("A+B -> C"  , 3)'
+    print '\nmaking m.myconstant = react("A+B -> C"  , 3)'
     try:
         m.myconstant = react("A+B -> C"  , 3)
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.myconstant :',m.myconstant, '(still!)'
+    print len(parameters(m)), 'parameters total'
+    print '\nmaking m.v2 = 3.14'
+    try:
+        m.v2 = 3.14
+    except BadTypeComponent:
+        print 'Failed! BadTypeComponent was caught.'
+    print 'm.v2 :',type(m.v2), '\n(still a Reaction)'
     print len(parameters(m)), 'parameters total'
     print
     print 'm.V3 :', m.V3
@@ -684,12 +705,12 @@ def test():
     for x in uncertain(m):
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print len(uncertain(m)), 'uncertain parameters total'
-    print 'making m.V3 = [0.1, 0.2]'
+    print '\nmaking m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' ,m.V3.bounds
     print len(uncertain(m)), 'uncertain parameters total'
-    print 'making m.V4 = [0.1, 0.6]'
+    print '\nmaking m.V4 = [0.1, 0.6]'
     m.V4 = [0.1, 0.6]
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
@@ -697,27 +718,35 @@ def test():
     print 'iterating m.uncertain'
     for x in uncertain(m):
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
-    print 'making m.init.A = 5.0'
+    print '\nmaking m.V4 = 0.38'
+    m.V4 = 0.38
+    print 'm.V4 :', m.V4
+    print 'm.V4.bounds:' ,m.V4.bounds
+    print len(uncertain(m)), 'uncertain parameters total'
+    print 'iterating m.uncertain'
+    for x in uncertain(m):
+        print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
+    print '\nmaking m.init.A = 5.0'
     m.init.A = 5.0
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print 'flagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
+    print '\nflagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
     m.init.A = (0.5, 2.5)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print 'calling    m.init.A.uncertainy(0.5,3.0)'
+    print '\ncalling    m.init.A.uncertainy(0.5,3.0)'
     m.init.A.uncertainty(0.5,3.0)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print 'calling    m.init.A.uncertainy(None)'
+    print '\ncalling    m.init.A.uncertainy(None)'
     m.init.A.uncertainty(None)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print 'making m.init.A back to 1.0'
+    print '\nmaking m.init.A back to 1.0'
     m.init.A = 1.0
     print 'iterating m.init'
     for xname, x in m.init:
