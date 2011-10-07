@@ -429,6 +429,7 @@ class Model(ModelObject):
                 return
         # move on to parameters, accepting ConstValue, numbers or pairs of numbers
         setPar(self, self.__dict__['_Model__parameters'], name, value)
+        self.__refreshVars()
 
     def __getattr__(self, name):
         if name == '__m_Parameters':
@@ -752,6 +753,7 @@ def test():
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
     print 
+
 
 if __name__ == "__main__":
     test()

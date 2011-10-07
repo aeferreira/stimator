@@ -407,4 +407,137 @@ def test_iter_state():
     assert ('A', 1.0) in m.init
     assert ('D', 1.0) in m.init
 
+def test_reassignment1():
+    """test reassignment of parameters with bounds"""
+    m = Model("My first model")
+    m.p1 = 4
+    m.p2 = 3.0
+    m.p1 = 1,10 #tuple or list
+    m.p2 = [1, 9.5]
+    m.p3 = 5
+    m.p4 = 6
+    m.p4.uncertainty(1, 8.5) # or uncertainty function
+    m.p5 = 0,10 # bounds create parameter with midpoint
+    # start reassignments
+    m.p1 = 5
+    assert m.p1 == 5.0
+    assert isinstance(m.p1.bounds, model.Bounds)
+    assert m.p1.bounds.min == 1.0
+    assert m.p1.bounds.max == 10.0
 
+    m.p3 = 0,3
+    assert m.p3 == 5.0
+    assert isinstance(m.p3.bounds, model.Bounds)
+    assert m.p3.bounds.min == 0.0
+    assert m.p3.bounds.max == 3.0
+    
+    m.p4 = 1,10
+    assert m.p4 == 6.0
+    assert isinstance(m.p4.bounds, model.Bounds)
+    assert m.p4.bounds.min == 1.0
+    assert m.p4.bounds.max == 10.0
+
+def test_reassignment2():
+    """test reassignment of reactions"""
+    m = Model("My first model")
+    m.v1 = react("A->B", 4)
+    m.v2 = react("B->C", 2.0)
+    assert isinstance(m.v1, model.Reaction)
+    assert isinstance(m.v2, model.Reaction)
+    assert get_name(m.v1) == 'v1'
+    assert get_name(m.v2) == 'v2'
+    assert m.v1()== str(float(4))+ "*A"
+    assert m.v2()== str(float(2.0))+"*B"
+    check, msg = m.checkRates()
+    assert check 
+    m.v2 = react("D->C", 2.0)
+    assert isinstance(m.v1, model.Reaction)
+    assert isinstance(m.v2, model.Reaction)
+    assert get_name(m.v1) == 'v1'
+    assert get_name(m.v2) == 'v2'
+    assert m.v1()== str(float(4))+ "*A"
+    assert m.v2()== str(float(2.0))+"*D"
+    check, msg = m.checkRates()
+    assert check 
+
+def test_reassignment3():
+    """test change of variables by reassignment of reactions"""
+    m = Model("My first model")
+    m.v1 = react("A->B", 4)
+    m.v2 = react("B->C", 2.0)
+    xx = variables(m)
+    assert len(xx) == 3
+    names = [x for x in varnames(m)]
+    assert names == ['A', 'B', 'C']
+    check, msg = m.checkRates()
+    assert check 
+    m.v2 = react("B->D", 2.0)
+    xx = variables(m)
+    assert len(xx) == 3
+    names = [x for x in varnames(m)]
+    assert names == ['A', 'B', 'D']
+    check, msg = m.checkRates()
+    assert check 
+
+@raises(model.BadTypeComponent)
+def test_reassignment4():
+    """test illegal type reassignment (reactions)"""
+    m = Model("My first model")
+    m.v1 = react("A->B", 4)
+    m.v2 = react("B->C", 2.0)
+    xx = variables(m)
+    assert len(xx) == 3
+    names = [x for x in varnames(m)]
+    assert names == ['A', 'B', 'C']
+    check, msg = m.checkRates()
+    assert check 
+    m.v2 = 3.14
+    xx = variables(m)
+    assert len(xx) == 3
+    names = [x for x in varnames(m)]
+    assert names == ['A', 'B', 'D']
+    check, msg = m.checkRates()
+    assert check 
+
+@raises(model.BadTypeComponent)
+def test_reassignment5():
+    """test illegal type reassignment (parameters)"""
+    m = Model("My first model")
+    m.v1 = react("A->B", 4)
+    m.v2 = react("B->C", 2.0)
+    m.Km = 4
+    check, msg = m.checkRates()
+    assert check 
+    m.Km = react("B->D", 2.0)
+    xx = variables(m)
+    assert len(xx) == 3
+    names = [x for x in varnames(m)]
+    assert names == ['A', 'B', 'D']
+    check, msg = m.checkRates()
+    assert check 
+
+@raises(model.BadTypeComponent)
+def test_par2():
+    """test illegal type assignment"""
+    m = Model("My first model")
+    m.v1 = react("A->B", 4)
+    m.v2 = react("B->C", 2.0)
+    m.Km = [9,10,13,45]
+    check, msg = m.checkRates()
+    assert check 
+
+def test_meta1():
+    """test Model metadata"""
+    m = Model("My first model")
+    m.v1 = react("A->B", 4)
+    m.v2 = react("B->C", 2.0)
+    check, msg = m.checkRates()
+    assert check 
+    m['where'] = 'in model'
+    m['for what'] = 'testing'
+    assert m['where'] == 'in model'
+    assert m['for what'] == 'testing'
+    assert m['title'] == 'My first model'
+    assert m['nonexistent'] is None
+    del m['where']
+    assert m['where'] is None
