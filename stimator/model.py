@@ -238,11 +238,11 @@ class _HasOwnParameters(ModelObject):
         return iter(self._ownparameters.items())
         
  
-class _HasRate(ModelObject):
+class _HasRate(_HasOwnParameters):
     def __init__(self, rate):
-        ModelObject.__init__(self)
+        _HasOwnParameters.__init__(self)
         self.__rate = rate.strip()
-        self._ownparameters = {}
+##         self._ownparameters = {}
     def __str__(self):
         return "%s:\n  rate = %s\n" % (get_name(self), str(self()))
     def __call__(self):
@@ -601,6 +601,8 @@ def test():
     m.v1 = "A+B -> C", 3
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v3.V3 = 0.5
+    m.v3.Km3 = 4
     m.v4 = "B   ->  "  , "2*4*step(t,at,top)"
     m.v5 = "C ->", "4.5*C*step(t,at,top)"
     m.t1 = transf("A*4 + C")
@@ -661,13 +663,20 @@ def test():
     print '\niterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x
+
+    print '\niterating m.v3'
+    for xname, x in m.v3:
+        print '\t', xname, '=', x
     print
 
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
     print 'get_name(m.K3) :',get_name(m.Km3)
+    print 'm.v3.K3 :',m.v3.Km3
+    print 'get_name(m.v3.K3) :',get_name(m.v3.Km3)
     print 'm.init:',m.init
     print 'm.init.A :',m.init.A
+    print 'get_name(m.init.A) :',get_name(m.init.A)
     try:
         print 'm.init.B :',m.init.B
     except AttributeError:
@@ -675,7 +684,6 @@ def test():
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x
-
 
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
