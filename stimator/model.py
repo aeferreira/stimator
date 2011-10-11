@@ -169,6 +169,16 @@ class ModelObject(object):
             return self.__metadata[key]
         else:
             raise TypeError( "Keys must be strings.")
+    def __eq__(self, other):
+        if get_name(self) != get_name(other):
+            return False
+        if len(self.__metadata) != len(other.__metadata):
+            return False
+        for k in self.__metadata:
+            if repr(self.__metadata[k]) != repr(other.__metadata[k]):
+                return False
+        return True
+        
 
 def setPar(obj, collection, name, value, pos = None):
     # accept only ContsValue's or Bounds
@@ -180,15 +190,7 @@ def setPar(obj, collection, name, value, pos = None):
     if not (isinstance(value, ConstValue) or isinstance(value, Bounds)):
         raise BadTypeComponent( "%s.%s"%(get_name(obj),name) + ' can not be assigned to ' + type(value).__name__)
     
-    is_dict = isinstance(collection, dict)
-    if is_dict:
-        already_exists = name in collection
-    else:
-        if pos is None:
-            c = findWithNameIndex(name, collection)
-        else:
-            c = pos
-        already_exists = (c > -1)
+    already_exists = name in collection
     if not already_exists:
         if isinstance(value, ConstValue):
             newvalue = constValue(value, name=name)
@@ -199,29 +201,19 @@ def setPar(obj, collection, name, value, pos = None):
     else: #aready exists
         if isinstance(value, ConstValue):
             newvalue = constValue(value, name=name)
-            if is_dict:
-                newvalue.bounds = collection[name].bounds
-            else:
-                newvalue.bounds = collection[c].bounds
+            newvalue.bounds = collection[name].bounds
         else: #Bounds object
-            if is_dict:
-                newvalue = constValue(collection[name], name=name)
-            else:
-                newvalue = constValue(collection[c], name=name)
+            newvalue = constValue(collection[name], name=name)
             newvalue.bounds = value
             set_name(newvalue.bounds, name)
-    if is_dict:
-        collection[name] = newvalue
-    else:
-        if not already_exists:
-            collection.append(newvalue)
-        else:
-            collection[c] = newvalue
+    collection[name] = newvalue
 
 class _HasOwnParameters(ModelObject):
-    def __init__(self, name = '?'):
+    def __init__(self, name = '?', parvalues = {}):
         ModelObject.__init__(self)
         self._ownparameters = {}
+        for k,v in parvalues.items():
+            self._ownparameters[k] = constValue(value = v, name = k)
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
@@ -236,34 +228,58 @@ class _HasOwnParameters(ModelObject):
             object.__setattr__(self, name, value)
     def __iter__(self):
         return iter(self._ownparameters.items())
-        
- 
+    def __eq__(self, other):
+        if not ModelObject.__eq__(self, other):
+            return False
+        if len(self._ownparameters) != len(other._ownparameters):
+            return False
+        for k in self._ownparameters:
+            if repr(self._ownparameters[k]) != repr(other._ownparameters[k]):
+                return False
+        return True
+
 class _HasRate(_HasOwnParameters):
-    def __init__(self, rate):
-        _HasOwnParameters.__init__(self)
+    def __init__(self, rate, parvalues = {}):
+        _HasOwnParameters.__init__(self, parvalues = parvalues)
         self.__rate = rate.strip()
-##         self._ownparameters = {}
     def __str__(self):
         return "%s:\n  rate = %s\n" % (get_name(self), str(self()))
     def __call__(self):
         return self.__rate
+    def __eq__(self, other):
+        if not _HasOwnParameters.__eq__(self, other):
+            return False
+        if self.__rate != other.__rate:
+            return False
+        return True
 
 class Reaction(_HasRate):
-    def __init__(self, reagents, products, rate, irreversible = False):
-        _HasRate.__init__(self, rate)
+    def __init__(self, reagents, products, rate, parvalues = {}, irreversible = False):
+        _HasRate.__init__(self, rate, parvalues = parvalues)
         self._reagents = reagents
         self._products = products
         self._irreversible = irreversible
     def __str__(self):
-        return "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (get_name(self), str(self._reagents), str(self._products), str(self())) 
+        res = "%s:\n  reagents: %s\n  products: %s\n  rate    = %s\n" % (get_name(self), str(self._reagents), str(self._products), str(self())) 
+        if len(self._ownparameters) > 0:
+            res += "  Parameters:\n"
+            for k, v in self._ownparameters.items():
+                res += "    %s = %g\n"% (k, v)
+        return res
+    def __eq__(self, other):
+        if not _HasRate.__eq__(self, other):
+            return False
+        if (self._reagents != other._reagents) or (self._products != other._products) or (self._irreversible != other._irreversible):
+            return False
+        return True
 
-def react(stoichiometry, rate = 0.0):
+def react(stoichiometry, rate = 0.0, pars = {}):
     res = processStoich(stoichiometry)
     if not res:
         raise BadStoichError( "Bad stoichiometry definition:\n"+ stoichiometry)
     if isinstance(rate, float) or isinstance(rate, int):
         rate = massActionStr(rate, res[0])
-    return Reaction(res[0], res[1], rate, res[2])
+    return Reaction(res[0], res[1], rate, pars, res[2])
 
 
 class Variable_dXdt(_HasRate):
@@ -304,6 +320,18 @@ class ConstValue(float,ModelObject):
         if self.bounds:
             res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
         return res
+    def __eq__(self, other):
+        if repr(self) != repr(other):
+            return False
+        if self.bounds is None and other.bounds is None:
+            return True
+        if self.bounds is None and other.bounds is not None:
+            return False
+        if self.bounds is not None and other.bounds is None:
+            return False
+        if (self.bounds.min != other.bounds.min) or (self.bounds.max != other.bounds.max):
+            return False
+        return True
 
 def constValue(value = None, name = '?'):
     if isinstance(value, float) or isinstance(value, int):
@@ -330,17 +358,12 @@ class Variable(ModelObject):
 
 class StateArray(_HasOwnParameters):
     def __init__(self, varvalues, name):
-        _HasOwnParameters.__init__(self,name)
-        for k,v in varvalues.items():
-            setattr(self, k, constValue(value = v, name = k))
+        _HasOwnParameters.__init__(self,name, varvalues)
     def __str__(self):
         return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self._ownparameters.items()])
-    def __iter__(self):
-        return iter(self._ownparameters.items())
 
 def state(**varvalues):
     return StateArray(varvalues, '?')
-
 
 def isPairOfNums(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
@@ -372,7 +395,7 @@ def _ConvertPair2Reaction(value):
             for numtype in (float,int,long):
                 if isinstance(rate, numtype):
                     rate = massActionStr(rate, res[0])
-            return Reaction(res[0], res[1], rate, res[2])
+            return Reaction(res[0], res[1], rate, {}, res[2])
     return value
 
 class Model(ModelObject):
@@ -416,8 +439,6 @@ class Model(ModelObject):
                     raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
         # move on to parameters, accepting ConstValue, numbers or pairs of numbers
         if name in self.__dict__['_Model__parameters']:
-##         c = findWithNameIndex(name, self.__dict__['_Model__parameters'])
-##         if c > -1:
             setPar(self, self.__dict__['_Model__parameters'], name, value)
             
         # else append new object to proper list
@@ -439,9 +460,6 @@ class Model(ModelObject):
             return self.__dict__[name]
         if name in self.__parameters:
             return self.__parameters[name]
-##         c = findWithNameIndex(name, self.__parameters)
-##         if c >=0:
-##             return self.__parameters[c]
         c = findWithName(name, self.__reactions)
         if c :
             return c
@@ -459,9 +477,6 @@ class Model(ModelObject):
     def __findComponent(self, name):
         if name in self.__parameters:
             return -1, 'parameters'
-##         c = findWithNameIndex(name, self.__parameters)
-##         if c>=0 :
-##             return c, 'parameters'
         c = findWithNameIndex(name, self.__reactions)
         if c>=0 :
             return c, 'reactions'
@@ -506,7 +521,7 @@ class Model(ModelObject):
     def clone(self):
         m = Model(self['title'])
         for r in reactions(self):
-            setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._irreversible))
+            setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._ownparameters, r._irreversible))
         for p in parameters(self):
             setattr(m, get_name(p), constValue(p))
         for t in transformations(self):
@@ -530,7 +545,22 @@ class Model(ModelObject):
         return m
     
     def __eq__(self, other):
-        return True #TODO: implement!!!
+        if not ModelObject.__eq__(self, other):
+            return False
+        print "equality of ModelObject checked"
+        collections1 = [reactions(self), transformations(self)]
+        collections2 = [reactions(other), transformations(other)]
+        for c1,c2 in zip(collections1, collections2):
+            if len(c1) != len(c2):
+                return False
+            print "equality of len reactions checked"
+            for vname in [get_name(v) for v in c1]:
+                r = getattr(self, vname)
+                ro = getattr(other, vname)
+                if not ro == r:
+                    return False
+                print "equality of", vname, "checked"
+        return True        
     
     def __refreshVars(self):
         del(self.__variables[:]) #can't use self.__variables= [] : Triggers __setattr__
@@ -649,6 +679,11 @@ def test():
     print '------- result of CLONING the model:\n'
     print m2
     
+    print
+    print '********** Testing equality of models *****************'
+    print "m2 == m"
+    print m2 == m
+
     print
     print '********** Testing iteration of components *****************'
     print 'iterating reactions(m)'
