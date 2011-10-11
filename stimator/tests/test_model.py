@@ -233,10 +233,8 @@ def test_clonemodel():
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
-    mstr = str(m)
     m2 = m.clone()
-    m2str = str(m2)
-    assert mstr == m2str
+    assert m == m2
 
 def test_init1():
     """test assignment of states"""
@@ -347,9 +345,11 @@ def test_iter_parameters():
     assert isinstance(pp, list)
     assert len(pp) == 4
     names = [get_name(x) for x in parameters(m)]
-    assert names == ['B', 'myconstant', 'V3', 'Km3']
+    assert names.sort() == ['B', 'myconstant','Km3', 'V3'].sort()
     values = [x for x in parameters(m)]
+    values.sort()
     should_values = [2.2, 4.0, 0.5, 4.0]
+    should_values.sort()
     for v1,v2 in zip(values, should_values):
         assert_almost_equal(v1, v2)
 
@@ -375,11 +375,12 @@ def test_iter_uncertain():
     assert isinstance(uu, list)
     assert len(uu) == 3
     names = [get_name(x) for x in uncertain(m)]
-    assert names == ['V3', 'Km3', 'afterwards.C']
-    should_values = [(0.1, 1.0), (0.0,5.0), (1.0,3.0)]
-    for v1,v2 in zip(uu, should_values):
-        assert_almost_equal(v1.min, v2[0])
-        assert_almost_equal(v1.max, v2[1])
+    for n in ['V3', 'Km3', 'afterwards.C']:
+        assert n in names
+    should_values = {'V3':(0.1, 1.0), 'Km3':(0.0,5.0), 'afterwards.C':(1.0,3.0)}
+    for i in range(len(uu)):
+        assert_almost_equal(uu[i].min, should_values[names[i]][0])
+        assert_almost_equal(uu[i].max, should_values[names[i]][1])
 
 def test_iter_state():
     """test iteration of states"""

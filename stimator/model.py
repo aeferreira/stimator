@@ -380,7 +380,7 @@ class Model(ModelObject):
         self.__dict__['_Model__reactions']         = []
         self.__dict__['_Model__variables']         = []
         self.__dict__['_Model__extvariables']      = []
-        self.__dict__['_Model__parameters']        = []
+        self.__dict__['_Model__parameters']        = {}
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__states']            = []
         ModelObject.__init__(self)
@@ -415,9 +415,10 @@ class Model(ModelObject):
                 else:
                     raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
         # move on to parameters, accepting ConstValue, numbers or pairs of numbers
-        c = findWithNameIndex(name, self.__dict__['_Model__parameters'])
-        if c > -1:
-            setPar(self, self.__dict__['_Model__parameters'], name, value, pos = c)
+        if name in self.__dict__['_Model__parameters']:
+##         c = findWithNameIndex(name, self.__dict__['_Model__parameters'])
+##         if c > -1:
+            setPar(self, self.__dict__['_Model__parameters'], name, value)
             
         # else append new object to proper list
         # start with strict types
@@ -436,9 +437,11 @@ class Model(ModelObject):
             return self.__dict__['_Model__m_Parameters']
         if name in self.__dict__:
             return self.__dict__[name]
-        c = findWithNameIndex(name, self.__parameters)
-        if c >=0:
-            return self.__parameters[c]
+        if name in self.__parameters:
+            return self.__parameters[name]
+##         c = findWithNameIndex(name, self.__parameters)
+##         if c >=0:
+##             return self.__parameters[c]
         c = findWithName(name, self.__reactions)
         if c :
             return c
@@ -454,9 +457,11 @@ class Model(ModelObject):
         raise AttributeError( name + ' is not defined for this model')
     
     def __findComponent(self, name):
-        c = findWithNameIndex(name, self.__parameters)
-        if c>=0 :
-            return c, 'parameters'
+        if name in self.__parameters:
+            return -1, 'parameters'
+##         c = findWithNameIndex(name, self.__parameters)
+##         if c>=0 :
+##             return c, 'parameters'
         c = findWithNameIndex(name, self.__reactions)
         if c>=0 :
             return c, 'reactions'
@@ -490,11 +495,10 @@ class Model(ModelObject):
                 res += str(i)
         for p in self.__states:
             res += get_name(p) +': '+ str(p) + '\n'
-        for p in self.__parameters:
+        for p in parameters(self):
             res += get_name(p) +' = '+ str(p) + '\n'
         for u in uncertain(self):
             res += get_name(u) + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
-        
         for k, v in self._ModelObject__metadata.items():
             res += "%s: %s\n"%(str(k), str(v))
         return res
@@ -525,6 +529,9 @@ class Model(ModelObject):
             m[k] = v
         return m
     
+    def __eq__(self, other):
+        return True #TODO: implement!!!
+    
     def __refreshVars(self):
         del(self.__variables[:]) #can't use self.__variables= [] : Triggers __setattr__
         del(self.__extvariables[:])
@@ -534,7 +541,8 @@ class Model(ModelObject):
                     if findWithName(vname, self.__variables):
                         continue
                     else:
-                        if findWithName(vname, self.__parameters):
+                        if vname in self.__parameters:
+##                         if findWithName(vname, self.__parameters):
                             if not findWithName(vname, self.__extvariables):
                                 self.__extvariables.append(Variable(vname))
                         else:
@@ -542,8 +550,6 @@ class Model(ModelObject):
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
-    
-
 
 #----------------------------------------------------------------------------
 #         Queries for Model network collections
@@ -562,7 +568,11 @@ def reactions(model):
     return model._Model__reactions
 
 def parameters(model):
-    return model._Model__parameters
+    return list(iparameters(model))
+
+def iparameters(model):
+    for p in model._Model__parameters.values():
+        yield p
 
 def transformations(model):
     return model._Model__transf
