@@ -293,15 +293,15 @@ class Transformation(_HasRate):
     def __init__(self, rate, parvalues = {}):
         _HasRate.__init__(self, rate, parvalues = parvalues)
 
-def variable(rate = 0.0, parvalues = {}):
+def variable(rate = 0.0, pars = {}):
     if isinstance(rate, float) or isinstance(rate, int):
         rate = str(float(rate))
-    return Variable_dXdt(rate, parvalues = parvalues)
+    return Variable_dXdt(rate, parvalues = pars)
 
-def transf(rate = 0.0, parvalues = {}):
+def transf(rate = 0.0, pars = {}):
     if isinstance(rate, float) or isinstance(rate, int):
         rate = str(float(rate))
-    return Transformation(rate, parvalues = parvalues)
+    return Transformation(rate, parvalues = pars)
 
 class ConstValue(float,ModelObject):
     def __new__(cls, value):
@@ -331,10 +331,10 @@ class ConstValue(float,ModelObject):
         if sbounds != obounds:
             return False
         if self.bounds is not None:
-            print "====== checking bounds of ConstValue %s" % get_name(self)
+##             print "====== checking bounds of ConstValue %s" % get_name(self)
             if (self.bounds.min != other.bounds.min) or (self.bounds.max != other.bounds.max):
                 return False
-        print "#### eq ConstValue %s passed" % get_name(self)
+##         print "#### eq ConstValue %s passed" % get_name(self)
         return True
 
 def constValue(value = None, name = '?'):
@@ -518,8 +518,8 @@ class Model(ModelObject):
             res += get_name(p) +' = '+ str(p) + '\n'
         for u in uncertain(self):
             res += get_name(u) + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
-        for k, v in self._ModelObject__metadata.items():
-            res += "%s: %s\n"%(str(k), str(v))
+        for k in self._ModelObject__metadata:
+            res += "%s: %s\n"%(str(k), str(self._ModelObject__metadata[k]))
         return res
     
     def clone(self):
@@ -538,7 +538,6 @@ class Model(ModelObject):
         #handle uncertainties
         for u in uncertain(self):
             loc = get_name(u).split('.')
-            print "handling uncertainty", loc
             currobj = m
             for attribute in loc:
                 currobj = getattr(currobj, attribute)
@@ -549,12 +548,12 @@ class Model(ModelObject):
     def __eq__(self, other):
         if not ModelObject.__eq__(self, other):
             return False
-        print "equality of ModelObject checked"
+##         print "equality of ModelObject checked"
         cnames = ('reactions', 'transf', 'states', 'pars', 'extvars')
         collections1 = [self.__reactions, transformations(self), self.__states, self.__parameters, self.__extvariables]
         collections2 = [reactions(other), transformations(other), other.__states, other.__parameters, other.__extvariables]
         for cname, c1,c2 in zip(cnames, collections1, collections2):
-            print "------------EQUALITY OF %s *********************"%cname
+##             print "------------EQUALITY OF %s *********************"%cname
             if len(c1) != len(c2):
                 return False
             if isinstance(c1, dict):
@@ -566,7 +565,7 @@ class Model(ModelObject):
                 ro = getattr(other, vname)
                 if not ro == r:
                     return False
-                print "equality of", vname, "checked"
+##                 print "equality of", vname, "checked"
         return True        
     
     def __refreshVars(self):
@@ -579,7 +578,6 @@ class Model(ModelObject):
                         continue
                     else:
                         if vname in self.__parameters:
-##                         if findWithName(vname, self.__parameters):
                             if not findWithName(vname, self.__extvariables):
                                 self.__extvariables.append(Variable(vname))
                         else:
@@ -623,7 +621,6 @@ def iuncertain(model):
             yield p.bounds
     for s in model._Model__states:
         for iname, value in s:
-##             print iname, value
             if value.bounds:
                 ret = Bounds(value.bounds.min, value.bounds.max)
                 set_name(ret, get_name(s) + '.' + iname)
