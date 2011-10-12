@@ -178,7 +178,6 @@ class ModelObject(object):
             if repr(self.__metadata[k]) != repr(other.__metadata[k]):
                 return False
         return True
-        
 
 def setPar(obj, collection, name, value, pos = None):
     # accept only ContsValue's or Bounds
@@ -234,7 +233,7 @@ class _HasOwnParameters(ModelObject):
         if len(self._ownparameters) != len(other._ownparameters):
             return False
         for k in self._ownparameters:
-            if repr(self._ownparameters[k]) != repr(other._ownparameters[k]):
+            if not (self._ownparameters[k]) == (other._ownparameters[k]):
                 return False
         return True
 
@@ -243,7 +242,12 @@ class _HasRate(_HasOwnParameters):
         _HasOwnParameters.__init__(self, parvalues = parvalues)
         self.__rate = rate.strip()
     def __str__(self):
-        return "%s:\n  rate = %s\n" % (get_name(self), str(self()))
+        res =  "%s:\n  rate = %s\n" % (get_name(self), str(self()))
+        if len(self._ownparameters) > 0:
+            res += "  Parameters:\n"
+            for k, v in self._ownparameters.items():
+                res += "    %s = %g\n"% (k, v)
+        return res
     def __call__(self):
         return self.__rate
     def __eq__(self, other):
@@ -281,24 +285,23 @@ def react(stoichiometry, rate = 0.0, pars = {}):
         rate = massActionStr(rate, res[0])
     return Reaction(res[0], res[1], rate, pars, res[2])
 
-
 class Variable_dXdt(_HasRate):
-    def __init__(self, rate):
-        _HasRate.__init__(self, rate)
+    def __init__(self, rate, parvalues = {}):
+        _HasRate.__init__(self, rate, parvalues = parvalues)
 
 class Transformation(_HasRate):
-    def __init__(self, rate):
-        _HasRate.__init__(self, rate)
+    def __init__(self, rate, parvalues = {}):
+        _HasRate.__init__(self, rate, parvalues = parvalues)
 
-def variable(rate = 0.0):
+def variable(rate = 0.0, parvalues = {}):
     if isinstance(rate, float) or isinstance(rate, int):
         rate = str(float(rate))
-    return Variable_dXdt(rate)
+    return Variable_dXdt(rate, parvalues = parvalues)
 
-def transf(rate = 0.0):
+def transf(rate = 0.0, parvalues = {}):
     if isinstance(rate, float) or isinstance(rate, int):
         rate = str(float(rate))
-    return Transformation(rate)
+    return Transformation(rate, parvalues = parvalues)
 
 class ConstValue(float,ModelObject):
     def __new__(cls, value):
@@ -323,14 +326,15 @@ class ConstValue(float,ModelObject):
     def __eq__(self, other):
         if repr(self) != repr(other):
             return False
-        if self.bounds is None and other.bounds is None:
-            return True
-        if self.bounds is None and other.bounds is not None:
+        sbounds = self.bounds is not None
+        obounds = other.bounds is not None
+        if sbounds != obounds:
             return False
-        if self.bounds is not None and other.bounds is None:
-            return False
-        if (self.bounds.min != other.bounds.min) or (self.bounds.max != other.bounds.max):
-            return False
+        if self.bounds is not None:
+            print "====== checking bounds of ConstValue %s" % get_name(self)
+            if (self.bounds.min != other.bounds.min) or (self.bounds.max != other.bounds.max):
+                return False
+        print "#### eq ConstValue %s passed" % get_name(self)
         return True
 
 def constValue(value = None, name = '?'):
@@ -525,36 +529,39 @@ class Model(ModelObject):
         for p in parameters(self):
             setattr(m, get_name(p), constValue(p))
         for t in transformations(self):
-            setattr(m, get_name(t), Transformation(t()))
+            setattr(m, get_name(t), Transformation(t(), t._ownparameters))
         for s in self.__states:
-            newdict= {}
+            newdict = {}
             for i in s:
                 newdict[i[0]]=i[1]
             setattr(m, get_name(s), StateArray(newdict, get_name(s)))
         #handle uncertainties
         for u in uncertain(self):
             loc = get_name(u).split('.')
-            if len(loc) >1:
-                s = getattr(m,loc[0])
-                var = getattr(s,loc[1])
-                var.uncertainty(u.min, u.max)
-            else:
-                getattr(m, loc[0]).uncertainty(u.min, u.max)
-        for k,v in self._ModelObject__metadata.items():
-            m[k] = v
+            print "handling uncertainty", loc
+            currobj = m
+            for attribute in loc:
+                currobj = getattr(currobj, attribute)
+            currobj.uncertainty(u.min, u.max)
+        m._ModelObject__metadata.update(self._ModelObject__metadata)
         return m
     
     def __eq__(self, other):
         if not ModelObject.__eq__(self, other):
             return False
         print "equality of ModelObject checked"
-        collections1 = [reactions(self), transformations(self)]
-        collections2 = [reactions(other), transformations(other)]
-        for c1,c2 in zip(collections1, collections2):
+        cnames = ('reactions', 'transf', 'states', 'pars', 'extvars')
+        collections1 = [self.__reactions, transformations(self), self.__states, self.__parameters, self.__extvariables]
+        collections2 = [reactions(other), transformations(other), other.__states, other.__parameters, other.__extvariables]
+        for cname, c1,c2 in zip(cnames, collections1, collections2):
+            print "------------EQUALITY OF %s *********************"%cname
             if len(c1) != len(c2):
                 return False
-            print "equality of len reactions checked"
-            for vname in [get_name(v) for v in c1]:
+            if isinstance(c1, dict):
+                names = c1.keys()
+            else:
+                names = [get_name(v) for v in c1]
+            for vname in names:
                 r = getattr(self, vname)
                 ro = getattr(other, vname)
                 if not ro == r:
@@ -645,7 +652,9 @@ def test():
     m.v3.Km3 = 4
     m.v4 = "B   ->  "  , "2*4*step(t,at,top)"
     m.v5 = "C ->", "4.5*C*step(t,at,top)"
-    m.t1 = transf("A*4 + C")
+    m.t1 = transf("A*Vt + C")
+    m.Vt = 4
+    m.t1.Vt = 4.0
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
     m.B  = 2.2
