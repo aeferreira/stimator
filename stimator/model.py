@@ -211,6 +211,8 @@ class _HasOwnParameters(ModelObject):
     def __init__(self, name = '?', parvalues = {}):
         ModelObject.__init__(self)
         self._ownparameters = {}
+        if not isinstance(parvalues, dict):
+            parvalues = dict(parvalues)
         for k,v in parvalues.items():
             self._ownparameters[k] = constValue(value = v, name = k)
     def __getattr__(self, name):
@@ -524,11 +526,11 @@ class Model(ModelObject):
     
     def clone(self):
         m = Model(self['title'])
-        for r in reactions(self):
+        for r in self.__reactions:
             setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._ownparameters, r._irreversible))
-        for p in parameters(self):
+        for p in self.__parameters.values():
             setattr(m, get_name(p), constValue(p))
-        for t in transformations(self):
+        for t in self.__transf:
             setattr(m, get_name(t), Transformation(t(), t._ownparameters))
         for s in self.__states:
             newdict = {}
@@ -550,8 +552,8 @@ class Model(ModelObject):
             return False
 ##         print "equality of ModelObject checked"
         cnames = ('reactions', 'transf', 'states', 'pars', 'extvars')
-        collections1 = [self.__reactions, transformations(self), self.__states, self.__parameters, self.__extvariables]
-        collections2 = [reactions(other), transformations(other), other.__states, other.__parameters, other.__extvariables]
+        collections1 = [self.__reactions, self.__transf, self.__states, self.__parameters, self.__extvariables]
+        collections2 = [other.__reactions, other.__transf, other.__states, other.__parameters, other.__extvariables]
         for cname, c1,c2 in zip(cnames, collections1, collections2):
 ##             print "------------EQUALITY OF %s *********************"%cname
             if len(c1) != len(c2):
@@ -608,6 +610,18 @@ def parameters(model):
 def iparameters(model):
     for p in model._Model__parameters.values():
         yield p
+    collections = [model._Model__reactions, model._Model__transf]
+    for c in collections:
+        for v in c:
+            for iname, value in v._ownparameters.items():
+                ret = constValue(value)
+                retname = get_name(v) + '.' + iname
+                ret.initialize(retname)
+                if value.bounds:
+                    b = Bounds(value.bounds.min, value.bounds.max)
+                    set_name(b, retname)
+                    ret.bounds = b
+                yield ret
 
 def transformations(model):
     return model._Model__transf
@@ -616,7 +630,7 @@ def uncertain(model):
     return list(iuncertain(model))
 
 def iuncertain(model):
-    for p in parameters(model):
+    for p in iparameters(model):
         if p.bounds:
             yield p.bounds
     for s in model._Model__states:
@@ -644,14 +658,13 @@ def test():
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v3.V3 = 0.5
-    m.v3.Km3 = 4
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)", pars=[('V3',0.5),('Km3', 4)])
+##     m.v3.V3 = 0.5
+##     m.v3.Km3 = 4
+    m.v3.V3 = [0.1, 1.0]
     m.v4 = "B   ->  "  , "2*4*step(t,at,top)"
     m.v5 = "C ->", "4.5*C*step(t,at,top)"
-    m.t1 = transf("A*Vt + C")
-    m.Vt = 4
-    m.t1.Vt = 4.0
+    m.t1 = transf("A*Vt + C", pars = dict(Vt=4))
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
     m.B  = 2.2
@@ -660,6 +673,7 @@ def test():
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
     m.Km3 = 1,6
+    m.Vt = 4
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
@@ -706,7 +720,7 @@ def test():
         print get_name(x)
     print '\niterating parameters(m)'
     for p in parameters(m):
-        print get_name(p) , '=',  p, 'bounds=', p.bounds
+        print get_name(p) , '=',  p, '\n  bounds=', p.bounds
     print '\niterating uncertain(m)'
     for x in uncertain(m):
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
