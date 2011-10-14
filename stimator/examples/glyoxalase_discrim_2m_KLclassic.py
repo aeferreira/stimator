@@ -23,7 +23,7 @@ def compute():
     m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 0, e2 = 0)
 
     m2 = m1.clone()
-    m2.title = 'model 2'
+    m2['title'] = 'model 2'
     m2.r1 = react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
     m2.kcat1 = 17046
     m2.km11 = 0.875

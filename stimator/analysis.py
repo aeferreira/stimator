@@ -98,7 +98,7 @@ class ModelSolver(object):
         for ipar, parname in enumerate(self.changing_pars):
             if parname.startswith('init'):
                 varname = parname.split('.')[-1]
-                ix = findWithNameIndex(varname, variables(self.model))
+                ix = varnames(self.model).index(varname)
                 mapinit2pars.append((ix,ipar))
             else:
                 self.par_enumeration.append((ipar,parname))

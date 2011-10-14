@@ -78,7 +78,7 @@ class DeODESolver(de.DESolver):
         for iu, u in enumerate(uncertain(self.model)):
             if get_name(u).startswith('init'):
                 varname = get_name(u).split('.')[-1]
-                ix = findWithNameIndex(varname, variables(self.model))
+                ix = varnames(self.model).index(varname)
                 mapinit2trial.append((ix,iu))
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
         self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
@@ -189,13 +189,14 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best['timecourses']['data'] = []
 
-        allvarnames = [get_name(x) for x in variables(self.model)]
+        allvarnames = varnames(self.model)
         pars = [get_name(uncertain(self.model)[i]) for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
         self.model.set_uncertain(self.bestSolution)
         
         sols = timecourse.Solutions()
+        modelvnames = varnames(self.model)
         
         for (i,tc) in enumerate(self.tc):
             Y = self.computeSolution(i, self.bestSolution)
@@ -208,14 +209,14 @@ class DeODESolver(de.DESolver):
             sols += sol
             best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].ntimes, score))
             
-            varnames = []
+            vnames = []
             varindexes=[]
             for iline,line in enumerate(tc.data):
                 #count NaN
                 yexp = line
                 nnan = len(yexp[isnan(yexp)])
                 if nnan >= nt-1: continue
-                varnames.append(str(get_name(variables(self.model)[iline])))
+                vnames.append(modelvnames[iline])
                 varindexes.append(iline)
             #print len(varindexes), varnames
         best['timecourses']['format'] = "%s\t%d\t%g"
@@ -226,8 +227,8 @@ class DeODESolver(de.DESolver):
         if not (fim.sympy_installed):
             best['parameters']['data'] = [(get_name(self.model.uncertain[i]), "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
         else:
-            consterror = [0.0 for i in range(len(varnames))]
-            for ix, x in enumerate(varnames):
+            consterror = [0.0 for i in range(len(vnames))]
+            for ix, x in enumerate(vnames):
                 for tc in self.tc:
                     yexp = tc.data[varindexes[ix]]
                     tpe = (max(yexp) - min(yexp))
@@ -236,7 +237,7 @@ class DeODESolver(de.DESolver):
             consterror = expcov.constError_func([r * 0.05 for r in consterror]) #assuming 5% error
             
             #print consterror
-            FIM1, invFIM1 = fim.computeFIM(self.model, parszip, varnames, sols, consterror)
+            FIM1, invFIM1 = fim.computeFIM(self.model, parszip, vnames, sols, consterror)
             
             STDerrors = {}
             for i,p in enumerate(pars):

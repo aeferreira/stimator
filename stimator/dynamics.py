@@ -34,7 +34,7 @@ def genStoichiometryMatrix(m):
         raise BadRateError(msg)
 
     vnames = varnames(m)
-    N = zeros((len(variables(m)),len(reactions(m))), dtype=float)
+    N = zeros((len(varnames(m)),len(reactions(m))), dtype=float)
     for j,v in enumerate(reactions(m)):
         for rORp, signedunit in [(v._reagents,-1.0),(v._products,1.0)]:
             for c in rORp:
@@ -69,8 +69,7 @@ def dXdt_strings(m):
         raise BadRateError(msg)
     N = genStoichiometryMatrix(m)
     res = []
-    for i,x in enumerate(variables(m)):
-        name = get_name(x)
+    for i,name in enumerate(varnames(m)):
         dXdtstring = ''
         for j,v in enumerate(reactions(m)):
             coef = N[i,j]
@@ -102,11 +101,11 @@ def Jacobian_strings(m, _scale = 1.0):
         raise
     _dxdtstrings = dXdt_strings(m)
     _symbs = {}
-    for x in variables(m):
-        _symbs[get_name(x)] = sympy.Symbol(str(get_name(x)))
+    for x in varnames(m):
+        _symbs[x] = sympy.Symbol(str(x))
     for p in parameters(m):
         _symbs[get_name(p)] = sympy.Symbol(str(get_name(p)))
-    _nvars = len(variables(m))
+    _nvars = len(varnames(m))
     _jfuncs = []
     for _i in range(_nvars):
         _jfuncs.append([])
@@ -119,7 +118,7 @@ def Jacobian_strings(m, _scale = 1.0):
             for _j in range(_nvars):
                 _res = eval(_dxdtstrings[_i][1], None, _symbs)
                 _res = _res * _scale
-                _dres = str(sympy.diff(_res, _symbs[get_name(variables(m)[_j])]))
+                _dres = str(sympy.diff(_res, _symbs[varnames(m)[_j]]))
                 if _dres == '0':
                     _dres = '0.0'
                 _jfuncs[_i].append(_dres)
@@ -143,11 +142,11 @@ def dfdp_strings(m, _parnames, _scale = 1.0):
         raise
     _dxdtstrings = dXdt_strings(m)
     _symbs = {}
-    for x in variables(m):
-        _symbs[get_name(x)] = sympy.Symbol(str(get_name(x)))
+    for x in varnames(m):
+        _symbs[x] = sympy.Symbol(str(x))
     for p in parameters(m):
         _symbs[get_name(p)] = sympy.Symbol(str(get_name(p)))
-    _nvars = len(variables(m))
+    _nvars = len(varnames(m))
     _npars = len(_parnames)
     _jfuncs = []
     for _i in range(_nvars):
@@ -173,8 +172,8 @@ def dfdp_strings(m, _parnames, _scale = 1.0):
         
 def rateCalcString(m, rateString, with_uncertain = False):
     # replace varnames
-    for i,v in enumerate(variables(m)):
-        rateString = re.sub(r"\b"+ get_name(v)+r"\b", "variables[%d]"%i, rateString)
+    for i,xname in enumerate(varnames(m)):
+        rateString = re.sub(r"\b"+ xname+r"\b", "variables[%d]"%i, rateString)
 
     # replace uncertain parameters
     if with_uncertain:
@@ -330,7 +329,7 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
     NT = N.transpose()
     # create array to hold v's
     v = empty(len(reactions(m)))
-    x = empty(len(variables(m)))
+    x = empty(len(varnames(m)))
     en = list(enumerate(ratebytecode))
     
     def f2(variables, t):
@@ -361,7 +360,7 @@ def getdXdt_exposing_rbc(m, expose_enum, with_uncertain = False, scale = 1.0, t0
     NT = N.transpose()
     # create array to hold v's
     v = empty(len(reactions(m)))
-    x = empty(len(variables(m)))
+    x = empty(len(varnames(m)))
     for i in range(len(reactions(m))):
         expose_enum[i] = (i,ratebytecode[i])
     
@@ -470,8 +469,8 @@ def test():
     print 'Stoichiometry matrix:'
     N = genStoichiometryMatrix(m)
     print '  ', '  '.join([get_name(v) for v in reactions(m)])
-    for i,x in enumerate(variables(m)):
-        print get_name(x), N[i, :]
+    for i,x in enumerate(varnames(m)):
+        print x, N[i, :]
     print
     print '********** Testing state2array()****************************'
     print 'state2array(m,"init"):'
@@ -523,8 +522,8 @@ def test():
     print '---- dXdt using getdXdt(m) --------------------------------'
     f = getdXdt(m)
     dXdt = f(varvalues,t)
-    for x,s,r in zip(variables(m), dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (get_name(x), s,r)
+    for x,s,r in zip(varnames(m), dxdtstrs, dXdt):
+        print "d%s/dt = %s = %s" % (x,s,r)
 
     print '---- dXdt using getdXdt(m) setting uncertain parameters ---'
     print 'f = getdXdt(m, with_uncertain = True)'
@@ -533,15 +532,15 @@ def test():
     print 'm.set_uncertain(pars)'
     m.set_uncertain(pars)
     dXdt = f(varvalues,t)
-    for x,s,r in zip(variables(m), dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (get_name(x), s,r)
+    for x,s,r in zip(varnames(m), dxdtstrs, dXdt):
+        print "d%s/dt = %s = %s" % (x, s,r)
 
     print '---- dXdt using dXdt_with(m, pars) ------------------------'
     print 'f = dXdt_with(m, pars)'
     f = dXdt_with(m, pars)
     dXdt   = f(varvalues,t)
-    for x,s,r in zip(variables(m), dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (get_name(x), s,r)
+    for x,s,r in zip(varnames(m), dxdtstrs, dXdt):
+        print "d%s/dt = %s = %s" % (x, s,r)
 
     print '---- dXdt using getdXdt(m) with a state argument (m.init) --'
     print 'm.init:', m.init
@@ -549,16 +548,16 @@ def test():
     f = getdXdt(m)
     print 'dXdt = f(state2array(m,"init"),t)'
     dXdt = f(state2array(m,"init"),t)
-    for x,r in zip(variables(m), dXdt):
-        print "d%s/dt = %s" % (get_name(x), r)
+    for x,r in zip(varnames(m), dXdt):
+        print "d%s/dt = %s" % (x, r)
     print '---- same, changing state argument ---------------------------'
     m.init.A = 2.0
     print 'after m.init.A = 2.0'
     print 'm.init:', m.init
     print 'dXdt = f(state2array(m,"init"),t)'
     dXdt = f(state2array(m,"init"),t)
-    for x,r in zip(variables(m), dXdt):
-        print "d%s/dt = %s" % (get_name(x), r)
+    for x,r in zip(varnames(m), dXdt):
+        print "d%s/dt = %s" % (x, r)
 
 if __name__ == "__main__":
     test()

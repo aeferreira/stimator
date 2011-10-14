@@ -41,8 +41,8 @@ def _test_with_everything(valueexpr, model):
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
-    for i in variables(model):
-        vardict[get_name(i)]=1.0
+    for i in varnames(model):
+        vardict[i]=1.0
     vardict['t'] = 1.0
     locs.update(vardict)
     try :
@@ -712,9 +712,9 @@ def test():
     print '\niterating transformations(m)'
     for v in transformations(m):
         print get_name(v), ':', v()
-    print '\niterating variables(m)'
-    for x in variables(m):
-        print get_name(x)
+    print '\niterating varnames(m)'
+    for x in varnames(m):
+        print x
     print '\niterating extvariables(m)'
     for x in extvariables(m):
         print get_name(x)
