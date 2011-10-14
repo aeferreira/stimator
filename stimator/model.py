@@ -328,15 +328,16 @@ class ConstValue(float,ModelObject):
     def __eq__(self, other):
         if repr(self) != repr(other):
             return False
-        sbounds = self.bounds is not None
-        obounds = other.bounds is not None
-        if sbounds != obounds:
-            return False
-        if self.bounds is not None:
-##             print "====== checking bounds of ConstValue %s" % get_name(self)
-            if (self.bounds.min != other.bounds.min) or (self.bounds.max != other.bounds.max):
+        if isinstance(other, ConstValue):
+            sbounds = self.bounds is not None
+            obounds = other.bounds is not None
+            if sbounds != obounds:
                 return False
-##         print "#### eq ConstValue %s passed" % get_name(self)
+            if self.bounds is not None:
+    ##             print "====== checking bounds of ConstValue %s" % get_name(self)
+                if (self.bounds.min != other.bounds.min) or (self.bounds.max != other.bounds.max):
+                    return False
+    ##         print "#### eq ConstValue %s passed" % get_name(self)
         return True
 
 def constValue(value = None, name = '?'):
