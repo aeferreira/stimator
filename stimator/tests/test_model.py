@@ -303,13 +303,10 @@ def test_iter_variables():
     m.v2 = react("    -> A"  , rate = 1.0)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.D  = variable("-2 * D")
-    xx = variables(m)
+    xx = varnames(m)
     assert isinstance(xx, list)
     assert len(xx) == 4
-    names = [get_name(x) for x in variables(m)]
-    names2 = [x for x in varnames(m)]
-    assert names == ['A', 'B', 'C', 'D']
-    assert names2 == names
+    assert xx == ['A', 'B', 'C', 'D']
 
 def test_iter_extvariables():
     """test iteration of external variables using extvariables()"""
@@ -321,8 +318,7 @@ def test_iter_extvariables():
     xx = extvariables(m)
     assert isinstance(xx, list)
     assert len(xx) == 1
-    names = [get_name(x) for x in extvariables(m)]
-    assert names == ['B']
+    assert xx == ['B']
 
 def test_iter_parameters():
     """test iteration of parameters using parameters()"""
@@ -466,17 +462,15 @@ def test_reassignment3():
     m = Model("My first model")
     m.v1 = react("A->B", 4)
     m.v2 = react("B->C", 2.0)
-    xx = variables(m)
+    xx = varnames(m)
     assert len(xx) == 3
-    names = [x for x in varnames(m)]
-    assert names == ['A', 'B', 'C']
+    assert xx == ['A', 'B', 'C']
     check, msg = m.checkRates()
     assert check 
     m.v2 = react("B->D", 2.0)
-    xx = variables(m)
+    xx = varnames(m)
     assert len(xx) == 3
-    names = [x for x in varnames(m)]
-    assert names == ['A', 'B', 'D']
+    assert xx == ['A', 'B', 'D']
     check, msg = m.checkRates()
     assert check 
 
@@ -486,17 +480,15 @@ def test_reassignment4():
     m = Model("My first model")
     m.v1 = react("A->B", 4)
     m.v2 = react("B->C", 2.0)
-    xx = variables(m)
+    xx = varnames(m)
     assert len(xx) == 3
-    names = [x for x in varnames(m)]
-    assert names == ['A', 'B', 'C']
+    assert xx == ['A', 'B', 'C']
     check, msg = m.checkRates()
     assert check 
     m.v2 = 3.14
-    xx = variables(m)
+    xx = varnames(m)
     assert len(xx) == 3
-    names = [x for x in varnames(m)]
-    assert names == ['A', 'B', 'D']
+    assert xx == ['A', 'B', 'D']
     check, msg = m.checkRates()
     assert check 
 

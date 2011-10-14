@@ -357,11 +357,11 @@ class Bounds(ModelObject):
     def __str__(self):
         return "(min=%f, max=%f)" % (self.min, self.max)
 
-class Variable(ModelObject):
-    def __init__(self, name):
-        ModelObject.__init__(self,name)
-    def __str__(self):
-        return get_name(self)
+## class Variable(ModelObject):
+##     def __init__(self, name):
+##         ModelObject.__init__(self,name)
+##     def __str__(self):
+##         return get_name(self)
 
 class StateArray(_HasOwnParameters):
     def __init__(self, varvalues, name):
@@ -470,9 +470,11 @@ class Model(ModelObject):
         c = findWithName(name, self.__reactions)
         if c :
             return c
-        c = findWithName(name, self.__variables)
-        if c :
-            return get_name(c)
+        if name in self.__variables:
+            return name
+##         c = findWithName(name, self.__variables)
+##         if c :
+##             return get_name(c)
         c = findWithName(name, self.__transf)
         if c :
             return c
@@ -487,9 +489,11 @@ class Model(ModelObject):
         c = findWithNameIndex(name, self.__reactions)
         if c>=0 :
             return c, 'reactions'
-        c = findWithNameIndex(name, self.__variables)
-        if c>=0 :
+        try:
+            c = self.__variables.index(name)
             return c, 'variables'
+        except:
+            pass
         c = findWithNameIndex(name, self.__transf)
         if c>=0 :
             return c, 'transf'
@@ -509,9 +513,9 @@ class Model(ModelObject):
             raise BadRateError(msg)
         res = "%s\n"% self['title']
         #~ res = "%s\n"% self.title
-        res += "\nVariables: %s\n" % " ".join([get_name(i) for i in self.__variables])
+        res += "\nVariables: %s\n" % " ".join(self.__variables)
         if len(self.__extvariables) > 0:
-            res += "External variables: %s\n" % " ".join([get_name(i) for i in self.__extvariables])
+            res += "External variables: %s\n" % " ".join(self.__extvariables)
         for collection in (self.__reactions, self.__transf):
             for i in collection:
                 res += str(i)
@@ -552,9 +556,9 @@ class Model(ModelObject):
         if not ModelObject.__eq__(self, other):
             return False
 ##         print "equality of ModelObject checked"
-        cnames = ('reactions', 'transf', 'states', 'pars', 'extvars')
-        collections1 = [self.__reactions, self.__transf, self.__states, self.__parameters, self.__extvariables]
-        collections2 = [other.__reactions, other.__transf, other.__states, other.__parameters, other.__extvariables]
+        cnames = ('reactions', 'transf', 'states', 'pars', 'vars', 'extvars')
+        collections1 = [self.__reactions, self.__transf, self.__states, self.__parameters, self.__variables, self.__extvariables]
+        collections2 = [other.__reactions, other.__transf, other.__states, other.__parameters, other.__variables, other.__extvariables]
         for cname, c1,c2 in zip(cnames, collections1, collections2):
 ##             print "------------EQUALITY OF %s *********************"%cname
             if len(c1) != len(c2):
@@ -562,8 +566,11 @@ class Model(ModelObject):
             if isinstance(c1, dict):
                 names = c1.keys()
             else:
-                names = [get_name(v) for v in c1]
+                names = [v for v in c1]
             for vname in names:
+##                 print cname, vname, type(vname)
+                if isinstance(vname, ModelObject):
+                    vname = get_name(vname)
                 r = getattr(self, vname)
                 ro = getattr(other, vname)
                 if not ro == r:
@@ -577,14 +584,14 @@ class Model(ModelObject):
         for v in self.__reactions:
             for rp in (v._reagents, v._products):
                 for (vname, coef) in rp:
-                    if findWithName(vname, self.__variables):
+                    if vname in self.__variables:
                         continue
                     else:
                         if vname in self.__parameters:
-                            if not findWithName(vname, self.__extvariables):
-                                self.__extvariables.append(Variable(vname))
+                            if not vname in self.__extvariables:
+                                self.__extvariables.append(vname)
                         else:
-                            self.__variables.append(Variable(vname))
+                            self.__variables.append(vname)
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
@@ -593,11 +600,11 @@ class Model(ModelObject):
 #         Queries for Model network collections
 #----------------------------------------------------------------------------
 
-def variables(model):
+def varnames(model):
     return model._Model__variables
 
-def varnames(model):
-    return [get_name(i) for i in variables(model)]
+## def varnames(model):
+##     return [get_name(i) for i in variables(model)]
 
 def extvariables(model):
     return model._Model__extvariables
@@ -718,7 +725,7 @@ def test():
         print x
     print '\niterating extvariables(m)'
     for x in extvariables(m):
-        print get_name(x)
+        print x
     print '\niterating parameters(m)'
     for p in parameters(m):
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
