@@ -345,8 +345,35 @@ class StimatorParser:
            return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
         return ("", value)
     
-    def _process_consts_in_rate(self, rate):
-        return rate, {}
+    def _process_consts_in_rate(self, rate, loc):
+        pardict = {}
+##         print '\n*****DEBUG of rate', rate
+        decls = rate.split(',')
+        n_localpars = 0
+        for dindex in range(len(decls)-1, 0, -1):
+            d = decls[dindex]
+            match = constdef.match(d)
+            if match:
+##                 print '---------found decl:',d       
+                name      = match.group('name')
+                valueexpr = match.group('value').rstrip()
+
+                resstring, value = self._test_with_consts(valueexpr)
+                if resstring != "":
+                    loc.start = match.start('value')
+                    loc.end   = match.start('value')+len(valueexpr)
+                    self.setError(resstring, loc)
+                    self.setIfNameError(resstring, valueexpr, loc)
+                    return (None, None)
+                
+                pardict[name] = value
+                n_localpars += 1
+            else:
+                break
+        rate = ",".join(decls[:len(decls)-n_localpars])
+##         print '---> rate:', rate
+##         print '---> parameters:', pardict
+        return rate, pardict
 
     def rateDefParse(self, line, loc, match):
         #process name
@@ -357,7 +384,9 @@ class StimatorParser:
         #process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
-        rate, pardict = self._process_consts_in_rate(rate)
+        rate, pardict = self._process_consts_in_rate(rate, loc)
+        if rate is None:
+            return
         
         if rate.endswith('..'):
             rate = rate[:-2]
@@ -372,7 +401,7 @@ class StimatorParser:
                 rate = float(value) # it will be a float and mass action kinetics will be assumed
             
         try:
-            setattr(self.model, name, model.react(stoich, rate))
+            setattr(self.model, name, model.react(stoich, rate, pars=pardict))
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end   = match.end('stoich')
@@ -390,8 +419,10 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        expr, pardict = self._process_consts_in_rate(expr)
-        setattr(self.model, name, model.variable(expr))
+        expr, pardict = self._process_consts_in_rate(expr, loc)
+        if expr is None:
+            return
+        setattr(self.model, name, model.variable(expr, pars=pardict))
         loc.start = match.start('value')
         loc.end   = match.end('value')
         self.rateloc.append(loc)
@@ -403,8 +434,10 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        expr, pardict = self._process_consts_in_rate(expr)
-        setattr(self.model, name, model.transf(expr))
+        expr, pardict = self._process_consts_in_rate(expr, loc)
+        if expr is None:
+            return
+        setattr(self.model, name, model.transf(expr, pars=pardict))
         loc.start = match.start('value')
         loc.end   = match.end('value')
         self.rateloc.append(loc)
@@ -504,8 +537,8 @@ Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 leak : MG -> , 10 ..
 reaction Glx2 : SDLTSH ->  Lac,  \\
     step(t, 2.0, Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2
-export: Lac ->, kout * Lac #, kout = 3.14
-kout = 3.14
+kout_global = 3.14
+export: Lac ->, kout * Lac, kout = sqrt(4.0)/2.0 * kout_global
 ~ totTSH = TSH2 + SDLTSH
 pi   = 3.1416
 pi2  = 2*pi
@@ -606,24 +639,6 @@ timecourse anotherfile.txt
     
     filename = "examples/ca.txt"
     try2read_model(filename)
-
-
-def profile_main():
- # This is the main function for profiling 
- # We've renamed our original main() above to real_main()
- import cProfile, pstats, StringIO
- prof = cProfile.Profile()
- prof = prof.runctx("test()", globals(), locals())
- stream = StringIO.StringIO()
- stats = pstats.Stats(prof, stream=stream)
- stats.sort_stats("time")  # Or cumulative
- stats.print_stats(80)  # 80 = how many to print
- # The rest is optional.
- # stats.print_callees()
- # stats.print_callers()
- print stream.getvalue()
- #logging.info("Profile data:\n%s", stream.getvalue())
-
 
 if __name__ == "__main__":
     test()
