@@ -27,32 +27,6 @@ def register_kin_func(f):
     __globs[f.__name__] = f
     globals()[f.__name__] = f
 
-def _test_with_everything(valueexpr, model): 
-    locs = {}
-    for p in parameters(model):
-        locs[get_name(p)] = p #.value
-    
-    #part 1: nonpermissive, except for NameError
-    try :
-       value = float(eval(valueexpr, __globs, locs))
-    except NameError:
-       pass
-    except Exception, e:
-       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
-    #part 2: permissive, with dummy values (1.0) for vars
-    vardict = {}
-    for i in varnames(model):
-        vardict[i]=1.0
-    vardict['t'] = 1.0
-    locs.update(vardict)
-    try :
-       value = float(eval(valueexpr, __globs, locs))
-    except (ArithmeticError, ValueError):
-       pass # might fail but we don't know the values of vars
-    except Exception, e:
-       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
-    return "", value
-
 #----------------------------------------------------------------------------
 #         Regular expressions for stoichiometry patterns
 #----------------------------------------------------------------------------
@@ -502,7 +476,7 @@ class Model(ModelObject):
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
             for v in collection:
-                resstring, value = _test_with_everything(v(),self)
+                resstring, value = _test_with_everything(v(),self, v)
                 if resstring != "":
                     return False, '%s\nin rate of %s: %s' % (resstring, get_name(v), v())
         return True, 'OK'
@@ -578,6 +552,20 @@ class Model(ModelObject):
 ##                 print "equality of", vname, "checked"
         return True        
     
+    def set_uncertain(self, uncertainparameters):
+        self.__m_Parameters = uncertainparameters
+
+    def _genlocs4rate(self, obj):
+        for p in self.__parameters.items():
+            yield p
+        collections = [self.__reactions, self.__transf]
+        for c in collections:
+            for v in c:
+                yield (get_name(v), v)
+        if len(obj._ownparameters) > 0:
+            for p in obj._ownparameters.items():
+                yield p
+
     def __refreshVars(self):
         del(self.__variables[:]) #can't use self.__variables= [] : Triggers __setattr__
         del(self.__extvariables[:])
@@ -593,8 +581,41 @@ class Model(ModelObject):
                         else:
                             self.__variables.append(vname)
 
-    def set_uncertain(self, uncertainparameters):
-        self.__m_Parameters = uncertainparameters
+def _test_with_everything(valueexpr, model, obj): 
+    locs = {}
+    for (name, value) in model._genlocs4rate(obj):
+        locs[name] = value
+##     print "\nvalueexpr:", valueexpr
+##     print "---locs"
+##     for k in locs:
+##         if isinstance(locs[k], _HasRate):
+##             print k, '-->', type(locs[k])
+##         else:
+##             print k, '-->', locs[k]
+    
+    #part 1: nonpermissive, except for NameError
+    try :
+       value = float(eval(valueexpr, __globs, locs))
+    except NameError:
+       pass
+    except Exception, e:
+       print 'returned on first pass'
+       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
+    #part 2: permissive, with dummy values (1.0) for vars
+    vardict = {}
+    for i in varnames(model):
+        vardict[i]=1.0
+    vardict['t'] = 1.0
+    locs.update(vardict)
+    try :
+       value = float(eval(valueexpr, __globs, locs))
+##        print "+++++++ value =", value
+    except (ArithmeticError, ValueError):
+       pass # might fail but we don't know the values of vars
+    except Exception, e:
+       print 'returned on second pass'
+       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
+    return "", value
 
 #----------------------------------------------------------------------------
 #         Queries for Model network collections
@@ -666,13 +687,14 @@ def test():
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)", pars=[('V3',0.5),('Km3', 4)])
+    v3pars = (('V3',0.5),('Km3', 4))
+    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)", pars = v3pars)
 ##     m.v3.V3 = 0.5
 ##     m.v3.Km3 = 4
     m.v3.V3 = [0.1, 1.0]
     m.v4 = "B   ->  "  , "2*4*step(t,at,top)"
     m.v5 = "C ->", "4.5*C*step(t,at,top)"
-    m.t1 = transf("A*Vt + C", pars = dict(Vt=4))
+    m.t1 = transf("A*Vt + C", dict(Vt=4))
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
     m.B  = 2.2
@@ -681,7 +703,6 @@ def test():
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
     m.Km3 = 1,6
-    m.Vt = 4
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)

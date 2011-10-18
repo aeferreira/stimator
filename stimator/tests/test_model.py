@@ -111,6 +111,41 @@ def test_par1():
     assert m.p1 == 4.0
     assert m.p2 == 3.0
 
+def test_par_in_rates1():
+    """test assignment of parameters 'local' to reactions"""
+    m = Model("My first model")
+    m.v1 = react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.p2 = 3.0
+    assert get_name(m.v1) == 'v1'
+    assert isinstance(m.v1, model.Reaction)
+    assert m.v1()== "p2*A/(p1+A)-B"
+    check, msg = m.checkRates()
+    assert check 
+    assert isinstance(m.v1.p1, model.ConstValue)
+    assert get_name(m.v1.p1) == "p1"
+    assert isinstance(m.p2, model.ConstValue)
+    assert get_name(m.p2) == "p2"
+    assert m.v1.p1 == 4.0
+    assert m.p2 == 3.0
+
+def test_par_from_rates1():
+    """test rate expressions with parameters 'local' to reactions"""
+    m = Model("My first model")
+    m.v1 = react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.v2 = react("B->C", "2*v1.p1*B")
+    m.p2 = 3.0
+    assert get_name(m.v2) == 'v2'
+    assert isinstance(m.v1, model.Reaction)
+    assert m.v2()== "2*v1.p1*B"
+    check, msg = m.checkRates()
+    assert check 
+    assert isinstance(m.v1.p1, model.ConstValue)
+    assert get_name(m.v1.p1) == "p1"
+    assert isinstance(m.p2, model.ConstValue)
+    assert get_name(m.p2) == "p2"
+    assert m.v1.p1 == 4.0
+    assert m.p2 == 3.0
+
 def test_isPairOfNums():
     """test isPairOfNums function"""
     p1 = 1,10.0
@@ -165,6 +200,25 @@ def test_par2():
     m.p4.uncertainty()
     assert m.p4.bounds is None
 
+def test_par_in_rates2():
+    """test assignment of 'local' parameters with bounds"""
+    m = Model("My first model")
+    m.v1 = react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.p2 = 3.0
+    m.v1.p1 = 1,10 #tuple or list
+    m.p2 = [1, 9.5]
+    m.p3 = 5
+    assert m.v1.p1 == 4.0
+    assert m.p2 == 3.0
+    assert m.p3 == 5.0
+    assert m.p3.bounds is None
+    assert isinstance(m.v1.p1.bounds, model.Bounds)
+    assert m.v1.p1.bounds.min == 1.0
+    assert m.v1.p1.bounds.max == 10.0
+    assert isinstance(m.p2.bounds, model.Bounds)
+    assert m.p2.bounds.min == 1.0
+    assert m.p2.bounds.max == 9.5
+
 def test_transf1():
     """test transf(int or float)"""
     m = Model("My first model")
@@ -183,14 +237,17 @@ def test_transf2():
     """test transf(string)"""
     m = Model("My first model")
     m.v1 = react("A+B -> C"  , 3)
-    m.t1 = transf(" 4*A/(p1+A)-B ")
+    m.t1 = transf(" p2*A/(p1+A)-B ", dict(p2=3))
     m.p1 = 2
     assert isinstance(m.t1, model.Transformation)
     assert get_name(m.t1) == 't1'
-    assert m.t1()== "4*A/(p1+A)-B"
+    assert m.t1()== "p2*A/(p1+A)-B"
     check, msg = m.checkRates()
     print msg
     assert check 
+    assert isinstance(m.t1.p2, model.ConstValue)
+    assert get_name(m.t1.p2) == "p2"
+    assert m.t1.p2 == 3.0
 
 def test_printmodel():
     """test print(model)"""

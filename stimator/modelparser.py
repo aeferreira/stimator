@@ -20,21 +20,6 @@ import model
 import timecourse
 
 #----------------------------------------------------------------------------
-#         Functions to check the validity of math expressions
-#----------------------------------------------------------------------------
-def test_with_consts(valueexpr, consts={}):
-    """Uses builtin eval function to check for the validity of a math expression.
-
-       Constants previously defined can be used"""
-
-    locs = consts.copy()
-    try :
-       value = float(eval(valueexpr, vars(math), locs))
-    except Exception, e:
-       return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
-    return ("", value)
-
-#----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
 #----------------------------------------------------------------------------
 identifierpattern = r"[_a-z]\w*"
@@ -205,7 +190,6 @@ def getLinesFromText(text):
     textlines = StringIO.StringIO(str(text))
     return textlines
 
-
 def read_model(text):
     parser = StimatorParser()
     parser.parse(text)
@@ -340,7 +324,6 @@ class StimatorParser:
         self.error = text
         self.errorloc = errorloc
             
-
     def setIfNameError(self, text, exprtext,loc):
         m = nameErrormatch.match(text)
         if m:
@@ -349,6 +332,21 @@ class StimatorParser:
             loc.start = pos
             loc.end = pos+len(undefname)
             self.setError(text, loc)
+
+    def _test_with_consts(self, valueexpr):
+        """Uses builtin eval function to check for the validity of a math expression.
+
+           Constants previously defined can be used"""
+
+        locs = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
+        try :
+           value = float(eval(valueexpr, vars(math), locs))
+        except Exception, e:
+           return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
+        return ("", value)
+    
+    def _process_consts_in_rate(self, rate):
+        return rate, {}
 
     def rateDefParse(self, line, loc, match):
         #process name
@@ -359,12 +357,11 @@ class StimatorParser:
         #process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
+        rate, pardict = self._process_consts_in_rate(rate)
         
         if rate.endswith('..'):
             rate = rate[:-2]
-            
-            localsdict = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
-            resstring, value = test_with_consts(rate, localsdict)
+            resstring, value = self._test_with_consts(rate)
             if resstring != "":
                 loc.start = match.start('rate')
                 loc.end   = match.start('rate')+len(rate)
@@ -393,6 +390,7 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
+        expr, pardict = self._process_consts_in_rate(expr)
         setattr(self.model, name, model.variable(expr))
         loc.start = match.start('value')
         loc.end   = match.end('value')
@@ -405,6 +403,7 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
+        expr, pardict = self._process_consts_in_rate(expr)
         setattr(self.model, name, model.transf(expr))
         loc.start = match.start('value')
         loc.end   = match.end('value')
@@ -441,9 +440,7 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         
-        localsdict = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
-
-        resstring, value = test_with_consts(valueexpr, localsdict)
+        resstring, value = self._test_with_consts(valueexpr)
         if resstring != "":
             loc.start = match.start('value')
             loc.end   = match.start('value')+len(valueexpr)
@@ -473,13 +470,11 @@ class StimatorParser:
     def findDefParse(self, line, loc, match):
         name = match.group('name')
 
-        localsdict = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
-
         lulist = ['lower', 'upper']
         flulist = []
         for k in lulist:
             valueexpr = match.group(k)
-            resstring, v = test_with_consts(valueexpr, localsdict)
+            resstring, v = self._test_with_consts(valueexpr)
             if resstring != "":
                 loc.start = match.start(k)
                 loc.end   = match.end(k)
@@ -507,8 +502,10 @@ variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
 leak : MG -> , 10 ..
-reaction Glx2 : SDLTSH ->  ,  \\
+reaction Glx2 : SDLTSH ->  Lac,  \\
     step(t, 2.0, Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2
+export: Lac ->, kout * Lac #, kout = 3.14
+kout = 3.14
 ~ totTSH = TSH2 + SDLTSH
 pi   = 3.1416
 pi2  = 2*pi
