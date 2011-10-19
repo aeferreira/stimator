@@ -133,6 +133,8 @@ class LogicalLoc(object):
         self.end       = end   # end relative to logical line
         self.linestart = linestart # start of logical line
         self.lineend   = lineend   # end of logical line
+    def clone(self):
+        return LogicalLoc(self.nline, self.start, self.end, self.linestart, self.lineend)
 
 def getPhysicalLineData(textlines, logpos):
     textlines = getLinesFromText(textlines)
@@ -337,21 +339,26 @@ class StimatorParser:
         """Uses builtin eval function to check for the validity of a math expression.
 
            Constants previously defined can be used"""
-
-        locs = dict([(model.get_name(p), p) for p in model.parameters(self.model)])
+        locs = {}
+        for (name, value) in self.model._genlocs4rate():
+            locs[name] = value
         try :
            value = float(eval(valueexpr, vars(math), locs))
         except Exception, e:
-           return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
+           excpt_type = str(e.__class__.__name__) 
+           excpt_msg = str(e)
+           if excpt_type == "SyntaxError":
+               excpt_msg = "Bad math expression"
+           return ("%s : %s"%(excpt_type,excpt_msg), 0.0)
         return ("", value)
-    
+ 
     def _process_consts_in_rate(self, rate, loc):
         pardict = {}
 ##         print '\n*****DEBUG of rate', rate
         decls = rate.split(',')
         n_localpars = 0
         for dindex in range(len(decls)-1, 0, -1):
-            d = decls[dindex]
+            d = decls[dindex].strip()
             match = constdef.match(d)
             if match:
 ##                 print '---------found decl:',d       
@@ -360,8 +367,8 @@ class StimatorParser:
 
                 resstring, value = self._test_with_consts(valueexpr)
                 if resstring != "":
-                    loc.start = match.start('value')
-                    loc.end   = match.start('value')+len(valueexpr)
+                    loc.start = loc.start + rate.index(valueexpr)
+                    loc.end   = loc.start + len(valueexpr)
                     self.setError(resstring, loc)
                     self.setIfNameError(resstring, valueexpr, loc)
                     return (None, None)
@@ -384,7 +391,13 @@ class StimatorParser:
         #process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
-        rate, pardict = self._process_consts_in_rate(rate, loc)
+        rate_loc = LogicalLoc(loc.nline, 
+                              match.start('rate'), 
+                              match.start('rate')+len(rate), 
+                              loc.linestart, 
+                              loc.lineend)
+        
+        rate, pardict = self._process_consts_in_rate(rate, rate_loc)
         if rate is None:
             return
         
@@ -419,7 +432,12 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        expr, pardict = self._process_consts_in_rate(expr, loc)
+        rate_loc = LogicalLoc(loc.nline, 
+                              match.start('value'), 
+                              match.start('value')+len(expr), 
+                              loc.linestart, 
+                              loc.lineend)
+        expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
         setattr(self.model, name, model.variable(expr, pars=pardict))
@@ -434,7 +452,12 @@ class StimatorParser:
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        expr, pardict = self._process_consts_in_rate(expr, loc)
+        rate_loc = LogicalLoc(loc.nline, 
+                              match.start('value'), 
+                              match.start('value')+len(expr), 
+                              loc.linestart, 
+                              loc.lineend)
+        expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
         setattr(self.model, name, model.transf(expr, pars=pardict))
@@ -540,6 +563,7 @@ reaction Glx2 : SDLTSH ->  Lac,  \\
 kout_global = 3.14
 export: Lac ->, kout * Lac, kout = sqrt(4.0)/2.0 * kout_global
 ~ totTSH = TSH2 + SDLTSH
+~ Lacmult = mult * Lac,      mult = (kout_global/export.kout) * 2
 pi   = 3.1416
 pi2  = 2*pi
 pipi = pi**2  #this is pi square

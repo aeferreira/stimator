@@ -529,12 +529,10 @@ class Model(ModelObject):
     def __eq__(self, other):
         if not ModelObject.__eq__(self, other):
             return False
-##         print "equality of ModelObject checked"
         cnames = ('reactions', 'transf', 'states', 'pars', 'vars', 'extvars')
         collections1 = [self.__reactions, self.__transf, self.__states, self.__parameters, self.__variables, self.__extvariables]
         collections2 = [other.__reactions, other.__transf, other.__states, other.__parameters, other.__variables, other.__extvariables]
         for cname, c1,c2 in zip(cnames, collections1, collections2):
-##             print "------------EQUALITY OF %s *********************"%cname
             if len(c1) != len(c2):
                 return False
             if isinstance(c1, dict):
@@ -542,27 +540,26 @@ class Model(ModelObject):
             else:
                 names = [v for v in c1]
             for vname in names:
-##                 print cname, vname, type(vname)
                 if isinstance(vname, ModelObject):
                     vname = get_name(vname)
                 r = getattr(self, vname)
                 ro = getattr(other, vname)
                 if not ro == r:
                     return False
-##                 print "equality of", vname, "checked"
         return True        
     
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
 
-    def _genlocs4rate(self, obj):
+    def _genlocs4rate(self, obj = None):
         for p in self.__parameters.items():
             yield p
         collections = [self.__reactions, self.__transf]
         for c in collections:
             for v in c:
                 yield (get_name(v), v)
-        if len(obj._ownparameters) > 0:
+        
+        if (obj is not None) and (len(obj._ownparameters) > 0):
             for p in obj._ownparameters.items():
                 yield p
 
