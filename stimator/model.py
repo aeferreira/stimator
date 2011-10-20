@@ -76,7 +76,6 @@ def processStoich(expr):
                target.append((var,coef))
             else:
                return None
-
     return reagents, products, irreversible
 
 def massActionStr(k = 1.0, reagents = []):
@@ -224,8 +223,13 @@ class _HasRate(_HasOwnParameters):
             for k, v in self._ownparameters.items():
                 res += "    %s = %g\n"% (k, v)
         return res
-    def __call__(self):
-        return self.__rate
+    def __call__(self, fully_qualified = False):
+        rate = self.__rate
+        if fully_qualified:
+            for localparname in self._ownparameters:
+                rate = rate.replace(localparname, '%s.%s'%(get_name(self), localparname))
+        return rate
+        
     def __eq__(self, other):
         if not _HasOwnParameters.__eq__(self, other):
             return False
@@ -596,7 +600,7 @@ def _test_with_everything(valueexpr, model, obj):
     except NameError:
        pass
     except Exception, e:
-       print 'returned on first pass'
+##        print 'returned on first pass'
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
@@ -606,11 +610,10 @@ def _test_with_everything(valueexpr, model, obj):
     locs.update(vardict)
     try :
        value = float(eval(valueexpr, __globs, locs))
-##        print "+++++++ value =", value
     except (ArithmeticError, ValueError):
        pass # might fail but we don't know the values of vars
     except Exception, e:
-       print 'returned on second pass'
+##        print 'returned on second pass'
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     return "", value
 
@@ -620,9 +623,6 @@ def _test_with_everything(valueexpr, model, obj):
 
 def varnames(model):
     return model._Model__variables
-
-## def varnames(model):
-##     return [get_name(i) for i in variables(model)]
 
 def extvariables(model):
     return model._Model__extvariables
@@ -735,9 +735,15 @@ def test():
     print 'iterating reactions(m)'
     for v in reactions(m):
         print get_name(v), ':', v(), '|', v._reagents, '->', v._products
+    print '\niterating reactions(m) with fully qualified rates'
+    for v in reactions(m):
+        print get_name(v), ':', v(fully_qualified = True), '|', v._reagents, '->', v._products
     print '\niterating transformations(m)'
     for v in transformations(m):
         print get_name(v), ':', v()
+    print '\niterating transformations(m) with fully qualified rates'
+    for v in transformations(m):
+        print get_name(v), ':', v(fully_qualified = True)
     print '\niterating varnames(m)'
     for x in varnames(m):
         print x

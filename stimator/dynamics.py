@@ -25,8 +25,7 @@ def state2array(m, state):
         if not hasattr(m, state):
             raise AttributeError( state + ' is not defined for this model')
         state = getattr(m, state)
-    newlist = [state._ownparameters.get(var,0.0) for var in varnames(m)]
-    return array(newlist)
+    return array([state._ownparameters.get(var,0.0) for var in varnames(m)])
 
 def genStoichiometryMatrix(m):
     check, msg = m.checkRates()
@@ -34,7 +33,7 @@ def genStoichiometryMatrix(m):
         raise BadRateError(msg)
 
     vnames = varnames(m)
-    N = zeros((len(varnames(m)),len(reactions(m))), dtype=float)
+    N = zeros((len(vnames),len(reactions(m))), dtype=float)
     for j,v in enumerate(reactions(m)):
         for rORp, signedunit in [(v._reagents,-1.0),(v._products,1.0)]:
             for c in rORp:
@@ -46,7 +45,7 @@ def genStoichiometryMatrix(m):
                     continue # there are no rows for extvariables in stoich. matrix
     return N
 
-def rates_strings(m):
+def rates_strings(m, fully_qualified = False):
     """Generate a tuple of tuples of
        (name, rate) where
        'name' is the name of a reaction
@@ -55,7 +54,7 @@ def rates_strings(m):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
-    return tuple([(get_name(v), v()) for v in reactions(m)])
+    return tuple([(get_name(v), v(fully_qualified = fully_qualified)) for v in reactions(m)])
 
 def dXdt_strings(m):
     """Generate a tuple of tuples of
@@ -283,33 +282,6 @@ def genTransformationFunction(m, f):
         result.names = names
         return result
 
-## def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
-##     """Generate function to compute rhs of SODE for this model.
-##     
-##        Function has signature f(variables, t)
-##        This is compatible with scipy.integrate.odeint"""
-
-##     check, msg = m.checkRates()
-##     if not check:
-##         raise BadRateError(msg)
-##     
-##     #compile rhs
-##     rhsides = dXdt_strings(m)
-##     ratebytecode = [compile(rateCalcString(m, "%g *(%s)"%(scale,rhs), 
-##                                            with_uncertain = with_uncertain), 
-##                                            '<string>','eval') for (xname,rhs) in rhsides]
-##     # create array to hold dX/dt
-##     x = empty(len(variables(m)))
-##     en = list(enumerate(ratebytecode))
-##     
-##     def f2(variables, t):
-##         m_Parameters = m._Model__m_Parameters
-##         t = t*scale + t0
-##         for i,r in en:
-##             x[i] = eval(r)
-##         return x
-##     return f2
-
 def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     
@@ -454,6 +426,9 @@ def test():
     print '********** Testing rate and dXdt strings *******************'
     print 'rates_strings(): -------------------------'
     for v in rates_strings(m):
+        print v
+    print 'rates_strings(fully_qualified = True): ---'
+    for v in rates_strings(m, fully_qualified = True):
         print v
     print '\ndXdt_strings(): --------------------------'
     for xname,dxdt in dXdt_strings(m):
