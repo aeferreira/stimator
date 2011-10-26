@@ -227,7 +227,9 @@ class _HasRate(_HasOwnParameters):
         rate = self.__rate
         if fully_qualified:
             for localparname in self._ownparameters:
-                rate = rate.replace(localparname, '%s.%s'%(get_name(self), localparname))
+                fully = '%s.%s'%(get_name(self), localparname)
+                rate = rate.replace(localparname, fully)
+                rate = re.sub(r"(?<!\.)%s(?!\.)"%localparname, fully, rate)
         return rate
         
     def __eq__(self, other):

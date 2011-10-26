@@ -49,9 +49,9 @@ def add_dSdt_to_model(m, pars):
     
     _symbs = {}
     for x in varnames(m):
-        _symbs[x] = sympy.Symbol(str(x))
+        _symbs[x] = sympy.Symbol(x)
     for p in parameters(m):
-        _symbs[get_name(p)] = sympy.Symbol(str(get_name(p)))
+        _symbs[get_name(p)] = sympy.Symbol(get_name(p))
     for p in pars:
         if not _symbs.has_key(p):
             _symbs[p] = sympy.Symbol(str(p))
@@ -62,7 +62,7 @@ def add_dSdt_to_model(m, pars):
         Smatrix.append([])
         for j in range(npars):
             Sname = "d_%s_d_%s" % (varnames(m)[i], pars[j])
-            _symbs[Sname] = sympy.Symbol(str(Sname))
+            _symbs[Sname] = sympy.Symbol(Sname)
             Smatrix[i].append(Sname)
     for i in range(nvars):
         vname = varnames(m)[i]
@@ -72,13 +72,14 @@ def add_dSdt_to_model(m, pars):
                 resstr = dfdpstrs[i][j]
             else:
                 resstr = ''
+            # matrix multiplication with strings:
             for k in range(nvars):
                 resstr = resstr+ "+(%s)*(%s)"%(J[i][k], Smatrix[k][j])
+            #make reduce the expression using _symbs dictionary
             _res = eval(resstr, None, _symbs)
             _dres = str(_res)
             if _dres == '0':
                 _dres = '0.0'
-            Smatrix[i][j] = str(Smatrix[i][j])
             setattr(m, Smatrix[i][j], variable(_dres))
             if init_of[j] is None:
                 setattr(m.init, Smatrix[i][j], 0.0)
