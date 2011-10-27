@@ -136,40 +136,39 @@ def Jacobian_strings(m, _scale = 1.0):
     except:
         print 'ERROR: sympy module must be installed to generate Jacobian strings'
         raise
-    _dxdtstrings = [_d[1] for _d in dXdt_strings(m)]
-    _nvars = len(_dxdtstrings)
-    _varnames = varnames(m)
-    _symbmap, _sympysymbs = _gen_canonical_symbmap(m)
-    for _i in range(_nvars):
-        _dxdtstrings[_i] = _replace_exprs2canonical(_dxdtstrings[_i], _symbmap)
-
-    _jfuncs = []
-    for _i in range(_nvars):
-        _jfuncs.append([])
-        _ids = identifiersInExpr(_dxdtstrings[_i])
-        if len(_ids) == 0:
-            for _j in range(_nvars):
-                _jfuncs[_i].append('0.0')
+    dxdtstrings = [d[1] for d in dXdt_strings(m)]
+    nvars = len(dxdtstrings)
+    vnames = varnames(m)
+    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+    for i in range(nvars):
+        dxdtstrings[i] = _replace_exprs2canonical(dxdtstrings[i], symbmap)
+    jfuncs = []
+    for i in range(nvars):
+        jfuncs.append([])
+        ids = identifiersInExpr(dxdtstrings[i])
+        if len(ids) == 0:
+            for j in range(nvars):
+                jfuncs[i].append('0.0')
         else:
-            for _j in range(_nvars):
-                _varsymb = _symbmap[_varnames[_j]]
-                _res = eval(_dxdtstrings[_i], None, _sympysymbs)
-                _res = _res * _scale
-                _dres = str(sympy.diff(_res, _varsymb))
-                if _dres == '0':
-                    _dres = '0.0'
-                _jfuncs[_i].append(_dres)
+            for j in range(nvars):
+                varsymb = symbmap[vnames[j]]
+                res = eval(dxdtstrings[i], None, sympysymbs)
+                res = res * _scale
+                dres = str(sympy.diff(res, varsymb))
+                if dres == '0':
+                    dres = '0.0'
+                jfuncs[i].append(dres)
     # back to original ids
-    for _i in range(_nvars):
-        for _j in range(_nvars):
-            _jfuncs[_i][_j] = _replace_canonical2exprs(_jfuncs[_i][_j], _symbmap)
-    return _jfuncs
+    for i in range(nvars):
+        for j in range(nvars):
+            jfuncs[i][j] = _replace_canonical2exprs(jfuncs[i][j], symbmap)
+    return jfuncs
         
-def dfdp_strings(m, _parnames, _scale = 1.0):
+def dfdp_strings(m, parnames, _scale = 1.0):
     """Generate a matrix (list of lists) of strings
        to compute the partial derivatives of rhs of SODE
        with respect to a list of parameters.
-       _parnames is a list of parameter names.
+       parnames is a list of parameter names.
     
        IMPORTANT: sympy module must be installed!"""
 
@@ -181,38 +180,116 @@ def dfdp_strings(m, _parnames, _scale = 1.0):
     except:
         print 'ERROR: sympy module must be installed to generate Jacobian strings'
         raise
-    _dxdtstrings = [_d[1] for _d in dXdt_strings(m)]
-    _nvars = len(_dxdtstrings)
-    _symbmap, _sympysymbs = _gen_canonical_symbmap(m)
-    for _i in range(_nvars):
-        _dxdtstrings[_i] = _replace_exprs2canonical(_dxdtstrings[_i], _symbmap)
-
-    _npars = len(_parnames)
-    _jfuncs = []
-    for _i in range(_nvars):
-        _jfuncs.append([])
-        _ids = identifiersInExpr(_dxdtstrings[_i])
-        if len(_ids) == 0:
-            for _j in range(_npars):
-                _jfuncs[_i].append('0.0')
+    dxdtstrings = [d[1] for d in dXdt_strings(m)]
+    nvars = len(dxdtstrings)
+    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+    for i in range(nvars):
+        dxdtstrings[i] = _replace_exprs2canonical(dxdtstrings[i], symbmap)
+    npars = len(parnames)
+    jfuncs = []
+    for i in range(nvars):
+        jfuncs.append([])
+        ids = identifiersInExpr(dxdtstrings[i])
+        if len(ids) == 0:
+            for j in range(npars):
+                jfuncs[i].append('0.0')
         else:
-            for _j in range(_npars):
-                if _parnames[_j] not in _symbmap:
-                    _dres = '0.0'
+            for j in range(npars):
+                if parnames[j] not in symbmap:
+                    dres = '0.0'
                 else:
-                    _varsymb = _symbmap[_parnames[_j]]
-                    _res = eval(_dxdtstrings[_i], None, _sympysymbs)
-                    _res = _res * _scale
-                    _dres = str(sympy.diff(_res, _varsymb))
-                    if _dres == '0':
-                        _dres = '0.0'
-                _jfuncs[_i].append(_dres)
+                    varsymb = symbmap[parnames[j]]
+                    res = eval(dxdtstrings[i], None, sympysymbs)
+                    res = res * _scale
+                    dres = str(sympy.diff(res, varsymb))
+                    if dres == '0':
+                        dres = '0.0'
+                jfuncs[i].append(dres)
     # back to original ids
-    for _i in range(_nvars):
-        for _j in range(_npars):
-            _jfuncs[_i][_j] = _replace_canonical2exprs(_jfuncs[_i][_j], _symbmap)
-    return _jfuncs
-        
+    for i in range(nvars):
+        for j in range(npars):
+            jfuncs[i][j] = _replace_canonical2exprs(jfuncs[i][j], symbmap)
+    return jfuncs
+
+def add_dSdt_to_model(m, pars):
+    """Add sensitivity ODEs to model, according to formula:
+    
+    dS/dt = df/dx * S + df/dp
+    
+    m is a model object
+    pars are a list of parameter names
+    """
+    
+    check, msg = m.checkRates()
+    if not check:
+        raise BadRateError(msg)
+    try:
+        import sympy
+    except:
+        print 'ERROR: sympy module must be installed to generate Jacobian strings'
+        raise
+    #Find pars that are initial values
+    newpars = []
+    init_of = []
+    for p in pars:
+        if '.' in p:
+            tks = p.split('.')
+            if isinstance(getattr(m,tks[0]), StateArray):
+                init_of.append(tks[1])
+            else:
+                init_of.append(None)
+            newpars.append(p.replace('.','_'))
+        else:
+            init_of.append(None)
+            newpars.append(p)
+    pars = newpars
+
+    J = Jacobian_strings(m)
+    dfdpstrs = dfdp_strings(m, pars)
+    nvars = len(J)
+    npars = len(pars)
+    
+    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+
+    #create symbols for sensitivities
+    Snames = []
+    Smatrix = []
+    for i in range(nvars):
+        Smatrix.append([])
+        for j in range(npars):
+            Sname = "d_%s_d_%s" % (varnames(m)[i], pars[j])
+            sympysymbs[Sname] = sympy.Symbol(str(Sname))
+            Smatrix[i].append(Sname)
+            Snames.append((varnames(m)[i], pars[j], Sname))
+    #compute rhs of sensitivities symbolically
+    for i in range(nvars):
+        vname = varnames(m)[i]
+        for j in range(npars):
+            #compute string for dS/dt
+            if init_of[j] is None:
+                resstr = dfdpstrs[i][j]
+            else:
+                resstr = ''
+            # matrix multiplication with strings:
+            for k in range(nvars):
+                resstr = resstr+ "+(%s)*(%s)"%(J[i][k], Smatrix[k][j])
+            resstr = _replace_exprs2canonical(resstr, symbmap)
+            #make sympy reduce the expression using _symbs dictionary
+            res = eval(resstr, None, sympysymbs)
+            dres = str(res)
+            if dres == '0':
+                dres = '0.0'
+            dres = _replace_canonical2exprs(dres, symbmap)
+            setattr(m, Smatrix[i][j], variable(dres))
+            if init_of[j] is None:
+                setattr(m.init, Smatrix[i][j], 0.0)
+            else:
+                if init_of[j] == vname:
+                    setattr(m.init, Smatrix[i][j], 1.0)
+                else:
+                    setattr(m.init, Smatrix[i][j], 0.0)
+    return Snames
+
 def _gen_calc_symbmap(m, with_uncertain = False):
     symbmap = {}
     for i, x in enumerate(varnames(m)):
@@ -507,7 +584,15 @@ def test():
     print
     print 'dfdp_strings(m, parnames): ------------------'
     parnames = "Km2 v1.V".split()
-    print '\nparnames = ["Km2", "v1.V"]\n'
+    print 'parnames = ["Km2", "v1.V"]\n'
+    vnames = varnames(m)
+    for i,vec in enumerate(dfdp_strings(m, parnames)):
+        for j, dxdx in enumerate(vec):
+            print '(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx
+    print
+    print 'dfdp_strings(m, parnames): (with unknow pars)'
+    parnames = "Km3 v1.V".split()
+    print 'parnames = ["Km3", "v1.V"]\n'
     vnames = varnames(m)
     for i,vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
@@ -543,7 +628,7 @@ def test():
     print 'parameters:'
     pprint.pprint(dict((get_name(p), p)     for p in parameters(m)))
  
-    print '---- rates using rates_func(m) -------------------------'
+    print '\n---- rates using rates_func(m) -------------------------'
     vratesfunc = rates_func(m)
     vrates = vratesfunc(varvalues,t)
     frmtstr = "%s = %-25s = %s"
@@ -599,6 +684,18 @@ def test():
     dXdt = f(state2array(m,"init"),t)
     for x,r in zip(varnames(m), dXdt):
         print "d%s/dt = %s" % (x, r)
+    print '********** Testing add_dSdt_to_model functions ***************'
+    print
+    m2 = m.clone()
+    print m2
+    print '----------------------------------------------------'
+    pars = "Km2 v1.V".split()
+    print 'pars =', pars
+    print
+    print "!!! applying function add_dSdt_to_model(m, pars) !!!"
+    Snames = add_dSdt_to_model(m2, pars)
+    print 'Snames = \n', Snames
+    print m2
 
 if __name__ == "__main__":
     test()

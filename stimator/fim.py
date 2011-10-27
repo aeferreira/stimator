@@ -8,8 +8,8 @@ S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
 from model import *
-from dynamics import *
-from analysis import *
+from dynamics import add_dSdt_to_model
+from analysis import solve
 import timecourse
 import expcov
 
@@ -19,75 +19,6 @@ try:
 except:
     print 'ERROR: sympy module must be installed to generate sensitivity strings'
     sympy_installed = False
-
-
-def add_dSdt_to_model(m, pars):
-    """Add sensitivity ODEs to model, according to formula:
-    
-    dS/dt = df/dx * S + df/dp
-    
-    m is a model object
-    pars are a list of parameter names
-    """
-    #Change par names to legal identifiers
-    newpars = []
-    init_of = []
-    for p in pars:
-        if '.' in p:
-            init_of.append(p.split('.')[1])
-            newpars.append(p.replace('.','_'))
-        else:
-            init_of.append(None)
-            newpars.append(p)
-    pars = newpars
-
-    J = Jacobian_strings(m)
-    dfdpstrs = dfdp_strings(m, pars)
-            
-    nvars = len(J)
-    npars = len(pars)
-    
-    _symbs = {}
-    for x in varnames(m):
-        _symbs[x] = sympy.Symbol(x)
-    for p in parameters(m):
-        _symbs[get_name(p)] = sympy.Symbol(get_name(p))
-    for p in pars:
-        if not _symbs.has_key(p):
-            _symbs[p] = sympy.Symbol(str(p))
-
-    #create symbols for sensitivities
-    Smatrix = []
-    for i in range(nvars):
-        Smatrix.append([])
-        for j in range(npars):
-            Sname = "d_%s_d_%s" % (varnames(m)[i], pars[j])
-            _symbs[Sname] = sympy.Symbol(Sname)
-            Smatrix[i].append(Sname)
-    for i in range(nvars):
-        vname = varnames(m)[i]
-        for j in range(npars):
-            #compute string for dS/dt
-            if init_of[j] is None:
-                resstr = dfdpstrs[i][j]
-            else:
-                resstr = ''
-            # matrix multiplication with strings:
-            for k in range(nvars):
-                resstr = resstr+ "+(%s)*(%s)"%(J[i][k], Smatrix[k][j])
-            #make reduce the expression using _symbs dictionary
-            _res = eval(resstr, None, _symbs)
-            _dres = str(_res)
-            if _dres == '0':
-                _dres = '0.0'
-            setattr(m, Smatrix[i][j], variable(_dres))
-            if init_of[j] is None:
-                setattr(m.init, Smatrix[i][j], 0.0)
-            else:
-                if init_of[j] == vname:
-                    setattr(m.init, Smatrix[i][j], 1.0)
-                else:
-                    setattr(m.init, Smatrix[i][j], 0.0)
 
 def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     
@@ -129,7 +60,7 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     # Adding sensitivity ODEs
     npars = len(pars)
     nvars = len(vars)
-    add_dSdt_to_model(m, parnames)
+    Snames = add_dSdt_to_model(m, parnames)
 
     sols = timecourse.Solutions()
     for tc in timecoursedata:
@@ -144,9 +75,10 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     P = matrix(diag(array(parvalues, dtype=float)))
     
     #keep indexes of variables considered
+    vnames = varnames(m)
     xindexes = []
     for vname in vars:
-        for i,y in enumerate(varnames(m)):
+        for i,y in enumerate(vnames):
             if y == vname:
                 xindexes.append(i)
     xindexes = array(xindexes)
@@ -154,11 +86,10 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     # search pattern d_<var name>_d_<parname> in variable names
     indexes = []
     for vname in vars:
-        for i,y in enumerate(varnames(m)):
-            dnames = y.split('_')
-            if len(dnames) < 3: continue
-            if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':
-                indexes.append(i)
+        for Sname in Snames:
+            if Sname[0] == vname:
+                indexes.append(vnames.index(Sname[2]))
+##     print "INDEXES =", indexes
     indexes = array(indexes)
 
     tcFIM = []
@@ -231,7 +162,7 @@ def computeStS_func(model, pars, vars, timecoursedata):
     # Adding sensitivity ODEs
     npars = len(pars)
     nvars = len(vars)
-    add_dSdt_to_model(m, parnames)
+    Snames = add_dSdt_to_model(m, parnames)
 
     FIMsols = timecourse.Solutions()
     
@@ -258,11 +189,9 @@ def computeStS_func(model, pars, vars, timecoursedata):
     # search pattern d_<var name>_d_<parname> in variable names
     indexes = []
     for vname in vars:
-        for i,y in enumerate(m.varnames):
-            dnames = y.split('_')
-            if len(dnames) < 3: continue
-            if dnames[1] == vname and dnames[0] == 'd' and dnames[2] == 'd':
-                indexes.append(i)
+        for Sname in Snames:
+            if Sname[0] == vname:
+                indexes.append(vnames.index(Sname[2]))
     indexes = array(indexes)
 
     names = []
@@ -313,21 +242,21 @@ def computeFIM(model, pars, vars, TCs, COV):
 def test():
     
     m = Model("Glyoxalase system")
-    m.glo1 = react("HTA -> SDLTSH", rate = "V1*HTA/(Km1 + HTA)")
+    m.glo1 = react("HTA -> SDLTSH", rate = "V*HTA/(Km1 + HTA)")
     m.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
-    m.V1  = 2.57594e-05
+    m.V   = 2.57594e-05
     m.Km1 = 0.252531
     m.V2  = 2.23416e-05
     m.Km2 = 0.0980973
     m.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
-    pars = "V1 Km1".split()
+    pars = "V Km1".split()
     parvalues = [getattr(m, p) for p in pars]
     
     sols = timecourse.Solutions()
     sols += solve(m, tf = 4030.0) 
     
-    pars = "V1 Km1".split()
+    pars = "V Km1".split()
     parvalues = [getattr(m, p) for p in pars]
     parsdict = dict (zip(pars, parvalues))
     

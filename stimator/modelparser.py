@@ -23,13 +23,14 @@ import timecourse
 #         Regular expressions for grammar elements and dispatchers
 #----------------------------------------------------------------------------
 identifierpattern = r"[_a-z]\w*"
+multdotidspattern = r"[_a-z]\w*(\.[_a-z]\w*)*"
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 
 emptylinepattern  = r"^\s*(?:#.*)?$"
 constdefpattern   = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 varlistpattern    = r"^\s*variables\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
-finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+identifierpattern+r")\s*in\s*(\[|\()\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*(\]|\))\s*(?:#.*)?$"
+finddefpattern    = r"^\s*(?:find)\s+(?P<name>"+multdotidspattern+r")\s*in\s*(\[|\()\s*(?P<lower>.*)\s*,\s*(?P<upper>.*)\s*(\]|\))\s*(?:#.*)?$"
 ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*(:|=)\s*(?P<stoich>.*\s*(->|<=>)\s*[^,]*)\s*,(?:\s*rate\s*=)?\s*(?P<rate>[^#]+)(?:#.*)?$"
 tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
@@ -525,6 +526,11 @@ class StimatorParser:
 
     def findDefParse(self, line, loc, match):
         name = match.group('name')
+        obj = self.model
+        names = name.split('.')
+        name = names[-1]
+        for n in names[:-1]:
+            obj = getattr(obj, n)
 
         lulist = ['lower', 'upper']
         flulist = []
@@ -538,7 +544,7 @@ class StimatorParser:
                 self.setIfNameError(resstring, valueexpr, loc)
                 return
             flulist.append(v)
-        setattr(self.model, name, (flulist[0],flulist[1]))
+        setattr(obj, name, (flulist[0],flulist[1]))
 
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
@@ -562,6 +568,7 @@ reaction Glx2 : SDLTSH ->  Lac,  \\
     step(t, 2.0, Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2
 kout_global = 3.14
 export: Lac ->, kout * Lac, kout = sqrt(4.0)/2.0 * kout_global
+
 ~ totTSH = TSH2 + SDLTSH
 ~ Lacmult = mult * Lac,      mult = (kout_global/export.kout) * 2
 pi   = 3.1416
@@ -575,6 +582,8 @@ find KmTSH2 in [1e-5, pi/pi]
 
 find Km2   in [1e-5, 1]
 find Vmax2 in (1e-9, 1e-3)
+
+find export.kout in (3,4)
 
 @ 3.4 pi = 2*pi
 x' = MG/2
