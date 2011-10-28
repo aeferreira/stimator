@@ -229,7 +229,6 @@ def add_dSdt_to_model(m, pars):
         print 'ERROR: sympy module must be installed to generate Jacobian strings'
         raise
     #Find pars that are initial values
-    newpars = []
     init_of = []
     for p in pars:
         if '.' in p:
@@ -238,11 +237,8 @@ def add_dSdt_to_model(m, pars):
                 init_of.append(tks[1])
             else:
                 init_of.append(None)
-            newpars.append(p.replace('.','_'))
         else:
             init_of.append(None)
-            newpars.append(p)
-    pars = newpars
 
     J = Jacobian_strings(m)
     dfdpstrs = dfdp_strings(m, pars)
@@ -257,7 +253,7 @@ def add_dSdt_to_model(m, pars):
     for i in range(nvars):
         Smatrix.append([])
         for j in range(npars):
-            Sname = "d_%s_d_%s" % (varnames(m)[i], pars[j])
+            Sname = "d_%s_d_%s" % (varnames(m)[i], pars[j].replace('.','_'))
             sympysymbs[Sname] = sympy.Symbol(str(Sname))
             Smatrix[i].append(Sname)
             Snames.append((varnames(m)[i], pars[j], Sname))
