@@ -538,9 +538,10 @@ def test():
      
     m = read_model("""
     title a simple 2 enzyme system
-    v1 = A -> B, rate = V*A/(Km + A), V = 1, Km = 1
+    v1 = A -> B, rate = V*A/(Km1 + A), V = 1, Km = 1
     v2 = B ->  , rate = V*B/(Km2 + B)
     V  = sqrt(4.0)
+    Km1 = 1
     Km2 = 0.2
     find Km2 in [0, 1.2]
     init = state(B = 0.4, A = 1)

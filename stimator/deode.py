@@ -289,11 +289,10 @@ def test():
     m1 = read_model("""
 title Glyoxalase system in L. Infantum
 
-glx1 : HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
+glx1 : HTA -> SDLTSH, V*HTA/(Km1 + HTA), V=2.57594e-05
 glx2 : SDLTSH ->,     V2*SDLTSH/(Km2 + SDLTSH)
 
-V1  = 2.57594e-05
-find V1  in [0.00001, 0.0001]
+find glx1.V  in [0.00001, 0.0001]
 
 Km1 = 0.252531
 find Km1 in [0.01, 1]

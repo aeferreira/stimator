@@ -228,8 +228,8 @@ class _HasRate(_HasOwnParameters):
         if fully_qualified:
             for localparname in self._ownparameters:
                 fully = '%s.%s'%(get_name(self), localparname)
-                rate = rate.replace(localparname, fully)
-                rate = re.sub(r"(?<!\.)%s(?!\.)"%localparname, fully, rate)
+##                 rate = rate.replace(localparname, fully)
+                rate = re.sub(r"(?<!\.)\b%s\b(?![.\[])"%localparname, fully, rate)
         return rate
         
     def __eq__(self, other):
@@ -686,7 +686,7 @@ def test():
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
     m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    v3pars = (('V3',0.5),('Km3', 4))
+    v3pars = (('V3',0.5),('Km', 4))
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)", pars = v3pars)
 ##     m.v3.V3 = 0.5
 ##     m.v3.Km3 = 4
@@ -771,8 +771,8 @@ def test():
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
     print 'get_name(m.K3) :',get_name(m.Km3)
-    print 'm.v3.K3 :',m.v3.Km3
-    print 'get_name(m.v3.K3) :',get_name(m.v3.Km3)
+    print 'm.v3.K :',m.v3.Km
+    print 'get_name(m.v3.K) :',get_name(m.v3.Km)
     print 'm.init:',m.init
     print 'm.init.A :',m.init.A
     print 'get_name(m.init.A) :',get_name(m.init.A)
