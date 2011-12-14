@@ -48,6 +48,7 @@ def getCriteriumFunction(weights, tc):
         def criterium(Y,i):
             d = (Y.T[allvarindexes[i]]- tc[i].data[allvarindexes[i]])
             return sum(d*d)
+##             return sum(abs(d))
         return criterium
 
     if weights  == 'demo':
