@@ -167,7 +167,7 @@ class ModelSolver(object):
         return sol
 
 
-def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, superimpose = False, legend=True):
+def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, legend=True):
     if isinstance(solutions, SolutionTimeCourse):
         s = Solutions()
         s.append(solutions)
@@ -203,6 +203,8 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
             curraxis.legend(h, l, loc='best')
         curraxis.set_xlabel('')
         curraxis.set_ylabel('')
+        if yrange is not None:
+            curraxis.set_ylim(yrange)
         if hasattr(solutions, 'title'):
             curraxis.set_title(solutions.title)
     else:
@@ -232,6 +234,8 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
             yscale = curraxis.get_ylim()
             if first:
                 yscale_all = list(yscale)
+                if yrange is not None:
+                    ynormalize = True
                 first = False
             else:
                 if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
@@ -242,7 +246,10 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
     if not superimpose and ynormalize:
         for isolution in range(ntc):
             curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-            curraxis.set_ylim(yscale_all)
+            if yrange is not None:
+                curraxis.set_ylim(yrange)
+            else:
+                curraxis.set_ylim(yscale_all)
     if show:
         p.show()
 
