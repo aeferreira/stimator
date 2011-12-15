@@ -22,6 +22,9 @@ import expcov
 #         Class to perform DE optimization for ODE systems
 #----------------------------------------------------------------------------
 
+class OptimumData(object):
+    pass
+
 class DeODESolver(de.DESolver):
     """Overides energy function and report functions.
     
@@ -171,32 +174,23 @@ class DeODESolver(de.DESolver):
     def generateOptimumData (self):
         #compute parameter standard errors, based on FIM-1
         #generate TC solutions
-        best = {'parameters'       : {'name':"parameters"},
-                'optimization'     : {'name':"D.E. optimization"}, 
-                'timecourses'      : {'name':"timecourses"},
-                'best timecourses' : {'name':"best timecourses"}}
-        best['parameters']['format'] = "%s\t%12s +- %s"
-        best['parameters']['header'] = None
-        
-        best['optimization']['data'] = [('Final Score', "%g"% self.bestEnergy),
-                                        ('Generations', "%d"% self.generation),
-                                        ('Exit by    ', "%s"% self.exitCodeStrings[self.exitCode])]
-        best['optimization']['format'] = "%s\t%s"
-        best['optimization']['header'] = None
+        best = OptimumData()
+        best.optimization_score = self.bestEnergy
+        best.optimization_generations = self.generation
+        best.optimization_exit_by = self.exitCodeStrings[self.exitCode]
 
         #TODO: Store initial solver parameters?
 
         #generate best time-courses
-        best['timecourses']['data'] = []
+        best.tcdata = []
 
-        allvarnames = varnames(self.model)
+        modelvnames = varnames(self.model)
         pars = [get_name(uncertain(self.model)[i]) for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
         self.model.set_uncertain(self.bestSolution)
         
         sols = timecourse.Solutions()
-        modelvnames = varnames(self.model)
         
         for (i,tc) in enumerate(self.tc):
             Y = self.computeSolution(i, self.bestSolution)
@@ -205,9 +199,9 @@ class DeODESolver(de.DESolver):
             else:
                 score = 1.0E300
             nt = tc.ntimes
-            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, allvarnames)
+            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, modelvnames)
             sols += sol
-            best['timecourses']['data'].append((self.tc.shortnames[i], self.tc[i].ntimes, score))
+            best.tcdata.append((self.tc.shortnames[i], self.tc[i].ntimes, score))
             
             vnames = []
             varindexes=[]
@@ -218,14 +212,14 @@ class DeODESolver(de.DESolver):
                 if nnan >= nt-1: continue
                 vnames.append(modelvnames[iline])
                 varindexes.append(iline)
+##             print vnames
+##             print varindexes
             #print len(varindexes), varnames
-        best['timecourses']['format'] = "%s\t%d\t%g"
-        best['timecourses']['header'] = ['Name', 'Points', 'Score']
-        best['best timecourses']['data']=sols
+        best.optimum_tcs=sols
         
         
         if not (fim.sympy_installed):
-            best['parameters']['data'] = [(get_name(self.model.uncertain[i]), "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
+            best.parameters = [(get_name(self.model.uncertain[i]), "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
         else:
             consterror = [0.0 for i in range(len(vnames))]
             for ix, x in enumerate(vnames):
@@ -242,27 +236,34 @@ class DeODESolver(de.DESolver):
             STDerrors = {}
             for i,p in enumerate(pars):
                 STDerrors[p] =invFIM1[i,i]**0.5
-            best['parameters']['data'] = [(get_name(uncertain(self.model)[i]), "%g"%value, "%g"%STDerrors[get_name(uncertain(self.model)[i])]) for (i,value) in enumerate(self.bestSolution)]
+            best.parameters = [(get_name(uncertain(self.model)[i]), "%g"%value, "%g"%STDerrors[get_name(uncertain(self.model)[i])]) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
 
     def reportResults(self):
+        headerformat = "--- %-20s -----------------------------\n"
         reportText = "\n"
-        sections = [self.optimum[s] for s in ['parameters', 'optimization', 'timecourses']]
-        for section in sections:
-            reportText += "--- %-20s -----------------------------\n" % section['name'].upper()
-            if section['header']:
-                reportText += '\t\t'.join(section['header'])+'\n'
-            reportText += "\n".join([section['format'] % i for i in section['data']])
-            reportText += '\n\n'
+        reportText += headerformat % 'PARAMETERS'
+        reportText += "\n".join(["%s\t%12s +- %s" % i for i in self.optimum.parameters])
+        reportText += '\n\n'
+        reportText += headerformat % 'OPTIMIZATION'
+        reportText += "%s\t%g\n" % ('Final Score', self.optimum.optimization_score)
+        reportText += "%s\t%g\n" % ('generations', self.optimum.optimization_generations)
+        reportText += "%s\t%s\n" % ('Exit by',     self.optimum.optimization_exit_by)
+        reportText += '\n\n'
+        reportText += headerformat % 'TIME COURSES'
+        reportText += '\t\t'.join(['Name', 'Points', 'Score'])+'\n'
+        reportText += "\n".join(["%s\t%d\t%g" % i for i in self.optimum.tcdata])
+        reportText += '\n\n'
+        
         return reportText
 
     def draw(self, figure):
         figure.clear()
         tcsubplots = []
-        bestsols = self.optimum['best timecourses']['data']
+        bestsols = self.optimum.optimum_tcs
         expsols = self.tc
-        tcstats = self.optimum['timecourses']['data']
+        tcstats = self.optimum.tcdata
         ntc = len(bestsols)
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
