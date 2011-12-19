@@ -219,7 +219,7 @@ class DeODESolver(de.DESolver):
         
         
         if not (fim.sympy_installed):
-            best.parameters = [(get_name(self.model.uncertain[i]), "%g"%value, "0.0") for (i,value) in enumerate(self.bestSolution)]
+            best.parameters = [(p, v, 0.0) for (p,v) in parszip]
         else:
             consterror = [0.0 for i in range(len(vnames))]
             for ix, x in enumerate(vnames):
@@ -229,14 +229,8 @@ class DeODESolver(de.DESolver):
                     if tpe > consterror[ix]:
                         consterror[ix] = tpe
             consterror = expcov.constError_func([r * 0.05 for r in consterror]) #assuming 5% error
-            
-            #print consterror
             FIM1, invFIM1 = fim.computeFIM(self.model, parszip, vnames, sols, consterror)
-            
-            STDerrors = {}
-            for i,p in enumerate(pars):
-                STDerrors[p] =invFIM1[i,i]**0.5
-            best.parameters = [(get_name(uncertain(self.model)[i]), "%g"%value, "%g"%STDerrors[get_name(uncertain(self.model)[i])]) for (i,value) in enumerate(self.bestSolution)]
+            best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
 
@@ -244,7 +238,7 @@ class DeODESolver(de.DESolver):
         headerformat = "--- %-20s -----------------------------\n"
         reportText = "\n"
         reportText += headerformat % 'PARAMETERS'
-        reportText += "\n".join(["%s\t%12s +- %s" % i for i in self.optimum.parameters])
+        reportText += "\n".join(["%s\t%12g +- %g" % i for i in self.optimum.parameters])
         reportText += '\n\n'
         reportText += headerformat % 'OPTIMIZATION'
         reportText += "%s\t%g\n" % ('Final Score', self.optimum.optimization_score)
