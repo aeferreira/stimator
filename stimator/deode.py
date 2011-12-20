@@ -229,6 +229,7 @@ class DeODESolver(de.DESolver):
                     if tpe > consterror[ix]:
                         consterror[ix] = tpe
             consterror = expcov.constError_func([r * 0.05 for r in consterror]) #assuming 5% error
+##             consterror = expcov.propError_func([0.05 for r in consterror]) #assuming 5% error
             FIM1, invFIM1 = fim.computeFIM(self.model, parszip, vnames, sols, consterror)
             best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
         

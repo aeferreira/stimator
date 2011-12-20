@@ -78,7 +78,6 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
         #set init and solve
         for n,v in tc.state_at(0.0): #TODO: may not start at zero
             setattr(m.init, n, v)
-##         print "****** m.init =",m.init
         sols += solve(m, tf = tc.t[-1])
     
     #compute P
@@ -101,14 +100,10 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
         for Sname in Snames:
             if Sname[0] == vname:
                 indexes.append(vnames.index(Sname[2]))
-##     print "INDEXES =", indexes
     indexes = array(indexes)
 
     tcFIM = []
     for sol in sols:
-##         xvec = sol.data[indexes , -1]
-##         print "######### LAST point"
-##         print xvec
         #compute integral of ST * MVINV * S
         ntimes = len(sol.t)
         FIM = zeros((npars,npars))

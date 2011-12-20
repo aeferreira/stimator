@@ -28,5 +28,5 @@ def constError_func(vect):
 def propError_func(vect):
     res = _transform2array(vect)
     def CE(x):
-        return float(vect) * x
+        return res * x
     return CE
