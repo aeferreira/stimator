@@ -20,10 +20,10 @@ def compute():
     m1.km1 = 0.223
     m1.kcat2 = 315
     m1.km2 = 2.86
-    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 0, e2 = 0)
+    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4)
 
     m2 = m1.clone()
-    m2[title] = 'model 2'
+    m2['title'] = 'model 2'
     m2.r1 = react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
     m2.kcat1 = 17046
     m2.km11 = 0.875
@@ -31,7 +31,7 @@ def compute():
     
     models = [m1, m2]
     
-    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
+    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1]}#, "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
     
     observed = 'sdlt'
     
@@ -41,7 +41,7 @@ def compute():
 
     objectiveFunction = 'KL'
     populationSize = 200
-    maxGenerations = 200
+    maxGenerations = 400
     DEStrategy = 'Rand1Bin'
     diffScale = 0.5
     crossoverProb = 0.7
@@ -50,6 +50,7 @@ def compute():
     simulatedError = 3
     absoluteMeasurementError = 0.00175
     
+    allTime1 = time()
     solver = GDE3Solver(models, 
                            absoluteMeasurementError, 
                            toOpt, 
@@ -66,8 +67,8 @@ def compute():
                            useClassRandomNumberMethods,
                            keep_track = True)#, dif = '-')
     solver.Solve()
-    allSolutions = (solver.completeListOfSolutions,
-                    solver.completeListOfObjectives)
+##     allSolutions = (solver.completeListOfSolutions,
+##                     solver.completeListOfObjectives)
     finalSolutions = (solver.fronts, solver.frontObj)
     
     print 

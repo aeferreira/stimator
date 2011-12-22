@@ -104,18 +104,23 @@ class GDE3Solver(DESolver):
 
         self.deltaT = (tf - t0)/npoints
         
-        #Initialize bias for error simulation
-        self.bias = tcdif.generateBias(biasedCurveNumber, len(self.toOptKeys), biasStandardDeviation)
-        
-        self.measurementErrors = tcdif.generateUniformMeasurementError(absoluteMeasurementError, npoints)
+        if self.objFunc in ('AIC', 'AICc', 'AICu', 'criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE'):
+            #Initialize bias for error simulation
+            self.bias = tcdif.generateBias(biasedCurveNumber, len(self.toOptKeys), biasStandardDeviation)
+            self.measurementErrors = tcdif.generateUniformMeasurementError(absoluteMeasurementError, npoints)
+        else:
+            self.bias = None
+            self.measurementErrors = None
+            
         
         self.objFuncList = []
 
         for m in self.models:
-            if self.objFunc in ('AIC', 'AICc', 'AICu', 'criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE'):
-                self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed, self.bias, self.measurementErrors))
-            if self.objFunc in ['L2','kremling', 'KLs', 'KL', 'dss', 'das']:
-                self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed))
+            self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed, self.bias, self.measurementErrors))
+##             if self.objFunc in ('AIC', 'AICc', 'AICu', 'criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE'):
+##                 self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed, self.bias, self.measurementErrors))
+##             if self.objFunc in ['L2','kremling', 'KLs', 'KL', 'dss', 'das']:
+##                 self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed))
         
         self.dif = dif
         
@@ -127,15 +132,20 @@ class GDE3Solver(DESolver):
         else:
             self.trueMetric = False
 
-        self.distance_func = None
-        if self.objFunc == 'KL':
-            self.distance_func = tcdif.KLDiscrepancies
-        if self.objFunc == 'kremling':
-            self.distance_func = tcdif.kremling
-        if self.objFunc == 'KLs':
-            self.distance_func = tcdif.KLs
-        if self.objFunc == 'L2':
-            self.distance_func = tcdif.L2
+        str2distance = {'KL'      :tcdif.KLDiscrepancies,
+                        'kremling':tcdif.kremling,
+                        'KLs'     :tcdif.KLs,
+                        'L2'      :tcdif.L2}
+        self.distance_func = str2distance.get(self.objFunc, None)
+##         self.distance_func = None
+##         if self.objFunc == 'KL':
+##             self.distance_func = tcdif.KLDiscrepancies
+##         if self.objFunc == 'kremling':
+##             self.distance_func = tcdif.kremling
+##         if self.objFunc == 'KLs':
+##             self.distance_func = tcdif.KLs
+##         if self.objFunc == 'L2':
+##             self.distance_func = tcdif.L2
         
         if self.distance_func is not None:
             self.model_indexes = []

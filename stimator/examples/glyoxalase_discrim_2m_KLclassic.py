@@ -20,7 +20,7 @@ def compute():
     m1.km1 = 0.223
     m1.kcat2 = 315
     m1.km2 = 2.86
-    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 0, e2 = 0)
+    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4)
 
     m2 = m1.clone()
     m2['title'] = 'model 2'
@@ -31,7 +31,7 @@ def compute():
     
     models = [m1, m2]
     
-    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1], "e1":[0, 2e-3], "e2":[0, 4e-4]}
+    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1]}#, "e1":[0, 2e-3], "e2":[0, 4e-4]}
     
     observed = 'sdlt'
     
@@ -41,7 +41,7 @@ def compute():
 
     objectiveFunction = 'KLs'
     populationSize = 200
-    maxGenerations = 5000
+    maxGenerations = 400
     DEStrategy = 'Rand1Bin'
     diffScale = 0.5
     crossoverProb = 0.7

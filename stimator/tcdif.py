@@ -11,7 +11,7 @@ from scipy.stats import norm
 import sympy
 from sympy import Symbol, diff
 import re
-from model import variable, parameters, variables, varnames
+from model import variable, parameters, varnames
 from dynamics import state2array
 
 def generateBias(curveNumber, variableNumber, standardDeviation):
