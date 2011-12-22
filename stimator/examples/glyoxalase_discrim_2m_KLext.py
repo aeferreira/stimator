@@ -49,6 +49,10 @@ def compute():
     useClassRandomNumberMethods = True
     simulatedError = 3
     absoluteMeasurementError = 0.00175
+
+    print 'vars to optimize:'
+    for k in toOpt.keys():
+        print k, 'in', toOpt[k]
     
     allTime1 = time()
     solver = GDE3Solver(models, 
@@ -65,21 +69,15 @@ def compute():
                            crossoverProb, 
                            cutoffEnergy, 
                            useClassRandomNumberMethods,
-                           keep_track = True)#, dif = '-')
+                           keep_track = False)#, dif = '-')
     solver.Solve()
-##     allSolutions = (solver.completeListOfSolutions,
-##                     solver.completeListOfObjectives)
     finalSolutions = (solver.fronts, solver.frontObj)
     
     print 
     print "Finished!"
     print "Total time", time() - allTime1
     
-##     print '\n\nfinalSolutions\n', finalSolutions
-##     print "%d fronts"%(len(finalSolutions[0]))
     print '%d generations'%(solver.generation-1)
-##     print 'front lengths:'
-##     print [len(i) for i in solver.completeListOfSolutions]
     print
     print 'Final front:'
     

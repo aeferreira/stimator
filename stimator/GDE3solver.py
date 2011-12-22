@@ -85,7 +85,6 @@ class GDE3Solver(DESolver):
         
         self.toOpt = toOpt
         self.toOptKeys = self.toOpt.keys()
-        print 'inputs in the solutions:', self.toOptKeys
         self.objFunc = objectiveFunction
 
         self.toOptBounding = [toOpt[i] for i in self.toOptKeys]
@@ -117,10 +116,6 @@ class GDE3Solver(DESolver):
 
         for m in self.models:
             self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed, self.bias, self.measurementErrors))
-##             if self.objFunc in ('AIC', 'AICc', 'AICu', 'criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE'):
-##                 self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed, self.bias, self.measurementErrors))
-##             if self.objFunc in ['L2','kremling', 'KLs', 'KL', 'dss', 'das']:
-##                 self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed))
         
         self.dif = dif
         
@@ -137,16 +132,6 @@ class GDE3Solver(DESolver):
                         'KLs'     :tcdif.KLs,
                         'L2'      :tcdif.L2}
         self.distance_func = str2distance.get(self.objFunc, None)
-##         self.distance_func = None
-##         if self.objFunc == 'KL':
-##             self.distance_func = tcdif.KLDiscrepancies
-##         if self.objFunc == 'kremling':
-##             self.distance_func = tcdif.kremling
-##         if self.objFunc == 'KLs':
-##             self.distance_func = tcdif.KLs
-##         if self.objFunc == 'L2':
-##             self.distance_func = tcdif.L2
-        
         if self.distance_func is not None:
             self.model_indexes = []
             for i in range(self.nmodels-1):
@@ -162,8 +147,6 @@ class GDE3Solver(DESolver):
         self.fronts = [[]]    # holds fronts created in current generation
         self.frontObj = [[]]  # holds objectives for current generation
         self.ftimes = []
-##         self.completeListOfSolutions  = [] # holds all fronts
-##         self.completeListOfObjectives = [] # holds all objectives
 
     def EnergyFunction(self, trial):
         trialDic = {}
@@ -370,8 +353,6 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
             self.ftimes.append(timeElapsed)
-##             self.completeListOfSolutions.extend(self.fronts)
-##             self.completeListOfObjectives.extend(self.frontObj)
             
             if self.keep_track:
                 for front in self.fronts:
