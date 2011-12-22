@@ -15,14 +15,14 @@ from modelparser import read_model
 from analysis import *
 import fim
 import timecourse
-import dyncriteria
-import expcov
+import tcmetrics
 
 #----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
 #----------------------------------------------------------------------------
 
 class OptimumData(object):
+    """Object that holds optimum solution data."""
     pass
 
 class DeODESolver(de.DESolver):
@@ -35,8 +35,9 @@ class DeODESolver(de.DESolver):
     def __init__(self, model, optSettings, tcs, weights = None,
                     aMsgTicker=None, anEndComputationTicker=None, 
                     dump_pars=False):
-        self.model = model
-        self.tc    = tcs
+        self.model    = model
+        self.tc       = tcs
+        self.varnames = varnames(model)
         self.endTicker        = anEndComputationTicker
         self.msgTicker        = aMsgTicker
         self.dump_pars        = dump_pars
@@ -81,12 +82,12 @@ class DeODESolver(de.DESolver):
         for iu, u in enumerate(uncertain(self.model)):
             if get_name(u).startswith('init'):
                 varname = get_name(u).split('.')[-1]
-                ix = varnames(self.model).index(varname)
+                ix = self.varnames.index(varname)
                 mapinit2trial.append((ix,iu))
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
         self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
         
-        self.criterium = dyncriteria.getCriteriumFunction(weights, self.tc)
+        self.criterium = tcmetrics.getCriteriumFunction(weights, self.tc)
 
         # open files to write parameter progression
         if self.dump_pars:
@@ -146,18 +147,6 @@ class DeODESolver(de.DESolver):
                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
                 print >>self.parfilehandes[par], " ".join(parvector)
 
-
-##     def reportGeneration (self):
-##         if not self.generationTicker:
-##             print self.reportGenerationString()
-##         else:
-##             self.generationTicker(self.generation, float(self.bestEnergy))
-##         if self.dump_pars:
-##             for par in range(self.parameterCount):
-##                 parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
-##                 print >>self.parfilehandes[par], " ".join(parvector)
-            
-    
     def reportFinal (self):
         if self.exitCode==0: outCode = -1 
         else: 
@@ -184,7 +173,6 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best.tcdata = []
 
-        modelvnames = varnames(self.model)
         pars = [get_name(uncertain(self.model)[i]) for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
@@ -198,39 +186,20 @@ class DeODESolver(de.DESolver):
                 score =self.criterium(Y, i)
             else:
                 score = 1.0E300
-            nt = tc.ntimes
-            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, modelvnames)
+            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, self.varnames)
             sols += sol
-            best.tcdata.append((self.tc.shortnames[i], self.tc[i].ntimes, score))
+            best.tcdata.append((self.tc.shortnames[i], tc.ntimes, score))
             
-            vnames = []
-            varindexes=[]
-            for iline,line in enumerate(tc.data):
-                #count NaN
-                yexp = line
-                nnan = len(yexp[isnan(yexp)])
-                if nnan >= nt-1: continue
-                vnames.append(modelvnames[iline])
-                varindexes.append(iline)
-##             print vnames
-##             print varindexes
-            #print len(varindexes), varnames
         best.optimum_tcs=sols
-        
         
         if not (fim.sympy_installed):
             best.parameters = [(p, v, 0.0) for (p,v) in parszip]
         else:
-            consterror = [0.0 for i in range(len(vnames))]
-            for ix, x in enumerate(vnames):
-                for tc in self.tc:
-                    yexp = tc.data[varindexes[ix]]
-                    tpe = (max(yexp) - min(yexp))
-                    if tpe > consterror[ix]:
-                        consterror[ix] = tpe
-            consterror = expcov.constError_func([r * 0.05 for r in consterror]) #assuming 5% error
+            commonvnames = tcmetrics.getCommonFullVars(self.tc)
+            consterror   = tcmetrics.getRangeVars(self.tc, commonvnames)
+            consterror = tcmetrics.constError_func([r * 0.05 for r in consterror]) #assuming 5% of range
 ##             consterror = expcov.propError_func([0.05 for r in consterror]) #assuming 5% error
-            FIM1, invFIM1 = fim.computeFIM(self.model, parszip, vnames, sols, consterror)
+            FIM1, invFIM1 = fim.computeFIM(self.model, parszip, sols, consterror, commonvnames)
             best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
@@ -250,7 +219,6 @@ class DeODESolver(de.DESolver):
         reportText += '\t\t'.join(['Name', 'Points', 'Score'])+'\n'
         reportText += "\n".join(["%s\t%d\t%g" % i for i in self.optimum.tcdata])
         reportText += '\n\n'
-        
         return reportText
 
     def draw(self, figure):

@@ -11,7 +11,7 @@ from model import *
 from dynamics import add_dSdt_to_model, dXdt_strings
 from analysis import solve
 import timecourse
-import expcov
+import tcmetrics
 
 sympy_installed = True
 try:
@@ -20,7 +20,7 @@ except:
     print 'ERROR: sympy module must be installed to generate sensitivity strings'
     sympy_installed = False
 
-def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
+def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     
     """Computes FIM normalized by parameter values.
     
@@ -30,8 +30,6 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     or list of (name,value) pairs
         names of the form init.<name> are possible.
         
-    vars is a list of names of variables to be considered in the timecourses
-    
     timecoursecollection is a Solutions object 
        (initial values are read from these)
     
@@ -39,6 +37,9 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
         experimental variance-covariance matrix of variables.
         function has signature f(x), where x is the numpy array of variables.
         NOTE: module expcov defines some 'stock' error functions.
+
+    vars is a list of names of variables to be considered in the timecourses
+    
     """
     m  = model.clone()
     
@@ -86,21 +87,26 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     P = matrix(diag(array(parvalues, dtype=float)))
     
     #keep indexes of variables considered
-    vnames = varnames(m)
-    xindexes = []
-    for vname in vars:
-        for i,y in enumerate(vnames):
-            if y == vname:
-                xindexes.append(i)
-    xindexes = array(xindexes)
-    #compute indexes of sensitivities
-    # search pattern d_<var name>_d_<parname> in variable names
-    indexes = []
-    for vname in vars:
-        for Sname in Snames:
-            if Sname[0] == vname:
-                indexes.append(vnames.index(Sname[2]))
-    indexes = array(indexes)
+    if vars is not None:
+        vnames = varnames(m)
+        xindexes = []
+        for vname in vars:
+            for i,y in enumerate(vnames):
+                if y == vname:
+                    xindexes.append(i)
+        xindexes = array(xindexes)
+        #compute indexes of sensitivities
+        # search pattern d_<var name>_d_<parname> in variable names
+        indexes = []
+        for vname in vars:
+            for Sname in Snames:
+                if Sname[0] == vname:
+                    indexes.append(vnames.index(Sname[2]))
+        indexes = array(indexes)
+        # insert indexes in sols as attributes
+        for sol in sols:
+            sol.xindexes = xindexes
+            sol.indexes = indexes
 
     tcFIM = []
     for sol in sols:
@@ -112,13 +118,13 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
             h = (sol.t[i]-sol.t[i-1])
             
             #S matrix
-            svec = sol.data[indexes , i]
+            svec = sol.data[sol.indexes , i]
             S = matrix(svec.reshape((nvars, npars)))
             S = S * P # scale with par values
             ST = matrix(S.T)
 
             # MVINV is the inverse of measurement COV matrix
-            xvec = sol.data[xindexes , i]
+            xvec = sol.data[sol.xindexes , i]
             error_x = expCOV(xvec)
             MV = matrix(error_x**2)
             MVINV = linalg.inv(MV)
@@ -132,8 +138,8 @@ def __computeNormalizedFIM(model, pars, vars, timecoursedata, expCOV):
     
     return sumFIM, P
 
-def computeFIM(model, pars, vars, TCs, COV):
-    FIM, P = __computeNormalizedFIM(model, pars, vars, TCs, COV)
+def computeFIM(model, pars, TCs, COV, vars = None):
+    FIM, P = __computeNormalizedFIM(model, pars, TCs, COV, vars)
     # compute inverse of P to "descale"
     PINV = linalg.inv(P)
     # compute FIM and its inverse (lower bounds for parameter COV matrix)
@@ -166,21 +172,21 @@ def test():
     parsdict = dict (zip(pars, parvalues))
     
     errors = (0.01,0.001)
-    errors = expcov.constError_func(errors)
+    errors = tcmetrics.constError_func(errors)
     errorsSDLonly = 0.001
-    errorsSDLonly = expcov.constError_func(errorsSDLonly)
+    errorsSDLonly = tcmetrics.constError_func(errorsSDLonly)
 
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters %s and %s'% (pars[0],pars[1])
     print 'Timecourse with HTA and SDLTSH'
-    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, errors)
+    FIM1, invFIM1 = computeFIM(m, parsdict, sols, errors,"HTA SDLTSH".split())
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters %s and %s'%(pars[0],pars[1])
     print 'Timecourse with SDLTSH only'
-    FIM1, invFIM1 = computeFIM(m, parsdict, "SDLTSH".split(), sols, errorsSDLonly)
+    FIM1, invFIM1 = computeFIM(m, parsdict, sols, errorsSDLonly, "SDLTSH".split())
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
@@ -195,7 +201,7 @@ def test():
     m.init.HTA = 0.2688
     sols += solve(m, tf = 5190.0)
     
-    FIM1, invFIM1 = computeFIM(m, parsdict, "HTA SDLTSH".split(), sols, errors)
+    FIM1, invFIM1 = computeFIM(m, parsdict, sols, errors, "HTA SDLTSH".split())
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)    
@@ -204,7 +210,7 @@ def test():
     print 'Glyoxalase model, 2 timecourses, parameters %s and %s'% (pars[0],pars[1])
     print 'Timecourses with SDLTSH only'
     
-    FIM1, invFIM1 = computeFIM(m, parsdict, ["SDLTSH"], sols, errorsSDLonly)
+    FIM1, invFIM1 = computeFIM(m, parsdict, sols, errorsSDLonly,["SDLTSH"])
     print '\nParameters ---------------------------'
     for i,p in enumerate(parsdict.keys()):
         print "%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i,i]**0.5)
