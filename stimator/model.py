@@ -45,6 +45,26 @@ def identifiersInExpr(_expr):
 #----------------------------------------------------------------------------
 #         Utility functions
 #----------------------------------------------------------------------------
+def isNumber(value):
+    for numtype in (float,int,long):
+        if isinstance(value, numtype):
+            return True
+    return False
+
+
+def isPairOfNums(value):
+    if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
+        for pos in (0,1):
+            typeOK = False
+            for numtype in (float,int,long):
+                if isinstance(value[pos], numtype):
+                    typeOK = True
+                    break
+            if not typeOK:
+                return False
+        return True
+    return False
+
 def processStoich(expr):
     match = stoichiom.match(expr)
     if not match:
@@ -152,16 +172,16 @@ class ModelObject(object):
                 return False
         return True
 
-def setPar(obj, collection, name, value, pos = None):
+def setPar(obj, name, value):
     # accept only ContsValue's or Bounds
-    for numtype in (float,int,long):
-        if isinstance(value, numtype):
-            value = constValue(float(value))
-    if isPairOfNums(value):
+    if isNumber(value):
+        value = constValue(float(value))
+    elif isPairOfNums(value):
         value = Bounds(float(value[0]), float(value[1]))
-    if not (isinstance(value, ConstValue) or isinstance(value, Bounds)):
+    else:
         raise BadTypeComponent( "%s.%s"%(get_name(obj),name) + ' can not be assigned to ' + type(value).__name__)
     
+    collection = obj.__dict__['_ownparameters']
     already_exists = name in collection
     if not already_exists:
         if isinstance(value, ConstValue):
@@ -197,7 +217,7 @@ class _HasOwnParameters(ModelObject):
             raise AttributeError( name + ' is not a member of '+ get_name(self))
     def __setattr__(self, name, value):
         if not name.startswith('_'):
-            setPar(self, self.__dict__['_ownparameters'], name, value)
+            setPar(self, name, value)
         else:
             object.__setattr__(self, name, value)
     def __iter__(self):
@@ -352,19 +372,6 @@ class StateArray(_HasOwnParameters):
 def state(**varvalues):
     return StateArray(varvalues, '?')
 
-def isPairOfNums(value):
-    if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
-        for pos in (0,1):
-            typeOK = False
-            for numtype in (float,int,long):
-                if isinstance(value[pos], numtype):
-                    typeOK = True
-                    break
-            if not typeOK:
-                return False
-        return True
-    return False
-
 def _ConvertPair2Reaction(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
         if isinstance(value[0], str):
@@ -390,7 +397,7 @@ class Model(ModelObject):
         self.__dict__['_Model__reactions']         = []
         self.__dict__['_Model__variables']         = []
         self.__dict__['_Model__extvariables']      = []
-        self.__dict__['_Model__parameters']        = {}
+        self.__dict__['_ownparameters']            = {}
         self.__dict__['_Model__transf']            = []
         self.__dict__['_Model__states']            = []
         ModelObject.__init__(self)
@@ -425,8 +432,8 @@ class Model(ModelObject):
                 else:
                     raise BadTypeComponent( name + ' can not be assigned to ' + type(value).__name__)
         # move on to parameters, accepting ConstValue, numbers or pairs of numbers
-        if name in self.__dict__['_Model__parameters']:
-            setPar(self, self.__dict__['_Model__parameters'], name, value)
+        if name in self.__dict__['_ownparameters']:
+            setPar(self, name, value)
             
         # else append new object to proper list
         # start with strict types
@@ -437,7 +444,7 @@ class Model(ModelObject):
                 self.__refreshVars()
                 return
         # move on to parameters, accepting ConstValue, numbers or pairs of numbers
-        setPar(self, self.__dict__['_Model__parameters'], name, value)
+        setPar(self, name, value)
         self.__refreshVars()
 
     def __getattr__(self, name):
@@ -445,8 +452,8 @@ class Model(ModelObject):
             return self.__dict__['_Model__m_Parameters']
         if name in self.__dict__:
             return self.__dict__[name]
-        if name in self.__parameters:
-            return self.__parameters[name]
+        if name in self._ownparameters:
+            return self._ownparameters[name]
         c = findWithName(name, self.__reactions)
         if c :
             return c
@@ -464,7 +471,7 @@ class Model(ModelObject):
         raise AttributeError( name + ' is not defined for this model')
     
     def __findComponent(self, name):
-        if name in self.__parameters:
+        if name in self._ownparameters:
             return -1, 'parameters'
         c = findWithNameIndex(name, self.__reactions)
         if c>=0 :
@@ -513,7 +520,7 @@ class Model(ModelObject):
         m = Model(self['title'])
         for r in self.__reactions:
             setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._ownparameters, r._irreversible))
-        for p in self.__parameters.values():
+        for p in self._ownparameters.values():
             setattr(m, get_name(p), constValue(p))
         for t in self.__transf:
             setattr(m, get_name(t), Transformation(t(), t._ownparameters))
@@ -536,8 +543,8 @@ class Model(ModelObject):
         if not ModelObject.__eq__(self, other):
             return False
         cnames = ('reactions', 'transf', 'states', 'pars', 'vars', 'extvars')
-        collections1 = [self.__reactions, self.__transf, self.__states, self.__parameters, self.__variables, self.__extvariables]
-        collections2 = [other.__reactions, other.__transf, other.__states, other.__parameters, other.__variables, other.__extvariables]
+        collections1 = [self.__reactions, self.__transf, self.__states, self._ownparameters, self.__variables, self.__extvariables]
+        collections2 = [other.__reactions, other.__transf, other.__states, other._ownparameters, other.__variables, other.__extvariables]
         for cname, c1,c2 in zip(cnames, collections1, collections2):
             if len(c1) != len(c2):
                 return False
@@ -558,7 +565,7 @@ class Model(ModelObject):
         self.__m_Parameters = uncertainparameters
 
     def _genlocs4rate(self, obj = None):
-        for p in self.__parameters.items():
+        for p in self._ownparameters.items():
             yield p
         collections = [self.__reactions, self.__transf]
         for c in collections:
@@ -578,7 +585,7 @@ class Model(ModelObject):
                     if vname in self.__variables:
                         continue
                     else:
-                        if vname in self.__parameters:
+                        if vname in self._ownparameters:
                             if not vname in self.__extvariables:
                                 self.__extvariables.append(vname)
                         else:
@@ -636,7 +643,7 @@ def parameters(model):
     return list(iparameters(model))
 
 def iparameters(model):
-    for p in model._Model__parameters.values():
+    for p in model._ownparameters.values():
         yield p
     collections = [model._Model__reactions, model._Model__transf]
     for c in collections:
