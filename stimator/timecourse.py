@@ -8,6 +8,7 @@
 # Copyright António Ferreira 2006-2010
 #----------------------------------------------------------------------------
 import os.path
+import StringIO
 import re
 from numpy import *
 import model
@@ -128,6 +129,11 @@ class SolutionTimeCourse(object):
             self.names = newnames
         self.data = trf
         return self
+    
+    def load_from_str(self, s, names = None):
+        aTC   = StringIO.StringIO(s)
+        aTC.seek(0)
+        self.load_from(aTC, names)
     
     def load_from(self, filename, names = None):
         """Reads a time course from file.
@@ -397,6 +403,7 @@ def readTCs(source, filedir = None, intvarsorder = None, names = None, verbose =
     return tcs
 
 TimeCourses = Solutions
+Solution = SolutionTimeCourse
 
 #----------------------------------------------------------------------------
 #         TESTING CODE
@@ -435,7 +442,7 @@ nothing really usefull here
 
 """
 
-    import StringIO
+    
     aTC   = StringIO.StringIO(demodata)
     aTCnh = StringIO.StringIO(demodata_noheader)
 
@@ -450,8 +457,7 @@ nothing really usefull here
     print sol.data
     print
     
-    aTC.seek(0)
-    sol.load_from(aTC)
+    sol.load_from_str(demodata)
     sol.orderByNames("z y".split())
     print '\n- using load_from() with name order z y'
     print '\nnames:'
@@ -460,8 +466,7 @@ nothing really usefull here
     print sol.data
     print
 
-    aTC.seek(0)
-    sol.load_from(aTC)
+    sol.load_from_str(demodata)
     sol.orderByNames("z".split())
     print '\n- using load_from() with name order z'
     print '\nnames:'
@@ -471,8 +476,7 @@ nothing really usefull here
     print
 
     try:
-        aTC.seek(0)
-        sol.load_from(aTC)
+        sol.load_from_str(demodata)
         print '\n- using load_from() with name order x bof z'
         sol.orderByNames("x bof z".split())
         print '\nnames:'

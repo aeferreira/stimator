@@ -8,6 +8,8 @@
 # Copyright António Ferreira 2006-2009
 #----------------------------------------------------------------------------
 import math
+import os
+import os.path
 from model import *
 from dynamics import *
 from modelparser import read_model
@@ -167,7 +169,7 @@ class ModelSolver(object):
         return sol
 
 
-def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, legend=True):
+def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, legend=True, save2file=None):
     if isinstance(solutions, SolutionTimeCourse):
         s = Solutions()
         s.append(solutions)
@@ -250,7 +252,12 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
                 curraxis.set_ylim(yrange)
             else:
                 curraxis.set_ylim(yscale_all)
+    if save2file is not None:
+        figure.savefig(save2file)
     if show:
+        if save2file is not None:
+            if hasattr(save2file,'read'):
+                save2file.close()
         p.show()
 
 def test():
@@ -342,8 +349,15 @@ def test():
             return (-5.0, vars[1], vars[2])
 
     solution4.apply_transf(transformation)
+    
+    #savingfile = open('examples/analysis.png', 'w+b')
+    savingfile = 'examples/analysis.png'
 
-    plot ([solution1, solution2, solution3, solution4], superimpose=False, show = True)
+    plot ([solution1, solution2, solution3, solution4], superimpose=False, show = True, save2file=savingfile)
+    
+    if os.path.exists(savingfile):
+        print 'removing temp figure file'
+        os.remove(savingfile)
 
 if __name__ == "__main__":
     test()
