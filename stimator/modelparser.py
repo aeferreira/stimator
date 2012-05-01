@@ -35,6 +35,7 @@ ratedefpattern    = r"^\s*(?:reaction\s+)?(?P<name>"+identifierpattern+r")\s*(:|
 tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
+tfpattern         = r"^\s*tf\s*(?::\s*)?(?P<tf>[^#]+)(?:#.*)?$"
 statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
 dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 transfpattern     = r"^\s*(transf|~)\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
@@ -58,6 +59,7 @@ statedef  = re.compile(statepattern,       re.IGNORECASE)
 tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
 titledef  = re.compile(titlepattern)
+tfdef     = re.compile(tfpattern)
 dxdtdef   = re.compile(dxdtpattern,        re.IGNORECASE)
 transfdef = re.compile(transfpattern,      re.IGNORECASE)
 
@@ -77,7 +79,8 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (dxdtdef,   "dxdtDefParse"),
                (transfdef, "transfDefParse"),
                (constdef,  "constDefParse"),
-               (titledef,  "titleDefParse")]
+               (titledef,  "titleDefParse"),
+               (tfdef,     "tfDefParse")]
 
 hascontpattern  = r"^.*\\$"
 hascontinuation = re.compile(hascontpattern)
@@ -549,6 +552,10 @@ class StimatorParser:
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
         self.model['title'] = title
+        #~ setattr(self.model, 'title', title)
+    def tfDefParse(self, line, loc, match):
+        title = match.group('tf')
+        self.model['tf'] = title
         #~ setattr(self.model, 'title', title)
 
 #----------------------------------------------------------------------------

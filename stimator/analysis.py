@@ -20,7 +20,7 @@ from timecourse import SolutionTimeCourse, Solutions
 import pylab as p
 
 def solve(model, 
-          tf = 1.0, 
+          tf = None, 
           npoints = 500, 
           t0 = 0.0, 
           initial = 'init', 
@@ -36,6 +36,13 @@ def solve(model,
         y0 = copy(state2array(model,initial))
     else:
         y0 = copy(initial)
+    if tf is None:
+        try:
+            tf = float(model['tf'])
+        except:
+            pass
+        if tf is None:
+            tf = 1.0
     if times is None:
         times = linspace (t0, tf, npoints)
 ##     elif 
@@ -54,7 +61,7 @@ def solve(model,
     if output[-1] < 0: return None
     Y = output[0]
     if title is None:
-        title = model['title']
+        title = model['title']        
     
     sol = SolutionTimeCourse (times, Y.T, names, title)
     
@@ -271,11 +278,12 @@ def test():
     V2  = 2.23416e-05
     Km2 = 0.0980973
     init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+    tf: 4030
     """)
 
     print m1
 
-    solution1 = solve(m1, tf = 4030.0)
+    solution1 = solve(m1)
 
     print '--- Last time point ----'
     print 'At t =', solution1.t[-1]
