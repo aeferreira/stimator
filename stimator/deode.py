@@ -186,9 +186,9 @@ class DeODESolver(de.DESolver):
                 score =self.criterium(Y, i)
             else:
                 score = 1.0E300
-            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, self.varnames)
+            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, self.varnames, title=tc.title)
             sols += sol
-            best.tcdata.append((self.tc.shortnames[i], tc.ntimes, score))
+            best.tcdata.append((self.tc[i].title, tc.ntimes, score))
             
         best.optimum_tcs=sols
         
@@ -203,6 +203,7 @@ class DeODESolver(de.DESolver):
             best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
         
         self.optimum = best
+        self.generate_fitted_sols()
 
     def reportResults(self):
         headerformat = "--- %-20s -----------------------------\n"
@@ -220,6 +221,21 @@ class DeODESolver(de.DESolver):
         reportText += "\n".join(["%s\t%d\t%g" % i for i in self.optimum.tcdata])
         reportText += '\n\n'
         return reportText
+
+    def generate_fitted_sols(self):
+        solslist = []
+        bestsols = self.optimum.optimum_tcs
+        expsols = self.tc
+        tcstats = self.optimum.tcdata
+        ntc = len(bestsols)
+        for i in range(ntc):
+            newpair = timecourse.Solutions(title="%s (%d pt) %g"% tcstats[i])
+            expsol = expsols[i].copy(newtitle='exp')
+            symsol = bestsols[i].copy(newtitle='pred')
+            newpair+=expsol
+            newpair+=symsol
+            solslist.append(newpair)
+        self.fitted_tcs = solslist
 
     def draw(self, figure):
         figure.clear()

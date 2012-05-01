@@ -176,7 +176,7 @@ class ModelSolver(object):
         return sol
 
 
-def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, legend=True, save2file=None):
+def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None):
     if isinstance(solutions, SolutionTimeCourse):
         s = Solutions()
         s.append(solutions)

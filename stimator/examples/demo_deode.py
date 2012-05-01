@@ -38,6 +38,9 @@ solver.draw(fig1)
 
 redsols = solver.optimum.optimum_tcs
 redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], '.', verbose=True)
+for tcs in solver.fitted_tcs:
+    plot(tcs, superimpose=True)
+
 
 #--- an example with unknown initial values --------------------
 
