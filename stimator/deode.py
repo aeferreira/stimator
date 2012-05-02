@@ -213,7 +213,9 @@ class DeODESolver(de.DESolver):
         reportText += '\n\n'
         reportText += headerformat % 'OPTIMIZATION'
         reportText += "%s\t%g\n" % ('Final Score', self.optimum.optimization_score)
-        reportText += "%s\t%g\n" % ('generations', self.optimum.optimization_generations)
+        reportText += "%s\t%d\n" % ('generations', self.optimum.optimization_generations)
+        reportText += "%s\t%d\n" % ('max generations', self.maxGenerations)
+        reportText += "%s\t%d\n" % ('genome size', self.populationSize)
         reportText += "%s\t%s\n" % ('Exit by',     self.optimum.optimization_exit_by)
         reportText += '\n\n'
         reportText += headerformat % 'TIME COURSES'
