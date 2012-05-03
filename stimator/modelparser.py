@@ -570,8 +570,8 @@ title: Glyoxalase system in L. infantum
 variables: SDLTSH TSH2 MG
 
 Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
-leak : MG -> , 10 ..
-reaction Glx2 : SDLTSH ->  Lac,  \\
+leak : MG -> 4.2 MGout, 10 ..
+reaction Glx2 : SDLTSH ->  2  Lac,  \\
     step(t, 2.0, Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2
 kout_global = 3.14
 export: Lac ->, kout * Lac, kout = sqrt(4.0)/2.0 * kout_global

@@ -272,7 +272,7 @@ def test():
     m1 = read_model("""
     title Glyoxalase system
     glo1 = HTA -> SDLTSH, rate = V1*HTA/(Km1 + HTA)
-    glo2 = SDLTSH ->    , rate = V2*SDLTSH/(Km2 + SDLTSH)
+    glo2 = SDLTSH -> 2.1 DLac   , rate = V2*SDLTSH/(Km2 + SDLTSH)
     V1  = 2.57594e-05
     Km1 = 0.252531
     V2  = 2.23416e-05

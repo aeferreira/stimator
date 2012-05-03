@@ -93,16 +93,19 @@ class DeODESolver(de.DESolver):
         if self.dump_pars:
             self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
 
-    def computeSolution(self,i,trial):
+    def computeSolution(self,i,trial, dense = False):
         """Computes solution for timecourse i, given parameters trial."""
         
         y0 = copy(self.X0[i])
         # fill uncertain initial values
         y0[self.vars_initindexes] = trial[self.trial_initindexes]
+        ts = self.times[i]
+##         if len(ts) < 200 and dense:
+##             ts = linspace(ts[0], ts[-1], 200)
             
 ##         t  = copy(self.times[i])
 ##         Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
-        output = self.salg(self.calcDerivs, y0, self.times[i], (), None, 0, -1, -1, 0, None, 
+        output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         #~ if infodict['message'] != 'Integration successful.':
@@ -240,6 +243,7 @@ class DeODESolver(de.DESolver):
         self.fitted_tcs = solslist
 
     def draw(self, figure):
+        colours = 'brgkycm'
         figure.clear()
         tcsubplots = []
         bestsols = self.optimum.optimum_tcs
@@ -257,6 +261,7 @@ class DeODESolver(de.DESolver):
             subplot.set_title("%s (%d pt) %g"% tcstats[i], fontsize = 12)
             expsol = expsols[i]
             symsol = bestsols[i]
+            icolor = 0
             for line in range(len(expsol)):
                 #count NaN and do not plot if they are most of the timecourse
                 yexp = expsol[line]
@@ -264,8 +269,17 @@ class DeODESolver(de.DESolver):
                 if nnan >= expsol.ntimes-1: continue
                 #otherwise plot lines
                 ysim = symsol[line]
-                subplot.plot(expsol.t,yexp, '-b')
-                subplot.plot(expsol.t,ysim, '-r')
+                colorexp = colours[icolor]+'o'
+                colorsim = colours[icolor]+'-'
+                labelexp = expsol.names[line]
+                labelsim = 'pred %s' % expsol.names[line]
+                subplot.plot(expsol.t, yexp, colorexp, label=labelexp)
+                subplot.plot(expsol.t, ysim, colorsim, label=labelsim)
+                icolor += 1
+                if icolor == len(colours):
+                    icolor = 0
+            subplot.grid()
+            subplot.legend(loc='best')
 
 def test():
     m1 = read_model("""

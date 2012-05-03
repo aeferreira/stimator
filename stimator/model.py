@@ -30,8 +30,13 @@ def register_kin_func(f):
 #----------------------------------------------------------------------------
 #         Regular expressions for stoichiometry patterns
 #----------------------------------------------------------------------------
+fracnumberpattern = r"[-]?\d*[.]?\d+"
+realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
+fracnumber = re.compile(fracnumberpattern, re.IGNORECASE)
+realnumber = re.compile(realnumberpattern, re.IGNORECASE)
 stoichiompattern   = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
-chemcomplexpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
+#  \d*
+chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+")?)\s*(?P<variable>[_a-z]\w*)\s*$"
 
 stoichiom  = re.compile(stoichiompattern,    re.IGNORECASE)
 chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
@@ -692,7 +697,7 @@ def test():
 
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v2 = react("    -> 4.5 A"  , rate = math.sqrt(4.0)/2)
     v3pars = (('V3',0.5),('Km', 4))
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)", pars = v3pars)
 ##     m.v3.V3 = 0.5
