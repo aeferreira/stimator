@@ -266,7 +266,7 @@ class MyFrame(wx.Frame):
         self.shell = Shell(parent=self)
         self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
                           Name("shell").Caption("Shell").
-                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*2/12)).CloseButton(True).MaximizeButton(True))
 
         # create  center pane
             
@@ -274,7 +274,7 @@ class MyFrame(wx.Frame):
                           Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
 ##                           CenterPane().Caption("Model"))
         self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
-                          Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/2,200)).CloseButton(True).MaximizeButton(True))
+                          Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/4,200)).CloseButton(True).MaximizeButton(True))
         # add the toolbars to the manager
                         
         self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
