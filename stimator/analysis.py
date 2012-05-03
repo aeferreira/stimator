@@ -183,7 +183,9 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
         solutions = s
     if figure is None:
         figure = p.figure()
-    colours = ['r-', 'b-', 'g-', 'k-', 'y-']
+    colours = 'brgkycm'
+    colours = ['%s-'%c for c in colours]
+    #colours = ['r-', 'b-', 'g-', 'k-', 'y-']
     ntc = len(solutions)
     ncols = int(math.ceil(math.sqrt(ntc)))
     nrows = int(math.ceil(float(ntc)/ncols))
