@@ -185,11 +185,12 @@ class SolutionTimeCourse(object):
         #create default names "t, x1, x2, x3,..." or use names if provided
         if len(header) == 0:
             header = ['t']
+            for i in range(1, nvars):
+                header.append('x%d'%i)
             if names is not None:
-                header.extend(names)
-            else:
-                for i in range(1, nvars):
-                    header.append('x%d'%i)
+                smallindx = min(len(header)-1, len(names))
+                for i in range(smallindx):
+                    header[i+1] = names[i]
         data = array(rows)
         self.names = header[1:]
         self.t = data[:,0].T
@@ -488,9 +489,10 @@ nothing really usefull here
         print msg
         print
 
+    print '===Reading data without a header========================='
     aTCnh.seek(0)
-    sol.load_from(aTCnh, names = ['x1','x2','x3'])   
-    print '\n- using load_from() with names x1, x2 ,x3'
+    sol.load_from(aTCnh)   
+    print '\n- using load_from(), names not provided'
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -498,7 +500,27 @@ nothing really usefull here
     print '\ndata'
     print sol.data
     print
-
+    aTCnh.seek(0)
+    sol.load_from(aTCnh, names = ['v1','v2','v3', 'v4', 'v5'])   
+    print '\n- using load_from() with names v1, v2 ,v3, v4, v5'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+    aTCnh.seek(0)
+    sol.load_from(aTCnh, names = ['v1','v2'])   
+    print '\n- using load_from() with names v1, v2'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+    
     #~ aTC.seek(0)
     #~ sol.load_from(aTC, atindexes=(0,3,1,2))   
     #~ print '\n- using load_from() atindexes (0,3,1,2)'
@@ -510,7 +532,7 @@ nothing really usefull here
     #~ print sol.data
     #~ print
     
-    print '--Using SolutionTimeCourse interface ----------'
+    print '==Using SolutionTimeCourse interface ===================='
     aTC.seek(0)
     sol.load_from(aTC)   
     print 'retrieving components...'
@@ -707,8 +729,8 @@ nothing really usefull here
     m = modelparser.read_model("""
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
-    timecourse ../examples/TSH2b.txt
-    timecourse ../examples/TSH2a.txt
+    timecourse ../stimator/examples/TSH2b.txt
+    timecourse ../stimator/examples/TSH2a.txt
     variables SDLTSH HTA
     """)
 
