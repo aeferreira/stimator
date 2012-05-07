@@ -1,9 +1,0 @@
-title Glyoxalase system, 1 substrate model for GLO1
-
-glo1 = HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
-glo2 = SDLTSH ->    , V2*SDLTSH/(Km2 + SDLTSH)
-V1  = 2.57594e-05
-Km1 = 0.252531
-V2  = 2.23416e-05
-Km2 = 0.0980973
-init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)

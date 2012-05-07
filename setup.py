@@ -2,7 +2,7 @@
 from distutils.core import setup
 
 setup(name = "stimator",
-    version = "0.9.8",
+    version = "0.9.85",
     description = "S-timator : a Python package for the analysis of ODE models.",
     author = "Antonio Ferreira",
     author_email = "aeferreira@fc.ul.pt",
@@ -12,7 +12,7 @@ setup(name = "stimator",
     scripts = ["stimator_gui.py"],
     long_description = """S-timator : a Python package for the analysis of ODE models.
 
-Copyright 2005-2010 António Ferreira
+Copyright 2010-2012 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows.""" 
 ) 
 
