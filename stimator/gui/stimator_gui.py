@@ -100,13 +100,8 @@ class MyFrame(wx.Frame):
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
         mydir = os.path.dirname(__file__)
-##         print mydir
         os.chdir(mydir)
-##         print 'changed'
         os.chdir('../examples')
-##         print 'changed to examples'
-##         dirname = os.path.join(os.path.dirname(__file__),'examples')
-##         os.chdir(dirname)
         self.exampledir = os.getcwd()
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
@@ -117,7 +112,6 @@ class MyFrame(wx.Frame):
         self.stop_script = False
         
         self.SetIcon(images.getMondrianIcon())
-##         getMondrianIcon())
         self.SetBackgroundColour(wx.Colour(229, 229, 229))
 
         # create menu
@@ -212,14 +206,15 @@ class MyFrame(wx.Frame):
         
         tb2.AddTool(ID_Actions_FindParameters, images.getdi_flagBitmap(), shortHelpString="Find Parameters")
 
+        tb2.AddSeparator()
+        tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
+        tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
+        tb2.AddSeparator()
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
         
-        tb2.AddSeparator()
-        tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
-        tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
 
         tb2.Realize()
         self.tb2 = tb2
