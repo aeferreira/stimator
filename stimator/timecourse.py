@@ -254,21 +254,17 @@ class SolutionTimeCourse(object):
         return tc
             
     def orderByNames(self, varnames):
-        newindexes = range(len(self))
-        restoffset = len(varnames)
-        for varname in varnames:
-            if varname not in self.names:
-                raise StimatorTCError("series %s was not found in timecourse %s"%(varname, self.title))
-        for i, name in enumerate(self.names):
-            try:
-                ivar = varnames.index(name)
-            except ValueError:
-                ivar = None
-            if ivar is None:
-                newindexes[restoffset] = i
-                restoffset += 1
-                continue
-            newindexes[ivar] = i
+        oldindexes = range(len(self))
+        newindexes = []
+##         for varname in varnames:
+##             if varname not in self.names:
+##                 raise StimatorTCError("series %s was not found in timecourse %s"%(varname, self.title))
+        for vname in varnames:
+            if vname in self.names:
+                indx = self.names.index(vname)
+                newindexes.append(indx)
+                oldindexes.remove(indx)
+        newindexes.extend(oldindexes)
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[array(newindexes, dtype=int)]
 

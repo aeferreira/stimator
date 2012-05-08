@@ -7,6 +7,7 @@ Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
+from model import varnames
 
 
 def _transform2array(vect):
@@ -31,12 +32,14 @@ def propError_func(vect):
         return res * x
     return CE
 
-def getFullTCvarIndexes(tcs):
+def getFullTCvarIndexes(model, tcs):
     #mask series with NaN values.
-    allvarindexes = []
+    allmodelvarindexes, alltcvarindexes = [],[]
+##     allvarindexes = []
     for data in tcs:
         nt = data.ntimes
         varindexes = []
+        modelvarindexes = []
 
         for ivar in range(len(data.data)):
             #count NaN
@@ -44,8 +47,13 @@ def getFullTCvarIndexes(tcs):
             nnan = len(yexp[isnan(yexp)])
             if nnan >= nt-1: continue
             varindexes.append(ivar)
-        allvarindexes.append(array(varindexes, int))
-    return allvarindexes
+            vname = data.names[ivar]
+            indx = varnames(model).index(vname)
+            modelvarindexes.append(indx)
+        alltcvarindexes.append(array(varindexes, int))
+        allmodelvarindexes.append(array(modelvarindexes,int))
+    print allmodelvarindexes, alltcvarindexes
+    return allmodelvarindexes, alltcvarindexes
 
 def getCommonFullVars(tcs):
     """Returns a list of names of variables that have full data in all timecourses."""
@@ -78,7 +86,7 @@ def getRangeVars(tcs, varnames):
     return ranges
     
 
-def getCriteriumFunction(weights, tc):
+def getCriteriumFunction(weights, model, tc):
     """Returns a function to compute the objective function (for each timecourse).
     
     the function has signature
@@ -97,11 +105,11 @@ def getCriteriumFunction(weights, tc):
     'demo'       : demo weighting  W = 1/j with j = 1,...,nvars
     """
     
-    allvarindexes = getFullTCvarIndexes(tc)    
+    allmodelvarindexes, alltcvarindexes = getFullTCvarIndexes(model,tc)    
 
     if weights is None:
         def criterium(Y,i):
-            d = (Y.T[allvarindexes[i]]- tc[i].data[allvarindexes[i]])
+            d = (Y.T[allmodelvarindexes[i]]- tc[i].data[alltcvarindexes[i]])
             return sum(d*d)
 ##             return sum(abs(d))
         return criterium
@@ -109,10 +117,10 @@ def getCriteriumFunction(weights, tc):
     if weights  == 'demo':
         W = []
         for i in range(len(tc)):
-            W.append(array([1.0/(1+j) for j in range(allvarindexes[i])]))
+            W.append(array([1.0/(1+j) for j in range(alltcvarindexes[i])]))
         #print W
         def criterium(Y,i):
-            d = (Y.T[allvarindexes[i]]- tc.data[i][allvarindexes[i]])
+            d = (Y.T[allmodelvarindexes[i]]- tc.data[i][alltcvarindexes[i]])
             return sum(d*W[i]*d)
         return criterium
         

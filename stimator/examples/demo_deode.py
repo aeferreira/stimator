@@ -26,7 +26,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
 #~ print m1
 
 optSettings={'genomesize':80, 'generations':200}
-timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], '.', names = ['SDLTSH', 'HTA'], verbose=True)
+timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], verbose=True)
 
 solver = DeODESolver(m1,optSettings, timecourses)
 solver.Solve()
@@ -37,7 +37,7 @@ fig1 = pl.figure()
 solver.draw(fig1)
 
 redsols = solver.optimum.optimum_tcs
-redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], '.', verbose=True)
+redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
 ## for tcs in solver.fitted_tcs:
 ##     plot(tcs, superimpose=True)
 

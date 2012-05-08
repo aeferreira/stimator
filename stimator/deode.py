@@ -34,7 +34,7 @@ class DeODESolver(de.DESolver):
     
     def __init__(self, model, optSettings, tcs, weights = None,
                     aMsgTicker=None, anEndComputationTicker=None, 
-                    dump_pars=False):
+                    dump_pars=False,initial = 'init'):
         self.model    = model
         self.tc       = tcs
         self.varnames = varnames(model)
@@ -68,10 +68,26 @@ class DeODESolver(de.DESolver):
         self.salg=integrate._odepack.odeint
         
         # store initial values and (scaled) time points
+        if isinstance(initial, str) or isinstance(initial, StateArray):
+            globalX0 = copy(state2array(model,initial))
+        else:
+            globalX0 = copy(initial)
+
         self.X0 = []
         self.times = []
         for data in self.tc:
-            self.X0.append(copy(data[:, 0].T))
+            X0 = []
+            for ix, xname in enumerate(varnames(model)):
+                if xname in data.names:
+                    X0.append(data[xname][0])
+                else:
+                    X0.append(globalX0[ix])
+            X0 = array(X0,dtype=float)
+##             X0 = copy(data[:, 0].T)
+            print varnames(model)
+            print X0
+            
+            self.X0.append(X0)
             t  = data.t
             times = (t-t0)/scale #+t0  # this scales time points
             self.times.append(times)
@@ -87,7 +103,7 @@ class DeODESolver(de.DESolver):
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
         self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
         
-        self.criterium = tcmetrics.getCriteriumFunction(weights, self.tc)
+        self.criterium = tcmetrics.getCriteriumFunction(weights, self.model,self.tc)
 
         # open files to write parameter progression
         if self.dump_pars:
@@ -100,11 +116,6 @@ class DeODESolver(de.DESolver):
         # fill uncertain initial values
         y0[self.vars_initindexes] = trial[self.trial_initindexes]
         ts = self.times[i]
-##         if len(ts) < 200 and dense:
-##             ts = linspace(ts[0], ts[-1], 200)
-            
-##         t  = copy(self.times[i])
-##         Y, infodict = integrate.odeint(self.calcDerivs, y0, t, full_output=True, printmessg=False)
         output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
@@ -268,13 +279,13 @@ class DeODESolver(de.DESolver):
                 nnan = len(yexp[isnan(yexp)])
                 if nnan >= expsol.ntimes-1: continue
                 #otherwise plot lines
-                ysim = symsol[line]
+                xname = expsol.names[line]
+                ysim = symsol[symsol.names.index(xname)]
+                #ysim = symsol[line]
                 colorexp = colours[icolor]+'o'
                 colorsim = colours[icolor]+'-'
-                labelexp = expsol.names[line]
-                labelsim = 'pred %s' % expsol.names[line]
-                subplot.plot(expsol.t, yexp, colorexp, label=labelexp)
-                subplot.plot(expsol.t, ysim, colorsim, label=labelsim)
+                subplot.plot(expsol.t, yexp, colorexp, label=xname)
+                subplot.plot(expsol.t, ysim, colorsim, label='pred %s' % xname)
                 icolor += 1
                 if icolor == len(colours):
                     icolor = 0
