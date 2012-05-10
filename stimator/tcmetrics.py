@@ -52,7 +52,6 @@ def getFullTCvarIndexes(model, tcs):
             modelvarindexes.append(indx)
         alltcvarindexes.append(array(varindexes, int))
         allmodelvarindexes.append(array(modelvarindexes,int))
-    print allmodelvarindexes, alltcvarindexes
     return allmodelvarindexes, alltcvarindexes
 
 def getCommonFullVars(tcs):

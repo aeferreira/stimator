@@ -84,8 +84,6 @@ class DeODESolver(de.DESolver):
                     X0.append(globalX0[ix])
             X0 = array(X0,dtype=float)
 ##             X0 = copy(data[:, 0].T)
-            print varnames(model)
-            print X0
             
             self.X0.append(X0)
             t  = data.t
