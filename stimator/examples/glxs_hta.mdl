@@ -16,6 +16,6 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 timecourse TSH2a.txt  # timecourses to load
 timecourse TSH2b.txt
-
+tf:4500
 generations = 200   # maximum generations for GA
 genomesize = 80     # population size in GA

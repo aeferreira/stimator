@@ -20,6 +20,7 @@ import wx.lib.newevent
 import resultsframe
 import stimator.modelparser
 import stimator.deode
+import stimator.analysis
 import images
 from wx.py.shell import Shell
 
@@ -39,6 +40,7 @@ ID_File_Save_As = wx.NewId()
 
 ID_File_OpenScript = wx.NewId()
 
+ID_Actions_RunModel = wx.NewId()
 ID_Actions_RunScript = wx.NewId()
 ID_Actions_FindParameters = wx.NewId()
 ID_Actions_StopComputation = wx.NewId()
@@ -204,6 +206,7 @@ class MyFrame(wx.Frame):
         tb2.AddTool(wx.ID_REDO, images.get_rt_redoBitmap(), shortHelpString="Redo")
         tb2.AddSeparator()
         
+        tb2.AddTool(ID_Actions_RunModel, images.getdi_runBitmap(), shortHelpString="Run Model")
         tb2.AddTool(ID_Actions_FindParameters, images.getdi_flagBitmap(), shortHelpString="Find Parameters")
 
         tb2.AddSeparator()
@@ -215,6 +218,10 @@ class MyFrame(wx.Frame):
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
         
+##         buttonId = wx.NewId()
+##         b = wx.Button(tb2, buttonId, "Run", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
+##         tb2.AddControl(b)
+##         self.Bind(wx.EVT_BUTTON, self.OnRunButton, b)
 
         tb2.Realize()
         self.tb2 = tb2
@@ -222,6 +229,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpenScript, id=ID_File_OpenScript)
         self.Bind(wx.EVT_MENU, self.OnComputeButton, id=ID_Actions_FindParameters)
         self.Bind(wx.EVT_MENU, self.OnRunScript, id=ID_Actions_RunScript)
+        self.Bind(wx.EVT_MENU, self.OnRunButton, id=ID_Actions_RunModel)
         self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopComputation)
 
 
@@ -1075,6 +1083,35 @@ class MyFrame(wx.Frame):
         self.optimizerThread=CalcOptmThread()
         self.optimizerThread.Start(solver)
         
+    def OnRunButton(self, event):
+        if (self.optimizerThread is not None) or (self.optimizerThread is not None):
+           self.MessageDialog("S-timator is performing a computation!\nPlease wait.", "Error")
+           return
+        self._mgr.Update()
+
+        textlines = [self.ModelEditor.GetLine(i) for i in range(self.ModelEditor.GetLineCount())]
+        
+        oldout = sys.stdout #parser may need to print messages
+        sys.stdout = self
+        try:
+            self.model = stimator.modelparser.read_model(textlines)
+            self.tc = self.model['timecourses']
+            self.optSettings = self.model['optSettings']
+            if self.model['title'] == "":
+               self.model['title'] = self.GetFileName(self.ModelEditor)
+        except stimator.modelparser.StimatorParserError, expt:
+                self.IndicateError(expt)
+                sys.stdout = oldout
+                return
+
+        solution = stimator.analysis.solve(self.model)
+        sys.stdout = oldout
+        newfig = resultsframe.newFigure()
+        
+        stimator.analysis.plot(solution, figure=newfig)
+        self.CreateResPanelFromFigure(newfig)
+        self._mgr.Update()
+
     def OnMsg(self, evt):
         self.write(evt.msg)
 
