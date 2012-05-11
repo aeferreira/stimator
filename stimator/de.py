@@ -199,8 +199,12 @@ class DESolver:
         
     def finalize(self):
         # try to polish the best solution using scipy.optimize.fmin.
-        self.bestSolution = scipy.optimize.fmin(self.externalEnergyFunction, self.bestSolution, disp = 0) # don't print warning messages to stdout
-        self.bestEnergy, self.atSolution = self.EnergyFunction(self.bestSolution)
+        if self.exitCode == 0:
+            self.exitCode = -1
+        if self.exitCode > 0:
+            print 'refining last solution ...'
+            self.bestSolution = scipy.optimize.fmin(self.externalEnergyFunction, self.bestSolution, disp = 0) # don't print warning messages to stdout
+            self.bestEnergy, self.atSolution = self.EnergyFunction(self.bestSolution)
         self.elapsed = time.clock() - self.elapsed
         self.elapsed = round(self.elapsed, 3)
         self.reportFinal()

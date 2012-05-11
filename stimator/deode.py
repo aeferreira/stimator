@@ -69,7 +69,11 @@ class DeODESolver(de.DESolver):
         
         # store initial values and (scaled) time points
         if isinstance(initial, str) or isinstance(initial, StateArray):
-            globalX0 = copy(state2array(model,initial))
+            try:
+                globalX0 = copy(state2array(model,initial))
+            except AttributeError:
+                globalX0 = zeros(len(varnames(model)))
+    
         else:
             globalX0 = copy(initial)
 
@@ -160,7 +164,7 @@ class DeODESolver(de.DESolver):
                 print >>self.parfilehandes[par], " ".join(parvector)
 
     def reportFinal (self):
-        if self.exitCode==0: outCode = -1 
+        if self.exitCode <= 0 : outCode = -1 
         else: 
             outCode = self.exitCode
             self.generateOptimumData()

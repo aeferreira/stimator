@@ -1316,8 +1316,13 @@ class CalcOptmThread:
 
     def Start(self, solver):
         self.solver = solver
-        self.keepGoing = self.running = True
+        self.keepGoing = self.running = self.notinterrupted = True
         thread.start_new_thread(self.Run, ())
+
+    def Interrupt(self):
+        self.notinterrupted = False
+        print 'Stop required'
+        self.Stop()
 
     def Stop(self):
         self.keepGoing = False
