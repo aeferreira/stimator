@@ -1117,18 +1117,18 @@ class MyFrame(wx.Frame):
 
     def OnEndComputation(self, evt):
         sys.stdout = self.oldout
-        if evt.exitCode == -1:
-            self.write("\nOptimization aborted by user!")
-        else:
-            self.PostProcessEnded()
+        self.PostProcessEnded(aborted = (evt.exitCode == -1))
         self.optimizerThread = None
 
-    def PostProcessEnded(self):
+    def PostProcessEnded(self, aborted = False):
         solver = self.optimizerThread.solver        
-        self.write(solver.reportFinalString())
-        reportText = solver.reportResults()
-        self.write(reportText)
-        self.CreateResPanel(self.model, solver)
+        if aborted:
+            self.write("\nOptimization aborted by user!")
+        else:
+            self.write(solver.reportFinalString())
+            reportText = solver.reportResults()
+            self.write(reportText)
+            self.CreateResPanel(self.model, solver)
         
         self.shell.prompt()
         self._mgr.Update()
