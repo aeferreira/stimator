@@ -1,5 +1,4 @@
 """S-timator package"""
-
 class VersionObj(object):
     pass
 

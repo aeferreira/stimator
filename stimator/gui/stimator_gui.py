@@ -21,11 +21,11 @@ import resultsframe
 import stimator.modelparser
 import stimator.deode
 import stimator.analysis
+from stimator.version_info import __version__
 import images
 from wx.py.shell import Shell
 
-
-ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (stimatorVersion, stimatorDate)
+ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (__version__.fullversion, __version__.date)
 
 demoText = """\
 #Write your model here...
@@ -266,7 +266,8 @@ class MyFrame(wx.Frame):
         
 
         sz = self.GetClientSize()
-        self.shell = Shell(parent=self)
+        lcs = None#{'ui': self.ui, 'stimator':stimator}
+        self.shell = Shell(parent=self, locals=lcs)
         self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
                           Name("shell").Caption("Shell").
                           Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*2/12)).CloseButton(True).MaximizeButton(True))
