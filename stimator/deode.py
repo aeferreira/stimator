@@ -220,6 +220,9 @@ class DeODESolver(de.DESolver):
         
         self.optimum = best
         self.generate_fitted_sols()
+        
+        fnames = ['pred_'+ self.tc[i].title for i in range(len(self.tc))]
+        best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
 
     def reportResults(self):
         headerformat = "--- %-20s -----------------------------\n"
