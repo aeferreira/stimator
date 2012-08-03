@@ -1,0 +1,137 @@
+>pythonw -u "deode.py"
+-------------------------------------------------------
+244 time points for 2 variables read from file C:\Users\tonho\Desktop\stimatordev\stimator\examples\TSH2a.txt
+347 time points for 2 variables read from file C:\Users\tonho\Desktop\stimatordev\stimator\examples\TSH2b.txt
+
+Solving Glyoxalase system in L. Infantum...
+0   : 0.000559
+1   : 0.000559
+2   : 0.000559
+3   : 0.000559
+4   : 0.000559
+5   : 0.000548
+6   : 0.000548
+7   : 0.000257
+8   : 0.000257
+9   : 0.000257
+10  : 0.000257
+11  : 0.000098
+12  : 0.000098
+13  : 0.000098
+14  : 0.000098
+15  : 0.000098
+16  : 0.000098
+17  : 0.000098
+18  : 0.000031
+19  : 0.000031
+20  : 0.000031
+21  : 0.000031
+22  : 0.000031
+23  : 0.000031
+24  : 0.000031
+25  : 0.000031
+26  : 0.000031
+27  : 0.000031
+28  : 0.000031
+29  : 0.000031
+30  : 0.000031
+31  : 0.000031
+32  : 0.000031
+33  : 0.000031
+34  : 0.000031
+35  : 0.000031
+36  : 0.000031
+37  : 0.000031
+38  : 0.000031
+
+DONE!
+Too many generations with no improvement in 39 generations.
+best energy = 0.000011
+best solution: [  2.23328720e-05   9.80454052e-02   2.52520946e-01   2.57590821e-05]
+Optimization took 10.124 s
+
+--- PARAMETERS           -----------------------------
+V2	 2.23329e-05 +- 3.10564e-06
+Km2	   0.0980454 +- 0.0197246
+Km1	    0.252521 +- 0.0070759
+glx1.V1	 2.57591e-05 +- 2.76724e-07
+
+--- D.E. OPTIMIZATION    -----------------------------
+Final Score	1.06654e-05
+Generations	39
+Exit by    	Too many generations with no improvement
+
+--- TIMECOURSES          -----------------------------
+Name		Points		Score
+TSH2a.txt	244	4.17906e-06
+TSH2b.txt	347	6.48639e-06
+
+
+-------------------------------------------------------
+244 time points for 2 variables read from file C:\Users\tonho\Desktop\stimatordev\stimator\examples\TSH2a.txt
+
+Solving Glyoxalase system in L. Infantum...
+0   : 0.000158
+1   : 0.000158
+2   : 0.000158
+3   : 0.000158
+4   : 0.000158
+5   : 0.000158
+6   : 0.000158
+7   : 0.000158
+8   : 0.000158
+9   : 0.000158
+10  : 0.000087
+11  : 0.000087
+12  : 0.000087
+13  : 0.000087
+14  : 0.000019
+15  : 0.000019
+16  : 0.000019
+17  : 0.000019
+18  : 0.000019
+19  : 0.000019
+20  : 0.000011
+21  : 0.000011
+22  : 0.000011
+23  : 0.000011
+24  : 0.000011
+25  : 0.000011
+26  : 0.000011
+27  : 0.000011
+28  : 0.000011
+29  : 0.000011
+30  : 0.000011
+31  : 0.000011
+32  : 0.000011
+33  : 0.000011
+34  : 0.000011
+35  : 0.000011
+36  : 0.000011
+37  : 0.000011
+38  : 0.000011
+39  : 0.000011
+40  : 0.000011
+
+DONE!
+Too many generations with no improvement in 41 generations.
+best energy = 0.000003
+best solution: [  1.47133743e-05   4.08861091e-05   7.08895326e-02]
+Optimization took 4.576 s
+
+--- PARAMETERS           -----------------------------
+V2	 1.47134e-05 +- 8.71753e-06
+glx1.V1	 4.08861e-05 +- 1.67002e-05
+init.HTA	   0.0708895 +- 0.0382129
+
+--- D.E. OPTIMIZATION    -----------------------------
+Final Score	2.80506e-06
+Generations	41
+Exit by    	Too many generations with no improvement
+
+--- TIMECOURSES          -----------------------------
+Name		Points		Score
+TSH2a.txt	244	2.80506e-06
+
+
+>Exit code: 0

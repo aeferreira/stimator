@@ -1,3 +1,5 @@
 *.pyc
 /stimator/examples/pred_TSH2a.txt
 /stimator/examples/pred_TSH2b.txt
+/stimator/examples/TSH2a_pred.txt
+/stimator/examples/TSH2b_pred.txt
