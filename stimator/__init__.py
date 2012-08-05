@@ -5,3 +5,4 @@ from analysis import solve, plot, ModelSolver
 from timecourse import readTCs, Solutions, TimeCourses
 from modelparser import read_model
 from version_info import __version__
+import examples
