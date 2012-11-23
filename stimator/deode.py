@@ -6,6 +6,9 @@
 Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
+
+
+
 import de
 from numpy import *
 from scipy import integrate
