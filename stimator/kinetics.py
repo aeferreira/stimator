@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator kinetics functions
-# Copyright António Ferreira 2006-2011
+# Copyright António Ferreira 2006-2012
 #----------------------------------------------------------------------------
 
 def step (t, at, top=1.0):

@@ -5,7 +5,7 @@
 Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 stimatorVersion = "0.97"
-stimatorDate = "5 Ago 2011"
+stimatorDate = "29 Nov 2012"
 
 import sys
 import os

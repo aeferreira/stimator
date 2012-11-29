@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator Model related classes
-# Copyright António Ferreira 2006-2011
+# Copyright António Ferreira 2006-2012
 #----------------------------------------------------------------------------
 import re
 import math
