@@ -61,7 +61,7 @@ class DeODESolver(de.DESolver):
                              True)                    # use class random number methods
 
         # cutoffEnergy is 1e-6 of deviation from data
-        self.cutoffEnergy =  1.0e-6*sum([nansum(abs(tc.data)) for tc in self.tc])
+        self.cutoffEnergy =  1.0e-6*sum([nansum(fabs(tc.data)) for tc in self.tc])
         
         # scale times to maximum time in data
         scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
