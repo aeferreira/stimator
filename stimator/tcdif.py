@@ -11,7 +11,7 @@ from scipy.stats import norm
 import sympy
 from sympy import Symbol, diff
 import re
-from model import variable, parameters, varnames
+from model import variable
 from dynamics import state2array
 
 def generateBias(curveNumber, variableNumber, standardDeviation):
@@ -167,10 +167,10 @@ class Objective:
         self.tf = tf
         self.vector = state2array(model,"init")#model.vectorize("init")
 
-        self.lenEstimatedPar = len(parameters(model)) #len(model.parameters)
+        self.lenEstimatedPar = len(model().parameters) #len(model.parameters)
         self.objFunc = objFunc
         
-        self.varNames = varnames(model)
+        self.varNames = model().varnames
         
         self.model = model
         self.optnames = optnames
@@ -210,7 +210,7 @@ class Objective:
             self.lenVariables = len(self.varNames)
             self.parNames = []
             for i in range(self.lenEstimatedPar):
-                self.parNames.append(get_name(self.model.parameters[i]))
+                self.parNames.append(get_name(self.model().parameters[i]))
             self.senses = self.calculateSensitivities(self.model)
             self.sensModel = self.model.clone()
             self.addVars(self.sensModel, self.senses)
@@ -357,7 +357,7 @@ class Objective:
         for i in range(lenOrdObsVarNames):
             globalMatrix.append([])
             nameMatrix.append([])
-            for j in model.parameters:
+            for j in model().parameters:
                 globalMatrix[-1].append(globalSums[k])
                 nameMatrix[-1].append(instantSMatrix[k][0])
                 k += 1
