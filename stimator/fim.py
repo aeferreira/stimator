@@ -45,7 +45,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     
     #ensure m has init attr
     inits = {}
-    for x in varnames(m):
+    for x in m().varnames:
         inits[str(x)] = 0.0
     setattr(m, 'init', state(**inits))
     
@@ -88,7 +88,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     
     #keep indexes of variables considered
     if vars is not None:
-        vnames = varnames(m)
+        vnames = m().varnames
         xindexes = []
         for vname in vars:
             for i,y in enumerate(vnames):

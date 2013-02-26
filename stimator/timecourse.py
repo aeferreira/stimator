@@ -380,7 +380,7 @@ class Solutions(object):
             sol.orderByNames(varnames)
 
     def orderByModelVars(self, amodel):
-        vnames = [x for x in model.varnames(amodel)]
+        vnames = [x for x in amodel().varnames]
         self.orderByNames(vnames)
 
 def readTCs(source, filedir = None, intvarsorder = None, names = None, verbose = False):

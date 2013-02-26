@@ -29,7 +29,7 @@ def solve(model,
           title = None):
     
     salg=integrate._odepack.odeint
-    names = [x for x in varnames(model)]
+    names = [x for x in model().varnames]
 
     #get initial values, possibly from a state in the model
     if isinstance(initial, str) or isinstance(initial, StateArray):
@@ -94,7 +94,7 @@ class ModelSolver(object):
           changing_pars = None):
         self.model = model.clone()
         self.salg=integrate._odepack.odeint
-        self.names = [x for x in varnames(self.model)]
+        self.names = [x for x in self.model().varnames]
         self.changing_pars = changing_pars
         if self.changing_pars is None:
             self.changing_pars = []
@@ -107,7 +107,7 @@ class ModelSolver(object):
         for ipar, parname in enumerate(self.changing_pars):
             if parname.startswith('init'):
                 varname = parname.split('.')[-1]
-                ix = varnames(self.model).index(varname)
+                ix = self.model().varnames.index(varname)
                 mapinit2pars.append((ix,ipar))
             else:
                 self.par_enumeration.append((ipar,parname))
@@ -130,7 +130,7 @@ class ModelSolver(object):
         scale = float(self.times[-1] - t0)
         self.scale = scale
         #scale = 1.0
-        self.expose_enum = [0.0 for i in range(len(reactions(self.model)))]
+        self.expose_enum = [0.0 for i in range(len(self.model().reactions))]
         self.f = getdXdt_exposing_rbc(self.model, self.expose_enum, scale=scale, t0=t0)
         self.t  = (self.times-t0)/scale  # this scales time points
         self.title = title
@@ -159,7 +159,7 @@ class ModelSolver(object):
             for (ip, pname) in self.par_enumeration:
                 setattr(self.model, pname, par_values[ip])
             y0[self.vars_initindexes] = par_values[self.pars_initindexes]
-        vs = reactions(self.model)
+        vs = self.model().reactions
         ratebytecode = compile_rates(self.model, vs, with_uncertain = False)
         for i, rbc in enumerate(ratebytecode):
             self.expose_enum[i] = (i,rbc)

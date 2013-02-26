@@ -7,8 +7,6 @@ Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
-from model import varnames
-
 
 def _transform2array(vect):
     if isinstance(vect, float) or isinstance(vect, int):
@@ -48,7 +46,7 @@ def getFullTCvarIndexes(model, tcs):
             if nnan >= nt-1: continue
             varindexes.append(ivar)
             vname = data.names[ivar]
-            indx = varnames(model).index(vname)
+            indx = model().varnames.index(vname)
             modelvarindexes.append(indx)
         alltcvarindexes.append(array(varindexes, int))
         allmodelvarindexes.append(array(modelvarindexes,int))

@@ -466,21 +466,21 @@ class Model(ModelObject):
             return c
         raise AttributeError( name + ' is not defined for this model')
     
-##     def __findComponent(self, name):
-##         if name in self._ownparameters:
-##             return -1, 'parameters'
-##         c = findWithNameIndex(name, self.__reactions)
-##         if c>=0 :
-##             return c, 'reactions'
-##         try:
-##             c = self.__variables.index(name)
-##             return c, 'variables'
-##         except:
-##             pass
-##         c = findWithNameIndex(name, self.__transf)
-##         if c>=0 :
-##             return c, 'transf'
-##         raise AttributeError( name + ' is not a component in this model')
+    def __findComponent(self, name):
+        if name in self._ownparameters:
+            return -1, 'parameters'
+        c = findWithNameIndex(name, self.__reactions)
+        if c>=0 :
+            return c, 'reactions'
+        try:
+            c = self.__variables.index(name)
+            return c, 'variables'
+        except:
+            pass
+        c = findWithNameIndex(name, self.__transf)
+        if c>=0 :
+            return c, 'transf'
+        raise AttributeError( name + ' is not a component in this model')
 
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):

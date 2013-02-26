@@ -313,12 +313,12 @@ def test_iter_reactions():
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.v4 = react("B   ->  "  , "2*B")
     m.D  = variable("-2 * D")
-    rr = reactions(m)
+    rr = m().reactions
     assert isinstance(rr, list)
     assert len(rr) == 5
-    names = [get_name(v) for v in reactions(m)]
-    rates = [v() for v in reactions(m)]
-    reags = [v._reagents for v in reactions(m)]
+    names = [get_name(v) for v in m().reactions]
+    rates = [v() for v in m().reactions]
+    reags = [v._reagents for v in m().reactions]
     assert names[0] == 'v1'
     assert names[1] == 'v2'
     assert names[2] == 'v3'
@@ -343,11 +343,11 @@ def test_iter_transf():
     m.D  = variable("-2 * D")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
-    rr = transformations(m)
+    rr = m().transformations
     assert isinstance(rr, list)
     assert len(rr) == 2
-    names = [get_name(v) for v in transformations(m)]
-    rates = [v() for v in transformations(m)]
+    names = [get_name(v) for v in m().transformations]
+    rates = [v() for v in m().transformations]
     assert names[0] == 't1'
     assert names[1] == 't2'
     assert rates[0] == 'A*4 + C'
@@ -360,7 +360,7 @@ def test_iter_variables():
     m.v2 = react("    -> A"  , rate = 1.0)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.D  = variable("-2 * D")
-    xx = varnames(m)
+    xx = m().varnames
     assert isinstance(xx, list)
     assert len(xx) == 4
     assert xx == ['A', 'B', 'C', 'D']
@@ -372,7 +372,7 @@ def test_iter_extvariables():
     m.v2 = react("    -> A"  , rate = 1.0)
     m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.B  = 0.5
-    xx = extvariables(m)
+    xx = m().extvariables
     assert isinstance(xx, list)
     assert len(xx) == 1
     assert xx == ['B']
@@ -394,12 +394,12 @@ def test_iter_parameters():
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
-    pp = parameters(m)
+    pp = m().parameters
     assert isinstance(pp, list)
     assert len(pp) == 4
-    names = [get_name(x) for x in parameters(m)]
+    names = [get_name(x) for x in m().parameters]
     assert names.sort() == ['B', 'myconstant','Km3', 'V3'].sort()
-    values = [x for x in parameters(m)]
+    values = [x for x in m().parameters]
     values.sort()
     should_values = [2.2, 4.0, 0.5, 4.0]
     should_values.sort()
@@ -424,10 +424,10 @@ def test_iter_uncertain():
     m.init = state(A = 1.0, C = 1, D = 1)
     m.afterwards = state(A = 1.0, C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
-    uu = uncertain(m)
+    uu = m().uncertain
     assert isinstance(uu, list)
     assert len(uu) == 3
-    names = [get_name(x) for x in uncertain(m)]
+    names = [get_name(x) for x in m().uncertain]
     for n in ['V3', 'Km3', 'afterwards.C']:
         assert n in names
     should_values = {'V3':(0.1, 1.0), 'Km3':(0.0,5.0), 'afterwards.C':(1.0,3.0)}
@@ -454,7 +454,7 @@ def test_iter_state():
     m.afterwards = state(C = 2, D = 1)
     m.afterwards.C.uncertainty(1,3)
     initnames = [i[0] for i in m.init]
-    assert len(initnames) == len(varnames(m))
+    assert len(initnames) == len(m().varnames)
     afternames = [i[0] for i in m.afterwards]
     assert len(afternames) == 2
     initlist = [(i,j) for i,j in m.init]
@@ -519,13 +519,13 @@ def test_reassignment3():
     m = Model("My first model")
     m.v1 = react("A->B", 4)
     m.v2 = react("B->C", 2.0)
-    xx = varnames(m)
+    xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'C']
     check, msg = m.checkRates()
     assert check 
     m.v2 = react("B->D", 2.0)
-    xx = varnames(m)
+    xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'D']
     check, msg = m.checkRates()
@@ -537,13 +537,13 @@ def test_reassignment4():
     m = Model("My first model")
     m.v1 = react("A->B", 4)
     m.v2 = react("B->C", 2.0)
-    xx = varnames(m)
+    xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'C']
     check, msg = m.checkRates()
     assert check 
     m.v2 = 3.14
-    xx = varnames(m)
+    xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'D']
     check, msg = m.checkRates()
@@ -559,9 +559,9 @@ def test_reassignment5():
     check, msg = m.checkRates()
     assert check 
     m.Km = react("B->D", 2.0)
-    xx = variables(m)
+    xx = m().variables
     assert len(xx) == 3
-    names = [x for x in varnames(m)]
+    names = [x for x in m().varnames]
     assert names == ['A', 'B', 'D']
     check, msg = m.checkRates()
     assert check 

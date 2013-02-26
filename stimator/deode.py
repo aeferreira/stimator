@@ -3,11 +3,8 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2010 António Ferreira
+Copyright 2005-2013 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-
-
-
 
 import de
 from numpy import *
@@ -40,7 +37,7 @@ class DeODESolver(de.DESolver):
                     dump_pars=False,initial = 'init'):
         self.model    = model
         self.tc       = tcs
-        self.varnames = varnames(model)
+        self.varnames = model().varnames
         self.endTicker        = anEndComputationTicker
         self.msgTicker        = aMsgTicker
         self.dump_pars        = dump_pars
@@ -48,7 +45,7 @@ class DeODESolver(de.DESolver):
         #reorder variables according to model
         self.tc.orderByModelVars(self.model)
 
-        pars = uncertain(model)
+        pars = model().uncertain
         mins = array([u.min for u in pars])
         maxs = array([u.max for u in pars])
         
@@ -84,7 +81,7 @@ class DeODESolver(de.DESolver):
         self.times = []
         for data in self.tc:
             X0 = []
-            for ix, xname in enumerate(varnames(model)):
+            for ix, xname in enumerate(model().varnames):
                 if xname in data.names:
                     X0.append(data[xname][0])
                 else:
@@ -100,7 +97,7 @@ class DeODESolver(de.DESolver):
         
         # find uncertain initial values
         mapinit2trial = []
-        for iu, u in enumerate(uncertain(self.model)):
+        for iu, u in enumerate(self.model().uncertain):
             if get_name(u).startswith('init'):
                 varname = get_name(u).split('.')[-1]
                 ix = self.varnames.index(varname)
@@ -111,8 +108,9 @@ class DeODESolver(de.DESolver):
         self.criterium = tcmetrics.getCriteriumFunction(weights, self.model,self.tc)
 
         # open files to write parameter progression
+        parnames = [get_name(u) for u in self.model().uncertain]
         if self.dump_pars:
-            self.parfilehandes = [open(par[0]+".par", 'w') for par in model.parameters]
+            self.parfilehandes = [open(parname+".par", 'w') for parname in parnames]
 
     def computeSolution(self,i,trial, dense = False):
         """Computes solution for timecourse i, given parameters trial."""
@@ -192,7 +190,7 @@ class DeODESolver(de.DESolver):
         #generate best time-courses
         best.tcdata = []
 
-        pars = [get_name(uncertain(self.model)[i]) for i in range(len(self.bestSolution))]
+        pars = [get_name(self.model().uncertain[i]) for i in range(len(self.bestSolution))]
         parvalues = [value for value in self.bestSolution]
         parszip = zip(pars, parvalues)
         self.model.set_uncertain(self.bestSolution)
