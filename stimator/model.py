@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator Model related classes
-# Copyright António Ferreira 2006-2012
+# Copyright António Ferreira 2006-2013
 #----------------------------------------------------------------------------
 import re
 import math
@@ -34,8 +34,8 @@ fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 fracnumber = re.compile(fracnumberpattern, re.IGNORECASE)
 realnumber = re.compile(realnumberpattern, re.IGNORECASE)
+
 stoichiompattern   = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
-#  \d*
 chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+")?)\s*(?P<variable>[_a-z]\w*)\s*$"
 
 stoichiom  = re.compile(stoichiompattern,    re.IGNORECASE)
