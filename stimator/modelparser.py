@@ -389,7 +389,7 @@ class StimatorParser:
     def rateDefParse(self, line, loc, match):
         #process name
         name = match.group('name')
-        if model.findWithName(name, model.reactions(self.model)): #repeated declaration
+        if self.model().reactions.get(name): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         #process rate
@@ -432,7 +432,7 @@ class StimatorParser:
     def dxdtDefParse(self, line, loc, match):
         name = match.group('name')
         dxdtname = "d_%s_dt"%name
-        if model.findWithName(dxdtname, model.reactions(self.model)): #repeated declaration
+        if self.model().reactions.get(dxdtname): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
@@ -452,7 +452,7 @@ class StimatorParser:
     
     def transfDefParse(self, line, loc, match):
         name = match.group('name')
-        if model.findWithName(name, model.transformations(self.model)): #repeated declaration
+        if self.model().transformations.get(name): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
@@ -480,7 +480,7 @@ class StimatorParser:
     
     def stateDefParse(self, line, loc, match):
         name = match.group('name')
-        if model.findWithName(name, model.reactions(self.model)): #repeated declaration
+        if self.model().reactions.get(name): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         state = match.group('value')
@@ -496,7 +496,7 @@ class StimatorParser:
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
-        if model.findWithName(name, model.parameters(self.model)): #repeated declaration
+        if self.model().parameters.get(name): #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         

@@ -119,12 +119,6 @@ def massActionStr(k = 1.0, reagents = []):
         res = res + '*' + factors
     return res
 
-def findWithName(aname, alist):
-    for i in alist:
-        if get_name(i) == aname:
-            return i
-    return None
-
 def findWithNameIndex(aname, alist):
     for i,elem in enumerate(alist):
         if get_name(elem) == aname:
@@ -399,12 +393,12 @@ def _ConvertPair2Reaction(value):
 
 class Model(ModelObject):
     def __init__(self, title = ""):
-        self.__dict__['_Model__reactions']         = []
+        self.__dict__['_Model__reactions']         = QueriableList()
         self.__dict__['_Model__variables']         = []
         self.__dict__['_Model__extvariables']      = []
         self.__dict__['_ownparameters']            = {}
-        self.__dict__['_Model__transf']            = []
-        self.__dict__['_Model__states']            = []
+        self.__dict__['_Model__transf']            = QueriableList()
+        self.__dict__['_Model__states']            = QueriableList()
         ModelObject.__init__(self)
         self.__dict__['_Model__m_Parameters']      = None
         self['title'] = title
@@ -459,37 +453,34 @@ class Model(ModelObject):
             return self.__dict__[name]
         if name in self._ownparameters:
             return self._ownparameters[name]
-        c = findWithName(name, self.__reactions)
+        c = self.__reactions.get(name)
         if c :
             return c
         if name in self.__variables:
             return name
-##         c = findWithName(name, self.__variables)
-##         if c :
-##             return get_name(c)
-        c = findWithName(name, self.__transf)
+        c = self.__transf.get(name)
         if c :
             return c
-        c = findWithName(name, self.__states)
+        c = self.__states.get(name)
         if c :
             return c
         raise AttributeError( name + ' is not defined for this model')
     
-    def __findComponent(self, name):
-        if name in self._ownparameters:
-            return -1, 'parameters'
-        c = findWithNameIndex(name, self.__reactions)
-        if c>=0 :
-            return c, 'reactions'
-        try:
-            c = self.__variables.index(name)
-            return c, 'variables'
-        except:
-            pass
-        c = findWithNameIndex(name, self.__transf)
-        if c>=0 :
-            return c, 'transf'
-        raise AttributeError( name + ' is not a component in this model')
+##     def __findComponent(self, name):
+##         if name in self._ownparameters:
+##             return -1, 'parameters'
+##         c = findWithNameIndex(name, self.__reactions)
+##         if c>=0 :
+##             return c, 'reactions'
+##         try:
+##             c = self.__variables.index(name)
+##             return c, 'variables'
+##         except:
+##             pass
+##         c = findWithNameIndex(name, self.__transf)
+##         if c>=0 :
+##             return c, 'transf'
+##         raise AttributeError( name + ' is not a component in this model')
 
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
@@ -641,6 +632,13 @@ def _test_with_everything(valueexpr, model, obj):
 ## def varnames(model):
 ##     return model._Model__variables
 
+class QueriableList(list):
+    def get(self, aname):
+        for i in self:
+            if get_name(i) == aname:
+                return i
+        return None
+        
 
 class ModelQuerier(object):
     """A class to query a model object as a whole."""
@@ -661,7 +659,7 @@ class ModelQuerier(object):
     reactions = property(get_reactions)
 
     def get_parameters(self):
-        return list(self.get_iparameters())
+        return QueriableList(self.get_iparameters())
     parameters = property(get_parameters)
 
     def get_iparameters(self):
@@ -686,7 +684,7 @@ class ModelQuerier(object):
     transformations = property(get_transformations)
 
     def get_uncertain(self):
-        return list(self.get_iuncertain())
+        return QueriableList(self.get_iuncertain())
     uncertain = property(get_uncertain)
 
     def get_iuncertain(self):
