@@ -513,9 +513,10 @@ class Model(ModelObject):
                 res += str(i)
         for p in self.__states:
             res += get_name(p) +': '+ str(p) + '\n'
-        for p in parameters(self):
+        mq = self()
+        for p in mq.parameters:
             res += get_name(p) +' = '+ str(p) + '\n'
-        for u in uncertain(self):
+        for u in mq.uncertain:
             res += get_name(u) + ' = ? (' + str(u.min) + ', ' + str(u.max) + ')\n'
         for k in self._ModelObject__metadata:
             res += "%s: %s\n"%(str(k), str(self._ModelObject__metadata[k]))
@@ -535,7 +536,7 @@ class Model(ModelObject):
                 newdict[i[0]]=i[1]
             setattr(m, get_name(s), StateArray(newdict, get_name(s)))
         #handle uncertainties
-        for u in uncertain(self):
+        for u in self().uncertain:
             loc = get_name(u).split('.')
             currobj = m
             for attribute in loc:
@@ -595,6 +596,9 @@ class Model(ModelObject):
                                 self.__extvariables.append(vname)
                         else:
                             self.__variables.append(vname)
+    def __call__(self):
+        mq = ModelQuerier(self)
+        return mq
 
 def _test_with_everything(valueexpr, model, obj): 
     locs = {}
@@ -618,7 +622,7 @@ def _test_with_everything(valueexpr, model, obj):
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     #part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
-    for i in varnames(model):
+    for i in model._Model__variables:
         vardict[i]=1.0
     vardict['t'] = 1.0
     locs.update(vardict)
@@ -634,51 +638,68 @@ def _test_with_everything(valueexpr, model, obj):
 #----------------------------------------------------------------------------
 #         Queries for Model network collections
 #----------------------------------------------------------------------------
+## def varnames(model):
+##     return model._Model__variables
 
-def varnames(model):
-    return model._Model__variables
 
-def extvariables(model):
-    return model._Model__extvariables
+class ModelQuerier(object):
+    """A class to query a model object as a whole."""
+    
+    def __init__(self, model):
+        self.m = model
+    
+    def get_varnames(self):
+        return self.m._Model__variables
+    varnames = property(get_varnames)
+    
+    def get_extvariables(self):
+        return self.m._Model__extvariables
+    extvariables = property(get_extvariables)
 
-def reactions(model):
-    return model._Model__reactions
+    def get_reactions(self):
+        return self.m._Model__reactions
+    reactions = property(get_reactions)
 
-def parameters(model):
-    return list(iparameters(model))
+    def get_parameters(self):
+        return list(self.get_iparameters())
+    parameters = property(get_parameters)
 
-def iparameters(model):
-    for p in model._ownparameters.values():
-        yield p
-    collections = [model._Model__reactions, model._Model__transf]
-    for c in collections:
-        for v in c:
-            for iname, value in v._ownparameters.items():
-                ret = constValue(value)
-                retname = get_name(v) + '.' + iname
-                ret.initialize(retname)
+    def get_iparameters(self):
+        for p in self.m._ownparameters.values():
+            yield p
+        collections = [self.m._Model__reactions, self.m._Model__transf]
+        for c in collections:
+            for v in c:
+                for iname, value in v._ownparameters.items():
+                    ret = constValue(value)
+                    retname = get_name(v) + '.' + iname
+                    ret.initialize(retname)
+                    if value.bounds:
+                        b = Bounds(value.bounds.min, value.bounds.max)
+                        set_name(b, retname)
+                        ret.bounds = b
+                    yield ret
+    iparameters = property(get_iparameters)
+
+    def get_transformations(self):
+        return self.m._Model__transf
+    transformations = property(get_transformations)
+
+    def get_uncertain(self):
+        return list(self.get_iuncertain())
+    uncertain = property(get_uncertain)
+
+    def get_iuncertain(self):
+        for p in self.get_iparameters():
+            if p.bounds:
+                yield p.bounds
+        for s in self.m._Model__states:
+            for iname, value in s:
                 if value.bounds:
-                    b = Bounds(value.bounds.min, value.bounds.max)
-                    set_name(b, retname)
-                    ret.bounds = b
-                yield ret
-
-def transformations(model):
-    return model._Model__transf
-
-def uncertain(model):
-    return list(iuncertain(model))
-
-def iuncertain(model):
-    for p in iparameters(model):
-        if p.bounds:
-            yield p.bounds
-    for s in model._Model__states:
-        for iname, value in s:
-            if value.bounds:
-                ret = Bounds(value.bounds.min, value.bounds.max)
-                set_name(ret, get_name(s) + '.' + iname)
-                yield ret
+                    ret = Bounds(value.bounds.min, value.bounds.max)
+                    set_name(ret, get_name(s) + '.' + iname)
+                    yield ret
+    iuncertain = property(get_iuncertain)
 
 class BadStoichError(Exception):
     """Used to flag a wrong stoichiometry expression"""
@@ -710,7 +731,7 @@ def test():
     m.D  = variable("-2 * D")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
-    m.V3 = 0.5
+    m.V3 = 0.6
     m.V3 = [0.1, 1.0]
     m.Km3 = 4
     m.Km3 = 1,6
@@ -724,6 +745,11 @@ def test():
     
     m['where'] = 'in model'
     m['for what'] = 'testing'
+    
+##     print m().varnames()
+##     print m().extvariables()
+##     print m().reactions()
+
     
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'
@@ -747,28 +773,28 @@ def test():
     print
     print '********** Testing iteration of components *****************'
     print 'iterating reactions(m)'
-    for v in reactions(m):
+    for v in m().reactions:
         print get_name(v), ':', v(), '|', v._reagents, '->', v._products
     print '\niterating reactions(m) with fully qualified rates'
-    for v in reactions(m):
+    for v in m().reactions:
         print get_name(v), ':', v(fully_qualified = True), '|', v._reagents, '->', v._products
     print '\niterating transformations(m)'
-    for v in transformations(m):
+    for v in m().transformations:
         print get_name(v), ':', v()
     print '\niterating transformations(m) with fully qualified rates'
-    for v in transformations(m):
+    for v in m().transformations:
         print get_name(v), ':', v(fully_qualified = True)
     print '\niterating varnames(m)'
-    for x in varnames(m):
+    for x in m().varnames:
         print x
     print '\niterating extvariables(m)'
-    for x in extvariables(m):
+    for x in m().extvariables:
         print x
     print '\niterating parameters(m)'
-    for p in parameters(m):
+    for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
     print '\niterating uncertain(m)'
-    for x in uncertain(m):
+    for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     
     print '\niterating m.init'
@@ -798,11 +824,11 @@ def test():
 
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
-    print len(parameters(m)), 'parameters total'
+    print len(m().parameters), 'parameters total'
     print '\nmaking m.myconstant = 5.0'
     m.myconstant = 5.0
     print 'm.myconstant :',m.myconstant
-    print len(parameters(m)), 'parameters total'
+    print len(m().parameters), 'parameters total'
 
     print '\nmaking m.myconstant = react("A+B -> C"  , 3)'
     try:
@@ -810,41 +836,41 @@ def test():
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.myconstant :',m.myconstant, '(still!)'
-    print len(parameters(m)), 'parameters total'
+    print len(m().parameters), 'parameters total'
     print '\nmaking m.v2 = 3.14'
     try:
         m.v2 = 3.14
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.v2 :',type(m.v2), '\n(still a Reaction)'
-    print len(parameters(m)), 'parameters total'
+    print len(m().parameters), 'parameters total'
     print
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' , m.V3.bounds
     print 'iterating m.uncertain'
-    for x in uncertain(m):
+    for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
-    print len(uncertain(m)), 'uncertain parameters total'
+    print len(m().uncertain), 'uncertain parameters total'
     print '\nmaking m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' ,m.V3.bounds
-    print len(uncertain(m)), 'uncertain parameters total'
+    print len(m().uncertain), 'uncertain parameters total'
     print '\nmaking m.V4 = [0.1, 0.6]'
     m.V4 = [0.1, 0.6]
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
-    print len(uncertain(m)), 'uncertain parameters total'
+    print len(m().uncertain), 'uncertain parameters total'
     print 'iterating m.uncertain'
-    for x in uncertain(m):
+    for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print '\nmaking m.V4 = 0.38'
     m.V4 = 0.38
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
-    print len(uncertain(m)), 'uncertain parameters total'
+    print len(m().uncertain), 'uncertain parameters total'
     print 'iterating m.uncertain'
-    for x in uncertain(m):
+    for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print '\nmaking m.init.A = 5.0'
     m.init.A = 5.0
