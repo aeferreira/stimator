@@ -40,8 +40,8 @@ def compute():
     biasStandardDeviation = 0.03
 
     objectiveFunction = 'kremling'
-    populationSize = 200
-    maxGenerations = 5000
+    populationSize = 100
+    maxGenerations = 200
     DEStrategy = 'Rand1Bin'
     diffScale = 0.5
     crossoverProb = 0.7
@@ -49,6 +49,7 @@ def compute():
     useClassRandomNumberMethods = True
     simulatedError = 3
     absoluteMeasurementError = 0.00175
+    allTime1 = time()
     
     solver = GDE3Solver(models, 
                            absoluteMeasurementError, 
@@ -64,8 +65,8 @@ def compute():
                            cutoffEnergy, 
                            useClassRandomNumberMethods)#, dif = '-')
     solver.Solve()
-    allSolutions = (solver.completeListOfSolutions,
-                    solver.completeListOfObjectives)
+##     allSolutions = (solver.completeListOfSolutions,
+##                     solver.completeListOfObjectives)
     finalSolutions = (solver.fronts, solver.frontObj)
     
     print 
@@ -75,9 +76,9 @@ def compute():
 ##     print '\n\nfinalSolutions\n', finalSolutions
 ##     print "%d fronts"%(len(finalSolutions[0]))
     print '%d generations'%(solver.generation-1)
-    print 'front lengths:'
-    print [len(i) for i in solver.completeListOfSolutions]
-    print
+##     print 'front lengths:'
+##     print [len(i) for i in solver.completeListOfSolutions]
+##     print
     print 'Final front:'
     
     f = open ('glyoxalase_discrim_2m_L2w_final_front.txt', 'w')

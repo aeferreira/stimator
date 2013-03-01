@@ -23,7 +23,7 @@ def compute():
     m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 0, e2 = 0)
 
     m2 = m1.clone()
-    m2[title] = 'model 2'
+    m2['title'] = 'model 2'
     m2.r1 = react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
     m2.kcat1 = 17046
     m2.km11 = 0.875
@@ -40,8 +40,8 @@ def compute():
     biasStandardDeviation = 0.03
 
     objectiveFunction = 'L2'
-    populationSize = 200
-    maxGenerations = 5000
+    populationSize = 100
+    maxGenerations = 20
     DEStrategy = 'Rand1Bin'
     diffScale = 0.5
     crossoverProb = 0.7
@@ -49,6 +49,8 @@ def compute():
     useClassRandomNumberMethods = True
     simulatedError = 3
     absoluteMeasurementError = 0.00175
+
+    allTime1 = time()
     
     solver = GDE3Solver(models, 
                            absoluteMeasurementError, 
@@ -64,20 +66,13 @@ def compute():
                            cutoffEnergy, 
                            useClassRandomNumberMethods)#, dif = '-')
     solver.Solve()
-    allSolutions = (solver.completeListOfSolutions,
-                    solver.completeListOfObjectives)
     finalSolutions = (solver.fronts, solver.frontObj)
     
     print 
     print "Finished!"
     print "Total time", time() - allTime1
     
-##     print '\n\nfinalSolutions\n', finalSolutions
-##     print "%d fronts"%(len(finalSolutions[0]))
     print '%d generations'%(solver.generation-1)
-    print 'front lengths:'
-    print [len(i) for i in solver.completeListOfSolutions]
-    print
     print 'Final front:'
     
     f = open ('glyoxalase_discrim_2m_L2_final_front.txt', 'w')

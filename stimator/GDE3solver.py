@@ -1,23 +1,10 @@
-# -*- coding: ISO-8859-1 -*-
-
-
-#    PythonEquations is a collection of equations expressed as Python classes
-#    Copyright (C) 2007 James R. Phillips
-#    2548 Vera Cruz Drive
-#    Birmingham, AL 35235 USA
-#    email: zunzun@zunzun.com
-#
-#    Version info: $  $
-#
-#    License: BSD-style (see LICENSE.txt in main source directory)
-
+# Project S-timator
 
 import numpy, tcdif
 from de import DESolver
 from numpy import transpose, array, float64, zeros, empty
 from time import time
 import random
-
 
 def dominanceComparison(energyListOld, energyListNew):
     """ This function tests the dominance relationship the solutions of the new and the previous generations."""
@@ -37,8 +24,9 @@ def dominanceComparison(energyListOld, energyListNew):
     return dominanceList
 
 class Node:
-    """ This class creates a 'Node' object, which basically contains an index that can be incremented 
-    by method nextSiblingNode to iterate over a list of sibling nodes in a tree. """
+    """Node object, which basically contains an index that can be incremented 
+    by method nextSiblingNode to iterate over a list of sibling nodes in a tree.
+    """
 
     def __init__(self, nodeIndex):
         """This function creates the 'Node' object."""
@@ -605,8 +593,8 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
         if pop_removed == True:
             print 'distancesAndKeys minimum', x[min(distancesAndKeys)[1]]
         del x[min(distancesAndKeys)[1]]
-        for i in x.keys(): #Confirmar se este objecto deve ser retornado com listas ou arrays
-            x[i] = list(x[i]) #de modo a ser usado pelas outras funções na geração seguinte.
+        for i in x.keys(): #TODO confirm if this object should be returned as list or Arrays
+            x[i] = list(x[i]) #dto be used by other functions in next generations
         return x
 
 
@@ -708,10 +696,10 @@ if __name__ == "__main__":
         for j in range(2, 5):
             if (i == 0 and j == 0):
                 print '\n\n\n\n\n'
-                ndsaTest(i, j, printOption = False)                    #(numberOfNodes, numberOfObjectives)
+                ndsaTest(i, j, printOption = False) #(numberOfNodes, numberOfObjectives)
                 print '\n\n\n\n\n'
             else:
-                ndsaTest(i, j)                    #(numberOfNodes, numberOfObjectives)
+                ndsaTest(i, j)       #(numberOfNodes, numberOfObjectives)
             counter += 1
             print 'test', counter
     print 'Tests finished successfully!'
