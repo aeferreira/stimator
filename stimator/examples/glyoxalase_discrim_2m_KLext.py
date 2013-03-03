@@ -73,7 +73,7 @@ def compute():
     solver.Solve()
     finalSolutions = (solver.fronts, solver.frontObj)
     
-    print 
+    print '============================================='
     print "Finished!"
     print "Total time", time() - allTime1
     

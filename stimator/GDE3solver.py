@@ -2,26 +2,25 @@
 
 import numpy, tcdif
 from de import DESolver
-from numpy import transpose, array, float64, zeros, empty
 from time import time
 import random
 
-def dominanceComparison(energyListOld, energyListNew):
-    """ This function tests the dominance relationship the solutions of the new and the previous generations."""
-    dominanceList = []
-    for i in range(len(energyListOld)):
-        dominanceTestResult = 0
-        for j in range(len(energyListOld[i])):
-            d = energyListNew[i][j] - energyListOld[i][j]
-            if d <= 0 and dominanceTestResult <=0:
-                dominanceTestResult -= 1
-            elif d >= 0 and dominanceTestResult >=0:
-                dominanceTestResult += 1
+def dominanceComparison(old_energies, new_energies):
+    """ Compute dominance relationship between solutions of two generations."""
+    dominance = []
+    for i in range(len(old_energies)):
+        d_result = 0
+        for j in range(len(old_energies[i])):
+            d = new_energies[i][j] - old_energies[i][j]
+            if d <= 0 and d_result <=0:
+                d_result -= 1
+            elif d >= 0 and d_result >=0:
+                d_result += 1
             else:
-                dominanceTestResult = 0
+                d_result = 0
                 break
-        dominanceList.append(dominanceTestResult)
-    return dominanceList
+        dominance.append(d_result)
+    return dominance
 
 class Node:
     """Node object, which basically contains an index that can be incremented 
@@ -42,9 +41,13 @@ class Node:
 
 class GDE3Solver(DESolver):
 
-    """ This class is an adaptation of DESolver for multiobjective optimizations.
-        This code is based on 
-        Kukkonen, S. and Lampinen, J. (2005) GDE3: The third step of generalized differential evolution, The 2005 IEEE Congress on Evolutionary Computation. """
+    """ 
+    Adaptation of DESolver for multiobjective optimization.
+    Based on 
+    Kukkonen, S. and Lampinen, J. (2005) GDE3: 
+    The third step of generalized differential evolution, 
+    2005 IEEE Congress on Evolutionary Computation. 
+    """
 
     def __init__(self, models, absoluteMeasurementError, toOpt, 
                  objectiveFunction, 
@@ -59,7 +62,7 @@ class GDE3Solver(DESolver):
                  crossoverProb, 
                  cutoffEnergy, 
                  useClassRandomNumberMethods, 
-                 dif = None,
+                 dif = '0',
                  keep_track = False):
         
         self.keep_track = keep_track
@@ -134,7 +137,7 @@ class GDE3Solver(DESolver):
         # storage arrays
         self.fronts = [[]]    # holds fronts created in current generation
         self.frontObj = [[]]  # holds objectives for current generation
-        self.ftimes = []
+        self.gen_times = []
 
     def EnergyFunction(self, trial):
         trialDic = {}
@@ -147,8 +150,7 @@ class GDE3Solver(DESolver):
         return energies, False
 
     def computeGeneration(self):
-        # TODO: parallelization here
-        # TODO: this is for performance on non-parallelized hardware
+        # Hit max generations with no improvement
         if self.generationsWithNoImprovement > 20:
             self.exitCode = 4
             return
@@ -160,9 +162,10 @@ class GDE3Solver(DESolver):
         if self.atSolution:
             self.exitCode = 1
             return
-        if self.generation == 0:      #compute energies for generation 0
-            print '\n\nComputing generation 0.\n'
-            self.ftimes = []
+        # generation 0: initialization
+        if self.generation == 0:
+            print '------------------------------------\nGeneration 0'
+            self.gen_times = []
             if self.keep_track:
                 self.frontsfile = open('fronts.txt', 'w')
                 self.objsfile = open('objectives.txt', 'w')
@@ -173,27 +176,26 @@ class GDE3Solver(DESolver):
             for candidate in range(self.populationSize):
                 trialEnergies, self.atSolution = self.EnergyFunction(self.population[candidate]) #This argument must include the optimization candidates AND the fixed initial values
                 #print 'energies in computeGeneration', trialEnergies
-                if self.dif == '+':
+                if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
                         for j in range(i+1,self.nmodels):
-                            difs.append(trialEnergies[i] - trialEnergies[j])
-                    self.generationEnergyList.append(difs)
-                elif self.dif == '-':
-                    difs = []
-                    for i in range(self.nmodels):
-                        for j in range(i+1,self.nmodels):
-                            difs.append(trialEnergies[j] - trialEnergies[i])
+                            res = trialEnergies[i] - trialEnergies[j]
+                            if self.dif == '-':
+                                res = -1.0 * res
+                            difs.append(res)
                     self.generationEnergyList.append(difs)
                 else:
                     self.generationEnergyList.append(trialEnergies)
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
-            self.ftimes.append(timeElapsed)
+            self.gen_times.append(timeElapsed)
         
-        else: # generation >= 1
+        else: # generation >= 0
             time0 = time()
-            print '\n\ngeneration', self.generation, '\n'
+            print '------------------------------------\nGeneration %d'% self.generation
+
+            #print '\n\nGeneration', self.generation, '\n'
             self.oldGeneration = self.population
             global objectiveDic
             objectiveDic = {}
@@ -205,7 +207,7 @@ class GDE3Solver(DESolver):
             
             newPopulationList = []
             oldPopulationList = [list(i) for i in self.population]
-            
+            print "Generating new candidates...",
             for candidate in range(self.populationSize):
                 # generate new solutions.,reject those out-of-bounds or repeated
                 insideBoundaries = False
@@ -228,7 +230,7 @@ class GDE3Solver(DESolver):
                 
                 self.newPopulation.append(self.trialSolution)
                 
-                trialEnergies, self.atSolution = self.EnergyFunction(self.newPopulation[candidate])
+                trialEnergies, self.atSolution = self.EnergyFunction(self.trialSolution)
 
                 if self.dif == '+':
                     difs = []
@@ -247,9 +249,9 @@ class GDE3Solver(DESolver):
               
 ##             print self.generation,': len new energy list', len(self.newGenerationEnergyList)
             
-            print "finished generating new candidates"
+            print "done."
             energyComparison = dominanceComparison(self.newGenerationEnergyList, self.generationEnergyList)
-            print 'dominance comparison with previous generation:'
+            print 'Dominance comparison with previous generation:'
             print energyComparison
             
             dicIndex = 1
@@ -330,7 +332,7 @@ class GDE3Solver(DESolver):
 ##             print 'fronts:',[len(i) for i in self.fronts]
 ##             print 'pop:',len(self.population)
 
-            print "\ngeneration %d finished"%(self.generation)
+            print "Generation %d finished"%self.generation
             print 'number of new better solutions', newBetterSols
             print 'room for improvement', self.roomForImprovement
             
@@ -340,7 +342,7 @@ class GDE3Solver(DESolver):
                 self.generationsWithNoImprovement = 0
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
-            self.ftimes.append(timeElapsed)
+            self.gen_times.append(timeElapsed)
             
             if self.keep_track:
                 for front in self.fronts:
@@ -552,7 +554,7 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
                 if k not in extremes:
                     extremes.append(k)
         for i in keys:
-            x[i] = array(x[i])
+            x[i] = numpy.array(x[i])
         lista =[]
         #Use a fast implementation of the Euclidean distance
         temp = numpy.zeros(len(random.choice(x.values())))
