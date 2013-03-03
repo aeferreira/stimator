@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator dynamical systems related functions
-# Copyright António Ferreira 2006-2012
+# Copyright António Ferreira 2006-2013
 #----------------------------------------------------------------------------
 from model import *
 import math

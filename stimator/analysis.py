@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator Model analysis classes
-# Copyright António Ferreira 2006-2009
+# Copyright António Ferreira 2006-2013
 #----------------------------------------------------------------------------
 import math
 import os

@@ -1,6 +1,6 @@
 # -*- coding: ISO-8859-1 -*-
 
-#Neste ficheiro serao escritas as funçoes objectivo alternativas, i.e. L2, ...
+#Objective functions and time course metrics
 
 import analysis
 from numpy import log, transpose, array, mean, std, float64, random, copy, diag, dot, linalg, trace, pi, append, abs, linspace, nansum, isnan, compress, where, NaN
@@ -165,7 +165,7 @@ class Objective:
         self.t0 = t0
         self.npoints = npoints
         self.tf = tf
-        self.vector = state2array(model,"init")#model.vectorize("init")
+        self.vector = copy(state2array(model,"init"))#model.vectorize("init")
 
         self.lenEstimatedPar = len(model().parameters) #len(model.parameters)
         self.objFunc = objFunc

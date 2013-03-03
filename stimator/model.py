@@ -744,10 +744,6 @@ def test():
     m['where'] = 'in model'
     m['for what'] = 'testing'
     
-##     print m().varnames()
-##     print m().extvariables()
-##     print m().reactions()
-
     
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'
@@ -770,36 +766,36 @@ def test():
 
     print
     print '********** Testing iteration of components *****************'
-    print 'iterating reactions(m)'
+    print 'iterating m().reactions'
     for v in m().reactions:
         print get_name(v), ':', v(), '|', v._reagents, '->', v._products
-    print '\niterating reactions(m) with fully qualified rates'
+    print '\niterating m().reactions with fully qualified rates'
     for v in m().reactions:
         print get_name(v), ':', v(fully_qualified = True), '|', v._reagents, '->', v._products
-    print '\niterating transformations(m)'
+    print '\niterating m().transformations'
     for v in m().transformations:
         print get_name(v), ':', v()
-    print '\niterating transformations(m) with fully qualified rates'
+    print '\niterating m().transformations with fully qualified rates'
     for v in m().transformations:
         print get_name(v), ':', v(fully_qualified = True)
-    print '\niterating varnames(m)'
+    print '\niterating m().varnames:'
     for x in m().varnames:
         print x
-    print '\niterating extvariables(m)'
+    print '\niterating m().extvariables'
     for x in m().extvariables:
         print x
-    print '\niterating parameters(m)'
+    print '\niterating m().parameters'
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
-    print '\niterating uncertain(m)'
+    print '\niterating m().uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     
-    print '\niterating m.init'
+    print '\niterating m.init (a state)'
     for xname, x in m.init:
         print '\t', xname, '=', x
 
-    print '\niterating m.v3'
+    print '\niterating m.v3 (iterates parameters returning (name,value) tuples)'
     for xname, x in m.v3:
         print '\t', xname, '=', x
     print
@@ -816,7 +812,7 @@ def test():
         print 'm.init.B :',m.init.B
     except AttributeError:
         print 'm.init.B access raised exception AttributeError'
-    print 'iterating m.init'
+    print 'iterating m.init returning (name,value) tuples'
     for xname, x in m.init:
         print '\t', xname, '=', x
 
