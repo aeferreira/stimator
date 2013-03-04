@@ -253,7 +253,9 @@ class GDE3Solver(DESolver):
                 else:
                     self.new_generation_energies[p] = trialEnergies
 
-            print "done."
+            timeElapsed = time() - time0
+            print 'done, took %6.3f'% timeElapsed, 's'
+            
             energyComparison = dominanceComparison(self.new_generation_energies, self.generation_energies)
             print 'Dominance comparison with previous generation:'
             print energyComparison
@@ -291,6 +293,7 @@ class GDE3Solver(DESolver):
             self.population = []
             self.generation_energies = []
             
+            self.oldfronts = self.fronts[:]
             self.fronts = []    # holds iterations of fronts in this generation
             self.frontObj = []  # holds objective values for each front
             
@@ -319,11 +322,9 @@ class GDE3Solver(DESolver):
                             self.frontObj[-1].append(numpy.copy(objectiveDic[k]))
                         tempObjDic = {}
             
-##             print 'fronts0:',[len(i) for i in self.fronts]
-##             print 'pop0:',len(self.population)
-            if self.fronts ==[]:
+            if self.fronts == []:
                 self.fronts.append([])
-            if self.frontObj ==[]:
+            if self.frontObj == []:
                 self.frontObj.append([])
             
             # complete pop to self.populationSize and complete last front
@@ -333,12 +334,32 @@ class GDE3Solver(DESolver):
                 self.fronts[-1].append(numpy.copy(solutionDic[i]))
                 self.frontObj[-1].append(numpy.copy(objectiveDic[i]))
             
-##             print 'fronts:',[len(i) for i in self.fronts]
-##             print 'pop:',len(self.population)
+            flengths = [len(i) for i in self.fronts]
+            print 'fronts lengths:', flengths
+            print 'sum =', numpy.sum(flengths)
+            print 'pop:',len(self.population)
+            if len(self.population) != self.populationSize:
+                print "POP size IS DIFFERENT"
+            
+            ## print type(self.fronts[-1])
+            ## print type(self.oldfronts[-1])
+            ## print len(self.fronts[-1])
+            ## print len(self.oldfronts[-1])
+            ## fequal = True
+            ## if len(self.fronts[-1]) != len(self.oldfronts[-1]):
+                ## fequal = False
+            ## else:
+                ## for of, nf in zip(self.fronts[-1],self.oldfronts[-1]):
+                    ## if not numpy.array_equal(of,nf):
+                        ## fequal = False
+                        ## break
+            
+            ## if fequal:
+                ## print 'FRONTS ARE EQUAL'
 
-            print "Generation %d finished"%self.generation
+            print "Generation %d finished" % self.generation
             print 'number of new better solutions', newBetterSols
-            print 'room for improvement', self.roomForImprovement
+            #print 'room for improvement', self.roomForImprovement
             
             if ((not self.trueMetric) and newBetterSols <= self.roomForImprovement and len(self.fronts) == 1) or (self.trueMetric and self.nmodels == 2 and newBetterSols <= self.roomForImprovement):
                 self.generationsWithNoImprovement += 1
