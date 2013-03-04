@@ -1,7 +1,8 @@
-from stimator import Model, react, state
+from stimator import Model, react, state, read_model
 from stimator.GDE3solver import GDE3Solver
 from time import time
 from stimator.utils import write2file
+
 
 def compute():
 
@@ -9,6 +10,20 @@ def compute():
     t0 = 0.0
     tf = 120
     
+    ## m1 = read_model("""
+## title model 1
+## rf: mgo + gsh -> hta, 0.34..
+## rr: hta -> mgo + gsh, 1.01..
+## r1: hta -> sdlt,      kcat1 * e1 * hta  / (km1 + hta)
+## r2: sdlt -> gsh,      kcat2 * e2 * sdlt / (km2 + sdlt)
+## fake1: e1->,          0 ..
+## fake2: e2 ->,         0 ..
+## kcat1 = 8586
+## km1 = 0.223
+## kcat2 = 315
+## km2 = 2.86
+## init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4)
+## """)
     m1 = Model('model 1')
     m1.rf = react("mgo + gsh -> hta", 0.34)
     m1.rr = react("hta -> mgo + gsh", 1.01)

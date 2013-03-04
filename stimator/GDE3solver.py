@@ -143,7 +143,7 @@ class GDE3Solver(DESolver):
                 self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
         
         # working storage arrays
-        self.newGenerationEnergyList = [[] for i in range(self.populationSize)]
+        self.new_generation_energies = [[] for i in range(self.populationSize)]
         
         # storage arrays
         self.fronts = [[]]    # holds fronts created in current generation
@@ -180,26 +180,26 @@ class GDE3Solver(DESolver):
             
             time0 = time()
 
-            self.generationEnergyList = []
-            for candidate in range(self.populationSize):
-                trialEnergies = self.EnergyFunction(self.population[candidate]) #This argument must include the optimization candidates AND the fixed initial values
+            self.generation_energies = []
+            for trial in self.population:
+                energies = self.EnergyFunction(trial)
                 #print 'energies in computeGeneration', trialEnergies
                 if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
                         for j in range(i+1,self.nmodels):
-                            res = trialEnergies[i] - trialEnergies[j]
+                            res = energies[i] - energies[j]
                             if self.dif == '-':
                                 res = -1.0 * res
                             difs.append(res)
-                    self.generationEnergyList.append(difs)
+                    self.generation_energies.append(difs)
                 else:
-                    self.generationEnergyList.append(trialEnergies)
+                    self.generation_energies.append(energies)
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
             self.gen_times.append(timeElapsed)
         
-        else: # generation >= 0
+        else: # generation >= 1
             time0 = time()
             print '------------------------------------\nGeneration %d'% self.generation
 
@@ -211,22 +211,24 @@ class GDE3Solver(DESolver):
             dominanceDic = {}
             solutionDic = {}
             
-            self.newPopulation = []
+            self.newPopulation = numpy.empty((self.populationSize,len(self.toOpt)))
             
-            newPopulationList = []
-            oldPopulationList = [list(i) for i in self.population]
+            newpop_aslists = [list(i) for i in self.population]
+            
             print "Generating new candidates...",
-            for candidate in range(self.populationSize):
+            for p in range(self.populationSize):
                 # generate new solutions.,reject those out-of-bounds or repeated
                 insideBoundaries = False
                 insideBoundariesCounter = 0
                 while insideBoundaries == False:
-                    self.calcTrialSolution(candidate)
+                    # force a totally new array
+                    self.calcTrialSolution(p)
                     ltrial = list(self.trialSolution)
-                    if ltrial not in newPopulationList and ltrial not in oldPopulationList:
-                        newPopulationList.append(ltrial)
+                    if ltrial not in newpop_aslists:
+                        newpop_aslists.append(ltrial)
                     else:
                         continue
+                    # reject if out of bounds
                     for z in range(len(self.trialSolution)):
                         if self.trialSolution[z] <= self.toOptBounding[1][z] and self.trialSolution[z] >= self.toOptBounding[0][z]:
                             insideBoundariesCounter += 1
@@ -236,29 +238,23 @@ class GDE3Solver(DESolver):
                             insideBoundariesCounter = 0
                             break
                 
-                self.newPopulation.append(self.trialSolution)
-                
+                self.newPopulation[p] = numpy.copy(self.trialSolution)
                 trialEnergies = self.EnergyFunction(self.trialSolution)
 
-                if self.dif == '+':
+                if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
                         for j in range(i+1,self.nmodels):
-                            difs.append(trialEnergies[i] - trialEnergies[j])
-                    self.newGenerationEnergyList[candidate] = difs
-                elif self.dif == '-':
-                    difs = []
-                    for i in range(self.nmodels):
-                        for j in range(i+1,self.nmodels):
-                            difs.append(trialEnergies[j] - trialEnergies[i])
-                    self.newGenerationEnergyList[candidate] = difs
+                            dif = trialEnergies[i] - trialEnergies[j]
+                            if self.dif == '-':
+                                dif = -1.0 * dif
+                            difs.append(dif)
+                    self.new_generation_energies[p] = difs
                 else:
-                    self.newGenerationEnergyList[candidate] = trialEnergies
-              
-##             print self.generation,': len new energy list', len(self.newGenerationEnergyList)
-            
+                    self.new_generation_energies[p] = trialEnergies
+
             print "done."
-            energyComparison = dominanceComparison(self.newGenerationEnergyList, self.generationEnergyList)
+            energyComparison = dominanceComparison(self.new_generation_energies, self.generation_energies)
             print 'Dominance comparison with previous generation:'
             print energyComparison
             
@@ -267,22 +263,22 @@ class GDE3Solver(DESolver):
 
             for i in range(len(energyComparison)):
                 if energyComparison[i] > 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.newGenerationEnergyList[i])
+                    objectiveDic[dicIndex] = numpy.copy(self.new_generation_energies[i])
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.newPopulation[i])
                     dicIndex = dicIndex +1
                     newBetterSols += 1
                 if energyComparison[i] < 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.generationEnergyList[i])
+                    objectiveDic[dicIndex] = numpy.copy(self.generation_energies[i])
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.population[i])
                     dicIndex = dicIndex +1
                 if energyComparison[i] == 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.generationEnergyList[i])
+                    objectiveDic[dicIndex] = numpy.copy(self.generation_energies[i])
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.population[i])
                     dicIndex = dicIndex +1
-                    objectiveDic[dicIndex] = numpy.copy(self.newGenerationEnergyList[i])
+                    objectiveDic[dicIndex] = numpy.copy(self.new_generation_energies[i])
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.newPopulation[i])
                     dicIndex = dicIndex +1
@@ -293,7 +289,7 @@ class GDE3Solver(DESolver):
             #print 'objectiveDic a', objectiveDic
             
             self.population = []
-            self.generationEnergyList = []
+            self.generation_energies = []
             
             self.fronts = []    # holds iterations of fronts in this generation
             self.frontObj = []  # holds objective values for each front
@@ -318,7 +314,7 @@ class GDE3Solver(DESolver):
                         self.frontObj.append([])
                         for k in nonDominatedFrontsOut[i]:
                             self.population.append(solutionDic[k])
-                            self.generationEnergyList.append(numpy.copy(objectiveDic[k]))
+                            self.generation_energies.append(numpy.copy(objectiveDic[k]))
                             self.fronts[-1].append(numpy.copy(solutionDic[k]))
                             self.frontObj[-1].append(numpy.copy(objectiveDic[k]))
                         tempObjDic = {}
@@ -333,7 +329,7 @@ class GDE3Solver(DESolver):
             # complete pop to self.populationSize and complete last front
             for i in tempObjDic.keys():
                 self.population.append(numpy.copy(solutionDic[i]))
-                self.generationEnergyList.append(numpy.copy(objectiveDic[i]))
+                self.generation_energies.append(numpy.copy(objectiveDic[i]))
                 self.fronts[-1].append(numpy.copy(solutionDic[i]))
                 self.frontObj[-1].append(numpy.copy(objectiveDic[i]))
             

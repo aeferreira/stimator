@@ -43,7 +43,8 @@ class DESolver:
             self.SetupClassRandomNumberMethods()
 
         # deStrategy is the name of the DE function to use
-        self.calcTrialSolution = eval('self.' + deStrategy)
+        #self.calcTrialSolution = eval('self.' + deStrategy)
+        self.calcTrialSolution = getattr(self, deStrategy)
 
         self.scale = diffScale
         self.crossOverProbability = crossoverProb
@@ -179,6 +180,7 @@ class DESolver:
                 if trialEnergy < self.bestEnergy:
                     self.bestEnergy = trialEnergy
                     self.bestSolution = numpy.copy(self.trialSolution)
+                    #self.bestSolution = self.trialSolution
                     self.generationsWithNoImprovement = 0
             
             #print self.population[candidate],'=', self.popEnergy[candidate]
