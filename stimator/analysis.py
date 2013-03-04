@@ -73,12 +73,10 @@ def solve(model,
         f     = model.transf_func()
         names = [get_name(x) for x in model.transf]
         sol.apply_transf(f,names)
-    elif isinstance(outputs, str) or callable(outputs): 
+    else:
         #a filter string or transformation function
         f = genTransformationFunction(model, outputs)
         sol.apply_transf(f, f.names)
-    else:
-        raise TypeError("'outputs' parameter is of the wrong type")
     return sol
 
 class ModelSolver(object):

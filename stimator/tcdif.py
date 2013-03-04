@@ -14,31 +14,12 @@ import re
 from model import variable
 from dynamics import state2array
 
-def generateBias(curveNumber, variableNumber, standardDeviation):
-    bias = []
-    for i in range(variableNumber):
-        bias.append(norm.rvs(0,standardDeviation,size = curveNumber))
-    return transpose(bias)
 
-def generateUniformMeasurementError(absoluteError, npoints):
-    errors = []
-    for i in range(npoints):
-        errors.append(uniform(-absoluteError,absoluteError))
-    return tuple(errors)
+# helper to transform string arguments in lists:
+def listify(arguments):
+    if isinstance(arguments, list) or isinstance(arguments, tuple):  return [a.strip() for a in arguments]
+    if isinstance(arguments, str) or isinstance(arguments, unicode): return [arguments.strip()]
 
-def objDif(models, trial, t0, npoints, tf, objFunc, bias, measurementErrors):
-    difs = []
-    lenModels = len(models)
-    i = 0
-    while i < lenModels - 1:
-        j = i + 1
-        difs.append([])
-        while j < lenModels:
-            obj1, obj2 = Objective(models[i], t0, npoints, tf, objFunc, bias, measurementErrors), Objective(models[j], t0, npoints, tf, objFunc, bias, measurementErrors)
-            difs[-1].append(obj1(trial) - obj2(trial))
-            j += 1
-        i += 1
-    return difs
 
 ## def KLDiscrepancies(modelTCs, deltaT):
 ##     plusKLlist = []
@@ -173,20 +154,26 @@ class Objective(object):
         self.modelvarnames = model().varnames
         
         self.model = model
-        self.optvars = list(optnames)
-        self.observed = observed
-        for name in self.optvars:
+        self.optvars = listify(optnames)
+        self.observed = listify(observed)
+        
+        #check that the names exist as variables in the model
+        for name in self.optvars+self.observed:
             if not (name in self.modelvarnames):
                 raise AttributeError('%s is not a variable in model'%name)
         
-        self.optvarsindexes = array([self.modelvarnames.index(name) for name in self.optvars])
+  
+        self.optvars_indexes = array([self.modelvarnames.index(name) for name in self.optvars])
+        self.obsvars_indexes = array([self.modelvarnames.index(name) for name in self.observed])
         
-        self.obsIndex = []
-        self.ordObsVarNames = []
-        for (i,xname) in enumerate(self.modelvarnames):
-            if xname in self.observed:
-                self.obsIndex.append(i)
-                self.ordObsVarNames.append(xname)
+        ## print '*******************************************'
+        ## print 'for model', self.model['title'], '...'
+        ## print 'with variables', self.model().varnames
+        ## print 'optvars', self.optvars
+        ## print 'optvars_indexes', self.optvars_indexes
+        ## print 'observed', self.observed
+        ## print 'obsvars_indexes', self.obsvars_indexes
+        ## print '*******************************************'
         
         if self.objFunc in ('AIC', 'AICc', 'AICu', 'criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE'):
             self.objective = getattr(self, objFunc)
@@ -195,21 +182,26 @@ class Objective(object):
     
     def __call__(self, trial):
         """Returns the result of the evaluation of the objective function for the particular trial candidate solution."""
-        self.trial = trial # trial is a dicionary of optname:value items
+        self.trial = trial # trial is a list of values
                     
-        self.initTrialArray = copy(self.vector)
-        for name,i in zip(self.optvars, self.optvarsindexes):
-            self.initTrialArray[i] = value = self.trial[name]
+        for value,indx in zip(self.trial, self.optvars_indexes):
+            self.vector[indx] = value
 
         self.regularSimulation = analysis.solve(self.model, 
                                                 tf = self.tf, 
                                                 npoints = self.npoints, 
                                                 t0 = self.t0, 
-                                                initial = self.initTrialArray)
+                                                initial = self.vector)
         
         if self.objFunc in ['KL','kremling','KLs','L2']:
             #Notice: the solution is returned and the actual objective is computed in the caller
-            self.result = self.regularSimulation.copy(self.ordObsVarNames)
+            self.result = self.regularSimulation.copy(self.observed)
+            return self.result
+        
+        
+        
+        
+        
         elif self.objFunc in ['AIC', 'AICc', 'AICu']:
             self.result = self.objective(self.model, self.bias, self.measurementErrors)
         elif self.objFunc in ['criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE']:
@@ -222,7 +214,7 @@ class Objective(object):
             self.addVars(self.sensModel, self.senses)
             self.TCandSenses = self.calculateSValues(self.sensModel)
             self.TCs, self.sensValues = self.separateTCFromS(self.sensModel, self.TCandSenses, self.lenVariables)
-            self.sensMatrixNames, self.sensMatrixValues = self.calculateSMatrix(self.sensModel, self.sensValues, len(self.ordObsVarNames))
+            self.sensMatrixNames, self.sensMatrixValues = self.calculateSMatrix(self.sensModel, self.sensValues, len(self.observed))
             self.vcMatrix = self.calculateVCMatrix(self.model, self.bias, self.measurementErrors)
             self.fim = self.calculateFIM(self.sensMatrixValues, self.vcMatrix)
             self.result = self.objective(self.fim)
@@ -238,6 +230,8 @@ class Objective(object):
                 for i in self.regularSimulation:
                     self.result += sum(abs(num) for num in i)
         return self.result
+    
+    
     
     #Akaike's informaion criteria methods
     
@@ -269,7 +263,7 @@ class Objective(object):
         for i in range(len(perturbedSimulations)):
             residuals.append([])
             for j in range(len(perturbedSimulations[i])):
-                if j in self.obsIndex:
+                if j in self.obsvars_indexes:
                     residuals[-1].append(mean(perturbedSimulations[i][j])+measurementErrors[i]-self.regularSimulation[j][i])
         rss=0
         for i in residuals:
@@ -299,14 +293,14 @@ class Objective(object):
         dxdtStrings = []
         sensitivityNames, sensitivityMatrix = [], []
         for i in range(self.lenVariables):
-            if i in self.obsIndex:
+            if i in self.obsvars_indexes:
                 varSymb.append(Symbol(self.modelvarnames[i]))
         for i in range(self.lenEstimatedPar):
             parSymb.append(Symbol(self.parNames[i]))
         strings = model.dXdt_strings()
         counter = 0
         for i,j in strings:
-            if counter in self.obsIndex:
+            if counter in self.obsvars_indexes:
                 tempString = j
                 for k in self.modelvarnames:
                     tempString = re.sub(r'\b'+k+r'\b',"Symbol('"+k+"')",tempString)
@@ -319,7 +313,7 @@ class Objective(object):
             parDer.append([])
             for j in parSymb:
                 parDer[-1].append('('+str(sympy.diff(dxdtStrings[i],j))+')')
-        for i,j,k in zip(varDer, parDer, self.ordObsVarNames):
+        for i,j,k in zip(varDer, parDer, self.observed):
             for m in range(len(j)):
                 sensitivityNames.append('S'+k+self.parNames[m])
                 sensitivityMatrix.append(i+'*S'+k+self.parNames[m]+'+'+j[m])
@@ -338,7 +332,7 @@ class Objective(object):
     def calculateSValues(self, model):
         """Calculates the time courses and the 
         time-dependent sensitivities of the variables to the parameters."""
-        for j in range(len(self.ordObsVarNames)*self.lenEstimatedPar):
+        for j in range(len(self.observed)*self.lenEstimatedPar):
             self.initTrialArray = append(self.initTrialArray, 0)
         globalResult = analysis.solve(model, tf = self.tf, npoints = self.npoints, t0 = self.t0, initial = self.initTrialArray)
         return zip(self.sensVarNames, globalResult)
@@ -406,6 +400,32 @@ class Objective(object):
         maxEV = max(eigvals(fim))
         minEV = min(eigvals(fim))
         return abs(maxEV/minEV)
+
+def generateBias(curveNumber, variableNumber, standardDeviation):
+    bias = []
+    for i in range(variableNumber):
+        bias.append(norm.rvs(0,standardDeviation,size = curveNumber))
+    return transpose(bias)
+
+def generateUniformMeasurementError(absoluteError, npoints):
+    errors = []
+    for i in range(npoints):
+        errors.append(uniform(-absoluteError,absoluteError))
+    return tuple(errors)
+
+def objDif(models, trial, t0, npoints, tf, objFunc, bias, measurementErrors):
+    difs = []
+    lenModels = len(models)
+    i = 0
+    while i < lenModels - 1:
+        j = i + 1
+        difs.append([])
+        while j < lenModels:
+            obj1, obj2 = Objective(models[i], t0, npoints, tf, objFunc, bias, measurementErrors), Objective(models[j], t0, npoints, tf, objFunc, bias, measurementErrors)
+            difs[-1].append(obj1(trial) - obj2(trial))
+            j += 1
+        i += 1
+    return difs
     
 
 if __name__ == "__main__":

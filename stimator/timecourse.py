@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: ISO-8859-1 -*-
+# -*- coding: latin1-*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator timecourse functions
-# Copyright António Ferreira 2006-2010
+# Copyright António Ferreira 2006-2013
 #----------------------------------------------------------------------------
 import os.path
 import StringIO
@@ -232,7 +232,7 @@ class SolutionTimeCourse(object):
 
     def copy(self, names = [], newtitle = None):
         """Constructs new solution, restricted to the variables in 'names'."""
-        if not isinstance(names, list):
+        if not (isinstance(names, list) or isinstance(names, tuple)):
             names = names.strip()
             names = names.split()
         t = self.t.copy()

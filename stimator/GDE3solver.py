@@ -106,7 +106,15 @@ class GDE3Solver(DESolver):
         self.objFuncList = []
 
         for m in self.models:
-            self.objFuncList.append(tcdif.Objective(m, self.t0, self.npoints, self.tf, self.objFunc, self.toOptKeys, self.observed, self.bias, self.measurementErrors))
+            self.objFuncList.append(tcdif.Objective(m, 
+                                                    self.t0, 
+                                                    self.npoints, 
+                                                    self.tf, 
+                                                    self.objFunc, 
+                                                    self.toOptKeys, 
+                                                    self.observed, 
+                                                    self.bias, 
+                                                    self.measurementErrors))
         
         self.dif = dif
         
@@ -123,12 +131,15 @@ class GDE3Solver(DESolver):
                         'KLs'     :tcdif.KLs,
                         'L2'      :tcdif.L2}
         self.distance_func = str2distance.get(self.objFunc, None)
+        
+        # generate list of pairs of model indexes. Each pair icorresponds to a different comparison
         if self.distance_func is not None:
             self.model_indexes = []
             for i in range(self.nmodels-1):
                 for j in range(i+1, self.nmodels):
                     self.model_indexes.append((i,j))
-            if self.objFunc in ['KLs', 'KL']:
+            # if not a true metric, include also the symetric pairs
+            if not self.trueMetric:
                 self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
         
         # working storage arrays
@@ -140,14 +151,11 @@ class GDE3Solver(DESolver):
         self.gen_times = []
 
     def EnergyFunction(self, trial):
-        trialDic = {}
-        for i in range(len(self.toOptKeys)):
-            trialDic[self.toOptKeys[i]] = trial[i]
-        energies = [f(trialDic) for f in self.objFuncList]
+        energies = [f(trial) for f in self.objFuncList]
         
         if self.distance_func is not None:
             energies = self.distance_func(energies, self.deltaT, self.model_indexes)
-        return energies, False
+        return energies
 
     def computeGeneration(self):
         # Hit max generations with no improvement
@@ -158,10 +166,10 @@ class GDE3Solver(DESolver):
         if self.generation >= self.maxGenerations:
             self.exitCode = 3
             return
-        # no need to try another generation if we are done (energy criterium)
-        if self.atSolution:
-            self.exitCode = 1
-            return
+        ## # no need to try another generation if we are done (energy criterium)
+        ## if self.atSolution:
+            ## self.exitCode = 1
+            ## return
         # generation 0: initialization
         if self.generation == 0:
             print '------------------------------------\nGeneration 0'
@@ -174,7 +182,7 @@ class GDE3Solver(DESolver):
 
             self.generationEnergyList = []
             for candidate in range(self.populationSize):
-                trialEnergies, self.atSolution = self.EnergyFunction(self.population[candidate]) #This argument must include the optimization candidates AND the fixed initial values
+                trialEnergies = self.EnergyFunction(self.population[candidate]) #This argument must include the optimization candidates AND the fixed initial values
                 #print 'energies in computeGeneration', trialEnergies
                 if self.dif in '+-':
                     difs = []
@@ -230,7 +238,7 @@ class GDE3Solver(DESolver):
                 
                 self.newPopulation.append(self.trialSolution)
                 
-                trialEnergies, self.atSolution = self.EnergyFunction(self.trialSolution)
+                trialEnergies = self.EnergyFunction(self.trialSolution)
 
                 if self.dif == '+':
                     difs = []

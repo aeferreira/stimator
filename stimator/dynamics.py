@@ -349,10 +349,17 @@ def rates_func(m, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
 
 def genTransformationFunction(m, f):
     if not callable(f):
-        if not isinstance(f,str):
-            raise TypeError('argument must be a string or a callable.')
-        argnames = f.split()
-        names = argnames
+        if isinstance(f,list) or isinstance(f, tuple):
+            for a in f:
+                if not (isinstance(a,str) or isinstance(a,unicode)):
+                    raise TypeError(str(a) + ' must be a list of strings')
+            argnames = f[:]
+            names = argnames
+        else:
+            if not (isinstance(f,str) or isinstance(f,unicode)):
+                raise TypeError('argument must be a string, list or callable.')
+            argnames = f.split()
+            names = argnames
         nargs = len(argnames)
     else:
         cc = f.func_code
