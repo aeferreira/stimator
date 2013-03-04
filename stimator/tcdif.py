@@ -149,7 +149,7 @@ def L2(modelTCs, deltaT, indexes):
     return result
 
 
-class Objective:
+class Objective(object):
     
     """Computes the objective function for a model and a trial vector 
     given the initial and final time points for the computation, the number of points for ODE integration,
@@ -170,18 +170,20 @@ class Objective:
         self.lenEstimatedPar = len(model().parameters) #len(model.parameters)
         self.objFunc = objFunc
         
-        self.varNames = model().varnames
+        self.modelvarnames = model().varnames
         
         self.model = model
-        self.optnames = optnames
+        self.optvars = list(optnames)
         self.observed = observed
+        for name in self.optvars:
+            if not (name in self.modelvarnames):
+                raise AttributeError('%s is not a variable in model'%name)
         
-        self.optvars = [name for name in self.varNames if name in optnames]
-        self.optvarsindexes = array([self.varNames.index(name) for name in self.optvars])
+        self.optvarsindexes = array([self.modelvarnames.index(name) for name in self.optvars])
         
         self.obsIndex = []
         self.ordObsVarNames = []
-        for (i,xname) in enumerate(self.varNames):
+        for (i,xname) in enumerate(self.modelvarnames):
             if xname in self.observed:
                 self.obsIndex.append(i)
                 self.ordObsVarNames.append(xname)
@@ -199,7 +201,11 @@ class Objective:
         for name,i in zip(self.optvars, self.optvarsindexes):
             self.initTrialArray[i] = value = self.trial[name]
 
-        self.regularSimulation = analysis.solve(self.model, tf = self.tf, npoints = self.npoints, t0 = self.t0, initial = self.initTrialArray)
+        self.regularSimulation = analysis.solve(self.model, 
+                                                tf = self.tf, 
+                                                npoints = self.npoints, 
+                                                t0 = self.t0, 
+                                                initial = self.initTrialArray)
         
         if self.objFunc in ['KL','kremling','KLs','L2']:
             #Notice: the solution is returned and the actual objective is computed in the caller
@@ -207,7 +213,7 @@ class Objective:
         elif self.objFunc in ['AIC', 'AICc', 'AICu']:
             self.result = self.objective(self.model, self.bias, self.measurementErrors)
         elif self.objFunc in ['criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE']:
-            self.lenVariables = len(self.varNames)
+            self.lenVariables = len(self.modelvarnames)
             self.parNames = []
             for i in range(self.lenEstimatedPar):
                 self.parNames.append(get_name(self.model().parameters[i]))
@@ -248,8 +254,8 @@ class Objective:
         while j < len(bias):
             tempInit = []
             m = 0
-            for i in (range(len(self.varNames))):
-                if self.varNames[i] in self.optvars:
+            for i in (range(len(self.modelvarnames))):
+                if self.modelvarnames[i] in self.optvars:
                     tempInit.append(alternativeSolutions[j][m])
                     m += 1
                 else:
@@ -294,7 +300,7 @@ class Objective:
         sensitivityNames, sensitivityMatrix = [], []
         for i in range(self.lenVariables):
             if i in self.obsIndex:
-                varSymb.append(Symbol(self.varNames[i]))
+                varSymb.append(Symbol(self.modelvarnames[i]))
         for i in range(self.lenEstimatedPar):
             parSymb.append(Symbol(self.parNames[i]))
         strings = model.dXdt_strings()
@@ -302,7 +308,7 @@ class Objective:
         for i,j in strings:
             if counter in self.obsIndex:
                 tempString = j
-                for k in self.varNames:
+                for k in self.modelvarnames:
                     tempString = re.sub(r'\b'+k+r'\b',"Symbol('"+k+"')",tempString)
                 for k in self.parNames:
                     tempString = re.sub(r'\b'+k+r'\b',"Symbol('"+k+"')",tempString)
@@ -323,7 +329,7 @@ class Objective:
         '''Adds variables contained in a list of tuples of the form 
         [(name of a variable, right-hand expression of the ODE defining the variable as a function of time), ...] to a model .'''
         self.sensVector = self.vector
-        self.sensVarNames = list(copy(self.varNames))
+        self.sensVarNames = list(copy(self.modelvarnames))
         for i,j in varList:
             setattr(model, i, variable(j))
             self.sensVector = append(self.sensVector,0)

@@ -50,7 +50,7 @@ def compute():
     simulatedError = 3
     absoluteMeasurementError = 0.00175
 
-    print 'vars to optimize:'
+    print 'initial values to optimize:'
     for k in toOpt.keys():
         print k, 'in', toOpt[k]
     
