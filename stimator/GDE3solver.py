@@ -67,10 +67,8 @@ class GDE3Solver(DESolver):
                  crossoverProb, 
                  cutoffEnergy, 
                  useClassRandomNumberMethods, 
-                 dif = '0',
-                 keep_track = False):
+                 dif = '0'):
         
-        self.keep_track = keep_track
         self.models = models
         self.npoints = npoints
         self.t0 = t0
@@ -151,12 +149,13 @@ class GDE3Solver(DESolver):
                 self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
         
         # working storage arrays
+        self.population_energies = []
         self.new_generation_energies = [[] for i in range(self.populationSize)]
         self.new_population = numpy.empty((self.populationSize,len(self.toOpt)))
         
         # storage arrays
         self.fronts = [[]]    # holds fronts created in current generation
-        self.frontObj = [[]]  # holds objectives for current generation
+        self.front_objectives = [[]]  # holds objectives for current generation
         self.gen_times = []
 
     def EnergyFunction(self, trial):
@@ -189,16 +188,15 @@ class GDE3Solver(DESolver):
             print '------------------------------------\nGeneration 0'
             self.gen_times = []
             self.fullnondominated = 0
-            if self.keep_track:
-                self.frontsfile = open('fronts.txt', 'w')
-                self.objsfile = open('objectives.txt', 'w')
             
             time0 = time()
 
-            self.generation_energies = []
+            # compute initial energies
+            # base class DESolver.__init__()  populates the initial population 
+            
+            self.population_energies = []
             for trial in self.population:
                 energies = self.EnergyFunction(trial)
-                #print 'energies in computeGeneration', trialEnergies
                 if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
@@ -207,9 +205,9 @@ class GDE3Solver(DESolver):
                             if self.dif == '-':
                                 res = -1.0 * res
                             difs.append(res)
-                    self.generation_energies.append(difs)
+                    self.population_energies.append(difs)
                 else:
-                    self.generation_energies.append(energies)
+                    self.population_energies.append(energies)
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
             self.gen_times.append(timeElapsed)
@@ -239,6 +237,7 @@ class GDE3Solver(DESolver):
                 
                 self.new_population[p,:] = self.trialSolution
                 
+                # compute trialSolution energies
                 trialEnergies = self.EnergyFunction(self.trialSolution)
                 if self.dif in '+-':
                     difs = []
@@ -255,9 +254,9 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print 'done, took %6.3f'% timeElapsed, 's'
             
-            energyComparison = dominanceComparison(self.new_generation_energies, self.generation_energies)
-            print 'Dominance comparison with previous generation:'
-            print energyComparison
+            energyComparison = dominanceComparison(self.new_generation_energies, self.population_energies)
+##             print 'Dominance comparison with previous generation:'
+##             print energyComparison
 
             self.oldGeneration = self.population
             global objectiveDic
@@ -278,13 +277,13 @@ class GDE3Solver(DESolver):
                     solutionDic[dicIndex] = numpy.copy(self.new_population[i])
                     dicIndex = dicIndex +1
                     newBetterSols += 1
-                if energyComparison[i] < 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.generation_energies[i])
+                elif energyComparison[i] < 0:
+                    objectiveDic[dicIndex] = numpy.copy(self.population_energies[i])
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.population[i])
                     dicIndex = dicIndex +1
-                if energyComparison[i] == 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.generation_energies[i])
+                else: #energyComparison[i] == 0
+                    objectiveDic[dicIndex] = numpy.copy(self.population_energies[i])
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.population[i])
                     dicIndex = dicIndex +1
@@ -292,23 +291,20 @@ class GDE3Solver(DESolver):
                     dominanceDic[dicIndex] = []
                     solutionDic[dicIndex] = numpy.copy(self.new_population[i])
                     dicIndex = dicIndex +1
-            print 'new dominant solutions: %d' %(newBetterSols)
+            print 'New dominant solutions: %d' %(newBetterSols)
             print
             sortingtime = time()
             print "Sorting solutions...",
 
-            
             self.getDominanceTree(objectiveDic.keys())
             nonDominatedFrontsOut = self.orgndf(dominanceDic)
             
-            #print 'objectiveDic a', objectiveDic
-            
+            # build current population
             self.population = []
-            self.generation_energies = []
+            self.population_energies = []
             
-            #self.oldfronts = self.fronts[:]
             self.fronts = []    # holds iterations of fronts in this generation
-            self.frontObj = []  # holds objective values for each front
+            self.front_objectives = []  # holds objective values for each front
             
             full = False
             while not full:
@@ -327,58 +323,41 @@ class GDE3Solver(DESolver):
                         break
                     else:
                         self.fronts.append([])
-                        self.frontObj.append([])
+                        self.front_objectives.append([])
                         for k in nonDominatedFrontsOut[i]:
                             self.population.append(solutionDic[k])
-                            self.generation_energies.append(numpy.copy(objectiveDic[k]))
+                            self.population_energies.append(numpy.copy(objectiveDic[k]))
                             self.fronts[-1].append(numpy.copy(solutionDic[k]))
-                            self.frontObj[-1].append(numpy.copy(objectiveDic[k]))
+                            self.front_objectives[-1].append(numpy.copy(objectiveDic[k]))
                         tempObjDic = {}
             
             if self.fronts == []:
                 self.fronts.append([])
-            if self.frontObj == []:
-                self.frontObj.append([])
+            if self.front_objectives == []:
+                self.front_objectives.append([])
             
             # complete pop to self.populationSize and complete last front
             for i in tempObjDic.keys():
                 self.population.append(numpy.copy(solutionDic[i]))
-                self.generation_energies.append(numpy.copy(objectiveDic[i]))
+                self.population_energies.append(numpy.copy(objectiveDic[i]))
                 self.fronts[-1].append(numpy.copy(solutionDic[i]))
-                self.frontObj[-1].append(numpy.copy(objectiveDic[i]))
+                self.front_objectives[-1].append(numpy.copy(objectiveDic[i]))
             
             timeElapsed = time() - sortingtime
             print 'done, took %6.3f'% timeElapsed, 's'
 
-            
             flengths = [len(i) for i in self.fronts]
-            print 'front lengths:', flengths
+            print 'Front lengths:', flengths
             if len(self.population) != self.populationSize:
                 print "POP size IS DIFFERENT"
-            nondominated_indxs = nondominated_solutions(self.generation_energies)
+            nondominated_indxs = nondominated_solutions(self.population_energies)
             n_nondominated = len(nondominated_indxs)
-            print '%d non-dominated solutions:'%(n_nondominated)
+            print '%d non-dominated solutions'%(n_nondominated)
             #print nondominated_indxs
             if n_nondominated == len(self.population):
                 self.fullnondominated += 1
             else:
                 self.fullnondominated = 0
-
-            ## print type(self.fronts[-1])
-            ## print type(self.oldfronts[-1])
-            ## print len(self.fronts[-1])
-            ## print len(self.oldfronts[-1])
-            ## fequal = True
-            ## if len(self.fronts[-1]) != len(self.oldfronts[-1]):
-                ## fequal = False
-            ## else:
-                ## for of, nf in zip(self.fronts[-1],self.oldfronts[-1]):
-                    ## if not numpy.array_equal(of,nf):
-                        ## fequal = False
-                        ## break
-            
-            ## if fequal:
-                ## print 'FRONTS ARE EQUAL'
 
             #print 'New dominant solutions', newBetterSols
             #print 'room for improvement', self.roomForImprovement
@@ -390,23 +369,15 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print
             print "Generation %d finished, took %6.3f s" % (self.generation, timeElapsed)
-##             print 'generation took', timeElapsed, 's'
+            print 'generations with no improvement:', self.generationsWithNoImprovement
             self.gen_times.append(timeElapsed)
-            
-            if self.keep_track:
-                for front in self.fronts:
-                    print >> self.frontsfile, [list(elem) for elem in front]
-                for objs in self.frontObj:
-                    print >> self.objsfile, [list(elem) for elem in objs]
-        
+                    
         self.generation += 1
-        print 'generations with no improvement:', self.generationsWithNoImprovement
+        
         return
 
     def finalize(self):
-        if self.keep_track:
-            self.frontsfile.close()
-            self.objsfile.close()
+        pass
 
     #------------------------------------------------------------------------------------------------------------------------------------
     #This code is an adaptation of the non-dominated sorting algorithm with delayed insertion published in

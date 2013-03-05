@@ -1,7 +1,7 @@
 from stimator import Model, react, state, read_model
 from stimator.GDE3solver import GDE3Solver
 from time import time
-from stimator.utils import write2file
+from stimator import utils
 
 
 def compute():
@@ -83,15 +83,14 @@ def compute():
                            diffScale, 
                            crossoverProb, 
                            cutoffEnergy, 
-                           useClassRandomNumberMethods,
-                           keep_track = False)#, dif = '-')
+                           useClassRandomNumberMethods)#, dif = '-')
     solver.Solve()
-    finalSolutions = (solver.fronts, solver.frontObj)
+    finalSolutions = (solver.population, solver.population_energies)
     
     print '============================================='
     print "Finished!"
     ttime = time() - allTime1
-    print "Total time: %7.3f"% ttime
+    print "Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime))
     
     print '%d generations'%(solver.generation-1)
     print
@@ -99,15 +98,18 @@ def compute():
     
     f = open ('glyoxalase_discrim_2m_KLext_final_front.txt', 'w')
     
-    for s,o in zip(finalSolutions[0][-1], finalSolutions[1][-1]):
+    sstr = ' '.join(solver.toOptKeys)
+    ostr = ' '.join([str(d) for d in solver.model_indexes])
+    print '[%s] ----> [%s]' % (sstr, ostr)
+    for s,o in zip(*finalSolutions):
         print s, '---->',o
         sstr = ' '.join([str(i) for i in s])
         ostr = ' '.join([str(i) for i in o])
-        f.write('%s %s\n'%(sstr, ostr))
+        print >> f, '%s %s'%(sstr, ostr)
     
     f.close()
 
-    write2file('glyoxalase_discrim_2m_KLext_times.txt', '\n'.join([str(t) for t in solver.gen_times]))
+    utils.write2file('glyoxalase_discrim_2m_KLext_times.txt', '\n'.join([str(t) for t in solver.gen_times]))
     
 if __name__ == "__main__":
     compute()

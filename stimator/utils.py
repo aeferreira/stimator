@@ -6,6 +6,12 @@ def write2file(filename, astring):
     f.write(astring)
     f.close()
 
+def s2HMS(seconds):
+    m, s = divmod(seconds, 60.0)
+    h, m = divmod(m, 60.0)
+    if h == 0:
+        return "%02dm %06.3fs" % (m, s)
+    return "%dh %02dm %06.3fs" % (h, m, s)
 
 #--------- dict dot-style lookup
 

@@ -20,9 +20,9 @@
 Copyright 2005-2009 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
+import utils
 import random
 import time
-import datetime
 import numpy
 import scipy.optimize
 
@@ -86,11 +86,7 @@ class DESolver:
     def reportFinalString (self):
         res = "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
         % (DESolver.exitCodeStrings[self.exitCode], self.generation, self.bestEnergy, self.bestSolution)
-        if self.elapsed > 60.0:
-            ts = str(datetime.timedelta(seconds = self.elapsed))
-            res += "\nOptimization took %.3f s (%s)"% (self.elapsed, ts)
-        else:
-            res += "\nOptimization took %.3f s"% (self.elapsed)
+        res += "\nOptimization took %g s (%s)" % (self.elapsed, utils.s2HMS(self.elapsed))
         return res
 
     def reportInitial (self):
