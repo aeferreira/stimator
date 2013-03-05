@@ -90,7 +90,8 @@ def compute():
     
     print '============================================='
     print "Finished!"
-    print "Total time", time() - allTime1
+    ttime = time() - allTime1
+    print "Total time: %7.3f"% ttime
     
     print '%d generations'%(solver.generation-1)
     print
@@ -106,7 +107,7 @@ def compute():
     
     f.close()
 
-    write2file('glyoxalase_discrim_2m_KLext_times.txt', '\n'.join([str(t) for t in solver.ftimes]))
+    write2file('glyoxalase_discrim_2m_KLext_times.txt', '\n'.join([str(t) for t in solver.gen_times]))
     
 if __name__ == "__main__":
     compute()

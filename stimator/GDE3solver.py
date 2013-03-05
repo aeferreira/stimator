@@ -22,23 +22,28 @@ def dominanceComparison(old_energies, new_energies):
         dominance.append(d_result)
     return dominance
 
-class Node:
-    """Node object, which basically contains an index that can be incremented 
-    by method nextSiblingNode to iterate over a list of sibling nodes in a tree.
-    """
-
-    def __init__(self, nodeIndex):
-        """This function creates the 'Node' object."""
-        self.nodeIndex = nodeIndex
-
-    def nextSiblingNode(self, tree):
-        """ This function increments the index of the 'Node' object and returns the sibling next to the current node."""
-        #Each node should have a sibling list of which itself is part and the lists for every subling must be in the same order. This is not done yet.
-        if tree.index(self.nodeIndex) < len(tree)-1:
-            self.nodeIndex = tree[tree.index(self.nodeIndex)+1]
-        else:
-            self.nodeIndex = -1
-
+def nondominated_solutions(energies):
+    nondominated = []
+    for i in range(len(energies)):
+        is_dominated = False
+        for k in range(len(energies)):
+            d_result = 0
+            for j in range(len(energies[i])):
+                d = energies[i][j] - energies[k][j]
+                if d <= 0 and d_result <=0:
+                    d_result -= 1
+                elif d >= 0 and d_result >=0:
+                    d_result += 1
+                else:
+                    d_result = 0
+                    break
+            if d_result > 0:
+                is_dominated = True
+                break
+        if not is_dominated:
+            nondominated.append(i)
+    return nondominated
+    
 class GDE3Solver(DESolver):
 
     """ 
@@ -80,12 +85,12 @@ class GDE3Solver(DESolver):
 
         self.toOptBounding = [toOpt[i] for i in self.toOptKeys]
         self.toOptBounding = numpy.transpose(self.toOptBounding)
-        maxs = numpy.array(self.toOptBounding)[1]
-        mins = numpy.array(self.toOptBounding)[0]
+        self.opt_maxs = numpy.array(self.toOptBounding)[1]
+        self.opt_mins = numpy.array(self.toOptBounding)[0]
 
         DESolver.__init__(self, 
                           len(toOpt), populationSize, maxGenerations, 
-                          mins, maxs, 
+                          self.opt_mins, self.opt_maxs, 
                           deStrategy, 
                           diffScale, 
                           crossoverProb, 
@@ -121,6 +126,9 @@ class GDE3Solver(DESolver):
         # threshold for improvement based on 5 % of new solution count
         self.roomForImprovement = int(round(0.05 * populationSize))
         
+        #counter of number of generations with only  non-dominated solutions
+        self.fullnondominated = 0
+        
         if self.objFunc in ('kremling','L2'):  #symetric measures
             self.trueMetric = True
         else:
@@ -144,6 +152,7 @@ class GDE3Solver(DESolver):
         
         # working storage arrays
         self.new_generation_energies = [[] for i in range(self.populationSize)]
+        self.new_population = numpy.empty((self.populationSize,len(self.toOpt)))
         
         # storage arrays
         self.fronts = [[]]    # holds fronts created in current generation
@@ -151,12 +160,12 @@ class GDE3Solver(DESolver):
         self.gen_times = []
 
     def EnergyFunction(self, trial):
-        energies = [f(trial) for f in self.objFuncList]
-        
+        #compute solution for each model, using trial vector
+        sols = [f(trial) for f in self.objFuncList]
         if self.distance_func is not None:
-            energies = self.distance_func(energies, self.deltaT, self.model_indexes)
-        return energies
-
+            return self.distance_func(sols, self.deltaT, self.model_indexes)
+        return sols
+        
     def computeGeneration(self):
         # Hit max generations with no improvement
         if self.generationsWithNoImprovement > 20:
@@ -166,6 +175,11 @@ class GDE3Solver(DESolver):
         if self.generation >= self.maxGenerations:
             self.exitCode = 3
             return
+        # Hit several generations with only non-dominate solutions
+        if self.fullnondominated >= 4:
+            self.exitCode = 6
+            return
+        
         ## # no need to try another generation if we are done (energy criterium)
         ## if self.atSolution:
             ## self.exitCode = 1
@@ -174,6 +188,7 @@ class GDE3Solver(DESolver):
         if self.generation == 0:
             print '------------------------------------\nGeneration 0'
             self.gen_times = []
+            self.fullnondominated = 0
             if self.keep_track:
                 self.frontsfile = open('fronts.txt', 'w')
                 self.objsfile = open('objectives.txt', 'w')
@@ -203,44 +218,28 @@ class GDE3Solver(DESolver):
             time0 = time()
             print '------------------------------------\nGeneration %d'% self.generation
 
-            #print '\n\nGeneration', self.generation, '\n'
-            self.oldGeneration = self.population
-            global objectiveDic
-            objectiveDic = {}
-            global dominanceDic
-            dominanceDic = {}
-            solutionDic = {}
-            
-            self.newPopulation = numpy.empty((self.populationSize,len(self.toOpt)))
-            
-            newpop_aslists = [list(i) for i in self.population]
+            already_aslists = [list(i) for i in self.population]
             
             print "Generating new candidates...",
             for p in range(self.populationSize):
                 # generate new solutions.,reject those out-of-bounds or repeated
                 insideBoundaries = False
-                insideBoundariesCounter = 0
                 while insideBoundaries == False:
-                    # force a totally new array
+                    # force a totally new solution
                     self.calcTrialSolution(p)
                     ltrial = list(self.trialSolution)
-                    if ltrial not in newpop_aslists:
-                        newpop_aslists.append(ltrial)
+                    if ltrial not in already_aslists:
+                        already_aslists.append(ltrial)
                     else:
                         continue
-                    # reject if out of bounds
-                    for z in range(len(self.trialSolution)):
-                        if self.trialSolution[z] <= self.toOptBounding[1][z] and self.trialSolution[z] >= self.toOptBounding[0][z]:
-                            insideBoundariesCounter += 1
-                            if insideBoundariesCounter == len(self.trialSolution):
-                                insideBoundaries = True
-                        else:
-                            insideBoundariesCounter = 0
-                            break
+                    # check if out of bounds
+                    inbounds = numpy.all(numpy.logical_and(self.trialSolution <= self.opt_maxs, self.trialSolution >= self.opt_mins))
+                    if inbounds: break
+                    else: continue
                 
-                self.newPopulation[p] = numpy.copy(self.trialSolution)
+                self.new_population[p,:] = self.trialSolution
+                
                 trialEnergies = self.EnergyFunction(self.trialSolution)
-
                 if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
@@ -259,15 +258,24 @@ class GDE3Solver(DESolver):
             energyComparison = dominanceComparison(self.new_generation_energies, self.generation_energies)
             print 'Dominance comparison with previous generation:'
             print energyComparison
+
+            self.oldGeneration = self.population
+            global objectiveDic
+            objectiveDic = {}
+            global dominanceDic
+            dominanceDic = {}
+            solutionDic = {}
+            
             
             dicIndex = 1
             newBetterSols = 0
+            old_non_dominanted = 0
 
             for i in range(len(energyComparison)):
                 if energyComparison[i] > 0:
                     objectiveDic[dicIndex] = numpy.copy(self.new_generation_energies[i])
                     dominanceDic[dicIndex] = []
-                    solutionDic[dicIndex] = numpy.copy(self.newPopulation[i])
+                    solutionDic[dicIndex] = numpy.copy(self.new_population[i])
                     dicIndex = dicIndex +1
                     newBetterSols += 1
                 if energyComparison[i] < 0:
@@ -282,8 +290,13 @@ class GDE3Solver(DESolver):
                     dicIndex = dicIndex +1
                     objectiveDic[dicIndex] = numpy.copy(self.new_generation_energies[i])
                     dominanceDic[dicIndex] = []
-                    solutionDic[dicIndex] = numpy.copy(self.newPopulation[i])
+                    solutionDic[dicIndex] = numpy.copy(self.new_population[i])
                     dicIndex = dicIndex +1
+            print 'new dominant solutions: %d' %(newBetterSols)
+            print
+            sortingtime = time()
+            print "Sorting solutions...",
+
             
             self.getDominanceTree(objectiveDic.keys())
             nonDominatedFrontsOut = self.orgndf(dominanceDic)
@@ -293,7 +306,7 @@ class GDE3Solver(DESolver):
             self.population = []
             self.generation_energies = []
             
-            self.oldfronts = self.fronts[:]
+            #self.oldfronts = self.fronts[:]
             self.fronts = []    # holds iterations of fronts in this generation
             self.frontObj = []  # holds objective values for each front
             
@@ -334,13 +347,23 @@ class GDE3Solver(DESolver):
                 self.fronts[-1].append(numpy.copy(solutionDic[i]))
                 self.frontObj[-1].append(numpy.copy(objectiveDic[i]))
             
+            timeElapsed = time() - sortingtime
+            print 'done, took %6.3f'% timeElapsed, 's'
+
+            
             flengths = [len(i) for i in self.fronts]
-            print 'fronts lengths:', flengths
-            print 'sum =', numpy.sum(flengths)
-            print 'pop:',len(self.population)
+            print 'front lengths:', flengths
             if len(self.population) != self.populationSize:
                 print "POP size IS DIFFERENT"
-            
+            nondominated_indxs = nondominated_solutions(self.generation_energies)
+            n_nondominated = len(nondominated_indxs)
+            print '%d non-dominated solutions:'%(n_nondominated)
+            #print nondominated_indxs
+            if n_nondominated == len(self.population):
+                self.fullnondominated += 1
+            else:
+                self.fullnondominated = 0
+
             ## print type(self.fronts[-1])
             ## print type(self.oldfronts[-1])
             ## print len(self.fronts[-1])
@@ -357,8 +380,7 @@ class GDE3Solver(DESolver):
             ## if fequal:
                 ## print 'FRONTS ARE EQUAL'
 
-            print "Generation %d finished" % self.generation
-            print 'number of new better solutions', newBetterSols
+            #print 'New dominant solutions', newBetterSols
             #print 'room for improvement', self.roomForImprovement
             
             if ((not self.trueMetric) and newBetterSols <= self.roomForImprovement and len(self.fronts) == 1) or (self.trueMetric and self.nmodels == 2 and newBetterSols <= self.roomForImprovement):
@@ -366,7 +388,9 @@ class GDE3Solver(DESolver):
             else:
                 self.generationsWithNoImprovement = 0
             timeElapsed = time() - time0
-            print 'generation took', timeElapsed, 's'
+            print
+            print "Generation %d finished, took %6.3f s" % (self.generation, timeElapsed)
+##             print 'generation took', timeElapsed, 's'
             self.gen_times.append(timeElapsed)
             
             if self.keep_track:
@@ -532,6 +556,25 @@ class GDE3Solver(DESolver):
         return dominanceTestResult
     #------------------------------------------------------------------------------------------------------------------------------------
     #End of non-dominated sorted algorithm methods
+
+
+class Node:
+    """Node object, which basically contains an index that can be incremented 
+    by method nextSiblingNode to iterate over a list of sibling nodes in a tree.
+    """
+
+    def __init__(self, nodeIndex):
+        """This function creates the 'Node' object."""
+        self.nodeIndex = nodeIndex
+
+    def nextSiblingNode(self, tree):
+        """ This function increments the index of the 'Node' object and returns the sibling next to the current node."""
+        #Each node should have a sibling list of which itself is part and the lists for every subling must be in the same order. This is not done yet.
+        if tree.index(self.nodeIndex) < len(tree)-1:
+            self.nodeIndex = tree[tree.index(self.nodeIndex)+1]
+        else:
+            self.nodeIndex = -1
+
 
 def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
 
