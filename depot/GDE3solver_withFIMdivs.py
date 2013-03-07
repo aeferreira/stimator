@@ -1,12 +1,9 @@
 # Project S-timator
 
-import numpy, tcmetrics
+import numpy, tcdif
 from de import DESolver
 from time import time
 import random
-import analysis
-from dynamics import state2array
-
 
 def dominanceComparison(old_energies, new_energies):
     """ Compute dominance relationship between solutions of two generations."""
@@ -46,54 +43,6 @@ def nondominated_solutions(energies):
         if not is_dominated:
             nondominated.append(i)
     return nondominated
-
-class ModelSolver(object):
-    
-    """Computes the objective function for a model and a trial vector 
-    given the initial and final time points for the computation, the number of points for ODE integration,
-    a user-defined bias for the initial conditions and measurement errors for each integration point.
-    'model' is a model object;
-    't0' and 'tf' are floats;
-    'npoints' is a positive integer."""
-    
-    def __init__(self, model, t0, npoints, tf, optnames, observed):
-        self.t0 = t0
-        self.npoints = npoints
-        self.tf = tf
-        
-        self.vector = numpy.copy(state2array(model,"init"))
-
-        self.modelvarnames = model().varnames
-        
-        self.model = model
-        self.optvars = listify(optnames)
-        self.observed = listify(observed)
-        
-        #check that the names exist as variables in the model
-        for name in self.optvars+self.observed:
-            if not (name in self.modelvarnames):
-                raise AttributeError('%s is not a variable in model'%name)
-        
-  
-        self.optvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.optvars])
-        self.obsvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.observed])
-            
-    def solve(self, trial):
-        """Returns the solution for self.model for a particular trial of initial values."""
-        self.trial = trial # trial is a list of values
-                    
-        for value,indx in zip(self.trial, self.optvars_indexes):
-            self.vector[indx] = value
-
-        return analysis.solve(self.model, tf = self.tf, npoints = self.npoints, t0 = self.t0, 
-                                          initial = self.vector).copy(self.observed)
- 
-# helper to transform string arguments in lists:
-def listify(arguments):
-    if isinstance(arguments, list) or isinstance(arguments, tuple):  return [a.strip() for a in arguments]
-    if isinstance(arguments, str) or isinstance(arguments, unicode): return [arguments.strip()]
-
-        
     
 class GDE3Solver(DESolver):
 
@@ -105,7 +54,17 @@ class GDE3Solver(DESolver):
     2005 IEEE Congress on Evolutionary Computation. 
     """
 
-    def __init__(self, models, toOpt, objectiveFunction, observed, npoints, t0, tf, populationSize, maxGenerations, deStrategy, diffScale, crossoverProb, 
+    def __init__(self, models, absoluteMeasurementError, toOpt, 
+                 objectiveFunction, 
+                 observed, 
+                 npoints, t0, tf, 
+                 populationSize, 
+                 maxGenerations, 
+                 biasedCurveNumber, 
+                 biasStandardDeviation, 
+                 deStrategy, 
+                 diffScale, 
+                 crossoverProb, 
                  cutoffEnergy, 
                  useClassRandomNumberMethods, 
                  dif = '0'):
@@ -130,16 +89,35 @@ class GDE3Solver(DESolver):
         DESolver.__init__(self, 
                           len(toOpt), populationSize, maxGenerations, 
                           self.opt_mins, self.opt_maxs, 
-                          deStrategy, diffScale, crossoverProb, 
-                          cutoffEnergy, useClassRandomNumberMethods)
+                          deStrategy, 
+                          diffScale, 
+                          crossoverProb, 
+                          cutoffEnergy, 
+                          useClassRandomNumberMethods)
 
         self.deltaT = (tf - t0)/npoints
-                
+        
+        if self.objFunc in ('AIC', 'AICc', 'AICu', 'criterionA', 'modCriterionA', 'criterionD', 'criterionE', 'modCriterionE'):
+            #Initialize bias for error simulation
+            self.bias = tcdif.generateBias(biasedCurveNumber, len(self.toOptKeys), biasStandardDeviation)
+            self.measurementErrors = tcdif.generateUniformMeasurementError(absoluteMeasurementError, npoints)
+        else:
+            self.bias = None
+            self.measurementErrors = None
+            
+        
         self.objFuncList = []
 
         for m in self.models:
-            self.objFuncList.append(ModelSolver(m, self.t0, self.npoints, self.tf, 
-                                                self.toOptKeys, self.observed))
+            self.objFuncList.append(tcdif.Objective(m, 
+                                                    self.t0, 
+                                                    self.npoints, 
+                                                    self.tf, 
+                                                    self.objFunc, 
+                                                    self.toOptKeys, 
+                                                    self.observed, 
+                                                    self.bias, 
+                                                    self.measurementErrors))
         
         self.dif = dif
         
@@ -149,28 +127,26 @@ class GDE3Solver(DESolver):
         #counter of number of generations with only  non-dominated solutions
         self.fullnondominated = 0
         
-        str2distance = {'KL'      :tcmetrics.KLDiscrepancies,
-                        'kremling':tcmetrics.kremling,
-                        'KLs'     :tcmetrics.KLs,
-                        'L2'      :tcmetrics.L2}
-        if self.objFunc not in str2distance.keys():
-            raise ("%s is not an implemented divergence function" % self.objFunc)
-        
         if self.objFunc in ('kremling','L2'):  #symetric measures
             self.trueMetric = True
         else:
             self.trueMetric = False
 
-        self.distance_func = str2distance[self.objFunc]
+        str2distance = {'KL'      :tcdif.KLDiscrepancies,
+                        'kremling':tcdif.kremling,
+                        'KLs'     :tcdif.KLs,
+                        'L2'      :tcdif.L2}
+        self.distance_func = str2distance.get(self.objFunc, None)
         
-        # generate list of pairs of model indexes. Each pair corresponds to a different comparison
-        self.model_indexes = []
-        for i in range(self.nmodels-1):
-            for j in range(i+1, self.nmodels):
-                self.model_indexes.append((i,j))
-        # if not a true metric, include also the symetric pairs
-        if not self.trueMetric:
-            self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
+        # generate list of pairs of model indexes. Each pair icorresponds to a different comparison
+        if self.distance_func is not None:
+            self.model_indexes = []
+            for i in range(self.nmodels-1):
+                for j in range(i+1, self.nmodels):
+                    self.model_indexes.append((i,j))
+            # if not a true metric, include also the symetric pairs
+            if not self.trueMetric:
+                self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
         
         # working storage arrays
         self.population_energies = []
@@ -184,7 +160,7 @@ class GDE3Solver(DESolver):
 
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
-        sols = [s.solve(trial) for s in self.objFuncList]
+        sols = [f(trial) for f in self.objFuncList]
         if self.distance_func is not None:
             return self.distance_func(sols, self.deltaT, self.model_indexes)
         return sols

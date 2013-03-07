@@ -25,35 +25,36 @@ def compute():
 ## init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4)
 ## """)
     m1 = Model('model 1')
-    m1.rf = react("mgo + gsh -> hta", 0.34)
-    m1.rr = react("hta -> mgo + gsh", 1.01)
-    m1.r1 = react("hta -> sdlt"  , "kcat1 * e1 * hta / (km1 + hta)")
-    m1.r2 = react("sdlt -> gsh", "kcat2 * e2 * sdlt / (km2 + sdlt)")
+    m1.rf    = react("mgo + gsh -> hta", 0.34)
+    m1.rr    = react("hta -> mgo + gsh", 1.01)
+    m1.r1    = react("hta -> sdlt",      "kcat1 * e1 * hta / (km1 + hta)")
+    m1.r2    = react("sdlt -> gsh",      "kcat2 * e2 * sdlt / (km2 + sdlt)")
     m1.fake1 = react("e1 ->", "0")
     m1.fake2 = react("e2 ->", "0")
     m1.kcat1 = 8586
-    m1.km1 = 0.223
+    m1.km1   = 0.223
     m1.kcat2 = 315
-    m1.km2 = 2.86
-    m1.init = state(mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4)
+    m1.km2   = 2.86
+    m1.init  = state(mgo  = 2.86, 
+                     hta  = 0, 
+                     sdlt = 0, 
+                     gsh  = 4, 
+                     e1   = 2e-3, 
+                     e2   = 4e-4)
 
     m2 = m1.clone()
     m2['title'] = 'model 2'
     m2.r1 = react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
     m2.kcat1 = 17046
-    m2.km11 = 0.875
-    m2.km12 = 1.178
+    m2.km11  = 0.875
+    m2.km12  = 1.178
     
-    models = [m1, m2]
+    models   = [m1, m2]
     
-    toOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1]}#, "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
+    toOpt    = {"mgo":[0.1, 1], "gsh":[0.1, 1]}#, "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
     
     observed = 'sdlt'
     
-    biasedCurveNumber = 3
-    
-    biasStandardDeviation = 0.03
-
     objectiveFunction = 'KL'
     populationSize = 200
     maxGenerations = 400
@@ -71,19 +72,16 @@ def compute():
     
     allTime1 = time()
     solver = GDE3Solver(models, 
-                           absoluteMeasurementError, 
-                           toOpt, 
-                           objectiveFunction, 
-                           observed, 
-                           npoints, t0, tf, 
-                           populationSize, maxGenerations, 
-                           biasedCurveNumber, 
-                           biasStandardDeviation, 
-                           DEStrategy, 
-                           diffScale, 
-                           crossoverProb, 
-                           cutoffEnergy, 
-                           useClassRandomNumberMethods)#, dif = '-')
+                       toOpt, 
+                       objectiveFunction, 
+                       observed, 
+                       npoints, t0, tf, 
+                       populationSize, maxGenerations, 
+                       DEStrategy, 
+                       diffScale, 
+                       crossoverProb, 
+                       cutoffEnergy, 
+                       useClassRandomNumberMethods)#, dif = '-')
     solver.Solve()
     finalSolutions = (solver.population, solver.population_energies)
     
