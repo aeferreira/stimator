@@ -7,6 +7,67 @@ S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
 
+def KLDiscrepancies(modelTCs, deltaT, indexes):
+    result = []
+    for (i,j) in indexes:
+        m = modelTCs[i].data
+        n = modelTCs[j].data
+        m = where(m<=0.0,NaN, m)
+        n = where(n<=0.0,NaN, n)
+        dif = -deltaT * nansum(float64(m*(log(m/n)+n/m-1)))
+        result.append(dif)
+    return result
+
+def KLs(modelTCs, deltaT, indexes):
+    result = []
+    for (i,j) in indexes:
+        m = modelTCs[i].data
+        n = modelTCs[j].data
+        m = where(m<=0.0,NaN, m)
+        n = where(n<=0.0,NaN, n)
+        dif = -deltaT * nansum(float64(m*log(m/n)))
+        result.append(dif)
+    return result
+
+## def KLs(modelTCs, deltaT):
+##     plusKLlist = []
+##     minusKLlist = []
+##     for i in range(len(modelTCs)-1):
+##         for j in range(i+1, len(modelTCs)):
+##             m = modelTCs[i].data
+##             n = modelTCs[j].data
+##             plusKL = -deltaT * nansum(float64(m*log(m/n)))
+##             minusKL = -deltaT * nansum(float64(n*log(n/m)))
+##             plusKLlist.append(plusKL)
+##             minusKLlist.append(minusKL)
+##     result = plusKLlist + minusKLlist
+##     return result
+
+def kremling(modelTCs, deltaT, indexes):
+    #Maximizing this function is basically the same as maximizing a weighted L2 distance.
+    result = []
+    for i in range(len(modelTCs)-1):
+        for j in range(i+1, len(modelTCs)):
+            numResult = 0.0
+            for tc1,tc2 in zip(modelTCs[i],modelTCs[j]):
+                tempTC = float64((((tc1-tc2)**2)/(((tc1+tc2)/2)**2))*deltaT)
+                numResult -= nansum(tempTC)
+            result.append(numResult)
+    return result
+
+def L2(modelTCs, deltaT, indexes):
+    #Maximizes this function is the same as maximizing the L2 distance.
+    result = []
+    for i in range(len(modelTCs)-1):
+        for j in range(i+1, len(modelTCs)):
+            numResult = 0.0
+            for tc1,tc2 in zip(modelTCs[i],modelTCs[j]):
+                tempTC = float64(((tc1-tc2)**2))*deltaT
+                numResult -= nansum(tempTC)
+            result.append(numResult)
+    return result
+
+
 def _transform2array(vect):
     if isinstance(vect, float) or isinstance(vect, int):
         res = array((vect), dtype=float)
