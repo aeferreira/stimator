@@ -513,8 +513,10 @@ class Model(ModelObject):
             res += "%s: %s\n"%(str(k), str(self._ModelObject__metadata[k]))
         return res
     
-    def clone(self):
+    def clone(self, new_title = None):
         m = Model(self['title'])
+        if new_title is not None:
+            m['title'] = new_title
         for r in self.__reactions:
             setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._ownparameters, r._irreversible))
         for p in self._ownparameters.values():

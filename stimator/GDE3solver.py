@@ -5,6 +5,7 @@ from de import DESolver
 from time import time
 import random
 import analysis
+import utils
 from dynamics import state2array
 
 
@@ -91,7 +92,9 @@ class ModelSolver(object):
 # helper to transform string arguments in lists:
 def listify(arguments):
     if isinstance(arguments, list) or isinstance(arguments, tuple):  return [a.strip() for a in arguments]
-    if isinstance(arguments, str) or isinstance(arguments, unicode): return [arguments.strip()]
+    if isinstance(arguments, str) or isinstance(arguments, unicode): 
+        arguments = arguments.split()
+        return [a.strip() for a in arguments]
 
         
     
@@ -119,13 +122,23 @@ class GDE3Solver(DESolver):
         self.nmodels = len(models)
         
         self.toOpt = toOpt
-        self.toOptKeys = self.toOpt.keys()
+        self.toOptKeys = []
+        self.opt_maxs = []
+        self.opt_mins = []
+        for n, min_v, max_v in toOpt:
+            self.toOptKeys.append(n)
+            self.opt_maxs.append(max_v)
+            self.opt_mins.append(min_v)
+        self.opt_maxs = numpy.array(self.opt_maxs)
+        self.opt_mins = numpy.array(self.opt_mins)
+        
+        #self.toOptKeys = self.toOpt.keys()
         self.objFunc = objectiveFunction
 
-        self.toOptBounding = [toOpt[i] for i in self.toOptKeys]
-        self.toOptBounding = numpy.transpose(self.toOptBounding)
-        self.opt_maxs = numpy.array(self.toOptBounding)[1]
-        self.opt_mins = numpy.array(self.toOptBounding)[0]
+        ## self.toOptBounding = [toOpt[i] for i in self.toOptKeys]
+        ## self.toOptBounding = numpy.transpose(self.toOptBounding)
+        ## self.opt_maxs = numpy.array(self.toOptBounding)[1]
+        ## self.opt_mins = numpy.array(self.toOptBounding)[0]
 
         DESolver.__init__(self, 
                           len(toOpt), populationSize, maxGenerations, 
@@ -149,9 +162,9 @@ class GDE3Solver(DESolver):
         #counter of number of generations with only  non-dominated solutions
         self.fullnondominated = 0
         
-        str2distance = {'KL'      :tcmetrics.KLDiscrepancies,
+        str2distance = {'extKL'   :tcmetrics.extendedKLdivergence,
                         'kremling':tcmetrics.kremling,
-                        'KLs'     :tcmetrics.KLs,
+                        'KL'      :tcmetrics.KLdivergence,
                         'L2'      :tcmetrics.L2}
         if self.objFunc not in str2distance.keys():
             raise ("%s is not an implemented divergence function" % self.objFunc)
@@ -214,6 +227,7 @@ class GDE3Solver(DESolver):
             self.fullnondominated = 0
             
             time0 = time()
+            self.elapsed = time0
 
             # compute initial energies
             # base class DESolver.__init__()  populates the initial population 
@@ -401,7 +415,16 @@ class GDE3Solver(DESolver):
         return
 
     def finalize(self):
-        pass
+        if self.exitCode == 0:
+            self.exitCode = -1
+        ttime = self.elapsed = time() - self.elapsed
+        print '============================================='
+        print "Finished!"
+        print "Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime))
+        print '%d generations'%(self.generation-1)
+        print
+        
+        #self.reportFinal()
 
     #------------------------------------------------------------------------------------------------------------------------------------
     #This code is an adaptation of the non-dominated sorting algorithm with delayed insertion published in

@@ -2,12 +2,12 @@
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira
+Copyright 2005-2013 António Ferreira, time-course divergences by Nuno Lages.
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
 
-def KLDiscrepancies(modelTCs, deltaT, indexes):
+def extendedKLdivergence(modelTCs, deltaT, indexes):
     result = []
     for (i,j) in indexes:
         m = modelTCs[i].data
@@ -18,7 +18,7 @@ def KLDiscrepancies(modelTCs, deltaT, indexes):
         result.append(dif)
     return result
 
-def KLs(modelTCs, deltaT, indexes):
+def KLdivergence(modelTCs, deltaT, indexes):
     result = []
     for (i,j) in indexes:
         m = modelTCs[i].data
