@@ -36,7 +36,7 @@ def compute():
     models   = [m1, m2]
     
     initial_opt = (('gsh', 0.1, 1.0), ('mgo', 0.1, 1.0))
-    observed = ['sdlt']
+    observed    = ['sdlt']
     
     ## oOpt    = {"mgo":[0.1, 1], "gsh":[0.1, 1]}#, "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
     

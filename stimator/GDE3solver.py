@@ -96,8 +96,7 @@ def listify(arguments):
         arguments = arguments.split()
         return [a.strip() for a in arguments]
 
-        
-    
+
 class GDE3Solver(DESolver):
 
     """ 
@@ -413,6 +412,15 @@ class GDE3Solver(DESolver):
         self.generation += 1
         
         return
+    
+    exitCodeStrings = (
+    "not done",
+    "Solution found by energy criterium",
+    "Solution found by diversity criterium",
+    "Hit max generations",
+    "Too many generations with no improvement",
+    "Solution found by convergence criterium",
+    "Too many generations with only non-dominant solutions")
 
     def finalize(self):
         if self.exitCode == 0:
@@ -420,8 +428,10 @@ class GDE3Solver(DESolver):
         ttime = self.elapsed = time() - self.elapsed
         print '============================================='
         print "Finished!"
-        print "Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime))
+        print GDE3Solver.exitCodeStrings[self.exitCode]
+        print
         print '%d generations'%(self.generation-1)
+        print "Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime))
         print
         
         #self.reportFinal()
@@ -429,9 +439,6 @@ class GDE3Solver(DESolver):
     #------------------------------------------------------------------------------------------------------------------------------------
     #This code is an adaptation of the non-dominated sorting algorithm with delayed insertion published in
     #Fang et al (2008) An Efficient Non-dominated Sorting Method for Evolutionary Algorithms, Evolutionary Computation 16(3):355-384
-    #This algorithm is so far implemented without delayed insertion. 
-    #Related to that or not, in some situations comparisons are repeated - for example use test3/seed(2)/2 objectives and 10 solutions.
-    #Modified for the last time on April 14th, 2009
 
     def getDominanceTree(self, nodeList):
         """ This function applies the 'Divide and Conquer' method recursively generating
@@ -439,11 +446,11 @@ class GDE3Solver(DESolver):
         This version doesn't use delayed insertion of dominated node yet. """
         size = len(nodeList)
         if size > 1:
-            leftTree = self.getDominanceTree(nodeList[:size/2])
-            rightTree = self.getDominanceTree(nodeList[size/2:])
+            leftTree  = self.getDominanceTree(nodeList[:size/2])
+            rightTree = self.getDominanceTree(nodeList[ size/2:])
+            return self.mergeDominanceTrees(leftTree, rightTree)
         else:
             return nodeList
-        return self.mergeDominanceTrees(leftTree, rightTree)
 
     def mergeDominanceTrees(self, leftTree, rightTree):
         """ This function merges (conquers) the dominance trees recursively (not using delayed insertion yet). """
