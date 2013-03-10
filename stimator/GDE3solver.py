@@ -10,7 +10,7 @@ from dynamics import state2array
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
-    # print type(vec1), type(vec2)
+    #print type(vec1), type(vec2)
     d_result = 0
     for vo,vn in zip(vec1, vec2):
         d = vn-vo
@@ -306,12 +306,11 @@ class GDE3Solver(DESolver):
             #print 'Dominance comparison with previous generation:'
             #print energyComparison
 
-            self.oldGeneration = self.population
-            global objectiveDic
-            objectiveDic = {}
+            #global objectiveDic
+            self.objectiveDic = {}
             global dominanceDic
             dominanceDic = {}
-            solutionDic = {}
+            working_sols = [numpy.array([0.0])]
             
             
             dicIndex = 1
@@ -320,31 +319,31 @@ class GDE3Solver(DESolver):
 
             for i in range(len(energyComparison)):
                 if energyComparison[i] > 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.new_generation_energies[i])
+                    self.objectiveDic[dicIndex] = self.new_generation_energies[i]
                     dominanceDic[dicIndex] = []
-                    solutionDic[dicIndex] = numpy.copy(self.new_population[i])
+                    working_sols.append(numpy.copy(self.new_population[i]))
                     dicIndex = dicIndex +1
                     newBetterSols += 1
                 elif energyComparison[i] < 0:
-                    objectiveDic[dicIndex] = numpy.copy(self.population_energies[i])
+                    self.objectiveDic[dicIndex] = self.population_energies[i]
                     dominanceDic[dicIndex] = []
-                    solutionDic[dicIndex] = numpy.copy(self.population[i])
+                    working_sols.append(numpy.copy(self.population[i]))
                     dicIndex = dicIndex +1
                 else: #energyComparison[i] == 0
-                    objectiveDic[dicIndex] = numpy.copy(self.population_energies[i])
+                    self.objectiveDic[dicIndex] = self.population_energies[i]
                     dominanceDic[dicIndex] = []
-                    solutionDic[dicIndex] = numpy.copy(self.population[i])
+                    working_sols.append(numpy.copy(self.population[i]))
                     dicIndex = dicIndex +1
-                    objectiveDic[dicIndex] = numpy.copy(self.new_generation_energies[i])
+                    self.objectiveDic[dicIndex] = self.new_generation_energies[i]
                     dominanceDic[dicIndex] = []
-                    solutionDic[dicIndex] = numpy.copy(self.new_population[i])
+                    working_sols.append(numpy.copy(self.new_population[i]))
                     dicIndex = dicIndex +1
             print 'New dominant solutions: %d' %(newBetterSols)
             print
             sortingtime = time()
             print "Sorting solutions...",
 
-            self.getDominanceTree(objectiveDic.keys())
+            self.getDominanceTree(self.objectiveDic.keys())
             nonDominatedFrontsOut = self.orgndf(dominanceDic)
             
             # build current population
@@ -361,7 +360,7 @@ class GDE3Solver(DESolver):
                         tempFront = nonDominatedFrontsOut[i]
                         tempObjDic = {}
                         for k in tempFront:
-                            tempObjDic[k] = objectiveDic[k]
+                            tempObjDic[k] = self.objectiveDic[k]
                         while len(self.population) + len(tempObjDic.keys()) != self.populationSize:
                             tempObjDic = removeMostCrowded(tempObjDic, 3)
                         full = True
@@ -373,10 +372,10 @@ class GDE3Solver(DESolver):
                         self.fronts.append([])
                         self.front_objectives.append([])
                         for k in nonDominatedFrontsOut[i]:
-                            self.population.append(solutionDic[k])
-                            self.population_energies.append(numpy.copy(objectiveDic[k]))
-                            self.fronts[-1].append(numpy.copy(solutionDic[k]))
-                            self.front_objectives[-1].append(numpy.copy(objectiveDic[k]))
+                            self.population.append(working_sols[k])
+                            self.population_energies.append(self.objectiveDic[k])
+                            self.fronts[-1].append(working_sols[k])
+                            self.front_objectives[-1].append(self.objectiveDic[k])
                         tempObjDic = {}
             
             if self.fronts == []:
@@ -386,10 +385,10 @@ class GDE3Solver(DESolver):
             
             # complete pop to self.populationSize and complete last front
             for i in tempObjDic.keys():
-                self.population.append(numpy.copy(solutionDic[i]))
-                self.population_energies.append(numpy.copy(objectiveDic[i]))
-                self.fronts[-1].append(numpy.copy(solutionDic[i]))
-                self.front_objectives[-1].append(numpy.copy(objectiveDic[i]))
+                self.population.append(working_sols[i])
+                self.population_energies.append(self.objectiveDic[i])
+                self.fronts[-1].append(working_sols[i])
+                self.front_objectives[-1].append(self.objectiveDic[i])
             
             timeElapsed = time() - sortingtime
             print 'done, took %6.3f'% timeElapsed, 's'
@@ -470,7 +469,7 @@ class GDE3Solver(DESolver):
         switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
         while leftNode.nodeIndex != -1 and rightNode.nodeIndex != -1: #and leftTree != [] and rightTree != []:
             switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
-            dominanceTestResult = dominance(objectiveDic[rightNode.nodeIndex], objectiveDic[leftNode.nodeIndex])
+            dominanceTestResult = dominance(self.objectiveDic[rightNode.nodeIndex], self.objectiveDic[leftNode.nodeIndex])
             #rightDelayedInsertionList and leftDelayedInsertionList are [] for now just for the sake of simplicity.
             leftDelayedInsertionList = []
             rightDelayedInsertionList = []
