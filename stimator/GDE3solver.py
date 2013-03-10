@@ -8,25 +8,22 @@ import analysis
 import utils
 from dynamics import state2array
 
-
-def dominanceComparison(old_energies, new_energies):
-    """ Compute dominance relationship between solutions of two generations."""
-    dominance = []
-    for i in range(len(old_energies)):
-        d_result = 0
-        for j in range(len(old_energies[i])):
-            d = new_energies[i][j] - old_energies[i][j]
-            if d <= 0 and d_result <=0:
-                d_result -= 1
-            elif d >= 0 and d_result >=0:
-                d_result += 1
-            else:
-                d_result = 0
-                break
-        dominance.append(d_result)
-    return dominance
+def dominance(vec1, vec2):
+    """Compute Pareto dominance relationship."""
+    d_result = 0
+    for vo,vn in zip(vec1, vec2):
+        d = vn-vo
+        if d <= 0 and d_result <=0:
+            d_result -= 1
+        elif d >= 0 and d_result >=0:
+            d_result += 1
+        else:
+            d_result = 0
+            break
+    return d_result
 
 def nondominated_solutions(energies):
+    """Returns the indexes of non-dominated solutions in a population."""
     nondominated = []
     for i in range(len(energies)):
         is_dominated = False
@@ -47,6 +44,11 @@ def nondominated_solutions(energies):
         if not is_dominated:
             nondominated.append(i)
     return nondominated
+
+def energies_dominance_delta(old_energies, new_energies):
+    """Compute dominance relationship between solutions of two generations."""
+    return [dominance(o,n) for o,n in zip(old_energies, new_energies)]
+
 
 class ModelSolver(object):
     
@@ -291,9 +293,9 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print 'done, took %6.3f'% timeElapsed, 's'
             
-            energyComparison = dominanceComparison(self.new_generation_energies, self.population_energies)
-##             print 'Dominance comparison with previous generation:'
-##             print energyComparison
+            energyComparison = energies_dominance_delta(self.new_generation_energies, self.population_energies)
+            #print 'Dominance comparison with previous generation:'
+            #print energyComparison
 
             self.oldGeneration = self.population
             global objectiveDic
@@ -459,7 +461,7 @@ class GDE3Solver(DESolver):
         switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
         while leftNode.nodeIndex != -1 and rightNode.nodeIndex != -1: #and leftTree != [] and rightTree != []:
             switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
-            dominanceTestResult = self.dominanceTest(leftNode.nodeIndex, rightNode.nodeIndex)
+            dominanceTestResult = dominance(objectiveDic[rightNode.nodeIndex], objectiveDic[leftNode.nodeIndex])
             #rightDelayedInsertionList and leftDelayedInsertionList are [] for now just for the sake of simplicity.
             leftDelayedInsertionList = []
             rightDelayedInsertionList = []
@@ -565,20 +567,6 @@ class GDE3Solver(DESolver):
                 del dominanceDic[k]
         return nonDominatedFronts
 
-    def dominanceTest(self, solution1, solution2):
-        """ This function tests the dominance relationship between two solutions,
-        given as keys in, objectiveDic, the dictionary containing as values the lists with the objective functions evaluations. """
-        dominanceTestResult = 0
-        for i,j in zip(objectiveDic[solution1],objectiveDic[solution2]):
-            d = i - j
-            if d <= 0 and dominanceTestResult <=0:
-                dominanceTestResult += -1
-            elif d >= 0 and dominanceTestResult >=0:
-                dominanceTestResult += 1
-            else:
-                dominanceTestResult = 0
-                break
-        return dominanceTestResult
     #------------------------------------------------------------------------------------------------------------------------------------
     #End of non-dominated sorted algorithm methods
 
@@ -713,8 +701,7 @@ if __name__ == "__main__":
             global objectiveDic #This must begin in 1.
             dominanceDic = {}
             objectiveDic = {}
-            print 'self.numberOfNodes', numberOfNodes
-            print 'self.numberOfObjectives', self.numberOfObjectives
+            print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
             for nodeNumber in range(self.numberOfNodes):
                 dominanceDic[nodeNumber+1] = []
                 objectiveDic[nodeNumber+1] = []
@@ -722,9 +709,9 @@ if __name__ == "__main__":
                     objectiveDic[nodeNumber+1].append(rand())
             print 'dominanceDic and objectiveDic created; entering getDominanceTree'
             print 'objectiveDic', objectiveDic
-            chaves = objectiveDic.keys()
-            self.getDominanceTree(chaves)
-            print self.numberOfNodes, 'nodes and ', self.numberOfObjectives, 'objectives'
+            keys = objectiveDic.keys()
+            self.getDominanceTree(keys)
+            print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
             print 'Entering nonDominatedFrontsOut'
             nonDominatedFrontsOut = self.orgndf(dominanceDic)
             print 'objectiveDic', objectiveDic
@@ -732,26 +719,26 @@ if __name__ == "__main__":
             print 'Testing non-dominance between solutions in the same front...'
             for k in nonDominatedFrontsOut:
                 if len(k) == 1:
-                    dominance =0
+                    d =0
                 elif len(k) > 1:
                     p = 0
                     while p < len(k)-1:
                         r = p + 1
                         while r < len(k):
-                            dominance = self.dominanceTest(k[p], k[r])
-                            if dominance != 0:
+                            d = dominance(objectiveDic[k[r]], objectiveDic[k[p]])
+                            if d != 0:
                                 print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
                                 print 'Domination relationship in front', k, 'between nodes', k[p], 'and', k[r],'. Test not passed.\n\n'
                                 break
                             else:
                                 r += 1
-                        if dominance != 0:
+                        if d != 0:
                             break
                         else:
                             p += 1
-                    if dominance != 0:
+                    if d != 0:
                         break
-                if dominance != 0:
+                if d != 0:
                     return
                 elif len(k) == 0:
                     print 'Empty front found!'
@@ -767,35 +754,35 @@ if __name__ == "__main__":
                         print 'Assigning totalDominance for the first time in the test'
                         totalDominance = 0
                         for up in nonDominatedFrontsOut[pFront]:
-                            dominance = self.dominanceTest(up, down)
-                            if dominance == 1:
+                            d = dominance(objectiveDic[down], objectiveDic[up])
+                            if d == 1:
                                 print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
                                 print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
                                 break
-                            totalDominance = totalDominance + dominance
-                        if dominance == 1 or totalDominance < 1:
+                            totalDominance = totalDominance + d
+                        if d == 1 or totalDominance < 1:
                             break
-                    if dominance == 1 or totalDominance < 1:
+                    if d == 1 or totalDominance < 1:
                         break
                     pFront += 1
                     rFront += 1
-                if dominance == 1 or totalDominance < 1:
+                if d == 1 or totalDominance < 1:
                     return #pFront, up, rFront, down
                 print 'Non-dominance test between solutions in different fronts passed.'
             if len(nonDominatedFrontsOut) == 1:
                 print 'Only non-dominated solutions - no test between different fronts'
-            print 'Tests finished successfully!\n\n\n'
 
     counter = 0
     for i in range(10, 60):
         for j in range(2, 5):
+            print '--------------------------------------------------------'
+            print 'test %d'% (counter +1)
             if (i == 0 and j == 0):
-                print '\n\n\n\n\n'
+                print '**************************'
                 ndsaTest(i, j, printOption = False) #(numberOfNodes, numberOfObjectives)
-                print '\n\n\n\n\n'
+                print '**************************'
             else:
                 ndsaTest(i, j)       #(numberOfNodes, numberOfObjectives)
             counter += 1
-            print 'test', counter
     print 'Tests finished successfully!'
     
