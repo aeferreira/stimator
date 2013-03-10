@@ -306,45 +306,41 @@ class GDE3Solver(DESolver):
             #print 'Dominance comparison with previous generation:'
             #print energyComparison
 
-            #global objectiveDic
-            self.objectiveDic = {}
-            global dominanceDic
-            dominanceDic = {}
+            #working structures for sorting (1 based indexation)
+            self.objectives = [[]]
             working_sols = [numpy.array([0.0])]
+            self.dom_dict = {}
             
-            
-            dicIndex = 1
+            indx = 1
             newBetterSols = 0
-            old_non_dominanted = 0
-
             for i in range(len(energyComparison)):
                 if energyComparison[i] > 0:
-                    self.objectiveDic[dicIndex] = self.new_generation_energies[i]
-                    dominanceDic[dicIndex] = []
+                    self.objectives.append(self.new_generation_energies[i])
+                    self.dom_dict[indx] = []
                     working_sols.append(numpy.copy(self.new_population[i]))
-                    dicIndex = dicIndex +1
+                    indx += 1
                     newBetterSols += 1
                 elif energyComparison[i] < 0:
-                    self.objectiveDic[dicIndex] = self.population_energies[i]
-                    dominanceDic[dicIndex] = []
+                    self.objectives.append(self.population_energies[i])
+                    self.dom_dict[indx] = []
                     working_sols.append(numpy.copy(self.population[i]))
-                    dicIndex = dicIndex +1
+                    indx += 1
                 else: #energyComparison[i] == 0
-                    self.objectiveDic[dicIndex] = self.population_energies[i]
-                    dominanceDic[dicIndex] = []
+                    self.objectives.append(self.population_energies[i])
+                    self.dom_dict[indx] = []
                     working_sols.append(numpy.copy(self.population[i]))
-                    dicIndex = dicIndex +1
-                    self.objectiveDic[dicIndex] = self.new_generation_energies[i]
-                    dominanceDic[dicIndex] = []
+                    indx += 1
+                    self.objectives.append(self.new_generation_energies[i])
+                    self.dom_dict[indx] = []
                     working_sols.append(numpy.copy(self.new_population[i]))
-                    dicIndex = dicIndex +1
+                    indx += 1
             print 'New dominant solutions: %d' %(newBetterSols)
             print
             sortingtime = time()
             print "Sorting solutions...",
 
-            self.getDominanceTree(self.objectiveDic.keys())
-            nonDominatedFrontsOut = self.orgndf(dominanceDic)
+            self.getDominanceTree(self.dom_dict.keys())
+            nonDominatedFrontsOut = self.orgndf()
             
             # build current population
             self.population = []
@@ -355,13 +351,12 @@ class GDE3Solver(DESolver):
             
             full = False
             while not full:
-                for i in range(len(nonDominatedFrontsOut)):
-                    if len(self.population) + len(nonDominatedFrontsOut[i]) > self.populationSize and len(self.population) < self.populationSize:
-                        tempFront = nonDominatedFrontsOut[i]
+                for ndf in nonDominatedFrontsOut:
+                    if len(self.population) + len(ndf) > self.populationSize and len(self.population) < self.populationSize:
                         tempObjDic = {}
-                        for k in tempFront:
-                            tempObjDic[k] = self.objectiveDic[k]
-                        while len(self.population) + len(tempObjDic.keys()) != self.populationSize:
+                        for k in ndf:
+                            tempObjDic[k] = self.objectives[k]
+                        while len(self.population) + len(tempObjDic) != self.populationSize:
                             tempObjDic = removeMostCrowded(tempObjDic, 3)
                         full = True
                         break
@@ -371,11 +366,11 @@ class GDE3Solver(DESolver):
                     else:
                         self.fronts.append([])
                         self.front_objectives.append([])
-                        for k in nonDominatedFrontsOut[i]:
+                        for k in ndf:
                             self.population.append(working_sols[k])
-                            self.population_energies.append(self.objectiveDic[k])
+                            self.population_energies.append(self.objectives[k])
                             self.fronts[-1].append(working_sols[k])
-                            self.front_objectives[-1].append(self.objectiveDic[k])
+                            self.front_objectives[-1].append(self.objectives[k])
                         tempObjDic = {}
             
             if self.fronts == []:
@@ -386,9 +381,9 @@ class GDE3Solver(DESolver):
             # complete pop to self.populationSize and complete last front
             for i in tempObjDic.keys():
                 self.population.append(working_sols[i])
-                self.population_energies.append(self.objectiveDic[i])
+                self.population_energies.append(self.objectives[i])
                 self.fronts[-1].append(working_sols[i])
-                self.front_objectives[-1].append(self.objectiveDic[i])
+                self.front_objectives[-1].append(self.objectives[i])
             
             timeElapsed = time() - sortingtime
             print 'done, took %6.3f'% timeElapsed, 's'
@@ -469,23 +464,23 @@ class GDE3Solver(DESolver):
         switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
         while leftNode.nodeIndex != -1 and rightNode.nodeIndex != -1: #and leftTree != [] and rightTree != []:
             switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
-            dominanceTestResult = dominance(self.objectiveDic[rightNode.nodeIndex], self.objectiveDic[leftNode.nodeIndex])
+            dominanceTestResult = dominance(self.objectives[rightNode.nodeIndex], self.objectives[leftNode.nodeIndex])
             #rightDelayedInsertionList and leftDelayedInsertionList are [] for now just for the sake of simplicity.
             leftDelayedInsertionList = []
             rightDelayedInsertionList = []
             if dominanceTestResult < 0: 
                 switch = 1
                 if rightDelayedInsertionList != []:
-                    mergeDominanceTrees([dominanceDic[rightNode.nodeIndex][0]], rightDelayedInsertionList)
+                    mergeDominanceTrees([self.dom_dict[rightNode.nodeIndex][0]], rightDelayedInsertionList)
                 tempNode = rightNode.nodeIndex
                 rightNode.nextSiblingNode(rightTree) 
-                for i in dominanceDic.keys():
-                    if tempNode in dominanceDic[i]:
-                        dominanceDic[i].remove(tempNode)
-                if len(dominanceDic[leftNode.nodeIndex]) > 0:
-                    dominanceDic[leftNode.nodeIndex] = self.mergeDominanceTrees(dominanceDic[leftNode.nodeIndex], [tempNode])
+                for i in self.dom_dict.keys():
+                    if tempNode in self.dom_dict[i]:
+                        self.dom_dict[i].remove(tempNode)
+                if len(self.dom_dict[leftNode.nodeIndex]) > 0:
+                    self.dom_dict[leftNode.nodeIndex] = self.mergeDominanceTrees(self.dom_dict[leftNode.nodeIndex], [tempNode])
                 else:
-                    dominanceDic[leftNode.nodeIndex].append(tempNode)
+                    self.dom_dict[leftNode.nodeIndex].append(tempNode)
                 if tempNode in rightTree:
                     rightTree.remove(tempNode)
                 if leftNode.nodeIndex != -1 and rightNode.nodeIndex == -1 and rightTree != []: #New!
@@ -493,16 +488,16 @@ class GDE3Solver(DESolver):
             elif dominanceTestResult > 0:
                 switch = 2
                 if leftDelayedInsertionList != []:
-                    self.mergeDominanceTrees([dominanceDic[leftNode.nodeIndex][0]], leftDelayedInsertionList)
+                    self.mergeDominanceTrees([self.dom_dict[leftNode.nodeIndex][0]], leftDelayedInsertionList)
                 tempNode = leftNode.nodeIndex
                 leftNode.nextSiblingNode(leftTree) 
-                for i in dominanceDic.keys():
-                    if tempNode in dominanceDic[i]:
-                        dominanceDic[i].remove(tempNode)
-                if len(dominanceDic[rightNode.nodeIndex]) > 0:
-                    dominanceDic[rightNode.nodeIndex] = self.mergeDominanceTrees(dominanceDic[rightNode.nodeIndex], [tempNode])
+                for i in self.dom_dict.keys():
+                    if tempNode in self.dom_dict[i]:
+                        self.dom_dict[i].remove(tempNode)
+                if len(self.dom_dict[rightNode.nodeIndex]) > 0:
+                    self.dom_dict[rightNode.nodeIndex] = self.mergeDominanceTrees(self.dom_dict[rightNode.nodeIndex], [tempNode])
                 else:
-                    dominanceDic[rightNode.nodeIndex].append(tempNode)
+                    self.dom_dict[rightNode.nodeIndex].append(tempNode)
                 if tempNode in leftTree:
                     leftTree.remove(tempNode)
                 if leftTree == []:
@@ -513,7 +508,7 @@ class GDE3Solver(DESolver):
             else:
                 #No switch assignment
                 if rightDelayedInsertionList != []:
-                    dominanceDic[rightNode.nodeIndex] = self.mergeDominanceTrees(dominanceDic[rightNode.nodeIndex], rightDelayedInsertionList)
+                    self.dom_dict[rightNode.nodeIndex] = self.mergeDominanceTrees(self.dom_dict[rightNode.nodeIndex], rightDelayedInsertionList)
                 rightNode.nextSiblingNode(rightTree)
                 if rightNode.nodeIndex == -1:
                     rightNode.nodeIndex = rightTree[0]
@@ -530,13 +525,13 @@ class GDE3Solver(DESolver):
                 leftTree = leftTree + rightTree
         #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant sibling solutions
         #I'm not sure if this should be done every time or just in the final.
-        if dominanceDic != {}:
+        if self.dom_dict != {}:
             firstFrontToBeCompared = [0, 0]
             grandChildren = []
             #This finds and merges cousins which are children of dominated solutions
             for i in leftTree:
-                if dominanceDic[i] != []:
-                    grandChildren.append(dominanceDic[i])
+                if self.dom_dict[i] != []:
+                    grandChildren.append(self.dom_dict[i])
                     if len(grandChildren) == 2:
                         grandChildren = [self.mergeDominanceTrees(grandChildren[0], grandChildren[1])]
             #Continues to merge the cousins which are children of non-dominated parents
@@ -544,35 +539,35 @@ class GDE3Solver(DESolver):
                 firstFrontToBeCompared = []
                 for i in leftTree:
                     nonDominantSolution = True
-                    for j in dominanceDic.keys():
-                        if i in dominanceDic[j]:
+                    for j in self.dom_dict.keys():
+                        if i in self.dom_dict[j]:
                             nonDominantSolution = False
-                    if nonDominantSolution == True and dominanceDic[i]!=[]:
+                    if nonDominantSolution == True and self.dom_dict[i]!=[]:
                         firstFrontToBeCompared.append(i)
                     if len(firstFrontToBeCompared) > 1:
                         #Next two lines are necessary to avoid errors inside merge function
-                        cousin1 = dominanceDic[firstFrontToBeCompared[0]] #The 'list' function is necessary for the merging to work
-                        cousin2 = dominanceDic[firstFrontToBeCompared[1]] #If 'list' is not used an instance of a dictionary object passes into the merging function and that raises problems
+                        cousin1 = self.dom_dict[firstFrontToBeCompared[0]] #The 'list' function is necessary for the merging to work
+                        cousin2 = self.dom_dict[firstFrontToBeCompared[1]] #If 'list' is not used an instance of a dictionary object passes into the merging function and that raises problems
                         self.mergeDominanceTrees(cousin1, cousin2)
                         break
         return leftTree
 
-    def orgndf(self, dominanceDic):
+    def orgndf(self):
         """ This function organizes the nondominated fronts found by the function getDominanceTree in a list. """
         nonDominatedFronts = []
-        while dominanceDic != {}:
+        while len(self.dom_dict) > 0:
             nonDominated = []
-            for i in dominanceDic.keys():
+            for k in self.dom_dict:
                 dominated = False
-                for j in dominanceDic.values():
-                    if i in j:
+                for j in self.dom_dict.values():
+                    if k in j:
                         dominated = True
                         break
-                if dominated == False:
-                    nonDominated.append(i)
+                if not dominated:
+                    nonDominated.append(k)
             nonDominatedFronts.append(nonDominated)
             for k in nonDominated:
-                del dominanceDic[k]
+                del self.dom_dict[k]
         return nonDominatedFronts
 
     #------------------------------------------------------------------------------------------------------------------------------------
@@ -610,7 +605,8 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
     This function was written by extensive modification of the Calculate function
     in the kNN module of the Biopython package.
     """
-    
+    if len(x) == 0 :
+        return x
     if len(x) < 3:
         x.popitem()
         return x
@@ -618,6 +614,12 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
         keys = x.keys()
         keys.sort()
         extremes = []
+##         print '+++++++++++++++++++++++++++'
+##         print x.values()
+##         print len(x)
+##         print random.choice(x.values())
+##         print len(random.choice(x.values()))
+##         print '+++++++++++++++++++++++++++'
         for i in range(len(random.choice(x.values()))):
             maximum = x[keys[0]][i]
             tempMax = [keys[0]]
@@ -704,25 +706,23 @@ if __name__ == "__main__":
             self.numberOfObjectives = numberOfObjectives
             print 'Test initialized'
             seed(2)
-            #Attention! Because these variables are defined as global, they must be reset every time a test starts or each generation during an optimization with an EA. 
-            global dominanceDic
-            global objectiveDic #This must begin in 1.
-            dominanceDic = {}
-            objectiveDic = {}
+            #This must begin in 1.
+            self.dom_dict = {}
+            self.objectives = {}
             print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
             for nodeNumber in range(self.numberOfNodes):
-                dominanceDic[nodeNumber+1] = []
-                objectiveDic[nodeNumber+1] = []
+                self.dom_dict[nodeNumber+1] = []
+                self.objectives[nodeNumber+1] = []
                 for objectiveNumber in range(self.numberOfObjectives):
-                    objectiveDic[nodeNumber+1].append(rand())
-            print 'dominanceDic and objectiveDic created; entering getDominanceTree'
-            print 'objectiveDic', objectiveDic
-            keys = objectiveDic.keys()
+                    self.objectives[nodeNumber+1].append(rand())
+            print 'self.dom_dict and objectiveDic created; entering getDominanceTree'
+            print 'objectiveDic', self.objectives
+            keys = self.objectives.keys()
             self.getDominanceTree(keys)
             print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
             print 'Entering nonDominatedFrontsOut'
-            nonDominatedFrontsOut = self.orgndf(dominanceDic)
-            print 'objectiveDic', objectiveDic
+            nonDominatedFrontsOut = self.orgndf()
+            print 'objectiveDic', self.objectives
             print 'nonDominatedFrontsOut', nonDominatedFrontsOut
             print 'Testing non-dominance between solutions in the same front...'
             for k in nonDominatedFrontsOut:
@@ -733,7 +733,7 @@ if __name__ == "__main__":
                     while p < len(k)-1:
                         r = p + 1
                         while r < len(k):
-                            d = dominance(objectiveDic[k[r]], objectiveDic[k[p]])
+                            d = dominance(self.objectives[k[r]], self.objectives[k[p]])
                             if d != 0:
                                 print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
                                 print 'Domination relationship in front', k, 'between nodes', k[p], 'and', k[r],'. Test not passed.\n\n'
@@ -762,7 +762,7 @@ if __name__ == "__main__":
                         print 'Assigning totalDominance for the first time in the test'
                         totalDominance = 0
                         for up in nonDominatedFrontsOut[pFront]:
-                            d = dominance(objectiveDic[down], objectiveDic[up])
+                            d = dominance(self.objectives[down], self.objectives[up])
                             if d == 1:
                                 print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
                                 print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
@@ -787,10 +787,10 @@ if __name__ == "__main__":
             print 'test %d'% (counter +1)
             if (i == 0 and j == 0):
                 print '**************************'
-                ndsaTest(i, j, printOption = False) #(numberOfNodes, numberOfObjectives)
+                ndsaTest(i, j, printOption = False)
                 print '**************************'
             else:
-                ndsaTest(i, j)       #(numberOfNodes, numberOfObjectives)
+                ndsaTest(i, j)
             counter += 1
     print 'Tests finished successfully!'
     
