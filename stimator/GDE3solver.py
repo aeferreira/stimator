@@ -613,30 +613,24 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
     else:
         keys = x.keys()
         keys.sort()
+        n_objs = len(x[keys[0]])
         extremes = []
-##         print '+++++++++++++++++++++++++++'
-##         print x.values()
-##         print len(x)
-##         print random.choice(x.values())
-##         print len(random.choice(x.values()))
-##         print '+++++++++++++++++++++++++++'
-        for i in range(len(random.choice(x.values()))):
+        for i in range(n_objs):
             maximum = x[keys[0]][i]
             tempMax = [keys[0]]
             minimum = x[keys[0]][i]
             tempMin = [keys[0]]
-            for j in keys:
-                if x[j][i] < minimum:
-                    tempMin = []
-                    minimum = x[j][i]
-                    tempMin.append(j)
-                elif x[j][i] == minimum and j not in tempMin:
+            for j in keys[1:]:
+                v = x[j][i]
+                if v < minimum:
+                    tempMin = [j]
+                    minimum = v
+                elif v == minimum and j not in tempMin:
                     tempMin.append(j)                
-                elif x[j][i] > maximum:
-                    tempMax = []
-                    maximum = x[j][i]
-                    tempMax.append(j)
-                elif x[j][i] == maximum and j not in tempMax:
+                elif v > maximum:
+                    tempMax = [j]
+                    maximum = v
+                elif v == maximum and j not in tempMax:
                     tempMax.append(j)                
             for k in tempMin:
                 if k not in extremes:
@@ -647,27 +641,23 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
         for i in keys:
             x[i] = numpy.array(x[i])
         lista =[]
-        #Use a fast implementation of the Euclidean distance
-        temp = numpy.zeros(len(random.choice(x.values())))
-        # Predefining temp allows reuse of this array, making this
-        # function about twice as fast.
         distanceMatrix = []
         for i in range(len(keys)):
-            distances = []  # list of (distance, index)
+            distances = []
             for j in range(len(keys)):
                 if j < i:
                     distances.append(distanceMatrix[j][i])
                 elif j ==i:
                     distances.append(0)
                 elif j > i:
-                    temp[:] = x[keys[i]] - x[keys[j]]
+                    temp = x[keys[i]] - x[keys[j]]
                     dist = numpy.sqrt(numpy.dot(temp,temp))
                     distances.append(dist)
             distanceMatrix.append(numpy.copy(distances))
             distances.sort()
             if knumber < len(distances):
                 lista.append(distances[1:knumber+1])
-            if knumber >= len(distances):
+            else:
                 lista.append(distances[1:])
         distancesAndKeys = []
         tolook = []
