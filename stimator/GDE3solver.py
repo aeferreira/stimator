@@ -10,6 +10,7 @@ from dynamics import state2array
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
+    # print type(vec1), type(vec2)
     d_result = 0
     for vo,vn in zip(vec1, vec2):
         d = vn-vo
@@ -18,9 +19,17 @@ def dominance(vec1, vec2):
         elif d >= 0 and d_result >=0:
             d_result += 1
         else:
-            d_result = 0
-            break
+            return 0
     return d_result
+
+## def dominance(vec1, vec2):
+##     """Compute Pareto dominance relationship."""
+##     size = len(vec1)
+##     d = vec2 <= vec1
+##     if numpy.all(d): return -size
+##     d = vec2 >= vec1
+##     if numpy.all(d): return size
+##     return 0
 
 def nondominated_solutions(energies):
     """Returns the indexes of non-dominated solutions in a population."""
