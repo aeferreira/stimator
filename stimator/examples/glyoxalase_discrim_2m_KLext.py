@@ -48,6 +48,7 @@ def compute():
     crossoverProb = 0.7
     cutoffEnergy = 0 #Not used in multiobjective optimization
     useClassRandomNumberMethods = True
+    dump_generations = list(range(maxGenerations))
 
     print 'initial values to optimize:'
     for name, min_v, max_v in initial_opt:
@@ -63,7 +64,8 @@ def compute():
                        diffScale, 
                        crossoverProb, 
                        cutoffEnergy, 
-                       useClassRandomNumberMethods)#, dif = '-')
+                       useClassRandomNumberMethods,
+                       dump_generations = dump_generations)#, dif = '-')
     solver.Solve()
     
     print 'Final front:'

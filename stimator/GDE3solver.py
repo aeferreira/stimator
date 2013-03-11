@@ -122,7 +122,7 @@ class GDE3Solver(DESolver):
     def __init__(self, models, toOpt, objectiveFunction, observed, npoints, t0, tf, populationSize, maxGenerations, deStrategy, diffScale, crossoverProb, 
                  cutoffEnergy, 
                  useClassRandomNumberMethods, 
-                 dif = '0'):
+                 dif = '0', dump_generations = None):
         
         self.models = models
         self.npoints = npoints
@@ -145,12 +145,8 @@ class GDE3Solver(DESolver):
         
         #self.toOptKeys = self.toOpt.keys()
         self.objFunc = objectiveFunction
-
-        ## self.toOptBounding = [toOpt[i] for i in self.toOptKeys]
-        ## self.toOptBounding = numpy.transpose(self.toOptBounding)
-        ## self.opt_maxs = numpy.array(self.toOptBounding)[1]
-        ## self.opt_mins = numpy.array(self.toOptBounding)[0]
-
+        self.dump_generations = dump_generations
+        
         DESolver.__init__(self, 
                           len(toOpt), populationSize, maxGenerations, 
                           self.opt_mins, self.opt_maxs, 
@@ -232,6 +228,8 @@ class GDE3Solver(DESolver):
             print '------------------------------------\nGeneration 0'
             self.gen_times = []
             self.fullnondominated = 0
+            if self.dump_generations is not None:
+                self.dumpfile = open('generations.txt', 'w')
             
             time0 = time()
             self.elapsed = time0
@@ -256,6 +254,8 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
             self.gen_times.append(timeElapsed)
+            if self.dump_generations is not None:
+                print >> self.dumpfile, self.generation_string('0')
         
         else: # generation >= 1
             time0 = time()
@@ -403,7 +403,10 @@ class GDE3Solver(DESolver):
             print "Generation %d finished, took %6.3f s" % (self.generation, timeElapsed)
             print 'generations with no improvement:', self.generationsWithNoImprovement
             self.gen_times.append(timeElapsed)
-                    
+            if self.dump_generations is not None:
+                if self.generation in self.dump_generations:
+                    print >> self.dumpfile, self.generation_string(self.generation)
+
         self.generation += 1
         
         return
@@ -417,6 +420,15 @@ class GDE3Solver(DESolver):
     "Solution found by convergence criterium",
     "Too many generations with only non-dominant solutions")
 
+    def generation_string(self, generation):
+        generation = str(generation)
+        res = 'generation %s -------------------------\n'%generation
+        for s,o in zip(self.population, self.population_energies):
+            sstr = ' '.join([str(i) for i in s])
+            ostr = ' '.join([str(i) for i in o])
+            res = res + '%s %s\n'%(sstr, ostr)
+        return res
+        
     def finalize(self):
         if self.exitCode == 0:
             self.exitCode = -1
@@ -425,9 +437,14 @@ class GDE3Solver(DESolver):
         print "Finished!"
         print GDE3Solver.exitCodeStrings[self.exitCode]
         print
-        print '%d generations'%(self.generation-1)
+        print '%d generations'%(self.generation)
         print "Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime))
         print
+        if self.dump_generations is not None:
+            if self.generation-1 not in self.dump_generations:
+                print >> self.dumpfile, self.generation_string(self.generation-1)
+            self.dumpfile.close()
+
         
         #self.reportFinal()
 
