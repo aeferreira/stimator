@@ -200,12 +200,8 @@ class GDE3Solver(DESolver):
         self.population_energies = []
         self.new_generation_energies = [[] for i in range(self.populationSize)]
         self.new_population = numpy.empty((self.populationSize,len(self.toOpt)))
-        
-        # storage arrays
-        self.fronts = [[]]    # holds fronts created in current generation
-        self.front_objectives = [[]]  # holds objectives for current generation
         self.gen_times = []
-
+        
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
         sols = [s.solve(trial) for s in self.objFuncList]
@@ -340,19 +336,19 @@ class GDE3Solver(DESolver):
             sortingtime = time()
             print "Sorting solutions...",
 
+            # sort solutions by dominance
             self.getDominanceTree(self.dom_dict.keys())
-            nonDominatedFrontsOut = self.ndf2list()
+            nondominated_waves = self.ndf2list()
             
-            # build current population
+            # rebuild current population to populationSize
             self.population = []
             self.population_energies = []
             
-            self.fronts = []    # holds iterations of fronts in this generation
-            self.front_objectives = []  # holds objective values for each front
+            fronts = []    # holds indexes of (used) non-dominated waves
             
             full = False
             while not full:
-                for ndf in nonDominatedFrontsOut:
+                for ndf in nondominated_waves:
                     tempObjDic = {}
                     if len(self.population) + len(ndf) > self.populationSize and len(self.population) < self.populationSize:
                         # create a set of solutions to exactly complete pop to populationSize
@@ -369,36 +365,28 @@ class GDE3Solver(DESolver):
                     else:
                         # just copy  another 'wave' of non-dominated solutions into pop, because
                         # len(ndf) + len(pop) <= populationSize
-                        self.fronts.append([])
-                        self.front_objectives.append([])
+                        fronts.append(ndf)
                         for k in ndf:
                             self.population.append(working_sols[k])
                             self.population_energies.append(self.objectives[k])
-                            self.fronts[-1].append(working_sols[k])
-                            self.front_objectives[-1].append(self.objectives[k])
             
-            if self.fronts == []:
-                self.fronts.append([])
-            if self.front_objectives == []:
-                self.front_objectives.append([])
             
             # use the (trimmed)  tempObjDic to complete pop to self.populationSize 
             # and complete last front
+            fronts.append(tempObjDic.keys())
             for i in tempObjDic.keys():
                 self.population.append(working_sols[i])
                 self.population_energies.append(self.objectives[i])
-                self.fronts[-1].append(working_sols[i])
-                self.front_objectives[-1].append(self.objectives[i])
             
             timeElapsed = time() - sortingtime
             print 'done, took %6.3f'% timeElapsed, 's'
 
-            flengths = [len(i) for i in self.fronts]
+            flengths = [len(i) for i in fronts]
             print 'Front lengths:', flengths
-            nondominated_indxs = nondominated_solutions(self.population_energies)
-            n_nondominated = len(nondominated_indxs)
+            #nondominated_indxs = nondominated_solutions(self.population_energies)
+            #n_nondominated = len(nondominated_indxs)
+            n_nondominated = flengths[0]
             print '%d non-dominated solutions'%(n_nondominated)
-            #print nondominated_indxs
             if n_nondominated == len(self.population):
                 self.fullnondominated += 1
             else:
@@ -406,7 +394,7 @@ class GDE3Solver(DESolver):
 
             #print 'room for improvement', self.roomForImprovement
             
-            if ((not self.trueMetric) and newBetterSols <= self.roomForImprovement and len(self.fronts) == 1) or (self.trueMetric and self.nmodels == 2 and newBetterSols <= self.roomForImprovement):
+            if ((not self.trueMetric) and newBetterSols <= self.roomForImprovement and len(fronts) == 1) or (self.trueMetric and self.nmodels == 2 and newBetterSols <= self.roomForImprovement):
                 self.generationsWithNoImprovement += 1
             else:
                 self.generationsWithNoImprovement = 0
@@ -712,12 +700,12 @@ if __name__ == "__main__":
             keys = self.objectives.keys()
             self.getDominanceTree(keys)
             print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
-            print 'Entering nonDominatedFrontsOut'
-            nonDominatedFrontsOut = self.ndf2list()
+            print 'Entering nondominated_waves'
+            nondominated_waves = self.ndf2list()
             print 'objectiveDic', self.objectives
-            print 'nonDominatedFrontsOut', nonDominatedFrontsOut
+            print 'nondominated_waves', nondominated_waves
             print 'Testing non-dominance between solutions in the same front...'
-            for k in nonDominatedFrontsOut:
+            for k in nondominated_waves:
                 if len(k) == 1:
                     d =0
                 elif len(k) > 1:
@@ -744,16 +732,16 @@ if __name__ == "__main__":
                     print 'Empty front found!'
                     return
             print 'Non-dominance test between solutions in the same front passed.'
-            if len(nonDominatedFrontsOut) > 1:
+            if len(nondominated_waves) > 1:
                 print 'Testing dominance relationship between solutions in different fronts...'
                 #Solution in rFront must be dominated by at least one solution in pFront and cannot dominate any solution in pFront.
                 pFront = 0
                 rFront = pFront + 1
-                while pFront < len(nonDominatedFrontsOut)-1:
-                    for down in nonDominatedFrontsOut[rFront]:
+                while pFront < len(nondominated_waves)-1:
+                    for down in nondominated_waves[rFront]:
                         print 'Assigning totalDominance for the first time in the test'
                         totalDominance = 0
-                        for up in nonDominatedFrontsOut[pFront]:
+                        for up in nondominated_waves[pFront]:
                             d = dominance(self.objectives[down], self.objectives[up])
                             if d == 1:
                                 print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
@@ -769,7 +757,7 @@ if __name__ == "__main__":
                 if d == 1 or totalDominance < 1:
                     return #pFront, up, rFront, down
                 print 'Non-dominance test between solutions in different fronts passed.'
-            if len(nonDominatedFrontsOut) == 1:
+            if len(nondominated_waves) == 1:
                 print 'Only non-dominated solutions - no test between different fronts'
 
     counter = 0
