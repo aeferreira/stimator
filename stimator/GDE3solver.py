@@ -10,7 +10,6 @@ from dynamics import state2array
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
-    #print type(vec1), type(vec2)
     d_result = 0
     for vo,vn in zip(vec1, vec2):
         d = vn-vo
@@ -61,12 +60,14 @@ def energies_dominance_delta(old_energies, new_energies):
 
 class ModelSolver(object):
     
-    """Computes the objective function for a model and a trial vector 
-    given the initial and final time points for the computation, the number of points for ODE integration,
-    a user-defined bias for the initial conditions and measurement errors for each integration point.
-    'model' is a model object;
+    """Driver to compute timecourses, given a model and a trial vector.
+    
+    'model' is a S-timator model object;
     't0' and 'tf' are floats;
-    'npoints' is a positive integer."""
+    'npoints' is a positive integer.
+    'observerd' is a list of variable names to output.
+    'optnames'are variable names. Their initial values will be optimized
+    in the experimental design."""
     
     def __init__(self, model, t0, npoints, tf, optnames, observed):
         self.t0 = t0
@@ -340,7 +341,7 @@ class GDE3Solver(DESolver):
             print "Sorting solutions...",
 
             self.getDominanceTree(self.dom_dict.keys())
-            nonDominatedFrontsOut = self.orgndf()
+            nonDominatedFrontsOut = self.ndf2list()
             
             # build current population
             self.population = []
@@ -352,8 +353,9 @@ class GDE3Solver(DESolver):
             full = False
             while not full:
                 for ndf in nonDominatedFrontsOut:
+                    tempObjDic = {}
                     if len(self.population) + len(ndf) > self.populationSize and len(self.population) < self.populationSize:
-                        tempObjDic = {}
+                        # create a set of solutions to exactly complete pop to populationSize
                         for k in ndf:
                             tempObjDic[k] = self.objectives[k]
                         while len(self.population) + len(tempObjDic) != self.populationSize:
@@ -361,9 +363,12 @@ class GDE3Solver(DESolver):
                         full = True
                         break
                     elif len(self.population) == self.populationSize:
+                        # do nothing, pop complete
                         full = True
                         break
                     else:
+                        # just copy  another 'wave' of non-dominated solutions into pop, because
+                        # len(ndf) + len(pop) <= populationSize
                         self.fronts.append([])
                         self.front_objectives.append([])
                         for k in ndf:
@@ -371,14 +376,14 @@ class GDE3Solver(DESolver):
                             self.population_energies.append(self.objectives[k])
                             self.fronts[-1].append(working_sols[k])
                             self.front_objectives[-1].append(self.objectives[k])
-                        tempObjDic = {}
             
             if self.fronts == []:
                 self.fronts.append([])
             if self.front_objectives == []:
                 self.front_objectives.append([])
             
-            # complete pop to self.populationSize and complete last front
+            # use the (trimmed)  tempObjDic to complete pop to self.populationSize 
+            # and complete last front
             for i in tempObjDic.keys():
                 self.population.append(working_sols[i])
                 self.population_energies.append(self.objectives[i])
@@ -390,8 +395,6 @@ class GDE3Solver(DESolver):
 
             flengths = [len(i) for i in self.fronts]
             print 'Front lengths:', flengths
-            if len(self.population) != self.populationSize:
-                print "POP size IS DIFFERENT"
             nondominated_indxs = nondominated_solutions(self.population_energies)
             n_nondominated = len(nondominated_indxs)
             print '%d non-dominated solutions'%(n_nondominated)
@@ -401,7 +404,6 @@ class GDE3Solver(DESolver):
             else:
                 self.fullnondominated = 0
 
-            #print 'New dominant solutions', newBetterSols
             #print 'room for improvement', self.roomForImprovement
             
             if ((not self.trueMetric) and newBetterSols <= self.roomForImprovement and len(self.fronts) == 1) or (self.trueMetric and self.nmodels == 2 and newBetterSols <= self.roomForImprovement):
@@ -448,7 +450,7 @@ class GDE3Solver(DESolver):
     def getDominanceTree(self, nodeList):
         """ This function applies the 'Divide and Conquer' method recursively generating
         the dominance tree (divides) and returning the product of the mergeDominanceTree function (conquers).
-        This version doesn't use delayed insertion of dominated node yet. """
+        This version doesn't use delayed insertion of dominated node yet."""
         size = len(nodeList)
         if size > 1:
             leftTree  = self.getDominanceTree(nodeList[:size/2])
@@ -463,9 +465,9 @@ class GDE3Solver(DESolver):
         rightNode = Node(rightTree[0])
         switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
         while leftNode.nodeIndex != -1 and rightNode.nodeIndex != -1: #and leftTree != [] and rightTree != []:
-            switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
+            switch = 0
             dominanceTestResult = dominance(self.objectives[rightNode.nodeIndex], self.objectives[leftNode.nodeIndex])
-            #rightDelayedInsertionList and leftDelayedInsertionList are [] for now just for the sake of simplicity.
+            #rightDelayedInsertionList and leftDelayedInsertionList are [] for now.
             leftDelayedInsertionList = []
             rightDelayedInsertionList = []
             if dominanceTestResult < 0: 
@@ -552,8 +554,8 @@ class GDE3Solver(DESolver):
                         break
         return leftTree
 
-    def orgndf(self):
-        """ This function organizes the nondominated fronts found by the function getDominanceTree in a list. """
+    def ndf2list(self):
+        """Organizes a list of nondominated fronts from self.dom_dict"""
         nonDominatedFronts = []
         while len(self.dom_dict) > 0:
             nonDominated = []
@@ -711,7 +713,7 @@ if __name__ == "__main__":
             self.getDominanceTree(keys)
             print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
             print 'Entering nonDominatedFrontsOut'
-            nonDominatedFrontsOut = self.orgndf()
+            nonDominatedFrontsOut = self.ndf2list()
             print 'objectiveDic', self.objectives
             print 'nonDominatedFrontsOut', nonDominatedFrontsOut
             print 'Testing non-dominance between solutions in the same front...'
