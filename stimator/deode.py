@@ -290,13 +290,21 @@ class DeODESolver(de.DESolver):
                 #ysim = symsol[line]
                 colorexp = colours[icolor]+'o'
                 colorsim = colours[icolor]+'-'
-                subplot.plot(expsol.t, yexp, colorexp, label=xname)
-                subplot.plot(expsol.t, ysim, colorsim, label='pred %s' % xname)
+                subplot.plot(expsol.t, yexp, colorexp)
+                subplot.plot(expsol.t, ysim, colorsim, label='%s' % xname)
                 icolor += 1
                 if icolor == len(colours):
                     icolor = 0
             subplot.grid()
-            subplot.legend(loc='best')
+            box = subplot.get_position()
+            subplot.set_position([box.x0, box.y0 + box.height * 0.1,
+                 box.width, box.height * 0.9])
+
+            # Put a legend below current axis
+            subplot.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+              fancybox=True, shadow=True, ncol=3)
+            #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
+            #subplot.legend(loc='best')
 
 def test():
     m1 = read_model("""

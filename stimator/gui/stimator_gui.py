@@ -2,7 +2,7 @@
 # -*- coding: latin1 -*-
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2010 António Ferreira
+Copyright 2005-2013 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 stimatorVersion = "0.985"
 stimatorDate = "Fev 2013"
@@ -562,8 +562,8 @@ class MyFrame(wx.Frame):
         win.SetText("")
         if win == self.ModelEditor:
             self.fileName = None
-        if win == self.ScriptEditor:
-            self.scriptfileName = None
+##         if win == self.ScriptEditor:
+##             self.scriptfileName = None
         self.setTitle2File(self.GetFileName(win), win)
         win.SetFocus()
 
@@ -607,8 +607,8 @@ class MyFrame(wx.Frame):
             return
         if win == self.ModelEditor:
             filename = self.fileName
-        if win == self.ScriptEditor:
-            filename = self.scriptfileName
+##         if win == self.ScriptEditor:
+##             filename = self.scriptfileName
         if filename is None:
             self.OnSaveAsMenu(event)
             return
@@ -627,8 +627,8 @@ class MyFrame(wx.Frame):
                 return
             if win == self.ModelEditor:
                 self.fileName = fileName
-            if win == self.ScriptEditor:
-                self.scriptfileName = fileName
+##             if win == self.ScriptEditor:
+##                 self.scriptfileName = fileName
         win.SetFocus()
 
     def OnCutSelection(self, event):

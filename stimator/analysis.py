@@ -209,7 +209,15 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
         curraxis.grid()
         if legend:
             h, l = curraxis.get_legend_handles_labels()
-            curraxis.legend(h, l, loc='best')
+            #curraxis.legend(h, l, loc='best')
+            box = curraxis.get_position()
+            curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
+                 box.width, box.height * 0.9])
+
+            # Put a legend below current axis
+            curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+              fancybox=True, shadow=True, ncol=5)
+            #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
         curraxis.set_xlabel('')
         curraxis.set_ylabel('')
         if yrange is not None:
@@ -232,7 +240,14 @@ def plot(solutions, show = False, figure = None, style = None, titles=None, ynor
             curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
-                curraxis.legend(h, l, loc='best')
+                box = curraxis.get_position()
+                curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
+                     box.width, box.height * 0.9])
+
+                # Put a legend below current axis
+                curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                  fancybox=True, shadow=True, ncol=5)
+                #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
 
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
