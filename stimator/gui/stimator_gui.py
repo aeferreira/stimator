@@ -4,8 +4,8 @@
 
 Copyright 2005-2010 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.97"
-stimatorDate = "29 Nov 2012"
+stimatorVersion = "0.985"
+stimatorDate = "Fev 2013"
 
 import sys
 import os
@@ -83,8 +83,8 @@ class MyShell(Shell):
 class MyFrame(wx.Frame):
 
     def __init__(self, parent, id=-1, title="S-timator", 
-                pos=wx.DefaultPosition,
-                size=(1024, 768), style= wx.DEFAULT_FRAME_STYLE |
+                pos=(20,20),
+                size=(800, 600), style= wx.DEFAULT_FRAME_STYLE |
                                         wx.SUNKEN_BORDER |
                                         wx.CLIP_CHILDREN):
 
@@ -215,7 +215,7 @@ class MyFrame(wx.Frame):
 
 ##         tb2.AddSeparator()
 ##         tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
-##         tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
+        tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
 ##         tb2.AddSeparator()
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
@@ -663,7 +663,7 @@ class MyFrame(wx.Frame):
 
     def OnPaneClose(self, event):
         caption = event.GetPane().caption
-        if caption in ["Tree Pane", "Dock Manager Settings", "Fixed Pane"]:
+        if caption in ["Tree Pane", "Dock Manager Settings", "Fixed Pane","script_editor", "model_editor"]:
             msg = "Are You Sure You Want To Close This Pane?"
             dlg = wx.MessageDialog(self, msg, "AUI Question",
                                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
@@ -996,7 +996,7 @@ class MyFrame(wx.Frame):
         self._mgr.AddPane(plotpanel, wx.aui.AuiPaneInfo().
                           Name(name).Caption("Results").
                           DestroyOnClose().
-                          Dockable(True).Float().Show().CloseButton(True).MaximizeButton(True))
+                          Dockable(False).Float().Show().CloseButton(True).MaximizeButton(True))
 ##                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
 
     def CreateTreeCtrl(self):
