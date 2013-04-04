@@ -72,7 +72,7 @@ class DeODESolver(de.DESolver):
             try:
                 globalX0 = copy(state2array(model,initial))
             except AttributeError:
-                globalX0 = zeros(len(varnames(model)))
+                globalX0 = zeros(len(model().varnames))
     
         else:
             globalX0 = copy(initial)
