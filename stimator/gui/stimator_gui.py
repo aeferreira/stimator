@@ -74,6 +74,10 @@ scriptglock = thread.allocate_lock()
 
 debug = 1
 
+##------------- child of Shell
+
+class MyShell(Shell):
+    pass
 ##------------- Main frame class
 
 class MyFrame(wx.Frame):
@@ -124,12 +128,12 @@ class MyFrame(wx.Frame):
 
         file_menu.Append(ID_File_New, '&New\tCtrl-N', 'New')
         file_menu.Append(ID_File_Open, '&Open\tCtrl-O', 'Open')
-        file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
+##         file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
         file_menu.Append(wx.ID_SAVE, '&Save\tCtrl-S', 'Save')
         file_menu.Append(ID_File_Save_As, 'Save &As\tCtrl-A', 'Save As')
         file_menu.AppendSeparator()
-        file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
-        file_menu.AppendSeparator()
+##         file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
+##         file_menu.AppendSeparator()
         file_menu.Append(wx.ID_EXIT, 'E&xit\tAlt-X', 'Exit')
 
         # Edit menu
@@ -140,38 +144,38 @@ class MyFrame(wx.Frame):
         edit_menu.Append(wx.ID_COPY, '&Copy\tCtrl-C', 'Copy')
         edit_menu.Append(wx.ID_PASTE, 'Paste\tCtrl-V', 'Paste')
 
-        options_menu = wx.Menu()
-        options_menu.AppendRadioItem(ID_TransparentHint, "Transparent Hint")
-        options_menu.AppendRadioItem(ID_VenetianBlindsHint, "Venetian Blinds Hint")
-        options_menu.AppendRadioItem(ID_RectangleHint, "Rectangle Hint")
-        options_menu.AppendRadioItem(ID_NoHint, "No Hint")
-        options_menu.AppendSeparator();
-        options_menu.AppendCheckItem(ID_HintFade, "Hint Fade-in")
-        options_menu.AppendCheckItem(ID_AllowFloating, "Allow Floating")
-        options_menu.AppendCheckItem(ID_NoVenetianFade, "Disable Venetian Blinds Hint Fade-in")
-        options_menu.AppendCheckItem(ID_TransparentDrag, "Transparent Drag")
-        options_menu.AppendCheckItem(ID_AllowActivePane, "Allow Active Pane")
-        options_menu.AppendSeparator();
-        options_menu.AppendRadioItem(ID_NoGradient, "No Caption Gradient")
-        options_menu.AppendRadioItem(ID_VerticalGradient, "Vertical Caption Gradient")
-        options_menu.AppendRadioItem(ID_HorizontalGradient, "Horizontal Caption Gradient")
+##         options_menu = wx.Menu()
+##         options_menu.AppendRadioItem(ID_TransparentHint, "Transparent Hint")
+##         options_menu.AppendRadioItem(ID_VenetianBlindsHint, "Venetian Blinds Hint")
+##         options_menu.AppendRadioItem(ID_RectangleHint, "Rectangle Hint")
+##         options_menu.AppendRadioItem(ID_NoHint, "No Hint")
+##         options_menu.AppendSeparator();
+##         options_menu.AppendCheckItem(ID_HintFade, "Hint Fade-in")
+##         options_menu.AppendCheckItem(ID_AllowFloating, "Allow Floating")
+##         options_menu.AppendCheckItem(ID_NoVenetianFade, "Disable Venetian Blinds Hint Fade-in")
+##         options_menu.AppendCheckItem(ID_TransparentDrag, "Transparent Drag")
+##         options_menu.AppendCheckItem(ID_AllowActivePane, "Allow Active Pane")
+##         options_menu.AppendSeparator();
+##         options_menu.AppendRadioItem(ID_NoGradient, "No Caption Gradient")
+##         options_menu.AppendRadioItem(ID_VerticalGradient, "Vertical Caption Gradient")
+##         options_menu.AppendRadioItem(ID_HorizontalGradient, "Horizontal Caption Gradient")
 ##         options_menu.AppendSeparator();
 ##         options_menu.Append(ID_Settings, "Settings Pane")
 
-        self._perspectives_menu = wx.Menu()
-        self._perspectives_menu.Append(ID_CreatePerspective, "Create Perspective")
-        self._perspectives_menu.Append(ID_CopyPerspective, "Copy Perspective Data To Clipboard")
-        self._perspectives_menu.AppendSeparator()
-        self._perspectives_menu.Append(ID_FirstPerspective+0, "Default Startup")
-        self._perspectives_menu.Append(ID_FirstPerspective+1, "All Panes")
+##         self._perspectives_menu = wx.Menu()
+##         self._perspectives_menu.Append(ID_CreatePerspective, "Create Perspective")
+##         self._perspectives_menu.Append(ID_CopyPerspective, "Copy Perspective Data To Clipboard")
+##         self._perspectives_menu.AppendSeparator()
+##         self._perspectives_menu.Append(ID_FirstPerspective+0, "Default Startup")
+##         self._perspectives_menu.Append(ID_FirstPerspective+1, "All Panes")
 
         help_menu = wx.Menu()
         help_menu.Append(ID_About, "About...")
         
         mb.Append(file_menu, "File")
         mb.Append(edit_menu, "Edit")
-        mb.Append(self._perspectives_menu, "Perspectives")
-        mb.Append(options_menu, "Options")
+##         mb.Append(self._perspectives_menu, "Perspectives")
+##         mb.Append(options_menu, "Options")
         mb.Append(help_menu, "Help")
         self.mb = mb
         
@@ -195,7 +199,7 @@ class MyFrame(wx.Frame):
                          wx.TB_FLAT | wx.TB_NODIVIDER)
         tb2.SetToolBitmapSize(wx.Size(30,30))
         tb2.AddTool(ID_File_Open, images.getdi_folderBitmap(), shortHelpString="Open")
-        tb2.AddTool(ID_File_OpenScript, images.getdi_folderprocessBitmap(), shortHelpString="Open script")
+##         tb2.AddTool(ID_File_OpenScript, images.getdi_folderprocessBitmap(), shortHelpString="Open script")
         tb2.AddTool(wx.ID_SAVE, images.getdi_saveBitmap(), shortHelpString="Save")
         tb2.AddSeparator()
         tb2.AddTool(wx.ID_CUT, images.getdi_cutBitmap(), shortHelpString="Cut")
@@ -209,10 +213,10 @@ class MyFrame(wx.Frame):
         tb2.AddTool(ID_Actions_RunModel, images.getdi_runBitmap(), shortHelpString="Run Model")
         tb2.AddTool(ID_Actions_FindParameters, images.getdi_flagBitmap(), shortHelpString="Find Parameters")
 
-        tb2.AddSeparator()
-        tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
-        tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
-        tb2.AddSeparator()
+##         tb2.AddSeparator()
+##         tb2.AddTool(ID_Actions_RunScript, images.getdi_processBitmap(), shortHelpString="Run Script")
+##         tb2.AddTool(ID_Actions_StopComputation, images.getdi_processdeleteBitmap(), shortHelpString="Stop Script")
+##         tb2.AddSeparator()
         buttonId = wx.NewId()
         b = wx.Button(tb2, buttonId, "Example", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
         tb2.AddControl(b)
@@ -266,8 +270,8 @@ class MyFrame(wx.Frame):
         
 
         sz = self.GetClientSize()
-        lcs = None#{'ui': self.ui, 'stimator':stimator}
-        self.shell = Shell(parent=self, locals=lcs)
+        lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
+        self.shell = MyShell(parent=self, locals=lcs)
         self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
                           Name("shell").Caption("Shell").
                           Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*2/12)).CloseButton(True).MaximizeButton(True))
@@ -277,8 +281,8 @@ class MyFrame(wx.Frame):
         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
                           Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
 ##                           CenterPane().Caption("Model"))
-        self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
-                          Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/4,200)).CloseButton(True).MaximizeButton(True))
+##         self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
+##                           Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/4,200)).CloseButton(True).MaximizeButton(True))
         # add the toolbars to the manager
                         
         self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
@@ -305,7 +309,7 @@ class MyFrame(wx.Frame):
         self._mgr.GetPane("model_editor").Show()
         self._mgr.GetPane("tb3").Hide()
         self._mgr.GetPane("shell").Show()
-        self._mgr.GetPane("script_editor").Show()
+##         self._mgr.GetPane("script_editor").Show()
 
         perspective_default = self._mgr.SavePerspective()
 
@@ -464,8 +468,8 @@ class MyFrame(wx.Frame):
     def GetModelFileDir(self, editor):
         if editor == self.ModelEditor:
             filename = self.fileName
-        if editor == self.ScriptEditor:
-            filename = self.scriptfileName
+##         if editor == self.ScriptEditor:
+##             filename = self.scriptfileName
         if filename is not None:
             return os.path.split(filename)[0]
         return "."
@@ -473,8 +477,8 @@ class MyFrame(wx.Frame):
     def GetFileName(self, editor):
         if editor == self.ModelEditor:
             filename = self.fileName
-        if editor == self.ScriptEditor:
-            filename = self.scriptfileName
+##         if editor == self.ScriptEditor:
+##             filename = self.scriptfileName
         if filename is not None:
             return os.path.split(filename)[1]
         return ""
@@ -490,8 +494,8 @@ class MyFrame(wx.Frame):
             filename = ' [%s]'%filename
         if editor == self.ModelEditor:
             self._mgr.GetPane("model_editor").Caption("Model"+filename)
-        if editor == self.ScriptEditor:
-            self._mgr.GetPane("script_editor").Caption("Script"+filename)
+##         if editor == self.ScriptEditor:
+##             self._mgr.GetPane("script_editor").Caption("Script"+filename)
         self._mgr.Update()
     
     def OpenFile(self, fileName, editor):
@@ -499,8 +503,8 @@ class MyFrame(wx.Frame):
         if sucess:
             if editor == self.ModelEditor:
                 self.fileName = fileName
-            if editor == self.ScriptEditor:
-                self.scriptfileName = fileName
+##             if editor == self.ScriptEditor:
+##                 self.scriptfileName = fileName
             self.setTitle2File(self.GetFileName(editor), editor)
         return sucess
 
@@ -981,7 +985,7 @@ class MyFrame(wx.Frame):
         self._mgr.AddPane(plotpanel, wx.aui.AuiPaneInfo().
                           Name(name).Caption("Results").
                           DestroyOnClose().
-                          Dockable(True).Float().Show().CloseButton(True).MaximizeButton(True))
+                          Dockable(False).Float().Show().CloseButton(True).MaximizeButton(True))
 ##                           Bottom().Layer(0).Row(0).Position(1).CloseButton(True).MaximizeButton(True))
         plotpanel.draw()
 
@@ -1212,6 +1216,9 @@ class gui_facade(object):
     def load_model(self,filename):
         self.sframe.OpenFile(filename, self.sframe.ModelEditor)
         return self.model()
+    
+    def clear(self):
+        self.sframe.shell.clear()
 
     def model(self):
         textlines = [self.sframe.ModelEditor.GetLine(i) for i in range(self.sframe.ModelEditor.GetLineCount())]
