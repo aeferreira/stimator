@@ -196,6 +196,12 @@ class SolutionTimeCourse(object):
         self.t = data[:,0].T
         self.data = data[:,1:].T
 
+    def save_to_str(self):
+        aTC   = StringIO.StringIO()
+        aTC.seek(0)
+        self.write_to(aTC)
+        return aTC.getvalue()
+
     def write_to(self, filename):
         """Writes a time course to a file or file-like object.
         """
@@ -472,6 +478,7 @@ nothing really usefull here
     print sol.data
     print
 
+
     try:
         sol.load_from_str(demodata)
         print '\n- using load_from() with name order x bof z'
@@ -484,6 +491,21 @@ nothing really usefull here
     except StimatorTCError, msg:
         print msg
         print
+
+    sol.load_from_str(demodata)
+    print '\n- using load_from() ----------------'
+    print '\nnames:'
+    print sol.names
+    print '\nt'
+    print sol.t
+    print '\ndata'
+    print sol.data
+    print
+    print '\n- now dumping, using save_to_str() ----------------'
+    stc = sol.save_to_str()
+    print stc
+    print '-----------------------------------------------------'
+
 
     print '===Reading data without a header========================='
     aTCnh.seek(0)
