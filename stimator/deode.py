@@ -34,13 +34,14 @@ class DeODESolver(de.DESolver):
     
     def __init__(self, model, optSettings, tcs, weights = None,
                     aMsgTicker=None, anEndComputationTicker=None, 
-                    dump_pars=False,initial = 'init'):
+                    dump_pars=False, dump_predictions=False, initial = 'init'):
         self.model    = model
         self.tc       = tcs
         self.varnames = model().varnames
         self.endTicker        = anEndComputationTicker
         self.msgTicker        = aMsgTicker
         self.dump_pars        = dump_pars
+        self.dump_predictions = dump_predictions
         
         #reorder variables according to model
         self.tc.orderByModelVars(self.model)
@@ -222,8 +223,9 @@ class DeODESolver(de.DESolver):
         self.optimum = best
         self.generate_fitted_sols()
         
-        fnames = ['pred_'+ self.tc[i].title for i in range(len(self.tc))]
-        best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
+        if self.dump_predictions:
+            fnames = ['pred_'+ self.tc[i].title for i in range(len(self.tc))]
+            best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
 
     def reportResults(self):
         headerformat = "--- %-20s -----------------------------\n"
