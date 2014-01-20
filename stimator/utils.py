@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import pprint
 
 def write2file(filename, astring):

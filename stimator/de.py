@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: ISO-8859-1 -*-
+# -*- coding: utf8 -*-
 
 # Module DESolver. A component of
 # S-timator : Time-course parameter estimation using Differential Evolution.
 
-# Copyright 2005-2009 António Ferreira
+# Copyright 2005-2009 AntÃ³nio Ferreira
 # S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows.
 
 # This module is also based on...
@@ -17,7 +17,7 @@
 
 """DE : Real-value optimization by Differential evolution
 
-Copyright 2005-2009 António Ferreira
+Copyright 2005-2009 AntÃ³nio Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 import utils

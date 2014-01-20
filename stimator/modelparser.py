@@ -418,7 +418,7 @@ class StimatorParser:
                 rate = float(value) # it will be a float and mass action kinetics will be assumed
             
         try:
-            setattr(self.model, name, model.react(stoich, rate, pars=pardict))
+            setattr(self.model, name, model.Model.react(stoich, rate, pars=pardict))
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end   = match.end('stoich')

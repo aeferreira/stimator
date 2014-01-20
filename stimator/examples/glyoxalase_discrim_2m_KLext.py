@@ -1,5 +1,5 @@
 from stimator import utils
-from stimator import Model, react, state, read_model
+from stimator import Model, state, read_model
 from stimator.GDE3solver import GDE3Solver
 from time import time
 
@@ -10,12 +10,12 @@ def compute():
     tf = 120
     
     m1 = Model('model 1')
-    m1.rf    = react("mgo + gsh -> hta", 0.34)
-    m1.rr    = react("hta -> mgo + gsh", 1.01)
-    m1.r1    = react("hta -> sdlt",      "kcat1 * e1 * hta / (km1 + hta)")
-    m1.r2    = react("sdlt -> gsh",      "kcat2 * e2 * sdlt / (km2 + sdlt)")
-    m1.fake1 = react("e1 ->", "0")
-    m1.fake2 = react("e2 ->", "0")
+    m1.rf    = Model.react("mgo + gsh -> hta", 0.34)
+    m1.rr    = Model.react("hta -> mgo + gsh", 1.01)
+    m1.r1    = Model.react("hta -> sdlt", "kcat1 * e1 * hta / (km1 + hta)")
+    m1.r2    = Model.react("sdlt -> gsh", "kcat2 * e2 * sdlt / (km2 + sdlt)")
+    m1.fake1 = Model.react("e1 ->", "0")
+    m1.fake2 = Model.react("e2 ->", "0")
     m1.kcat1 = 8586
     m1.km1   = 0.223
     m1.kcat2 = 315
@@ -28,7 +28,7 @@ def compute():
                      e2   = 4e-4)
 
     m2 = m1.clone(new_title = 'model 2')
-    m2.r1 = react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
+    m2.r1 = Model.react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
     m2.kcat1 = 17046
     m2.km11  = 0.875
     m2.km12  = 1.178

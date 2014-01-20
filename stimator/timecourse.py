@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: latin1-*-
+# -*- coding: utf8-*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator timecourse functions
-# Copyright António Ferreira 2006-2013
+# Copyright AntÃ³nio Ferreira 2006-2013
 #----------------------------------------------------------------------------
 import os.path
 import StringIO

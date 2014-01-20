@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# -*- coding:latin1 -*-
+# -*- coding:utf8 -*-
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira
+Copyright 2005-2013 AntÃ³nio Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 import de

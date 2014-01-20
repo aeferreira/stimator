@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: ISO-8859-1 -*-
+# -*- coding: utf8 -*-
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira
+Copyright 2005-2013 AntÃ³nio Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
@@ -153,8 +153,8 @@ def computeFIM(model, pars, TCs, COV, vars = None):
 def test():
     
     m = Model("Glyoxalase system")
-    m.glo1 = react("HTA -> SDLTSH", rate = "V*HTA/(Km1 + HTA)", pars=dict(V= 2.57594e-05))
-    m.glo2 = react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
+    m.glo1 = Model.react("HTA -> SDLTSH", rate = "V*HTA/(Km1 + HTA)", pars=dict(V= 2.57594e-05))
+    m.glo2 = Model.react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
     m.V   = 2.57594e-05
     m.Km1 = 0.252531
     m.V2  = 2.23416e-05

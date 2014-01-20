@@ -14,10 +14,10 @@ def test_M2():
     assert m['title'] == "My first model"
 
 def test_react1():
-    """test react(string, int or float)"""
+    """test Model.react(string, int or float)"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     assert isinstance(m.v1, model.Reaction)
     assert isinstance(m.v2, model.Reaction)
     assert get_name(m.v1) == 'v1'
@@ -28,9 +28,9 @@ def test_react1():
     assert check 
 
 def test_react2():
-    """test react(string, string)"""
+    """test Model.react(string, string)"""
     m = Model("My first model")
-    m.v1 = react("A->B", " 4*A/(p1+A)-B ")
+    m.v1 = Model.react("A->B", " 4*A/(p1+A)-B ")
     m.p1 = 2
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -39,9 +39,9 @@ def test_react2():
     assert check 
 
 def test_react2b():
-    """test react(string, string) with math functions"""
+    """test Model.react(string, string) with math functions"""
     m = Model("My first model")
-    m.v1 = react("A->B", " 4*sqrt(A)/(p1+sin(A))-B ")
+    m.v1 = Model.react("A->B", " 4*sqrt(A)/(p1+sin(A))-B ")
     m.p1 = 2
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -50,9 +50,9 @@ def test_react2b():
     assert check 
 
 def test_react2c():
-    """test react(string, string) with kinetics functions"""
+    """test Model.react(string, string) with kinetics functions"""
     m = Model("My first model")
-    m.v1 = react("A->B", " 4*A*step(t,1.0)")
+    m.v1 = Model.react("A->B", " 4*A*step(t,1.0)")
     m.p1 = 2
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -64,12 +64,12 @@ def test_react2c():
 def test_react3():
     """test Bad stoichiometry"""
     m = Model("My first model")
-    m.v1 = react("A->##B", " 4*A/(p1+A)-B ")
+    m.v1 = Model.react("A->##B", " 4*A/(p1+A)-B ")
 
 def test_react4():
     """test Bad rate law (unknown ID)"""
     m = Model("My first model")
-    m.v1 = react("A->B", " 4*A/(p2+A)-B ")
+    m.v1 = Model.react("A->B", " 4*A/(p2+A)-B ")
     m.p1 = 2
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -80,7 +80,7 @@ def test_react4():
 def test_react5():
     """test Bad rate law (malformed expression)"""
     m = Model("My first model")
-    m.v1 = react("A->B", " 4*A/(p1+A-B ")
+    m.v1 = Model.react("A->B", " 4*A/(p1+A-B ")
     m.p1 = 2
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -91,7 +91,7 @@ def test_react5():
 def test_react6():
     """test Bad rate law (fp overflow)"""
     m = Model("My first model")
-    m.v1 = react("A->B", " 1e100**10000 * 4*A/(p1+A)-B ")
+    m.v1 = Model.react("A->B", " 1e100**10000 * 4*A/(p1+A)-B ")
     m.p1 = 2
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -114,7 +114,7 @@ def test_par1():
 def test_par_in_rates1():
     """test assignment of parameters 'local' to reactions"""
     m = Model("My first model")
-    m.v1 = react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.v1 = Model.react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
     m.p2 = 3.0
     assert get_name(m.v1) == 'v1'
     assert isinstance(m.v1, model.Reaction)
@@ -131,8 +131,8 @@ def test_par_in_rates1():
 def test_par_from_rates1():
     """test rate expressions with parameters 'local' to reactions"""
     m = Model("My first model")
-    m.v1 = react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
-    m.v2 = react("B->C", "2*v1.p1*B")
+    m.v1 = Model.react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.v2 = Model.react("B->C", "2*v1.p1*B")
     m.p2 = 3.0
     assert get_name(m.v2) == 'v2'
     assert isinstance(m.v1, model.Reaction)
@@ -203,7 +203,7 @@ def test_par2():
 def test_par_in_rates2():
     """test assignment of 'local' parameters with bounds"""
     m = Model("My first model")
-    m.v1 = react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.v1 = Model.react("A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
     m.p2 = 3.0
     m.v1.p1 = 1,10 #tuple or list
     m.p2 = [1, 9.5]
@@ -236,7 +236,7 @@ def test_transf1():
 def test_transf2():
     """test transf(string)"""
     m = Model("My first model")
-    m.v1 = react("A+B -> C"  , 3)
+    m.v1 = Model.react("A+B -> C"  , 3)
     m.t1 = transf(" p2*A/(p1+A)-B ", dict(p2=3))
     m.p1 = 2
     assert isinstance(m.t1, model.Transformation)
@@ -253,10 +253,10 @@ def test_printmodel():
     """test print(model)"""
     import math
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*B")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = Model.react("B   ->  "  , "2*B")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
@@ -275,10 +275,10 @@ def test_clonemodel():
     """test model.clone()"""
     import math
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*B")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = Model.react("B   ->  "  , "2*B")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
     m.D  = variable("-2 * D")
@@ -308,10 +308,10 @@ def test_init1():
 def test_iter_reactions():
     """test iteration of reactions using reactions()"""
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = 1.0)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*B")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = 1.0)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = Model.react("B   ->  "  , "2*B")
     m.D  = variable("-2 * D")
     rr = m().reactions
     assert isinstance(rr, list)
@@ -337,9 +337,9 @@ def test_iter_reactions():
 def test_iter_transf():
     """test iteration of transformations using transformations()"""
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = 1.0)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = 1.0)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.D  = variable("-2 * D")
     m.t1 = transf("A*4 + C")
     m.t2 = transf("sqrt(2*A)")
@@ -356,9 +356,9 @@ def test_iter_transf():
 def test_iter_variables():
     """test iteration of variables using variables() and varnames()"""
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = 1.0)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = 1.0)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.D  = variable("-2 * D")
     xx = m().varnames
     assert isinstance(xx, list)
@@ -368,9 +368,9 @@ def test_iter_variables():
 def test_iter_extvariables():
     """test iteration of external variables using extvariables()"""
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = 1.0)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = 1.0)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
     m.B  = 0.5
     xx = m().extvariables
     assert isinstance(xx, list)
@@ -381,10 +381,10 @@ def test_iter_parameters():
     """test iteration of parameters using parameters()"""
     import math
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*B")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = Model.react("B   ->  "  , "2*B")
     m.D  = variable("-2 * D")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
@@ -410,10 +410,10 @@ def test_iter_uncertain():
     """test iteration of uncertain parameters using uncertain()"""
     import math
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*B")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = Model.react("B   ->  "  , "2*B")
     m.D  = variable("-2 * D")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
@@ -439,10 +439,10 @@ def test_iter_state():
     """test iteration of states"""
     import math
     m = Model('My first model')
-    m.v1 = react("A+B -> C"  , 3)
-    m.v2 = react("    -> A"  , rate = math.sqrt(4.0)/2)
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)")
-    m.v4 = react("B   ->  "  , "2*B")
+    m.v1 = Model.react("A+B -> C"  , 3)
+    m.v2 = Model.react("    -> A"  , rate = math.sqrt(4.0)/2)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)")
+    m.v4 = Model.react("B   ->  "  , "2*B")
     m.D  = variable("-2 * D")
     m.B  = 2.2
     m.myconstant = 2 * m.B / 1.1 # should be 4.0
@@ -494,8 +494,8 @@ def test_reassignment1():
 def test_reassignment2():
     """test reassignment of reactions"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     assert isinstance(m.v1, model.Reaction)
     assert isinstance(m.v2, model.Reaction)
     assert get_name(m.v1) == 'v1'
@@ -504,7 +504,7 @@ def test_reassignment2():
     assert m.v2()== str(float(2.0))+"*B"
     check, msg = m.checkRates()
     assert check 
-    m.v2 = react("D->C", 2.0)
+    m.v2 = Model.react("D->C", 2.0)
     assert isinstance(m.v1, model.Reaction)
     assert isinstance(m.v2, model.Reaction)
     assert get_name(m.v1) == 'v1'
@@ -517,14 +517,14 @@ def test_reassignment2():
 def test_reassignment3():
     """test change of variables by reassignment of reactions"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'C']
     check, msg = m.checkRates()
     assert check 
-    m.v2 = react("B->D", 2.0)
+    m.v2 = Model.react("B->D", 2.0)
     xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'D']
@@ -535,8 +535,8 @@ def test_reassignment3():
 def test_reassignment4():
     """test illegal type reassignment (reactions)"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     xx = m().varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'C']
@@ -553,12 +553,12 @@ def test_reassignment4():
 def test_reassignment5():
     """test illegal type reassignment (parameters)"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     m.Km = 4
     check, msg = m.checkRates()
     assert check 
-    m.Km = react("B->D", 2.0)
+    m.Km = Model.react("B->D", 2.0)
     xx = m().variables
     assert len(xx) == 3
     names = [x for x in m().varnames]
@@ -570,8 +570,8 @@ def test_reassignment5():
 def test_par2():
     """test illegal type assignment"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     m.Km = [9,10,13,45]
     check, msg = m.checkRates()
     assert check 
@@ -579,8 +579,8 @@ def test_par2():
 def test_meta1():
     """test Model metadata"""
     m = Model("My first model")
-    m.v1 = react("A->B", 4)
-    m.v2 = react("B->C", 2.0)
+    m.v1 = Model.react("A->B", 4)
+    m.v2 = Model.react("B->C", 2.0)
     check, msg = m.checkRates()
     assert check 
     m['where'] = 'in model'

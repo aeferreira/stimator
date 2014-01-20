@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: latin1-*-
+# -*- coding: utf8 -*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator Model related classes
-# Copyright António Ferreira 2006-2013
+# Copyright AntÃ³nio Ferreira 2006-2013
 #----------------------------------------------------------------------------
 import re
 import math
@@ -278,14 +278,6 @@ class Reaction(_HasRate):
             return False
         return True
 
-def react(stoichiometry, rate = 0.0, pars = {}):
-    res = processStoich(stoichiometry)
-    if not res:
-        raise BadStoichError( "Bad stoichiometry definition:\n"+ stoichiometry)
-    if isinstance(rate, float) or isinstance(rate, int):
-        rate = massActionStr(rate, res[0])
-    return Reaction(res[0], res[1], rate, pars, res[2])
-
 class Variable_dXdt(_HasRate):
     def __init__(self, rate, parvalues = {}):
         _HasRate.__init__(self, rate, parvalues = parvalues)
@@ -412,7 +404,7 @@ class Model(ModelObject):
             react_name = 'd_%s_dt'% name
             stoich = ' -> %s'% name
             name = react_name # hope this works...
-            value = react(stoich, value())
+            value = Model.react(stoich, value())
         value = _ConvertPair2Reaction(value)
 
         # find if the model has an existing  object with that name
@@ -481,6 +473,16 @@ class Model(ModelObject):
         if c>=0 :
             return c, 'transf'
         raise AttributeError( name + ' is not a component in this model')
+    
+    # factory functions for Model components
+    @staticmethod
+    def react(stoichiometry, rate = 0.0, pars = {}):
+        res = processStoich(stoichiometry)
+        if not res:
+            raise BadStoichError( "Bad stoichiometry definition:\n"+ stoichiometry)
+        if isinstance(rate, float) or isinstance(rate, int):
+            rate = massActionStr(rate, res[0])
+        return Reaction(res[0], res[1], rate, pars, res[2])
 
     def checkRates(self):
         for collection in (self.__reactions, self.__transf):
@@ -718,9 +720,9 @@ def test():
 
     m = Model('My first model')
     m.v1 = "A+B -> C", 3
-    m.v2 = react("    -> 4.5 A"  , rate = math.sqrt(4.0)/2)
+    m.v2 = Model.react("    -> 4.5 A"  , rate = math.sqrt(4.0)/2)
     v3pars = (('V3',0.5),('Km', 4))
-    m.v3 = react("C   ->  "  , "V3 * C / (Km3 + C)", pars = v3pars)
+    m.v3 = Model.react("C   ->  "  , "V3 * C / (Km3 + C)", pars = v3pars)
 ##     m.v3.V3 = 0.5
 ##     m.v3.Km3 = 4
     m.v3.V3 = [0.1, 1.0]
@@ -826,9 +828,9 @@ def test():
     print 'm.myconstant :',m.myconstant
     print len(m().parameters), 'parameters total'
 
-    print '\nmaking m.myconstant = react("A+B -> C"  , 3)'
+    print '\nmaking m.myconstant = Model.react("A+B -> C"  , 3)'
     try:
-        m.myconstant = react("A+B -> C"  , 3)
+        m.myconstant = Model.react("A+B -> C"  , 3)
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.myconstant :',m.myconstant, '(still!)'

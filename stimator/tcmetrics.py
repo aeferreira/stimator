@@ -1,8 +1,8 @@
-# -*- coding: ISO-8859-1 -*-
+# -*- coding: utf8-*-
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira, time-course divergences by Nuno Lages.
+Copyright 2005-2013 AntÃ³nio Ferreira, time-course divergences by Nuno Lages.
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 
 from numpy import *
