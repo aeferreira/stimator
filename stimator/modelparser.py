@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: ISO-8859-1 -*-
+# -*- coding: utf8-*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator Parser class
-# Copyright António Ferreira 2006-2010
+# Copyright AntÃ³nio Ferreira 2006-2010
 #----------------------------------------------------------------------------
 """This module contains code to parse a model definition text,
 
