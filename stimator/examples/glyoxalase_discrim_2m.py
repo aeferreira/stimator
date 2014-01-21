@@ -3,7 +3,7 @@ from stimator import Model, state, read_model
 from stimator.GDE3solver import GDE3Solver
 from time import time
 
-def compute():
+def compute(obj_func):
 
     npoints = 240
     t0 = 0.0
@@ -38,9 +38,10 @@ def compute():
     initial_opt = (('gsh', 0.1, 1.0), ('mgo', 0.1, 1.0))
     observed    = ['sdlt']
     
-    ## oOpt    = {"mgo":[0.1, 1], "gsh":[0.1, 1]}#, "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
+    ## oOpt = {"mgo":[0.1, 1], "gsh":[0.1, 1]}, 
+    ##         "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
     
-    objectiveFunction = 'L2'
+    objectiveFunction = obj_func
     populationSize = 200
     maxGenerations = 100
     DEStrategy = 'Rand1Bin'
@@ -48,10 +49,16 @@ def compute():
     crossoverProb = 0.7
     cutoffEnergy = 0 #Not used in multiobjective optimization
     useClassRandomNumberMethods = True
+    dump_generations = None # do not generate generation log file
+    #dump_generations = list(range(maxGenerations)) #generate log for all generations
 
-    print 'initial values to optimize:'
+    print ('==========================================================')
+    print ('Design of discriminatory experiment (initial conditions)\n')
+    print ('Metrics used: %s\n' % objectiveFunction)
+    print ('observed variables: %s\n' % observed)
+    print ('initial values to optimize:')
     for name, min_v, max_v in initial_opt:
-        print name, 'in [%g, %g]' %(min_v, max_v)
+        print (name, 'in [%g, %g]' %(min_v, max_v))
     
     solver = GDE3Solver(models, 
                        initial_opt, 
@@ -63,23 +70,30 @@ def compute():
                        diffScale, 
                        crossoverProb, 
                        cutoffEnergy, 
-                       useClassRandomNumberMethods)#, dif = '-')
+                       useClassRandomNumberMethods,
+                       dump_generations = dump_generations)#, dif = '-')
     solver.Solve()
     
-    print 'Final front:'
+    print ('-----------------------------------------------')
+    print ('Final front:')
     f = open ('glyoxalase_discrim_2m_%s_final_pop.txt'%objectiveFunction, 'w')
     
     sstr = ' '.join(solver.toOptKeys)
     ostr = ' '.join([str(d) for d in solver.model_indexes])
-    print '[%s] ----> [%s]' % (sstr, ostr)
+    print ('%s ----> %s' % (sstr, ostr))
     for s,o in zip(solver.population, solver.population_energies):
-        print s, '---->',o
-        sstr = ' '.join([str(i) for i in s])
-        ostr = ' '.join([str(i) for i in o])
+        sstr = ' '.join(["%6.4g"%i for i in s])
+        ostr = ' '.join(["%6.4g"%i for i in o])
+        print ('%s ----> %s'%(sstr, ostr))
         print >> f, '%s %s'%(sstr, ostr)
     f.close()
 
-    utils.write2file('glyoxalase_discrim_2m_%s_times.txt'%objectiveFunction, '\n'.join([str(t) for t in solver.gen_times]))
+    #write times per generation to file
+    #utils.write2file('glyoxalase_discrim_2m_%s_times.txt'%objectiveFunction, 
+    #                 '\n'.join([str(t) for t in solver.gen_times]))
     
 if __name__ == "__main__":
-    compute()
+    obj_funcs = ['extKL']
+    #obj_funcs = ['extKL', 'KL', 'L2', 'kremling']
+    for obj in obj_funcs:
+        compute(obj)
