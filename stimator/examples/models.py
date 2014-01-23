@@ -30,8 +30,7 @@ ca = ExampleModel()
 ca.desc = "CICR model. Calcium spikes"
 ca.text = """title CICR model. Calcium spikes
 v0         = -> Ca, 1
-v1         = -> Ca, \
-                 Bstep*k1
+v1         = -> Ca, Bstep*k1
     
 Bstep      = 0.4
 k1         = 7.3
@@ -41,10 +40,8 @@ t_stimulus = 1.0
 export     = Ca ->  , 10 ..
 leak       = CaComp -> Ca, 1 ..
     
-v2         = Ca -> CaComp, \
-                  65 * Ca**2 / (1+Ca**2)
-v3         = CaComp -> Ca, \
-                  500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)
+v2         = Ca -> CaComp, 65 * Ca**2 / (1+Ca**2)
+v3         = CaComp -> Ca, 500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)
 init       = state(Ca = 0.1, CaComp = 0.63655)
 """
 
