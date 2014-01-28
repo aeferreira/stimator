@@ -3,3 +3,5 @@
 /stimator/examples/pred_TSH2b.txt
 /stimator/examples/TSH2a_pred.txt
 /stimator/examples/TSH2b_pred.txt
+.idea
+pred_*.*
