@@ -97,7 +97,7 @@ class ModelSolver(object):
         for value,indx in zip(self.trial, self.optvars_indexes):
             self.vector[indx] = value
 
-        return analysis.solve(self.model, tf = self.tf, npoints = self.npoints, t0 = self.t0, 
+        return dynamics.solve(self.model, tf = self.tf, npoints = self.npoints, t0 = self.t0, 
                                           initial = self.vector).copy(self.observed)
  
 # helper to transform string arguments in lists:
