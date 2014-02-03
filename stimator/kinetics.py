@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf8-*-
+# -*- coding: utf-8 -*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator kinetics functions
-# Copyright António Ferreira 2006-2012
+# Copyright António Ferreira 2006-2014
 #----------------------------------------------------------------------------
 
 def step (t, at, top=1.0):
@@ -24,4 +24,5 @@ def sqrpulse (t, aton, atoff, top=1.0):
         return top
     else:
         return 0.0
+
 sqrpulse.is_rate = True

@@ -1,12 +1,11 @@
 # Project S-timator
 
-import numpy, tcmetrics
-from de import DESolver
 from time import time
-import random
-import analysis
+import numpy, tcmetrics
+
+from de import DESolver
+import dynamics
 import utils
-from dynamics import state2array
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
@@ -74,7 +73,7 @@ class ModelSolver(object):
         self.npoints = npoints
         self.tf = tf
         
-        self.vector = numpy.copy(state2array(model,"init"))
+        self.vector = numpy.copy(dynamics.state2array(model,"init"))
 
         self.modelvarnames = model().varnames
         
@@ -693,35 +692,30 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
 
 if __name__ == "__main__":
 
-    from numpy import random
-    from numpy.random import rand, seed
-
     class ndsaTest(GDE3Solver):
 
-        def __init__(self, numberOfNodes, numberOfObjectives, printOption = False):
-            self.numberOfNodes = numberOfNodes
-            self.numberOfObjectives = numberOfObjectives
+        def __init__(self, n_nodes, n_objectives, report = False):
+            self.n_nodes = n_nodes
+            self.n_objectives = n_objectives
             print 'Test initialized'
-            seed(2)
+            print 'Nodes: %d  Objectives: %d' % (n_nodes, n_objectives)
+            numpy.random.seed(2)
             #This must begin in 1.
             self.dom_dict = {}
             self.objectives = {}
-            print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
-            for nodeNumber in range(self.numberOfNodes):
-                self.dom_dict[nodeNumber+1] = []
-                self.objectives[nodeNumber+1] = []
-                for objectiveNumber in range(self.numberOfObjectives):
-                    self.objectives[nodeNumber+1].append(rand())
-            print 'self.dom_dict and objectiveDic created; entering getDominanceTree'
-            print 'objectiveDic', self.objectives
+            for i_node in range(self.n_nodes):
+                self.dom_dict[i_node+1] = []
+                self.objectives[i_node+1] = []
+                for i_objective in range(self.n_objectives):
+                    self.objectives[i_node+1].append(numpy.random.rand())
             keys = self.objectives.keys()
+            print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
+            print 'self.dom_dict and objectiveDic created; entering getDominanceTree'
             self.getDominanceTree(keys)
-            print 'Nodes: %d  Objectives: %d' % (self.numberOfNodes, self.numberOfObjectives)
             print 'Entering nondominated_waves'
             nondominated_waves = self.ndf2list()
-            print 'objectiveDic', self.objectives
-            print 'nondominated_waves', nondominated_waves
-            print 'Testing non-dominance between solutions in the same front...'
+            print '%d nondominated_waves'% len(nondominated_waves)
+            print '\nTesting non-dominance between solutions in the same front...',
             for k in nondominated_waves:
                 if len(k) == 1:
                     d =0
@@ -732,7 +726,8 @@ if __name__ == "__main__":
                         while r < len(k):
                             d = dominance(self.objectives[k[r]], self.objectives[k[p]])
                             if d != 0:
-                                print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
+                                print '\n FAILED:'
+                                print '\n\n\nNumber of solutions', self.n_nodes, 'number of objectives', self.n_objectives
                                 print 'Domination relationship in front', k, 'between nodes', k[p], 'and', k[r],'. Test not passed.\n\n'
                                 break
                             else:
@@ -746,11 +741,11 @@ if __name__ == "__main__":
                 if d != 0:
                     return
                 elif len(k) == 0:
-                    print 'Empty front found!'
+                    print '\n FAILED: empty front found!'
                     return
-            print 'Non-dominance test between solutions in the same front passed.'
+            print 'passed.'
             if len(nondominated_waves) > 1:
-                print 'Testing dominance relationship between solutions in different fronts...'
+                print '\nTesting dominance relationship between solutions in different fronts...'
                 #Solution in rFront must be dominated by at least one solution in pFront and cannot dominate any solution in pFront.
                 pFront = 0
                 rFront = pFront + 1
@@ -761,7 +756,7 @@ if __name__ == "__main__":
                         for up in nondominated_waves[pFront]:
                             d = dominance(self.objectives[down], self.objectives[up])
                             if d == 1:
-                                print '\n\n\nNumber of solutions', self.numberOfNodes, 'number of objectives', self.numberOfObjectives
+                                print '\n\n\nNumber of solutions', self.n_nodes, 'number of objectives', self.n_objectives
                                 print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
                                 break
                             totalDominance = totalDominance + d
@@ -784,7 +779,7 @@ if __name__ == "__main__":
             print 'test %d'% (counter +1)
             if (i == 0 and j == 0):
                 print '**************************'
-                ndsaTest(i, j, printOption = False)
+                ndsaTest(i, j, report = False)
                 print '**************************'
             else:
                 ndsaTest(i, j)

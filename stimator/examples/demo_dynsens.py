@@ -5,7 +5,7 @@
 
 from numpy import *
 from stimator import *
-from stimator.analysis import add_dSdt_to_model
+from stimator.dynamics import add_dSdt_to_model
 
 print __doc__
 print

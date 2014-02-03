@@ -4,8 +4,8 @@
 # Module DESolver. A component of
 # S-timator : Time-course parameter estimation using Differential Evolution.
 
-# Copyright 2005-2009 António Ferreira
-# S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows.
+# Copyright 2005-2014 António Ferreira
+# S-timator uses Python, SciPy, NumPy, matplotlib.
 
 # This module is also based on...
 #    PythonEquations is a collection of equations expressed as Python classes
@@ -17,8 +17,8 @@
 
 """DE : Real-value optimization by Differential evolution
 
-Copyright 2005-2009 António Ferreira
-S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
+Copyright 2005-2014 António Ferreira
+S-timator uses Python, SciPy, NumPy, matplotlib."""
 
 import utils
 import random

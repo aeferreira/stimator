@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf8 -*-
+# -*- coding: utf-8 -*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator Model related classes
-# Copyright António Ferreira 2006-2013
+# Copyright António Ferreira 2006-2014
 #----------------------------------------------------------------------------
 import re
 import math

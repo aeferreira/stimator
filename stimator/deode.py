@@ -4,7 +4,7 @@
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
 Copyright 2005-2013 António Ferreira
-S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
+S-timator uses Python, SciPy, NumPy, matplotlib."""
 
 import de
 from numpy import *
@@ -12,7 +12,6 @@ from scipy import integrate
 from model import *
 from dynamics import *
 from modelparser import read_model
-from analysis import *
 import fim
 import timecourse
 import tcmetrics
