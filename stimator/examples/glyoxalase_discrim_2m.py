@@ -8,24 +8,19 @@ def compute(obj_func):
     npoints = 240
     t0 = 0.0
     tf = 120
-    
-    m1 = Model('model 1')
-    m1.rf    = Model.react("mgo + gsh -> hta", 0.34)
-    m1.rr    = Model.react("hta -> mgo + gsh", 1.01)
-    m1.r1    = Model.react("hta -> sdlt", "kcat1 * e1 * hta / (km1 + hta)")
-    m1.r2    = Model.react("sdlt -> gsh", "kcat2 * e2 * sdlt / (km2 + sdlt)")
-    m1.fake1 = Model.react("e1 ->", "0")
-    m1.fake2 = Model.react("e2 ->", "0")
-    m1.kcat1 = 8586
-    m1.km1   = 0.223
-    m1.kcat2 = 315
-    m1.km2   = 2.86
-    m1.init  = state(mgo  = 2.86, 
-                     hta  = 0, 
-                     sdlt = 0, 
-                     gsh  = 4, 
-                     e1   = 2e-3, 
-                     e2   = 4e-4)
+    m1 = read_model("""title model 1
+rf: mgo + gsh -> hta, 0.34..
+rr: hta -> mgo + gsh, 1.01..
+r1: hta -> sdlt, kcat1 * e1 * hta / (km1 + hta)
+r2: sdlt -> gsh, kcat2 * e2 * sdlt / (km2 + sdlt)
+fake1: e1 ->, 0
+fake2: e2 ->, 0
+kcat1 = 8586
+km1   = 0.223
+kcat2 = 315
+km2   = 2.86
+init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
+""")
 
     m2 = m1.clone(new_title = 'model 2')
     m2.r1 = Model.react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
