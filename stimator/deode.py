@@ -14,7 +14,6 @@ from dynamics import *
 from modelparser import read_model
 import fim
 import timecourse
-import tcmetrics
 
 #----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
@@ -105,7 +104,7 @@ class DeODESolver(de.DESolver):
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
         self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
         
-        self.criterium = tcmetrics.getCriteriumFunction(weights, self.model,self.tc)
+        self.criterium = timecourse.getCriteriumFunction(weights, self.model,self.tc)
 
         # open files to write parameter progression
         parnames = [get_name(u) for u in self.model().uncertain]
@@ -212,9 +211,9 @@ class DeODESolver(de.DESolver):
         if not (fim.sympy_installed):
             best.parameters = [(p, v, 0.0) for (p,v) in parszip]
         else:
-            commonvnames = tcmetrics.getCommonFullVars(self.tc)
-            consterror   = tcmetrics.getRangeVars(self.tc, commonvnames)
-            consterror = tcmetrics.constError_func([r * 0.05 for r in consterror]) #assuming 5% of range
+            commonvnames = timecourse.getCommonFullVars(self.tc)
+            consterror   = timecourse.getRangeVars(self.tc, commonvnames)
+            consterror = timecourse.constError_func([r * 0.05 for r in consterror]) #assuming 5% of range
 ##             consterror = expcov.propError_func([0.05 for r in consterror]) #assuming 5% error
             FIM1, invFIM1 = fim.computeFIM(self.model, parszip, sols, consterror, commonvnames)
             best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]

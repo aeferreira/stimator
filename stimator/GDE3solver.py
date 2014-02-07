@@ -1,7 +1,7 @@
 # Project S-timator
 
 from time import time
-import numpy, tcmetrics
+import numpy, timecourse
 
 from de import DESolver
 import dynamics
@@ -168,10 +168,10 @@ class GDE3Solver(DESolver):
         #counter of number of generations with only  non-dominated solutions
         self.fullnondominated = 0
         
-        str2distance = {'extKL'   :tcmetrics.extendedKLdivergence,
-                        'kremling':tcmetrics.kremling,
-                        'KL'      :tcmetrics.KLdivergence,
-                        'L2'      :tcmetrics.L2}
+        str2distance = {'extKL'   :timecourse.extendedKLdivergence,
+                        'kremling':timecourse.kremling,
+                        'KL'      :timecourse.KLdivergence,
+                        'L2'      :timecourse.L2}
         if self.objFunc not in str2distance.keys():
             raise ("%s is not an implemented divergence function" % self.objFunc)
         

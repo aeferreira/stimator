@@ -10,7 +10,6 @@ from numpy import *
 from model import *
 from dynamics import add_dSdt_to_model, dXdt_strings, solve
 import timecourse
-import tcmetrics
 
 sympy_installed = True
 try:
@@ -171,9 +170,9 @@ def test():
     parsdict = dict (zip(pars, parvalues))
     
     errors = (0.01,0.001)
-    errors = tcmetrics.constError_func(errors)
+    errors = timecourse.constError_func(errors)
     errorsSDLonly = 0.001
-    errorsSDLonly = tcmetrics.constError_func(errorsSDLonly)
+    errorsSDLonly = timecourse.constError_func(errorsSDLonly)
 
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters %s and %s'% (pars[0],pars[1])
