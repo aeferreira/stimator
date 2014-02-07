@@ -333,11 +333,13 @@ class GDE3Solver(DESolver):
             print 'New dominant solutions: %d' %(newBetterSols)
             print
             sortingtime = time()
-            print "Sorting solutions...",
+            print "Sorting solutions..."
 
             # sort solutions by dominance
             self.getDominanceTree(self.dom_dict.keys())
             nondominated_waves = self.ndf2list()
+            flengths = [len(i) for i in nondominated_waves]
+            print 'Waves lengths:', flengths
             
             # rebuild current population to populationSize
             self.population = []
@@ -349,7 +351,7 @@ class GDE3Solver(DESolver):
             while not full:
                 for ndf in nondominated_waves:
                     tempObjDic = {}
-                    if len(self.population) + len(ndf) > self.populationSize and len(self.population) < self.populationSize:
+                    if len(self.population) < self.populationSize and len(self.population) + len(ndf) >= self.populationSize:
                         # create a set of solutions to exactly complete pop to populationSize
                         for k in ndf:
                             tempObjDic[k] = self.objectives[k]
@@ -381,7 +383,7 @@ class GDE3Solver(DESolver):
             print 'done, took %6.3f'% timeElapsed, 's'
 
             flengths = [len(i) for i in fronts]
-            print 'Front lengths:', flengths
+            print 'Front lengths:', flengths, ' = ', sum(flengths)
             #nondominated_indxs = nondominated_solutions(self.population_energies)
             #n_nondominated = len(nondominated_indxs)
             n_nondominated = flengths[0]
@@ -562,15 +564,17 @@ class GDE3Solver(DESolver):
         """Organizes a list of nondominated fronts from self.dom_dict"""
         nonDominatedFronts = []
         while len(self.dom_dict) > 0:
-            nonDominated = []
-            for k in self.dom_dict:
-                dominated = False
-                for j in self.dom_dict.values():
-                    if k in j:
-                        dominated = True
-                        break
-                if not dominated:
-                    nonDominated.append(k)
+            allvls = []
+            for v in self.dom_dict.values():
+                allvls.extend(v)
+##             print "\nCHECK:",
+##             print allvls
+            nonDominated = [k for k in self.dom_dict if k not in allvls]
+##             for k in self.dom_dict:
+##                 if not k in allvls:
+##                     nonDominated.append(k)
+##             print "\nCHECK ndm:",
+##             print nonDominated
             nonDominatedFronts.append(nonDominated)
             for k in nonDominated:
                 del self.dom_dict[k]
@@ -616,75 +620,76 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
     if len(x) < 3:
         x.popitem()
         return x
-    else:
-        keys = x.keys()
-        keys.sort()
-        n_objs = len(x[keys[0]])
-        extremes = []
-        for i in range(n_objs):
-            maximum = x[keys[0]][i]
-            tempMax = [keys[0]]
-            minimum = x[keys[0]][i]
-            tempMin = [keys[0]]
-            for j in keys[1:]:
-                v = x[j][i]
-                if v < minimum:
-                    tempMin = [j]
-                    minimum = v
-                elif v == minimum and j not in tempMin:
-                    tempMin.append(j)                
-                elif v > maximum:
-                    tempMax = [j]
-                    maximum = v
-                elif v == maximum and j not in tempMax:
-                    tempMax.append(j)                
-            for k in tempMin:
-                if k not in extremes:
-                    extremes.append(k)
-            for k in tempMax:
-                if k not in extremes:
-                    extremes.append(k)
-        for i in keys:
-            x[i] = numpy.array(x[i])
-        lista =[]
-        distanceMatrix = []
-        for i in range(len(keys)):
-            distances = []
-            for j in range(len(keys)):
-                if j < i:
-                    distances.append(distanceMatrix[j][i])
-                elif j ==i:
-                    distances.append(0)
-                elif j > i:
-                    temp = x[keys[i]] - x[keys[j]]
-                    dist = numpy.sqrt(numpy.dot(temp,temp))
-                    distances.append(dist)
-            distanceMatrix.append(numpy.copy(distances))
-            distances.sort()
-            if knumber < len(distances):
-                lista.append(distances[1:knumber+1])
-            else:
-                lista.append(distances[1:])
-        distancesAndKeys = []
-        tolook = []
-        extremes.sort()
-        if keys != extremes:
-            for i in range(len(lista)):
-                if keys[i] in extremes:
-                    distancesAndKeys.append((10**300, keys[i]))
-                    tolook.append(('inf', keys[i]))
-                else:
-                    distancesAndKeys.append(((sum(lista[i])), keys[i]))
-                    tolook.append(((sum(lista[i])), keys[i]))
+    keys = x.keys()
+    keys.sort()
+    n_objs = len(x[keys[0]])
+    
+    # find keys for extremes
+    extremes = []
+    for i in range(n_objs):
+        maximum = x[keys[0]][i]
+        tempMax = [keys[0]]
+        minimum = x[keys[0]][i]
+        tempMin = [keys[0]]
+        for j in keys[1:]:
+            v = x[j][i]
+            if v < minimum:
+                tempMin = [j]
+                minimum = v
+            elif v == minimum:
+                tempMin.append(j)                
+            elif v > maximum:
+                tempMax = [j]
+                maximum = v
+            elif v == maximum:
+                tempMax.append(j)                
+        extremes.extend(tempMin)
+        extremes.extend(tempMax)
+    
+    #compute distances
+    for k in keys:
+        x[k] = numpy.array(x[k])
+    
+    lista =[]
+    distanceMatrix = []
+    
+    for i in range(len(keys)):
+        distances = []
+        for j in range(len(keys)):
+            if j < i:
+                distances.append(distanceMatrix[j][i])
+            elif j ==i:
+                distances.append(0)
+            elif j > i:
+                temp = x[keys[i]] - x[keys[j]]
+                dist = numpy.sqrt(numpy.dot(temp,temp))
+                distances.append(dist)
+        distanceMatrix.append(numpy.copy(distances))
+        #compute k shortest (position 0 after sorting iss always 0)
+        distances.sort()
+        if knumber < len(distances):
+            lista.append(distances[1:knumber+1])
         else:
-            for i in range(len(lista)):
-                distancesAndKeys.append(((sum(lista[i])), keys[i]))        
-        if pop_removed == True:
-            print 'distancesAndKeys minimum', x[min(distancesAndKeys)[1]]
-        del x[min(distancesAndKeys)[1]]
-        for i in x.keys(): #TODO confirm if this object should be returned as list or Arrays
-            x[i] = list(x[i]) #dto be used by other functions in next generations
-        return x
+            lista.append(distances[1:])
+    
+    #find and remove most crowded
+    distancesAndKeys = []
+    extremes.sort()
+    if keys != extremes:
+        for i,k in enumerate(keys):
+            if k in extremes:
+                distancesAndKeys.append((10**300, k))
+            else:
+                distancesAndKeys.append(((sum(lista[i])), k))
+    else:
+        for i,k in enumerate(keys):
+            distancesAndKeys.append(((sum(lista[i])), k))        
+    if pop_removed:
+        print 'Most crowded key:', x[min(distancesAndKeys)[1]]
+    del x[min(distancesAndKeys)[1]]
+    for i in x: #TODO confirm if this object should be returned as list or Arrays
+        x[i] = list(x[i]) #dto be used by other functions in next generations
+    return x
 
 
 #________________________________________________________________
