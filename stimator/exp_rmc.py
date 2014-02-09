@@ -6,7 +6,7 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
     """
     Removes a point with the smaller crowiding distance measured as
     the sum of the distances of the points to their k-nearest neighbours.
-    x is a dictionary which values are the lists of objective values for each solution.
+    x is a dictionary which values are the point coordinates as a list.
     """
     
     n_points = len(x)
@@ -15,8 +15,7 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
     if n_points < 3:
         x.popitem()
         return x
-    keys = x.keys()
-    keys.sort() # TODO: not necessary??
+    keys = list(x.keys())
     n_objs = len(x[keys[0]])
     
     points = range(n_points) #holds current indexes of points still present
@@ -42,7 +41,9 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
             if j not in extremes:
                 extremes.append(j)
     extremes.sort()
-    #print 'extreme points', [keys[i] for i in extremes]
+    
+    if verbose:
+        print 'extreme points', [keys[i] for i in extremes]
 
     #compute distances
     # TODO: use numpy function
@@ -71,6 +72,7 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
     #compute k shortest (note: position 0 after sorting is always 0.0)
     last_removed = None
     
+    # loop to remove each point
     for n in range(remove_n):
         if len(points) == 0:
             if verbose:
@@ -84,7 +86,7 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
         
         
         if last_removed is not None:
-            #remove reference to last removed point in distances list
+            #remove reference to last removed point in list of distances
             for i in points:
                 indx_last_remove = -1
                 d = distances[i]
@@ -102,15 +104,18 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
                 print ', '.join([ "(%-5.3g to %s)"% (t1, keys[t2]) for (t1,t2) in dd])
             print
         
-        ksums = []
-        for i in points:
-            dd = distances[i][1:knumber+1]
-            ksums.append(sum([d[0] for d in dd]))
+        ksums = [sum([d[0] for d in distances[i][1:knumber+1]]) for i in points]
         
         #find and remove most crowded
         distancesAndKeys = []
         
-        if points != extremes:
+        allextremes = True
+        for i in points:
+            if i not in extremes:
+                allextremes = False
+                break
+
+        if not allextremes:
             for i,k in enumerate(points):
                 if k in extremes:
                     distancesAndKeys.append((10**300, k))
@@ -119,15 +124,16 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
         else:
             for i,k in enumerate(points):
                 distancesAndKeys.append((ksums[i], k))      
+        
         last_removed = min(distancesAndKeys)[1]
         points.remove(last_removed)
-        mck = keys[last_removed]
+        mc_key = keys[last_removed]
         
         if verbose:
-            mcv = x[mck]
-            print 'Point to remove:', mck, mcv
+            mcv = x[mc_key]
+            print 'Point to remove:', mc_key, mcv
         
-        del x[mck]
+        del x[mc_key]
     
     return x
 
