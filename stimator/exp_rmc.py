@@ -1,7 +1,7 @@
 import numpy
 import pylab as pl
 
-def removeMostCrowded(x, knumber, remove_n = 1, print_removed = False):
+def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
 
     """
     Removes a point with the smaller crowiding distance measured as
@@ -42,7 +42,7 @@ def removeMostCrowded(x, knumber, remove_n = 1, print_removed = False):
             if j not in extremes:
                 extremes.append(j)
     extremes.sort()
-    print 'extremes', [keys[i] for i in extremes]
+    #print 'extreme points', [keys[i] for i in extremes]
 
     #compute distances
     # TODO: use numpy function
@@ -62,47 +62,73 @@ def removeMostCrowded(x, knumber, remove_n = 1, print_removed = False):
         distanceMatrix.append(distances)
     
     #sort distances for each point
-    distances_array = []
+    distances = []
     for i in points:
         dd = zip(list(distanceMatrix[i]), range(n_points))
         dd.sort()
-        distances_array.append(dd)
+        distances.append(dd)
     
     #compute k shortest (note: position 0 after sorting is always 0.0)
-    #TODO: repeat from here
-    kdistances =[]
-    ksums = []
+    last_removed = None
     
-    for i in points:
-        kdistances.append(distances_array[i][1:knumber+1])
-        ksums.append(sum([ d[0] for d in kdistances[-1]]))
-    
+    for n in range(remove_n):
+        if len(points) == 0:
+            if verbose:
+                print '\nNo more points to remove'
+            return x
 
-    print '\nk-distances'
-    for k,d in zip(points,kdistances):
-        print keys[k],
-        print [ ("%.3g"%t1, keys[t2]) for (t1,t2) in d]
-    print
+        if verbose:
+            print '---------------------------\nRemoving point #%d' % (n+1), ':'
+            print '\nremaining points' #, points
+            print [keys[k] for k in points]
+        
+        
+        if last_removed is not None:
+            #remove reference to last removed point in distances list
+            for i in points:
+                indx_last_remove = -1
+                d = distances[i]
+                for j in range(len(d)):
+                    if d[j][1] == last_removed:
+                        indx_last_remove = j
+                        break
+                del(distances[i][indx_last_remove])
+        
+        if verbose:
+            print '\nk-distances'
+            for i in points:
+                dd = distances[i][1:knumber+1]
+                print keys[i],
+                print ', '.join([ "(%-5.3g to %s)"% (t1, keys[t2]) for (t1,t2) in dd])
+            print
+        
+        ksums = []
+        for i in points:
+            dd = distances[i][1:knumber+1]
+            ksums.append(sum([d[0] for d in dd]))
+        
+        #find and remove most crowded
+        distancesAndKeys = []
+        
+        if points != extremes:
+            for i,k in enumerate(points):
+                if k in extremes:
+                    distancesAndKeys.append((10**300, k))
+                else:
+                    distancesAndKeys.append((ksums[i], k))
+        else:
+            for i,k in enumerate(points):
+                distancesAndKeys.append((ksums[i], k))      
+        last_removed = min(distancesAndKeys)[1]
+        points.remove(last_removed)
+        mck = keys[last_removed]
+        
+        if verbose:
+            mcv = x[mck]
+            print 'Point to remove:', mck, mcv
+        
+        del x[mck]
     
-    #find and remove most crowded
-    distancesAndKeys = []
-    
-    if points != extremes:
-        for i,k in enumerate(points):
-            if k in extremes:
-                distancesAndKeys.append((10**300, k))
-            else:
-                distancesAndKeys.append((ksums[i], k))
-    else:
-        for i,k in enumerate(points):
-            distancesAndKeys.append((ksums[i], k))      
-    mcpoint = min(distancesAndKeys)[1]
-
-    mck = keys[mcpoint]
-    if print_removed:
-        mcv = x[mck]
-        print 'Most crowded key:', mck, mcv
-    del x[mck]
     return x
 
 
@@ -118,18 +144,16 @@ def pprint(x, showplot=False):
         yy = [x[k][1] for k in keys]
         pl.figure()
         pl.plot(xx, yy, 'bo')
+        pl.show()
 
 def test():
     x = dict(A=(0,1), B=(0,0), C=(1,1), D=(1.2,0.5), E=(1,0), F=(0,0.5),
     G=(0.25, 0.75), H=(0.25,0.5), I=(0.5,1), J=(0.5,0.75), K=(0.5,0.5), 
     L=(0.75,0.5))
-    print 'initial'
-    pprint(x)
-    for n in range(15):
-        x = removeMostCrowded(x, 3, print_removed=True)
-        print '\n----------------------------\nafter removing %d points' % (n+1)
-        pprint(x, showplot=False)
+    print 'initial dictionary\n'
+    pprint(x, showplot=True)
+    x = removeMostCrowded(x, 3, 15, verbose=True)
 
 if __name__ == '__main__':
     test()
-    pl.show()
+
