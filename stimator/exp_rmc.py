@@ -11,84 +11,95 @@ def removeMostCrowded(x, knumber, pop_removed=False, distance_fn=None):
     is an optional function that takes two points and returns the
     distance between them.  If distance_fn is None (the default), the
     Euclidean distance is used.
-    This function was written by extensive modification of the Calculate function
-    in the kNN module of the Biopython package.
     """
-    if len(x) == 0 :
+    
+    n_points = len(x)
+    if n_points == 0 :
         return x
-    if len(x) < 3:
+    if n_points < 3:
         x.popitem()
         return x
     keys = x.keys()
     keys.sort()
     n_objs = len(x[keys[0]])
     
+    points = range(n_points)
+    
+    #compute matrix of objectives
+    obj_matrix = numpy.empty((n_points, n_objs))
+    for i,k in enumerate(keys):
+        obj_matrix[i, :] = x[k]
+
     # find keys for extremes
+    
+    maxima = numpy.amax(obj_matrix, axis=0)
+    minima = numpy.amin(obj_matrix, axis=0)
+    
+##     print obj_matrix
+##     print maxima
+##     print minima
+##     print
+    
     extremes = []
     for i in range(n_objs):
-        maximum = x[keys[0]][i]
-        tempMax = [keys[0]]
-        minimum = x[keys[0]][i]
-        tempMin = [keys[0]]
-        for j in keys[1:]:
-            v = x[j][i]
-            if v < minimum:
-                tempMin = [j]
-                minimum = v
-            elif v == minimum:
-                tempMin.append(j)                
-            elif v > maximum:
-                tempMax = [j]
-                maximum = v
-            elif v == maximum:
-                tempMax.append(j)                
-        tempMax.extend(tempMin)
-        for kk in tempMax:
-            if kk not in extremes:
-                extremes.append(kk)
+        dimextremes = []
+        for j in points:
+            v = obj_matrix[j][i]
+            if v == minima[i] or v == maxima[i]:
+                dimextremes.append(j)                
+        for j in dimextremes:
+            if j not in extremes:
+                extremes.append(j)
     extremes.sort()
-    print 'extremes', extremes
-    
+    print 'extremes', [keys[i] for i in extremes]
+
     #compute distances
     
     distanceMatrix = []
     
-    for i in range(len(keys)):
+    for i in range(n_points):
         distances = []
-        for j in range(len(keys)):
+        for j in range(n_points):
             if j < i:
                 distances.append(distanceMatrix[j][i])
             elif j ==i:
-                distances.append(0)
+                distances.append(0.0)
             elif j > i:
-                temp = numpy.array(x[keys[i]]) - numpy.array(x[keys[j]])
+                temp = numpy.array(obj_matrix[i]) - numpy.array(obj_matrix[j])
                 d = numpy.sqrt(numpy.dot(temp,temp))
                 distances.append(d)
         distanceMatrix.append(distances)
     
-    #compute k shortest (position 0 after sorting iss always 0)
-    lista =[]
-    for i in range(len(keys)):
-        distances = distanceMatrix[i]
+    #compute k shortest (note: position 0 after sorting is always 0.0)
+    kdistances =[]
+    only_kdistances = []
+    for i in points:
+        distances = zip(list(distanceMatrix[i]), range(n_points))
         distances.sort()
-        if knumber < len(distances):
-            lista.append(distances[1:knumber+1])
-        else:
-            lista.append(distances[1:])
+        kdistances.append(distances[1:knumber+1])
+        only_kdistances.append([ d[0] for d in kdistances[-1]])
+    
+    print '\nk-distances'
+    for k,d in zip(points,kdistances):
+        print keys[k],
+        print [ (t1, keys[t2]) for (t1,t2) in d]
+    print
     
     #find and remove most crowded
     distancesAndKeys = []
     
-    if keys != extremes:
-        for i,k in enumerate(keys):
+    if points != extremes:
+        for i,k in enumerate(points):
             if k in extremes:
                 distancesAndKeys.append((10**300, k))
             else:
-                distancesAndKeys.append(((sum(lista[i])), k))
+                distancesAndKeys.append(((sum(only_kdistances[i])), k))
     else:
-        for i,k in enumerate(keys):
-            distancesAndKeys.append(((sum(lista[i])), k))        
-    mck = min(distancesAndKeys)[1]
+        for i,k in enumerate(points):
+            distancesAndKeys.append(((sum(only_kdistances[i])), k))        
+    mcpoint = min(distancesAndKeys)[1]
+
+    mck = keys[mcpoint]
     if pop_removed:
         mcv = x[mck]
         print 'Most crowded key:', mck, mcv
@@ -116,8 +127,8 @@ def test():
     pprint(x)
     for n in range(15):
         x = removeMostCrowded(x,3,pop_removed=True)
-        print '\nafter removing %d points' % (n+1)
-        pprint(x)
+        print '\n----------------------------\nafter removing %d points' % (n+1)
+        pprint(x, showplot=False)
 
 if __name__ == '__main__':
     test()
