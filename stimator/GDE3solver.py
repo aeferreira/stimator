@@ -347,37 +347,28 @@ class GDE3Solver(DESolver):
             
             fronts = []    # holds indexes of (used) non-dominated waves
             
-            full = False
-            while not full:
-                for ndf in nondominated_waves:
-                    tempObjDic = {}
-                    if len(self.population) < self.populationSize and len(self.population) + len(ndf) >= self.populationSize:
-                        print 'len pop', len(self.population)
-                        print 'pop size', self.populationSize
-                        # create a set of solutions to exactly complete pop to populationSize
-                        for k in ndf:
-                            tempObjDic[k] = self.objectives[k]
-                        print 'dict size', len(tempObjDic)
-##                         while len(self.population) + len(tempObjDic) != self.populationSize:
-                        tempObjDic = removeMostCrowded(tempObjDic, 3, len(self.population) + len(ndf) - self.populationSize)
-                        print 'dict size', len(tempObjDic)
-                        full = True
-                        break
-                    elif len(self.population) == self.populationSize:
-                        # do nothing, pop complete
-                        full = True
-                        break
-                    else:
-                        # just copy  another 'wave' of non-dominated solutions into pop, because
-                        # len(ndf) + len(pop) <= populationSize
-                        fronts.append(ndf)
-                        for k in ndf:
-                            self.population.append(working_sols[k])
-                            self.population_energies.append(self.objectives[k])
+            for ndf in nondominated_waves:
+                tempObjDic = {}
+                excess = len(self.population) + len(ndf) - self.populationSize
+                if len(self.population) < self.populationSize and excess >= 0:
+                    # create a set of solutions to exactly complete pop to populationSize
+                    for k in ndf:
+                        tempObjDic[k] = self.objectives[k]
+                    tempObjDic = removeMostCrowded(tempObjDic, 3, excess)
+                    break
+                elif len(self.population) == self.populationSize:
+                    # do nothing, pop complete
+                    break
+                else:
+                    # just copy  the whole 'wave' of non-dominated solutions into pop
+                    fronts.append(ndf)
+                    for k in ndf:
+                        self.population.append(working_sols[k])
+                        self.population_energies.append(self.objectives[k])
             
             
             # use the (trimmed)  tempObjDic to complete pop to self.populationSize 
-            # and complete last front
+            # and record last front
             fronts.append(tempObjDic.keys())
             for i in tempObjDic.keys():
                 self.population.append(working_sols[i])
@@ -619,9 +610,6 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
         return x
     if remove_n < 1:
         return x
-##     if n_points < 3:
-##         x.popitem()
-##         return x
     keys = list(x.keys())
     n_objs = len(x[keys[0]])
     

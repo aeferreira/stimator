@@ -12,8 +12,7 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
     n_points = len(x)
     if n_points == 0 :
         return x
-    if n_points < 3:
-        x.popitem()
+    if remove_n < 1:
         return x
     keys = list(x.keys())
     n_objs = len(x[keys[0]])
