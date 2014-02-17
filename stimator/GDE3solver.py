@@ -454,12 +454,18 @@ class GDE3Solver(DESolver):
         if size > 1:
             leftTree  = self.getDominanceTree(nodeList[:size/2])
             rightTree = self.getDominanceTree(nodeList[ size/2:])
-            return self.mergeDominanceTrees(leftTree, rightTree)
+            res = self.mergeDominanceTrees(leftTree, rightTree)
+            return res
         else:
             return nodeList
 
     def mergeDominanceTrees(self, leftTree, rightTree):
         """ This function merges (conquers) the dominance trees recursively (not using delayed insertion yet). """
+        ## print 'ENTERING mergeDominanceTrees()'
+        ## print leftTree
+        ## print rightTree
+        ## print self.dom_dict
+        ## print '**************************'
         leftNode = Node(leftTree[0])
         rightNode = Node(rightTree[0])
         switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
@@ -551,6 +557,9 @@ class GDE3Solver(DESolver):
                         cousin2 = self.dom_dict[firstFrontToBeCompared[1]] #If 'list' is not used an instance of a dictionary object passes into the merging function and that raises problems
                         self.mergeDominanceTrees(cousin1, cousin2)
                         break
+        ## print 'RETURN from mergeDominanceTrees()', leftTree
+        ## print self.dom_dict
+        ## print '============================================================='
         return leftTree
 
     def ndf2list(self):
@@ -736,7 +745,7 @@ if __name__ == "__main__":
             print 'Test initialized'
             print 'Nodes: %d  Objectives: %d' % (n_nodes, n_objectives)
             numpy.random.seed(2)
-            #This must begin in 1.
+            #dict keys are integers that begin at 1.
             self.dom_dict = {}
             self.objectives = {}
             for i_node in range(self.n_nodes):
@@ -745,80 +754,52 @@ if __name__ == "__main__":
                 for i_objective in range(self.n_objectives):
                     self.objectives[i_node+1].append(numpy.random.rand())
             keys = self.objectives.keys()
+
             print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
-            print 'self.dom_dict and objectiveDic created; entering getDominanceTree'
+            print 'self.dom_dict and objectiveDic created.'
+            print '\nComputing nondominated_waves...'
             self.getDominanceTree(keys)
-            print 'Entering nondominated_waves'
+            print 'DOMINANCE DICT'
+            for k in self.dom_dict:
+                print k, '>', self.dom_dict[k]
             nondominated_waves = self.ndf2list()
-            print '%d nondominated_waves'% len(nondominated_waves)
+            print '%d nondominated_waves:'% len(nondominated_waves)
+            for wave in nondominated_waves:
+                print wave
             print '\nTesting non-dominance between solutions in the same front...',
-            for k in nondominated_waves:
-                if len(k) == 1:
-                    d =0
-                elif len(k) > 1:
-                    p = 0
-                    while p < len(k)-1:
-                        r = p + 1
-                        while r < len(k):
-                            d = dominance(self.objectives[k[r]], self.objectives[k[p]])
-                            if d != 0:
-                                print '\n FAILED:'
-                                print '\n\n\nNumber of solutions', self.n_nodes, 'number of objectives', self.n_objectives
-                                print 'Domination relationship in front', k, 'between nodes', k[p], 'and', k[r],'. Test not passed.\n\n'
-                                break
-                            else:
-                                r += 1
-                        if d != 0:
-                            break
-                        else:
-                            p += 1
-                    if d != 0:
-                        break
-                if d != 0:
-                    return
-                elif len(k) == 0:
+            for wave in nondominated_waves:
+                if len(wave) == 0:
                     print '\n FAILED: empty front found!'
                     return
+                if len(wave) == 1:
+                    pass
+                else:
+                    for p in range(len(wave)-1):
+                        for r in range(p+1, len(wave)):
+                            d = dominance(self.objectives[wave[r]], self.objectives[wave[p]])
+                            if d != 0:
+                                print '\n FAILED:'
+                                print 'Domination relationship in front', wave, 'between nodes', wave[p], 'and', wave[r],'. Test not passed.\n\n'
+                                return
             print 'passed.'
-            if len(nondominated_waves) > 1:
-                print '\nTesting dominance relationship between solutions in different fronts...'
-                #Solution in rFront must be dominated by at least one solution in pFront and cannot dominate any solution in pFront.
-                pFront = 0
-                rFront = pFront + 1
-                while pFront < len(nondominated_waves)-1:
-                    for down in nondominated_waves[rFront]:
-                        print 'Assigning totalDominance for the first time in the test'
-                        totalDominance = 0
-                        for up in nondominated_waves[pFront]:
-                            d = dominance(self.objectives[down], self.objectives[up])
-                            if d == 1:
-                                print '\n\n\nNumber of solutions', self.n_nodes, 'number of objectives', self.n_objectives
-                                print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
-                                break
-                            totalDominance = totalDominance + d
-                        if d == 1 or totalDominance < 1:
-                            break
-                    if d == 1 or totalDominance < 1:
-                        break
-                    pFront += 1
-                    rFront += 1
-                if d == 1 or totalDominance < 1:
-                    return #pFront, up, rFront, down
-                print 'Non-dominance test between solutions in different fronts passed.'
             if len(nondominated_waves) == 1:
                 print 'Only non-dominated solutions - no test between different fronts'
-
-    counter = 0
-    for i in range(10, 60):
-        for j in range(2, 5):
-            print '--------------------------------------------------------'
-            print 'test %d'% (counter +1)
-            if (i == 0 and j == 0):
-                print '**************************'
-                ndsaTest(i, j, report = False)
-                print '**************************'
+                return
             else:
-                ndsaTest(i, j)
-            counter += 1
-    print 'Tests finished successfully!'
+                print 'Testing dominance relationship between solutions in different fronts...',
+                #Solution in rFront must be dominated by at least one solution in pFront and cannot dominate any solution in pFront.
+                for pFront in range(len(nondominated_waves)-1):
+                    for rFront in range(pFront+1, len(nondominated_waves)):
+                        for down in nondominated_waves[rFront]:
+                            for up in nondominated_waves[pFront]:
+                                d = dominance(self.objectives[down], self.objectives[up])
+                                if d == 1:
+                                    print '\n FAILED:'
+                                    print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
+                                    return
+                print 'passed.'
+    
+    i = 7
+    j = 2
+    ndsaTest(i, j)
     
