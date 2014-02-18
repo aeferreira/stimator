@@ -468,14 +468,14 @@ class GDE3Solver(DESolver):
         ## print '**************************'
         leftNode = Node(leftTree[0])
         rightNode = Node(rightTree[0])
-        switch = 0 #switch indicates at the end of the loop which conditional of the loop is used. If 'else' is used switch does not change.
+        switch = 0
         while leftNode.indx != -1 and rightNode.indx != -1: #and leftTree != [] and rightTree != []:
             switch = 0
-            dominanceTestResult = dominance(self.objectives[rightNode.indx], self.objectives[leftNode.indx])
+            d = dominance(self.objectives[rightNode.indx], self.objectives[leftNode.indx])
             #rightDelayedInsertionList and leftDelayedInsertionList are [] for now.
             leftDelayedInsertionList = []
             rightDelayedInsertionList = []
-            if dominanceTestResult < 0: 
+            if d < 0: # rightNode is dominated by leftNode
                 switch = 1
                 if rightDelayedInsertionList != []:
                     mergeDominanceTrees([self.dom_dict[rightNode.indx][0]], rightDelayedInsertionList)
@@ -492,7 +492,7 @@ class GDE3Solver(DESolver):
                     rightTree.remove(tempNode)
                 if leftNode.indx != -1 and rightNode.indx == -1 and rightTree != []: #New!
                     rightNode.indx = rightTree[0]
-            elif dominanceTestResult > 0:
+            elif d > 0:
                 switch = 2
                 if leftDelayedInsertionList != []:
                     self.mergeDominanceTrees([self.dom_dict[leftNode.indx][0]], leftDelayedInsertionList)
