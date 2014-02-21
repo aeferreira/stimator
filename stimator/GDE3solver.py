@@ -451,82 +451,74 @@ class GDE3Solver(DESolver):
     def depthspaces(self):
         return ' '*(self.dominance_rdepth-1)*4
     
-    def getDominanceTree(self, nodeList):
+    def getDominanceTree(self, nodeList, verbose = False):
         """ This function applies the 'Divide and Conquer' method recursively generating
         the dominance tree (divides) and returning the product of the mergeDominanceTree function (conquers).
         This version doesn't use delayed insertion of dominated node yet."""
         self.dominance_rdepth += 1
-        spcs = self.depthspaces()
-        print spcs, '---------------------------------'
-        print spcs, 'ENTERING getDominanceTree()'
-        print spcs, 'nodes', nodeList
+        if verbose:
+            spcs = self.depthspaces()
+            print spcs, '---------------------------------'
+            print spcs, 'ENTERING getDominanceTree()'
+            print spcs, 'nodes', nodeList
         size = len(nodeList)
         if size > 1:
-            leftTree  = self.getDominanceTree(nodeList[:size/2])
-            rightTree = self.getDominanceTree(nodeList[ size/2:])
-            print spcs, '@@  left tree', leftTree
-            print spcs, '@@ right tree', rightTree
-            print spcs, '@@ dom dict', self.dom_dict
-            res = self.mergeDominanceTrees(leftTree, rightTree)
-            print spcs, '--> return from merge', res
-            print spcs, '--> dom dict', self.dom_dict
-            print spcs, '**************************'
+            leftTree  = self.getDominanceTree(nodeList[:size/2], verbose)
+            rightTree = self.getDominanceTree(nodeList[ size/2:], verbose)
+            if verbose:
+                print spcs, '@@  left tree', leftTree
+                print spcs, '@@ right tree', rightTree
+                print spcs, '@@ dom dict', self.dom_dict
+            res = self.merge_Dom_trees(leftTree, rightTree)
+            if verbose:
+                print spcs, '--> return from merge', res
+                print spcs, '--> dom dict', self.dom_dict
+                print spcs, '**************************'
             self.dominance_rdepth -= 1
             return res
         else:
-            print spcs, '.single node return', nodeList
-            print spcs, '**************************'
+            if verbose:
+                print spcs, '.single node return', nodeList
+                print spcs, '**************************'
             self.dominance_rdepth -= 1
             return nodeList
 
-    def mergeDominanceTrees(self, left_tree, right_tree):
+    def merge_Dom_trees(self, left_tree, right_tree):
         """ This function merges (conquers) the dominance trees recursively (not using delayed insertion yet). """
-        ## print 'ENTERING mergeDominanceTrees()'
-        ## print 'Left tree', left_tree
-        ## print 'Right tree', right_tree
-        ## print self.dom_dict
-        ## print '**************************'
+        if len(left_tree) == 0:
+            if len(right_tree) < 2:
+                return right_tree
         left = Node(left_tree[0])
         right = Node(right_tree[0])
-        switch = 0 
-        while left.indx != -1 and right.indx != -1: #and left_tree != [] and right_tree != []:
-            switch = 0
+        one_dominates = False 
+        while left.valid() and right.valid(): #and left_tree != [] and right_tree != []:
+            one_dominates = False
             d = dominance(self.objectives[right.indx], self.objectives[left.indx])
             #rightDelayedInsertionList and leftDelayedInsertionList are [] for now.
             leftDelayedInsertionList = []
             rightDelayedInsertionList = []
             if d < 0: 
-                switch = 1
+                one_dominates = True
                 if rightDelayedInsertionList != []:
-                    mergeDominanceTrees([self.dom_dict[right.indx][0]], rightDelayedInsertionList)
+                    merge_Dom_trees([self.dom_dict[right.indx][0]], rightDelayedInsertionList)
                 node = right.indx
-                right.point_to_next_sibling(right_tree) 
+                right.move_and_remove(right_tree) 
                 for k in self.dom_dict:
                     if node in self.dom_dict[k]:
                         self.dom_dict[k].remove(node)
-                if len(self.dom_dict[left.indx]) > 0:
-                    self.dom_dict[left.indx] = self.mergeDominanceTrees(self.dom_dict[left.indx], [node])
-                else:
-                    self.dom_dict[left.indx].append(node)
-                if node in right_tree:
-                    right_tree.remove(node)
-                if left.indx != -1 and right.indx == -1 and right_tree != []: #New!
+                self.dom_dict[left.indx] = self.merge_Dom_trees(self.dom_dict[left.indx], [node])
+                if left.valid() and not right.valid() and right_tree != []: #New!
                     right.indx = right_tree[0]
             elif d > 0:
-                switch = 2
+                one_dominates = True
                 if leftDelayedInsertionList != []:
-                    self.mergeDominanceTrees([self.dom_dict[left.indx][0]], leftDelayedInsertionList)
+                    self.merge_Dom_trees([self.dom_dict[left.indx][0]], leftDelayedInsertionList)
                 node = left.indx
-                left.point_to_next_sibling(left_tree) 
+                left.move_and_remove(left_tree) 
                 for k in self.dom_dict:
                     if node in self.dom_dict[k]:
                         self.dom_dict[k].remove(node)
-                if len(self.dom_dict[right.indx]) > 0:
-                    self.dom_dict[right.indx] = self.mergeDominanceTrees(self.dom_dict[right.indx], [node])
-                else:
-                    self.dom_dict[right.indx].append(node)
-                if node in left_tree:
-                    left_tree.remove(node)
+                self.dom_dict[right.indx] = self.merge_Dom_trees(self.dom_dict[right.indx], [node])
                 if left_tree == []:
                     left_tree = right_tree
                     right_tree = []
@@ -534,21 +526,19 @@ class GDE3Solver(DESolver):
                     right.indx = right_tree[0] #This is necessary for the new element from left_tree to be compared with every element os right_tree
             else:
                 if rightDelayedInsertionList != []:
-                    self.dom_dict[right.indx] = self.mergeDominanceTrees(self.dom_dict[right.indx], rightDelayedInsertionList)
+                    self.dom_dict[right.indx] = self.merge_Dom_trees(self.dom_dict[right.indx], rightDelayedInsertionList)
                 right.point_to_next_sibling(right_tree)
-                if right.indx == -1:
+                if not right.valid():
                     right.indx = right_tree[0]
                     left.point_to_next_sibling(left_tree)
-        if switch == 0:
+        if not one_dominates:
             left.indx = left_tree[0]
             right.indx = right_tree[0]
-        while right_tree != [] and right.indx != -1:
+        while right_tree != [] and right.valid():
             left_tree.append(right.indx)
-            node = right.indx
-            right.point_to_next_sibling(right_tree)
-            right_tree.remove(node)
-            if right.indx == -1 and right_tree !=[]:
-                left_tree = left_tree + right_tree
+            right.move_and_remove(right_tree)
+            if not right.valid() and len(right_tree) > 0:
+                left_tree.extend(right_tree)
         #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant sibling solutions
         #I'm not sure if this should be done every time or just in the final.
         if self.dom_dict != {}:
@@ -559,26 +549,23 @@ class GDE3Solver(DESolver):
                 if self.dom_dict[i] != []:
                     grandChildren.append(self.dom_dict[i])
                     if len(grandChildren) == 2:
-                        grandChildren = [self.mergeDominanceTrees(grandChildren[0], grandChildren[1])]
+                        grandChildren = [self.merge_Dom_trees(grandChildren[0], grandChildren[1])]
             #Continues to merge the cousins which are children of non-dominated parents
             while len(firstFrontToBeCompared) > 1:
                 firstFrontToBeCompared = []
                 for i in left_tree:
                     nonDominantSolution = True
-                    for j in self.dom_dict.keys():
-                        if i in self.dom_dict[j]:
+                    for k in self.dom_dict:
+                        if i in self.dom_dict[k]:
                             nonDominantSolution = False
-                    if nonDominantSolution == True and self.dom_dict[i]!=[]:
+                    if nonDominantSolution and self.dom_dict[i]!=[]:
                         firstFrontToBeCompared.append(i)
                     if len(firstFrontToBeCompared) > 1:
                         #Next two lines are necessary to avoid errors inside merge function
-                        cousin1 = self.dom_dict[firstFrontToBeCompared[0]] #The 'list' function is necessary for the merging to work
-                        cousin2 = self.dom_dict[firstFrontToBeCompared[1]] #If 'list' is not used an instance of a dictionary object passes into the merging function and that raises problems
-                        self.mergeDominanceTrees(cousin1, cousin2)
+                        cousin1 = self.dom_dict[firstFrontToBeCompared[0]]
+                        cousin2 = self.dom_dict[firstFrontToBeCompared[1]]
+                        self.merge_Dom_trees(cousin1, cousin2)
                         break
-        ## print 'RETURN from mergeDominanceTrees()', left_tree
-        ## print self.dom_dict
-        ## print '============================================================='
         return left_tree
 
     def ndf2list(self):
@@ -614,6 +601,16 @@ class Node:
             self.indx = tree[indx+1]
         else:
             self.indx = -1
+    
+    def valid(self):
+        return self.indx != -1
+        
+    def move_and_remove(self, tree):
+        node = self.indx
+        self.point_to_next_sibling(tree)
+        tree.remove(node)
+        
+        
 
 def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
 
@@ -777,7 +774,7 @@ if __name__ == "__main__":
             print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
             print 'self.dom_dict and objectiveDic created.'
             print '\nComputing nondominated_waves...'
-            self.getDominanceTree(keys)
+            self.getDominanceTree(keys, verbose = True)
             print 'DOMINANCE DICT'
             for k in self.dom_dict:
                 print k, '>', self.dom_dict[k]
@@ -818,7 +815,7 @@ if __name__ == "__main__":
                                     return
                 print 'passed.'
     
-    i = 15
+    i = 50
     j = 2
     ndsaTest(i, j)
     
