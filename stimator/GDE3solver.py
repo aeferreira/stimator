@@ -459,7 +459,7 @@ class GDE3Solver(DESolver):
         if verbose:
             spcs = self.depthspaces()
             print spcs, '---------------------------------'
-            print spcs, 'ENTERING getDominanceTree()'
+            print spcs, 'IN getDominanceTree()'
             print spcs, 'nodes', nodeList
         size = len(nodeList)
         if size > 1:
@@ -499,8 +499,6 @@ class GDE3Solver(DESolver):
             rightDelayedInsertionList = []
             if d < 0: 
                 one_dominates = True
-                if rightDelayedInsertionList != []:
-                    merge_Dom_trees([self.dom_dict[right.indx][0]], rightDelayedInsertionList)
                 node = right.indx
                 right.move_and_remove(right_tree) 
                 for k in self.dom_dict:
@@ -511,8 +509,6 @@ class GDE3Solver(DESolver):
                     right.indx = right_tree[0]
             elif d > 0:
                 one_dominates = True
-                if leftDelayedInsertionList != []:
-                    self.merge_Dom_trees([self.dom_dict[left.indx][0]], leftDelayedInsertionList)
                 node = left.indx
                 left.move_and_remove(left_tree) 
                 for k in self.dom_dict:
@@ -525,8 +521,6 @@ class GDE3Solver(DESolver):
                 else:
                     right.indx = right_tree[0] #This is necessary for the new element from left_tree to be compared with every element os right_tree
             else:
-                if rightDelayedInsertionList != []:
-                    self.dom_dict[right.indx] = self.merge_Dom_trees(self.dom_dict[right.indx], rightDelayedInsertionList)
                 right.point_to_next_sibling(right_tree)
                 if not right.valid():
                     right.indx = right_tree[0]
@@ -539,7 +533,7 @@ class GDE3Solver(DESolver):
             right.move_and_remove(right_tree)
             if not right.valid() and len(right_tree) > 0:
                 left_tree.extend(right_tree)
-        #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant sibling solutions
+        #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant siblings
         #I'm not sure if this should be done every time or just in the final.
         if self.dom_dict != {}:
             firstFrontToBeCompared = [0, 0]
@@ -787,38 +781,14 @@ if __name__ == "__main__":
             print '%d nondominated_waves:'% len(nondominated_waves)
             for wave in nondominated_waves:
                 print wave
-            print '\nTesting non-dominance between solutions in the same front...',
-            for wave in nondominated_waves:
-                if len(wave) == 0:
-                    print '\n FAILED: empty front found!'
-                    return
-                if len(wave) == 1:
-                    pass
-                else:
-                    for p in range(len(wave)-1):
-                        for r in range(p+1, len(wave)):
-                            d = dominance(self.objectives[wave[r]], self.objectives[wave[p]])
-                            if d != 0:
-                                print '\n FAILED:'
-                                print 'Domination relationship in front', wave, 'between nodes', wave[p], 'and', wave[r],'. Test not passed.\n\n'
-                                return
-            print 'passed.'
-            if len(nondominated_waves) == 1:
-                print 'Only non-dominated solutions - no test between different fronts'
-                return
-            else:
-                print 'Testing dominance relationship between solutions in different fronts...',
-                #Solution in rFront must be dominated by at least one solution in pFront and cannot dominate any solution in pFront.
-                for pFront in range(len(nondominated_waves)-1):
-                    for rFront in range(pFront+1, len(nondominated_waves)):
-                        for down in nondominated_waves[rFront]:
-                            for up in nondominated_waves[pFront]:
-                                d = dominance(self.objectives[down], self.objectives[up])
-                                if d == 1:
-                                    print '\n FAILED:'
-                                    print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
-                                    return
-                print 'passed.'
+            print '======================================================'
+            print 'Comparing to published results...'
+            published =[[4, 5, 7, 8],[6],[1],[2, 3]]
+            if nondominated_waves == published:
+                print 'PASSED'
+            else
+                print 'FAILED'
+            print '======================================================'
 
     class ndsaTest(GDE3Solver):
 
