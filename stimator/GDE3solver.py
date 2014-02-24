@@ -750,7 +750,75 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
 #________________________________________________________________
 #Tests for the non-dominated sorted algorithm methods
 
+
 if __name__ == "__main__":
+
+    class FangEtAL_test(GDE3Solver):
+        def __init__(self, report = False):
+            data = [[182.08, 100.13, 192.21],
+[187.53, 246.16, 203.2],
+[197.15, 201.57, 318.86],
+[47.48, 74.96, 22.69],
+[37.05, 304.83, 381.19],
+[126.88, 54.58, 144.17],
+[101.77, 49.18, 111.91],
+[37.47, 18.63, 446.57]]
+            self.dominance_rdepth = 0
+            n_nodes = len(data)
+            self.n_objectives = len(data[0])
+            print 'Test initialized'
+            print 'Nodes: %d  Objectives: %d' % (n_nodes, self.n_objectives)
+            #dict keys are integers that begin at 1.
+            self.dom_dict = {}
+            self.objectives = {}
+            for i_node in range(n_nodes):
+                self.dom_dict[i_node+1] = []
+                self.objectives[i_node+1] = data[i_node]
+            keys = self.objectives.keys()
+
+            print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
+            print 'self.dom_dict and objectiveDic created.'
+            print '\nComputing nondominated_waves...'
+            self.getDominanceTree(keys, verbose = True)
+            print 'DOMINANCE DICT'
+            for k in self.dom_dict:
+                print k, '>', self.dom_dict[k]
+            nondominated_waves = self.ndf2list()
+            print '%d nondominated_waves:'% len(nondominated_waves)
+            for wave in nondominated_waves:
+                print wave
+            print '\nTesting non-dominance between solutions in the same front...',
+            for wave in nondominated_waves:
+                if len(wave) == 0:
+                    print '\n FAILED: empty front found!'
+                    return
+                if len(wave) == 1:
+                    pass
+                else:
+                    for p in range(len(wave)-1):
+                        for r in range(p+1, len(wave)):
+                            d = dominance(self.objectives[wave[r]], self.objectives[wave[p]])
+                            if d != 0:
+                                print '\n FAILED:'
+                                print 'Domination relationship in front', wave, 'between nodes', wave[p], 'and', wave[r],'. Test not passed.\n\n'
+                                return
+            print 'passed.'
+            if len(nondominated_waves) == 1:
+                print 'Only non-dominated solutions - no test between different fronts'
+                return
+            else:
+                print 'Testing dominance relationship between solutions in different fronts...',
+                #Solution in rFront must be dominated by at least one solution in pFront and cannot dominate any solution in pFront.
+                for pFront in range(len(nondominated_waves)-1):
+                    for rFront in range(pFront+1, len(nondominated_waves)):
+                        for down in nondominated_waves[rFront]:
+                            for up in nondominated_waves[pFront]:
+                                d = dominance(self.objectives[down], self.objectives[up])
+                                if d == 1:
+                                    print '\n FAILED:'
+                                    print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
+                                    return
+                print 'passed.'
 
     class ndsaTest(GDE3Solver):
 
@@ -815,7 +883,8 @@ if __name__ == "__main__":
                                     return
                 print 'passed.'
     
-    i = 50
-    j = 2
-    ndsaTest(i, j)
+##     i = 50
+##     j = 2
+##     ndsaTest(i, j)
+    FangEtAL_test()
     
