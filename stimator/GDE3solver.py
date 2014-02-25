@@ -473,13 +473,11 @@ class GDE3Solver(DESolver):
             if verbose:
                 print spcs, '--> return from merge', res
                 print spcs, '--> dom dict', self.dom_dict
-                print spcs, '**************************'
             self.dominance_rdepth -= 1
             return res
         else:
             if verbose:
                 print spcs, '.single node return', nodeList
-                print spcs, '**************************'
             self.dominance_rdepth -= 1
             return nodeList
 
@@ -744,19 +742,21 @@ def removeMostCrowded(x, knumber = 3, remove_n = 1, verbose = False):
 #________________________________________________________________
 #Tests for the non-dominated sorted algorithm methods
 
-
+from scipy.spatial.distance import squareform, pdist
 if __name__ == "__main__":
 
     class FangEtAL_test(GDE3Solver):
         def __init__(self, report = False):
-            data = [[182.08, 100.13, 192.21],
-[187.53, 246.16, 203.2],
-[197.15, 201.57, 318.86],
-[47.48, 74.96, 22.69],
-[37.05, 304.83, 381.19],
-[126.88, 54.58, 144.17],
-[101.77, 49.18, 111.91],
-[37.47, 18.63, 446.57]]
+            data = [[182.08, 100.13, 192.21],[187.53, 246.16, 203.2],
+                    [197.15, 201.57, 318.86],[47.48, 74.96, 22.69],
+                    [37.05, 304.83, 381.19], [126.88, 54.58, 144.17],
+                    [101.77, 49.18, 111.91], [37.47, 18.63, 446.57]]
+            
+            print 'distance matrix'
+            print squareform(pdist(data, dominance))
+            print '##########################################'
+            print
+
             self.dominance_rdepth = 0
             n_nodes = len(data)
             self.n_objectives = len(data[0])
@@ -786,7 +786,7 @@ if __name__ == "__main__":
             published =[[4, 5, 7, 8],[6],[1],[2, 3]]
             if nondominated_waves == published:
                 print 'PASSED'
-            else
+            else:
                 print 'FAILED'
             print '======================================================'
 
