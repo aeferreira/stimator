@@ -1,0 +1,125 @@
+>pythonw -u "GDE3solver.py"
+distance matrix
+[[ 0.  3.  3. -3.  0. -3. -3.  0.]
+ [ 3.  0.  0. -3.  0. -3. -3.  0.]
+ [ 3.  0.  0. -3.  0. -3. -3.  0.]
+ [-3. -3. -3.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.  0.  0.]
+ [-3. -3. -3.  0.  0.  0. -3.  0.]
+ [-3. -3. -3.  0.  0. -3.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.  0.  0.]]
+##########################################
+
+Test initialized
+Nodes: 8  Objectives: 3
+objectives dict: 8 keys with 3 elements
+self.dom_dict and objectiveDic created.
+
+Computing nondominated_waves...
+ ---------------------------------
+ IN getDominanceTree()
+ nodes [1, 2, 3, 4, 5, 6, 7, 8]
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [1, 2, 3, 4]
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [1, 2]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [1]
+             .single node return [1]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [2]
+             .single node return [2]
+         @@  left tree [1]
+         @@ right tree [2]
+         @@ dom dict {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [1]
+         --> dom dict {1: [2], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [3, 4]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [3]
+             .single node return [3]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [4]
+             .single node return [4]
+         @@  left tree [3]
+         @@ right tree [4]
+         @@ dom dict {1: [2], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [4]
+         --> dom dict {1: [2], 2: [], 3: [], 4: [3], 5: [], 6: [], 7: [], 8: []}
+     @@  left tree [1]
+     @@ right tree [4]
+     @@ dom dict {1: [2], 2: [], 3: [], 4: [3], 5: [], 6: [], 7: [], 8: []}
+     --> return from merge [4]
+     --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [5, 6, 7, 8]
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [5, 6]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [5]
+             .single node return [5]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [6]
+             .single node return [6]
+         @@  left tree [5]
+         @@ right tree [6]
+         @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [5, 6]
+         --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [7, 8]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [7]
+             .single node return [7]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [8]
+             .single node return [8]
+         @@  left tree [7]
+         @@ right tree [8]
+         @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [7, 8]
+         --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+     @@  left tree [5, 6]
+     @@ right tree [7, 8]
+     @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+     --> return from merge [5, 7, 8]
+     --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
+ @@  left tree [4]
+ @@ right tree [5, 7, 8]
+ @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
+ --> return from merge [4, 5, 7, 8]
+ --> dom dict {1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [1], 7: [6], 8: []}
+DOMINANCE DICT
+1 > [2, 3]
+2 > []
+3 > []
+4 > []
+5 > []
+6 > [1]
+7 > [6]
+8 > []
+4 nondominated_waves:
+[4, 5, 7, 8]
+[6]
+[1]
+[2, 3]
+======================================================
+Comparing to published results...
+PASSED
+======================================================
+>Exit code: 0
