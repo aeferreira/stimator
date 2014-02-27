@@ -492,9 +492,6 @@ class GDE3Solver(DESolver):
         while left.valid() and right.valid(): #and left_tree != [] and right_tree != []:
             one_dominates = False
             d = dominance(self.objectives[right.indx], self.objectives[left.indx])
-            #rightDelayedInsertionList and leftDelayedInsertionList are [] for now.
-            leftDelayedInsertionList = []
-            rightDelayedInsertionList = []
             if d < 0: 
                 one_dominates = True
                 node = right.indx
