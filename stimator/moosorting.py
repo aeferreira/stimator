@@ -20,15 +20,6 @@ def dominance(vec1, vec2):
             return 0
     return d_result
 
-## def dominance(vec1, vec2):
-##     """Compute Pareto dominance relationship."""
-##     size = len(vec1)
-##     d = vec2 <= vec1
-##     if numpy.all(d): return -size
-##     d = vec2 >= vec1
-##     if numpy.all(d): return size
-##     return 0
-
 def nondominated_solutions(energies):
     """Returns the indexes of non-dominated solutions in a population."""
     nondominated = []
@@ -148,33 +139,33 @@ class MOOSorter(object):
             right.move_and_remove(right_tree)
             if not right.valid() and len(right_tree) > 0:
                 left_tree.extend(right_tree)
-        #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant siblings
-        #I'm not sure if this should be done every time or just in the final.
-        if self.dom_dict != {}:
-            firstFrontToBeCompared = [0, 0]
-            grandChildren = []
-            #This finds and merges cousins which are children of dominated solutions
-            for i in left_tree:
-                if self.dom_dict[i] != []:
-                    grandChildren.append(self.dom_dict[i])
-                    if len(grandChildren) == 2:
-                        grandChildren = [self.merge_Dom_trees(grandChildren[0], grandChildren[1])]
-            #Continues to merge the cousins which are children of non-dominated parents
-            while len(firstFrontToBeCompared) > 1:
-                firstFrontToBeCompared = []
-                for i in left_tree:
-                    nonDominantSolution = True
-                    for k in self.dom_dict:
-                        if i in self.dom_dict[k]:
-                            nonDominantSolution = False
-                    if nonDominantSolution and self.dom_dict[i]!=[]:
-                        firstFrontToBeCompared.append(i)
-                    if len(firstFrontToBeCompared) > 1:
-                        #Next two lines are necessary to avoid errors inside merge function
-                        cousin1 = self.dom_dict[firstFrontToBeCompared[0]]
-                        cousin2 = self.dom_dict[firstFrontToBeCompared[1]]
-                        self.merge_Dom_trees(cousin1, cousin2)
-                        break
+##         #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant siblings
+##         #I'm not sure if this should be done every time or just in the final.
+##         if self.dom_dict != {}:
+##             firstFrontToBeCompared = [0, 0]
+##             grandChildren = []
+##             #This finds and merges cousins which are children of dominated solutions
+##             for i in left_tree:
+##                 if self.dom_dict[i] != []:
+##                     grandChildren.append(self.dom_dict[i])
+##                     if len(grandChildren) == 2:
+##                         grandChildren = [self.merge_Dom_trees(grandChildren[0], grandChildren[1])]
+##             #Continues to merge the cousins which are children of non-dominated parents
+##             while len(firstFrontToBeCompared) > 1:
+##                 firstFrontToBeCompared = []
+##                 for i in left_tree:
+##                     nonDominantSolution = True
+##                     for k in self.dom_dict:
+##                         if i in self.dom_dict[k]:
+##                             nonDominantSolution = False
+##                     if nonDominantSolution and self.dom_dict[i]!=[]:
+##                         firstFrontToBeCompared.append(i)
+##                     if len(firstFrontToBeCompared) > 1:
+##                         #Next two lines are necessary to avoid errors inside merge function
+##                         cousin1 = self.dom_dict[firstFrontToBeCompared[0]]
+##                         cousin2 = self.dom_dict[firstFrontToBeCompared[1]]
+##                         self.merge_Dom_trees(cousin1, cousin2)
+##                         break
         return left_tree
 
     def ndf2list(self):
