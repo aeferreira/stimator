@@ -99,75 +99,46 @@ class MOOSorter(object):
                 return right_tree
         left = Node(left_tree[0])
         right = Node(right_tree[0])
-        one_dominates = False 
-        while left.valid() and right.valid(): #and left_tree != [] and right_tree != []:
-            one_dominates = False
+        while left.valid() and right.valid():
             d = dominance(self.objectives[right.indx], self.objectives[left.indx])
             if d < 0: 
-                one_dominates = True
                 node = right.indx
                 right.move_and_remove(right_tree) 
                 for k in self.dom_dict:
                     if node in self.dom_dict[k]:
                         self.dom_dict[k].remove(node)
                 self.dom_dict[left.indx] = self.merge_Dom_trees(self.dom_dict[left.indx], [node])
-                if left.valid() and not right.valid() and right_tree != []: #New!
-                    right.indx = right_tree[0]
             elif d > 0:
-                one_dominates = True
                 node = left.indx
                 left.move_and_remove(left_tree) 
                 for k in self.dom_dict:
                     if node in self.dom_dict[k]:
                         self.dom_dict[k].remove(node)
                 self.dom_dict[right.indx] = self.merge_Dom_trees(self.dom_dict[right.indx], [node])
-                if left_tree == []:
-                    left_tree = right_tree
-                    right_tree = []
-                else:
-                    right.indx = right_tree[0] #This is necessary for the new element from left_tree to be compared with every element os right_tree
             else:
                 right.point_to_next_sibling(right_tree)
                 if not right.valid():
                     right.indx = right_tree[0]
                     left.point_to_next_sibling(left_tree)
-        if not one_dominates:
-            left.indx = left_tree[0]
-            right.indx = right_tree[0]
-        while right_tree != [] and right.valid():
-            left_tree.append(right.indx)
-            right.move_and_remove(right_tree)
-            if not right.valid() and len(right_tree) > 0:
-                left_tree.extend(right_tree)
-##         #This block merges cousins, i.e. the nodes at the same non-dominance level which are children of different non-dominant siblings
-##         #I'm not sure if this should be done every time or just in the final.
-##         if self.dom_dict != {}:
-##             firstFrontToBeCompared = [0, 0]
-##             grandChildren = []
-##             #This finds and merges cousins which are children of dominated solutions
-##             for i in left_tree:
-##                 if self.dom_dict[i] != []:
-##                     grandChildren.append(self.dom_dict[i])
-##                     if len(grandChildren) == 2:
-##                         grandChildren = [self.merge_Dom_trees(grandChildren[0], grandChildren[1])]
-##             #Continues to merge the cousins which are children of non-dominated parents
-##             while len(firstFrontToBeCompared) > 1:
-##                 firstFrontToBeCompared = []
-##                 for i in left_tree:
-##                     nonDominantSolution = True
-##                     for k in self.dom_dict:
-##                         if i in self.dom_dict[k]:
-##                             nonDominantSolution = False
-##                     if nonDominantSolution and self.dom_dict[i]!=[]:
-##                         firstFrontToBeCompared.append(i)
-##                     if len(firstFrontToBeCompared) > 1:
-##                         #Next two lines are necessary to avoid errors inside merge function
-##                         cousin1 = self.dom_dict[firstFrontToBeCompared[0]]
-##                         cousin2 = self.dom_dict[firstFrontToBeCompared[1]]
-##                         self.merge_Dom_trees(cousin1, cousin2)
-##                         break
+        left_tree.extend(right_tree)
         return left_tree
 
+    def get_non_dominated_fronts(self, nodeList, verbose = False):
+        fronts = []
+        top_nodes = nodeList
+        while len(top_nodes) > 0:
+            top_nodes = self.getDominanceTree(top_nodes, verbose)
+            fronts.append(top_nodes)
+            if verbose:
+                print 'front :', top_nodes
+            children = []
+            for node in top_nodes:
+                children.extend(self.dom_dict[node])
+            if verbose:
+                print 'children :', children
+            top_nodes = children
+        return fronts
+        
     def ndf2list(self):
         """Organizes a list of nondominated fronts from self.dom_dict"""
         nonDominatedFronts = []
@@ -246,18 +217,18 @@ if __name__ == "__main__":
             print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
             print 'self.dom_dict and objectiveDic created.'
             print '\nComputing nondominated_waves...'
-            self.getDominanceTree(keys, verbose = True)
+            #self.getDominanceTree(keys, verbose = True)
+            fronts = self.get_non_dominated_fronts(keys, verbose = True)
             print 'DOMINANCE DICT'
             for k in self.dom_dict:
                 print k, '>', self.dom_dict[k]
-            nondominated_waves = self.ndf2list()
-            print '%d nondominated_waves:'% len(nondominated_waves)
-            for wave in nondominated_waves:
-                print wave
+            print '%d non-dominated fronts:'% len(fronts)
+            for front in fronts:
+                print front
             print '======================================================'
             print 'Comparing to published results...'
             published =[[4, 5, 7, 8],[6],[1],[2, 3]]
-            if nondominated_waves == published:
+            if fronts == published:
                 print 'PASSED'
             else:
                 print 'FAILED'
