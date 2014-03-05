@@ -139,19 +139,6 @@ class MOOSorter(object):
             top_nodes = children
         return fronts
         
-    def ndf2list(self):
-        """Organizes a list of nondominated fronts from self.dom_dict"""
-        nonDominatedFronts = []
-        while len(self.dom_dict) > 0:
-            allvls = []
-            for v in self.dom_dict.values():
-                allvls.extend(v)
-            nonDominated = [k for k in self.dom_dict if k not in allvls]
-            nonDominatedFronts.append(nonDominated)
-            for k in nonDominated:
-                del self.dom_dict[k]
-        return nonDominatedFronts
-
     #------------------------------------------------------------------------------------------------------------------------------------
     #End of non-dominated sorted algorithm methods
 
