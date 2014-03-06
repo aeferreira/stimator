@@ -1,0 +1,218 @@
+>pythonw -u "moosorting.py"
+Fang et al test initialized
+Nodes: 8  Objectives: 3
+dominance matrix
+      1   2   3   4   5   6   7   8
+  1   0   >   >   <   0   <   <   0
+  2   <   0   0   <   0   <   <   0
+  3   <   0   0   <   0   <   <   0
+  4   >   >   >   0   0   0   0   0
+  5   0   0   0   0   0   0   0   0
+  6   >   >   >   0   0   0   <   0
+  7   >   >   >   0   0   >   0   0
+  8   0   0   0   0   0   0   0   0
+##########################################
+
+objectives dict: 8 keys with 3 elements
+self.dom_dict and objectiveDic created.
+
+Computing nondominated_waves...
+ ---------------------------------
+ IN getDominanceTree()
+ nodes [1, 2, 3, 4, 5, 6, 7, 8]
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [1, 2, 3, 4]
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [1, 2]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [1]
+             .single node return [1]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [2]
+             .single node return [2]
+         @@  left tree [1]
+         @@ right tree [2]
+         @@ dom dict {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [1]
+         --> dom dict {1: [2], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [3, 4]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [3]
+             .single node return [3]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [4]
+             .single node return [4]
+         @@  left tree [3]
+         @@ right tree [4]
+         @@ dom dict {1: [2], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [4]
+         --> dom dict {1: [2], 2: [], 3: [], 4: [3], 5: [], 6: [], 7: [], 8: []}
+     @@  left tree [1]
+     @@ right tree [4]
+     @@ dom dict {1: [2], 2: [], 3: [], 4: [3], 5: [], 6: [], 7: [], 8: []}
+     --> return from merge [4]
+     --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [5, 6, 7, 8]
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [5, 6]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [5]
+             .single node return [5]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [6]
+             .single node return [6]
+         @@  left tree [5]
+         @@ right tree [6]
+         @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [5, 6]
+         --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+         ---------------------------------
+         IN getDominanceTree()
+         nodes [7, 8]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [7]
+             .single node return [7]
+             ---------------------------------
+             IN getDominanceTree()
+             nodes [8]
+             .single node return [8]
+         @@  left tree [7]
+         @@ right tree [8]
+         @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+         --> return from merge [7, 8]
+         --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+     @@  left tree [5, 6]
+     @@ right tree [7, 8]
+     @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
+     --> return from merge [5, 7, 8]
+     --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
+ @@  left tree [4]
+ @@ right tree [5, 7, 8]
+ @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
+ --> return from merge [4, 5, 7, 8]
+ --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
+====== front : [4, 5, 7, 8]
+|||||||children : [1, 6]
+ ---------------------------------
+ IN getDominanceTree()
+ nodes [1, 6]
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [1]
+     .single node return [1]
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [6]
+     .single node return [6]
+ @@  left tree [1]
+ @@ right tree [6]
+ @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
+ --> return from merge [6]
+ --> dom dict {1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [1], 7: [6], 8: []}
+====== front : [6]
+|||||||children : [1]
+ ---------------------------------
+ IN getDominanceTree()
+ nodes [1]
+ .single node return [1]
+====== front : [1]
+|||||||children : [2, 3]
+ ---------------------------------
+ IN getDominanceTree()
+ nodes [2, 3]
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [2]
+     .single node return [2]
+     ---------------------------------
+     IN getDominanceTree()
+     nodes [3]
+     .single node return [3]
+ @@  left tree [2]
+ @@ right tree [3]
+ @@ dom dict {1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [1], 7: [6], 8: []}
+ --> return from merge [2, 3]
+ --> dom dict {1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [1], 7: [6], 8: []}
+====== front : [2, 3]
+|||||||children : []
+DOMINANCE DICT
+1 > [2, 3]
+2 > []
+3 > []
+4 > []
+5 > []
+6 > [1]
+7 > [6]
+8 > []
+4 non-dominated fronts:
+[4, 5, 7, 8]
+[6]
+[1]
+[2, 3]
+======================================================
+Comparing to published results...
+PASSED
+======================================================
+
+Random objectives test initialized
+Nodes: 15  Objectives: 2
+objectives dict: 15 keys with 2 elements
+dominance matrix
+      1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+  1   0   >   0   0   0   >   0   0   >   >   >   0   0   0   0
+  2   <   0   <   0   <   >   0   0   >   0   <   <   0   <   <
+  3   0   >   0   0   <   >   0   0   >   0   0   0   0   <   0
+  4   0   0   0   0   0   0   <   0   0   0   0   0   <   0   0
+  5   0   >   >   0   0   >   0   0   >   0   0   0   0   <   0
+  6   <   <   <   0   <   0   <   0   0   0   <   <   0   <   <
+  7   0   0   0   >   0   >   0   >   0   0   0   0   0   0   0
+  8   0   0   0   0   0   0   <   0   0   0   0   0   <   0   0
+  9   <   <   <   0   <   0   0   0   0   <   <   <   0   <   <
+ 10   <   0   0   0   0   0   0   0   >   0   <   0   0   0   0
+ 11   <   >   0   0   0   >   0   0   >   >   0   0   0   0   0
+ 12   0   >   0   0   0   >   0   0   >   0   0   0   0   0   0
+ 13   0   0   0   >   0   0   0   >   0   0   0   0   0   0   0
+ 14   0   >   >   0   >   >   0   0   >   0   0   0   0   0   0
+ 15   0   >   0   0   0   >   0   0   >   0   0   0   0   0   0
+##########################################
+DOMINANCE DICT
+1 > [11]
+2 > [6, 9]
+3 > [2]
+4 > []
+5 > [3]
+6 > []
+7 > [4]
+8 > []
+9 > []
+10 > []
+11 > [10]
+12 > []
+13 > [8]
+14 > [5]
+15 > []
+5 non-dominated fronts:
+[1, 7, 12, 13, 14, 15]
+[11, 4, 8, 5]
+[10, 3]
+[2]
+[6, 9]
+======================================================
+
+Testing non-dominance between solutions in the same front... passed.
+Testing dominance relationship between solutions in different fronts... passed.
+>Exit code: 0
