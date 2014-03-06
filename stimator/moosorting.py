@@ -70,8 +70,7 @@ class MOOSorter(object):
         if verbose:
             spcs = self.depthspaces()
             print spcs, '---------------------------------'
-            print spcs, 'IN getDominanceTree()'
-            print spcs, 'nodes', nodeList
+            print spcs, 'getDominanceTree(%s)'%str(nodeList)
         size = len(nodeList)
         if size > 1:
             leftTree  = self.getDominanceTree(nodeList[:size/2], verbose)
@@ -79,10 +78,10 @@ class MOOSorter(object):
             if verbose:
                 print spcs, '@@  left tree', leftTree
                 print spcs, '@@ right tree', rightTree
-                print spcs, '@@ dom dict', self.dom_dict
+                #print spcs, '@@ dom dict', self.dom_dict
             res = self.merge_Dom_trees(leftTree, rightTree)
             if verbose:
-                print spcs, '--> return from merge', res
+                print spcs, '--> top node list returned', res
                 print spcs, '--> dom dict', self.dom_dict
             self.dominance_rdepth -= 1
             return res
@@ -108,6 +107,9 @@ class MOOSorter(object):
                     if node in self.dom_dict[k]:
                         self.dom_dict[k].remove(node)
                 self.dom_dict[left.indx] = self.merge_Dom_trees(self.dom_dict[left.indx], [node])
+                if not right.valid() and len(right_tree) > 0:
+                    right.indx = right_tree[0]
+                    left.point_to_next_sibling(left_tree)
             elif d > 0:
                 node = left.indx
                 left.move_and_remove(left_tree) 
@@ -115,6 +117,7 @@ class MOOSorter(object):
                     if node in self.dom_dict[k]:
                         self.dom_dict[k].remove(node)
                 self.dom_dict[right.indx] = self.merge_Dom_trees(self.dom_dict[right.indx], [node])
+                right.indx = right_tree[0]
             else:
                 right.point_to_next_sibling(right_tree)
                 if not right.valid():
@@ -130,12 +133,12 @@ class MOOSorter(object):
             top_nodes = self.getDominanceTree(top_nodes, verbose)
             fronts.append(top_nodes)
             if verbose:
-                print '====== front :', top_nodes
+                print '\nnon-dominated FRONT :', top_nodes
             children = []
             for node in top_nodes:
                 children.extend(self.dom_dict[node])
             if verbose:
-                print '|||||||children :', children
+                print 'CHILDREN :', children
             top_nodes = children
         return fronts
         
@@ -173,7 +176,7 @@ class Node:
 #Tests for the non-dominated sorted algorithm methods
 
 
-def print_dominance_matrix(keys, values, f):
+def pprint_dominance_matrix(keys, values, f):
     keys = ['%3s'%str(k) for k in keys]
     header = '    ' + ' '.join(keys)
     print header
@@ -194,11 +197,10 @@ def print_dominance_matrix(keys, values, f):
         line = ' '.join(line)
         print '%2s' % k, line
         
-from scipy.spatial.distance import squareform, pdist
 if __name__ == "__main__":
 
     class FangEtAL_test(MOOSorter):
-        def __init__(self, report = False):
+        def __init__(self):
             MOOSorter.__init__(self)
             
             data = [[182.08, 100.13, 192.21],[187.53, 246.16, 203.2],
@@ -208,8 +210,11 @@ if __name__ == "__main__":
 
             n_nodes = len(data)
             self.n_objectives = len(data[0])
-            print 'Fang et al test initialized'
-            print 'Nodes: %d  Objectives: %d' % (n_nodes, self.n_objectives)
+            print '======================================================'
+            print 'Test initialized: example from'
+            print 'Fang et al (2008) An Efficient Non-dominated Sorting Method'
+            print 'for Evolutionary Algorithms, Evol. Comput. 16(3):355-384'
+            print '\nNodes: %d  Objectives: %d' % (n_nodes, self.n_objectives)
             #dict keys are integers that begin at 1.
             self.objectives = {}
             for i_node in range(n_nodes):
@@ -217,42 +222,40 @@ if __name__ == "__main__":
                 self.objectives[i_node+1] = data[i_node]
             keys = self.objectives.keys()
             print 'dominance matrix'
-            print_dominance_matrix(keys, self.objectives.values(), dominance)
-            print '##########################################'
+            pprint_dominance_matrix(keys, self.objectives.values(), dominance)
+            print '------------------------------------------------'
             print
-
-            print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
-            print 'self.dom_dict and objectiveDic created.'
             print '\nComputing nondominated_waves...'
-            #self.getDominanceTree(keys, verbose = True)
             
             fronts = self.get_non_dominated_fronts(keys, verbose = True)
             
-            print 'DOMINANCE DICT'
+            print 'done.'
+            print
+            print 'final DOMINANCE dict'
             for k in self.dom_dict:
                 print k, '>', self.dom_dict[k]
-            print '%d non-dominated fronts:'% len(fronts)
+            print '\n%d non-dominated fronts:'% len(fronts)
             for front in fronts:
                 print front
             print '======================================================'
-            print 'Comparing to published results...'
+            print 'Comparing to published results...',
             published =[[4, 5, 7, 8],[6],[1],[2, 3]]
             if fronts == published:
                 print 'PASSED'
             else:
                 print 'FAILED'
-            print '======================================================'
+            print
     
     
     class ndsaTest(MOOSorter):
 
-        def __init__(self, n_nodes, n_objectives, report = False):
+        def __init__(self, n_nodes, n_objectives, report=False):
             MOOSorter.__init__(self)
 
             self.n_nodes = n_nodes
             self.n_objectives = n_objectives
             
-            print
+            print '======================================================'
             print 'Random objectives test initialized'
             print 'Nodes: %d  Objectives: %d' % (n_nodes, n_objectives)
             numpy.random.seed(2)
@@ -267,15 +270,16 @@ if __name__ == "__main__":
 
             print 'objectives dict: %d keys with %d elements' % (len(self.objectives), len(self.objectives[1]))
             print 'dominance matrix'
-            print_dominance_matrix(keys, self.objectives.values(),dominance)
-            print '##########################################'
+            pprint_dominance_matrix(keys, self.objectives.values(),dominance)
+            print '----------------------------------------------------'
             
-            fronts = self.get_non_dominated_fronts(keys, verbose = False)
+            fronts = self.get_non_dominated_fronts(keys, verbose = report)
             
-            print 'DOMINANCE DICT'
+            print
+            print 'final DOMINANCE dict'
             for k in self.dom_dict:
                 print k, '>', self.dom_dict[k]
-            print '%d non-dominated fronts:'% len(fronts)
+            print '\n%d non-dominated fronts:'% len(fronts)
             for front in fronts:
                 print front
             print '======================================================'
@@ -291,8 +295,10 @@ if __name__ == "__main__":
                         for r in range(p+1, len(wave)):
                             d = dominance(self.objectives[wave[r]], self.objectives[wave[p]])
                             if d != 0:
-                                print '\n FAILED:'
-                                print 'Domination relationship in front', wave, 'between nodes', wave[p], 'and', wave[r],'. Test not passed.\n\n'
+                                print '\nFAILED:'
+                                w1 = wave[p]
+                                w2 = wave[r]
+                                print 'Domination relationship in front', wave, 'between nodes', w1, 'and', w2,'. Test not passed.\n\n'
                                 return
             print 'passed.'
             if len(fronts) == 1:
@@ -307,16 +313,12 @@ if __name__ == "__main__":
                             for up in fronts[pFront]:
                                 d = dominance(self.objectives[down], self.objectives[up])
                                 if d == 1:
-                                    print '\n FAILED:'
+                                    print '\nFAILED:'
                                     print 'Solution in front', pFront, ', (', up, ') is dominated by solution in front', rFront, ', (', down, '). Test not passed.\n\n'
                                     return
                 print 'passed.'
     
     FangEtAL_test()
-    i = 15
-    j = 2
-    ndsaTest(i, j)
-##     i = 50
-##     j = 2
-##     ndsaTest(i, j)
+    ndsaTest(15, 2, report=True)
+    ndsaTest(50, 2)
     
