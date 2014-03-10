@@ -18,7 +18,7 @@ dominance matrix
 ------------------------------------------------
 
 
-Computing nondominated_waves...
+Computing nondominated fronts...
  ---------------------------------
  getDominanceTree([1, 2, 3, 4, 5, 6, 7, 8])
      ---------------------------------
@@ -26,64 +26,50 @@ Computing nondominated_waves...
          ---------------------------------
          getDominanceTree([1, 2])
              ---------------------------------
-             getDominanceTree([1])
-             .single node return [1]
+             getDominanceTree([1]) --> [1]
              ---------------------------------
-             getDominanceTree([2])
-             .single node return [2]
+             getDominanceTree([2]) --> [2]
          @@  left tree [1]
          @@ right tree [2]
-         --> top node list returned [1]
-         --> dom dict {1: [2], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: []}
          ---------------------------------
          getDominanceTree([3, 4])
              ---------------------------------
-             getDominanceTree([3])
-             .single node return [3]
+             getDominanceTree([3]) --> [3]
              ---------------------------------
-             getDominanceTree([4])
-             .single node return [4]
+             getDominanceTree([4]) --> [4]
          @@  left tree [3]
          @@ right tree [4]
-         --> top node list returned [4]
-         --> dom dict {1: [2], 2: [], 3: [], 4: [3], 5: [], 6: [], 7: [], 8: []}
      @@  left tree [1]
      @@ right tree [4]
-     --> top node list returned [4]
-     --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
      ---------------------------------
      getDominanceTree([5, 6, 7, 8])
          ---------------------------------
          getDominanceTree([5, 6])
              ---------------------------------
-             getDominanceTree([5])
-             .single node return [5]
+             getDominanceTree([5]) --> [5]
              ---------------------------------
-             getDominanceTree([6])
-             .single node return [6]
+             getDominanceTree([6]) --> [6]
          @@  left tree [5]
          @@ right tree [6]
-         --> top node list returned [5, 6]
+         --> node list returned from merge [5, 6]
          --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
          ---------------------------------
          getDominanceTree([7, 8])
              ---------------------------------
-             getDominanceTree([7])
-             .single node return [7]
+             getDominanceTree([7]) --> [7]
              ---------------------------------
-             getDominanceTree([8])
-             .single node return [8]
+             getDominanceTree([8]) --> [8]
          @@  left tree [7]
          @@ right tree [8]
-         --> top node list returned [7, 8]
+         --> node list returned from merge [7, 8]
          --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [], 8: []}
      @@  left tree [5, 6]
      @@ right tree [7, 8]
-     --> top node list returned [5, 7, 8]
+     --> node list returned from merge [5, 7, 8]
      --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
  @@  left tree [4]
  @@ right tree [5, 7, 8]
- --> top node list returned [4, 5, 7, 8]
+ --> node list returned from merge [4, 5, 7, 8]
  --> dom dict {1: [2, 3], 2: [], 3: [], 4: [1], 5: [], 6: [], 7: [6], 8: []}
 
 non-dominated FRONT : [4, 5, 7, 8]
@@ -91,40 +77,32 @@ CHILDREN : [1, 6]
  ---------------------------------
  getDominanceTree([1, 6])
      ---------------------------------
-     getDominanceTree([1])
-     .single node return [1]
+     getDominanceTree([1]) --> [1]
      ---------------------------------
-     getDominanceTree([6])
-     .single node return [6]
+     getDominanceTree([6]) --> [6]
  @@  left tree [1]
  @@ right tree [6]
- --> top node list returned [6]
- --> dom dict {1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [1], 7: [6], 8: []}
 
 non-dominated FRONT : [6]
 CHILDREN : [1]
  ---------------------------------
- getDominanceTree([1])
- .single node return [1]
+ getDominanceTree([1]) --> [1]
 
 non-dominated FRONT : [1]
 CHILDREN : [2, 3]
  ---------------------------------
  getDominanceTree([2, 3])
      ---------------------------------
-     getDominanceTree([2])
-     .single node return [2]
+     getDominanceTree([2]) --> [2]
      ---------------------------------
-     getDominanceTree([3])
-     .single node return [3]
+     getDominanceTree([3]) --> [3]
  @@  left tree [2]
  @@ right tree [3]
- --> top node list returned [2, 3]
+ --> node list returned from merge [2, 3]
  --> dom dict {1: [2, 3], 2: [], 3: [], 4: [], 5: [], 6: [1], 7: [6], 8: []}
 
 non-dominated FRONT : [2, 3]
 CHILDREN : []
-done.
 
 final DOMINANCE dict
 1 > [2, 3]
@@ -173,57 +151,46 @@ dominance matrix
          ---------------------------------
          getDominanceTree([1, 2, 3])
              ---------------------------------
-             getDominanceTree([1])
-             .single node return [1]
+             getDominanceTree([1]) --> [1]
              ---------------------------------
              getDominanceTree([2, 3])
                  ---------------------------------
-                 getDominanceTree([2])
-                 .single node return [2]
+                 getDominanceTree([2]) --> [2]
                  ---------------------------------
-                 getDominanceTree([3])
-                 .single node return [3]
+                 getDominanceTree([3]) --> [3]
              @@  left tree [2]
              @@ right tree [3]
-             --> top node list returned [3]
-             --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
          @@  left tree [1]
          @@ right tree [3]
-         --> top node list returned [1, 3]
+         --> node list returned from merge [1, 3]
          --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
          ---------------------------------
          getDominanceTree([4, 5, 6, 7])
              ---------------------------------
              getDominanceTree([4, 5])
                  ---------------------------------
-                 getDominanceTree([4])
-                 .single node return [4]
+                 getDominanceTree([4]) --> [4]
                  ---------------------------------
-                 getDominanceTree([5])
-                 .single node return [5]
+                 getDominanceTree([5]) --> [5]
              @@  left tree [4]
              @@ right tree [5]
-             --> top node list returned [4, 5]
+             --> node list returned from merge [4, 5]
              --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
              ---------------------------------
              getDominanceTree([6, 7])
                  ---------------------------------
-                 getDominanceTree([6])
-                 .single node return [6]
+                 getDominanceTree([6]) --> [6]
                  ---------------------------------
-                 getDominanceTree([7])
-                 .single node return [7]
+                 getDominanceTree([7]) --> [7]
              @@  left tree [6]
              @@ right tree [7]
-             --> top node list returned [7]
-             --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [], 6: [], 7: [6], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
          @@  left tree [4, 5]
          @@ right tree [7]
-         --> top node list returned [5, 7]
+         --> node list returned from merge [5, 7]
          --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [], 6: [], 7: [6, 4], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
      @@  left tree [1, 3]
      @@ right tree [5, 7]
-     --> top node list returned [1, 5, 7]
+     --> node list returned from merge [1, 5, 7]
      --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
      ---------------------------------
      getDominanceTree([8, 9, 10, 11, 12, 13, 14, 15])
@@ -232,68 +199,58 @@ dominance matrix
              ---------------------------------
              getDominanceTree([8, 9])
                  ---------------------------------
-                 getDominanceTree([8])
-                 .single node return [8]
+                 getDominanceTree([8]) --> [8]
                  ---------------------------------
-                 getDominanceTree([9])
-                 .single node return [9]
+                 getDominanceTree([9]) --> [9]
              @@  left tree [8]
              @@ right tree [9]
-             --> top node list returned [8, 9]
+             --> node list returned from merge [8, 9]
              --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [], 11: [], 12: [], 13: [], 14: [], 15: []}
              ---------------------------------
              getDominanceTree([10, 11])
                  ---------------------------------
-                 getDominanceTree([10])
-                 .single node return [10]
+                 getDominanceTree([10]) --> [10]
                  ---------------------------------
-                 getDominanceTree([11])
-                 .single node return [11]
+                 getDominanceTree([11]) --> [11]
              @@  left tree [10]
              @@ right tree [11]
-             --> top node list returned [11]
-             --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [], 11: [10], 12: [], 13: [], 14: [], 15: []}
          @@  left tree [8, 9]
          @@ right tree [11]
-         --> top node list returned [8, 11]
+         --> node list returned from merge [8, 11]
          --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [], 14: [], 15: []}
          ---------------------------------
          getDominanceTree([12, 13, 14, 15])
              ---------------------------------
              getDominanceTree([12, 13])
                  ---------------------------------
-                 getDominanceTree([12])
-                 .single node return [12]
+                 getDominanceTree([12]) --> [12]
                  ---------------------------------
-                 getDominanceTree([13])
-                 .single node return [13]
+                 getDominanceTree([13]) --> [13]
              @@  left tree [12]
              @@ right tree [13]
-             --> top node list returned [12, 13]
+             --> node list returned from merge [12, 13]
              --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [], 14: [], 15: []}
              ---------------------------------
              getDominanceTree([14, 15])
                  ---------------------------------
-                 getDominanceTree([14])
-                 .single node return [14]
+                 getDominanceTree([14]) --> [14]
                  ---------------------------------
-                 getDominanceTree([15])
-                 .single node return [15]
+                 getDominanceTree([15]) --> [15]
              @@  left tree [14]
              @@ right tree [15]
-             --> top node list returned [14, 15]
+             --> node list returned from merge [14, 15]
              --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [], 14: [], 15: []}
          @@  left tree [12, 13]
          @@ right tree [14, 15]
-         --> top node list returned [12, 13, 14, 15]
+         --> node list returned from merge [12, 13, 14, 15]
          --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [], 14: [], 15: []}
      @@  left tree [8, 11]
      @@ right tree [12, 13, 14, 15]
-     --> top node list returned [11, 12, 13, 14, 15]
+     --> node list returned from merge [11, 12, 13, 14, 15]
      --> dom dict {1: [], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [8], 14: [], 15: []}
  @@  left tree [1, 5, 7]
  @@ right tree [11, 12, 13, 14, 15]
- --> top node list returned [1, 7, 12, 13, 14, 15]
+ --> node list returned from merge [1, 7, 12, 13, 14, 15]
  --> dom dict {1: [11], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [6, 4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [8], 14: [5], 15: []}
 
 non-dominated FRONT : [1, 7, 12, 13, 14, 15]
@@ -303,39 +260,32 @@ CHILDREN : [11, 6, 4, 8, 5]
      ---------------------------------
      getDominanceTree([11, 6])
          ---------------------------------
-         getDominanceTree([11])
-         .single node return [11]
+         getDominanceTree([11]) --> [11]
          ---------------------------------
-         getDominanceTree([6])
-         .single node return [6]
+         getDominanceTree([6]) --> [6]
      @@  left tree [11]
      @@ right tree [6]
-     --> top node list returned [11]
-     --> dom dict {1: [11], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [9], 11: [10, 6], 12: [], 13: [8], 14: [5], 15: []}
      ---------------------------------
      getDominanceTree([4, 8, 5])
          ---------------------------------
-         getDominanceTree([4])
-         .single node return [4]
+         getDominanceTree([4]) --> [4]
          ---------------------------------
          getDominanceTree([8, 5])
              ---------------------------------
-             getDominanceTree([8])
-             .single node return [8]
+             getDominanceTree([8]) --> [8]
              ---------------------------------
-             getDominanceTree([5])
-             .single node return [5]
+             getDominanceTree([5]) --> [5]
          @@  left tree [8]
          @@ right tree [5]
-         --> top node list returned [8, 5]
+         --> node list returned from merge [8, 5]
          --> dom dict {1: [11], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [9], 11: [10, 6], 12: [], 13: [8], 14: [5], 15: []}
      @@  left tree [4]
      @@ right tree [8, 5]
-     --> top node list returned [4, 8, 5]
+     --> node list returned from merge [4, 8, 5]
      --> dom dict {1: [11], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [9], 11: [10, 6], 12: [], 13: [8], 14: [5], 15: []}
  @@  left tree [11]
  @@ right tree [4, 8, 5]
- --> top node list returned [11, 4, 8, 5]
+ --> node list returned from merge [11, 4, 8, 5]
  --> dom dict {1: [11], 2: [], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [9], 11: [10, 6], 12: [], 13: [8], 14: [5], 15: []}
 
 non-dominated FRONT : [11, 4, 8, 5]
@@ -343,23 +293,18 @@ CHILDREN : [10, 6, 3]
  ---------------------------------
  getDominanceTree([10, 6, 3])
      ---------------------------------
-     getDominanceTree([10])
-     .single node return [10]
+     getDominanceTree([10]) --> [10]
      ---------------------------------
      getDominanceTree([6, 3])
          ---------------------------------
-         getDominanceTree([6])
-         .single node return [6]
+         getDominanceTree([6]) --> [6]
          ---------------------------------
-         getDominanceTree([3])
-         .single node return [3]
+         getDominanceTree([3]) --> [3]
      @@  left tree [6]
      @@ right tree [3]
-     --> top node list returned [3]
-     --> dom dict {1: [11], 2: [6], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [8], 14: [5], 15: []}
  @@  left tree [10]
  @@ right tree [3]
- --> top node list returned [10, 3]
+ --> node list returned from merge [10, 3]
  --> dom dict {1: [11], 2: [6], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [9], 11: [10], 12: [], 13: [8], 14: [5], 15: []}
 
 non-dominated FRONT : [10, 3]
@@ -367,33 +312,28 @@ CHILDREN : [9, 2]
  ---------------------------------
  getDominanceTree([9, 2])
      ---------------------------------
-     getDominanceTree([9])
-     .single node return [9]
+     getDominanceTree([9]) --> [9]
      ---------------------------------
-     getDominanceTree([2])
-     .single node return [2]
+     getDominanceTree([2]) --> [2]
  @@  left tree [9]
  @@ right tree [2]
- --> top node list returned [2]
- --> dom dict {1: [11], 2: [6, 9], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [], 11: [10], 12: [], 13: [8], 14: [5], 15: []}
 
 non-dominated FRONT : [2]
 CHILDREN : [6, 9]
  ---------------------------------
  getDominanceTree([6, 9])
      ---------------------------------
-     getDominanceTree([6])
-     .single node return [6]
+     getDominanceTree([6]) --> [6]
      ---------------------------------
-     getDominanceTree([9])
-     .single node return [9]
+     getDominanceTree([9]) --> [9]
  @@  left tree [6]
  @@ right tree [9]
- --> top node list returned [6, 9]
+ --> node list returned from merge [6, 9]
  --> dom dict {1: [11], 2: [6, 9], 3: [2], 4: [], 5: [3], 6: [], 7: [4], 8: [], 9: [], 10: [], 11: [10], 12: [], 13: [8], 14: [5], 15: []}
 
 non-dominated FRONT : [6, 9]
 CHILDREN : []
+
 final DOMINANCE dict
 1 > [11]
 2 > [6, 9]
@@ -420,7 +360,7 @@ final DOMINANCE dict
 ======================================================
 
 Testing non-dominance between solutions in the same front... passed.
-Testing dominance relationship between solutions in different fronts... passed.
+Testing dominance relationship between different fronts... passed.
 ======================================================
 Random objectives test initialized
 Nodes: 50  Objectives: 2
@@ -478,6 +418,7 @@ dominance matrix
  49   <   <   <   <   <   <   <   0   0   0   <   <   <   <   <   <   <   <   0   0   0   0   <   0   0   <   0   <   <   >   0   0   <   <   0   <   <   >   <   0   <   0   <   <   0   <   0   <   0   0
  50   0   0   0   0   0   0   <   0   0   0   0   0   <   0   0   0   0   0   0   <   0   0   0   0   >   0   0   0   0   >   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
 ----------------------------------------------------
+
 final DOMINANCE dict
 1 > [11]
 2 > [6]
@@ -546,5 +487,5 @@ final DOMINANCE dict
 ======================================================
 
 Testing non-dominance between solutions in the same front... passed.
-Testing dominance relationship between solutions in different fronts... passed.
+Testing dominance relationship between different fronts... passed.
 >Exit code: 0
