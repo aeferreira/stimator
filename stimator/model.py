@@ -517,8 +517,6 @@ class Model(ModelObject):
     
     def clone(self, new_title = None):
         m = Model(self['title'])
-        if new_title is not None:
-            m['title'] = new_title
         for r in self.__reactions:
             setattr(m, get_name(r), Reaction(r._reagents, r._products, r(), r._ownparameters, r._irreversible))
         for p in self._ownparameters.values():
@@ -538,6 +536,8 @@ class Model(ModelObject):
                 currobj = getattr(currobj, attribute)
             currobj.uncertainty(u.min, u.max)
         m._ModelObject__metadata.update(self._ModelObject__metadata)
+        if new_title is not None:
+            m['title'] = new_title
         return m
     
     def __eq__(self, other):
@@ -767,6 +767,17 @@ def test():
     print '********** Testing equality of models *****************'
     print "m2 == m"
     print m2 == m
+
+    print
+    m3 = m.clone(new_title = 'another model')
+    print
+    print '------- result of CLONING the model:\n'
+    print m3
+    
+    print
+    print '********** Testing equality of models *****************'
+    print "m3 == m"
+    print m3 == m
 
     print
     print '********** Testing iteration of components *****************'
