@@ -52,7 +52,7 @@ def nondominated_solutions(energies):
             nondominated.append(i)
     return nondominated
 
-def energies_dominance_delta(old_energies, new_energies):
+def dominance_delta(old_energies, new_energies):
     """Compute dominance relationship between solutions of two generations."""
     return [dominance(o,n) for o,n in zip(old_energies, new_energies)]
 
@@ -86,7 +86,6 @@ class ModelSolver(object):
             if not (name in self.modelvarnames):
                 raise AttributeError('%s is not a variable in model'%name)
         
-  
         self.optvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.optvars])
         self.obsvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.observed])
             
@@ -97,8 +96,11 @@ class ModelSolver(object):
         for value,indx in zip(self.trial, self.optvars_indexes):
             self.vector[indx] = value
 
-        return dynamics.solve(self.model, tf = self.tf, npoints = self.npoints, t0 = self.t0, 
-                                          initial = self.vector).copy(self.observed)
+        return dynamics.solve(self.model, 
+                              tf = self.tf, 
+                              npoints = self.npoints, 
+                              t0 = self.t0, 
+                              initial = self.vector).copy(self.observed)
  
 # helper to transform string arguments in lists:
 def listify(arguments):
@@ -118,8 +120,11 @@ class GDE3Solver(DESolver):
     2005 IEEE Congress on Evolutionary Computation. 
     """
 
-    def __init__(self, models, toOpt, objectiveFunction, observed, npoints, t0, tf, populationSize, maxGenerations, deStrategy, diffScale, crossoverProb, 
-                 cutoffEnergy, 
+    def __init__(self, models, 
+                 toOpt, objectiveFunction, observed, 
+                 npoints, t0, tf, 
+                 populationSize, maxGenerations, deStrategy, 
+                 diffScale, crossoverProb, cutoffEnergy, 
                  useClassRandomNumberMethods, 
                  dif = '0', dump_generations = None):
         
@@ -157,15 +162,19 @@ class GDE3Solver(DESolver):
         self.objFuncList = []
 
         for m in self.models:
-            self.objFuncList.append(ModelSolver(m, self.t0, self.npoints, self.tf, 
-                                                self.toOptKeys, self.observed))
+            self.objFuncList.append(ModelSolver(m, 
+                                                self.t0, 
+                                                self.npoints, 
+                                                self.tf, 
+                                                self.toOptKeys, 
+                                                self.observed))
         
         self.dif = dif
         
         # threshold for improvement based on 5 % of new solution count
         self.roomForImprovement = int(round(0.05 * populationSize))
         
-        #counter of number of generations with only  non-dominated solutions
+        #counter of number of generations with only non-dominated solutions
         self.fullnondominated = 0
         
         str2distance = {'extKL'   :timecourse.extendedKLdivergence,
@@ -298,9 +307,8 @@ class GDE3Solver(DESolver):
             timeElapsed = time() - time0
             print 'done, took %6.3f'% timeElapsed, 's'
             
-            energyComparison = energies_dominance_delta(self.new_generation_energies, self.population_energies)
-            #print 'Dominance comparison with previous generation:'
-            #print energyComparison
+            energyComparison = dominance_delta(self.new_generation_energies, 
+                                               self.population_energies)
 
             #working structures for sorting
             self.objectives = [[]]
