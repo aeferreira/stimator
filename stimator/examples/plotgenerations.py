@@ -1,7 +1,7 @@
 
 from matplotlib import pylab as pl
 
-dump_generations = [0, 1, 3, 5, 7, 8, 10, 13, 14]
+dump_generations = [ 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 if __name__ == "__main__":
     if dump_generations is not None:
@@ -50,4 +50,5 @@ if __name__ == "__main__":
         pl.legend(loc=0)
         ax1.grid()
         ax2.grid()
+        ax2.set_ylim(2.12, 2.28)
         pl.show()
