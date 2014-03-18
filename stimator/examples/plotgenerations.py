@@ -1,13 +1,12 @@
 
 from matplotlib import pylab as pl
+import matplotlib.cm as cm
 
 dump_generations = [ 7, 8, 9, 10, 11, 12, 13, 14, 15]
+n_gens = len(dump_generations)
 
 if __name__ == "__main__":
     if dump_generations is not None:
-        lcolors = ['white'] + ['0.8', '0.4']
-        lcolors = lcolors + ['yellow', 'cyan', 'red', 'green', 'blue', 'black']
-        lcolors = lcolors * 10
         ax1 = pl.subplot(1,2,1)
         ax2 = pl.subplot(1,2,2)
         # parse generations
@@ -24,7 +23,7 @@ if __name__ == "__main__":
             if line == '' and reading:
                 if len(solx) > 0:
                     cindex += 1
-                    c = lcolors[cindex]
+                    c = cm.jet(cindex/float(n_gens), 1)
                     ax1.plot(solx, soly, color=c, marker='o', ls='None', label = gen)
                     ax2.plot(objx, objy, color=c, marker='o', ls='None', label = gen)
                     solx = []
@@ -37,7 +36,7 @@ if __name__ == "__main__":
                 igen = int(gen)
                 if igen in dump_generations:
                     reading = True
-                print gen
+                    print 'generation', gen
             elif reading:
                 line = [float(x) for x in line.split()]
                 solx.append(line[0])
