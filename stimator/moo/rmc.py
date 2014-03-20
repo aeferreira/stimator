@@ -1,100 +1,117 @@
 import numpy
 import pylab as pl
 
-def removeMostCrowded(objs, points = None, labels = None, knumber = 3, remove_n = 1, verbose = False):
+def removeMostCrowded(coords, 
+                      indexes = None, labels = None, 
+                      knumber = 3, remove_n = 1, 
+                      verbose = False):
+    """
+    Remove point with the smaller crowiding distance.
 
+    The crowding distance is measured as the sum of the distances 
+    of the points to their k-nearest neighbours.
+    
+    coords is a list of point coordinates.
+    remove_n is the number of points to remove.
+    knumber is the number of neighbours to consider in the crowding distance.
+    indexes are the indexes (list of integers) of points in coords to consider. 
+            Default: all points in coords (if None).
+    labels are a list of strings (with the same size as indexes) to label
+    points in graphs and verbose output. Default is string representation of
+    the list of indexes.
+    
+    coords, indexes and labels are not changed, only indexed by the function.
+    
+    Return is a list of integers, a subset of indexes representing the
+    remaining after removal of remove_n points.
     """
-    Removes a point with the smaller crowiding distance measured as
-    the sum of the distances of the points to their k-nearest neighbours.
-    x is a dictionary which values are the point coordinates as a list.
-    """
-    if points is None:
-        points = range(len(objs))
+    
+    if indexes is None:
+        indexes = range(len(coords))
     if labels is None:
-        labels = [str(i) for i in points]
-    n_points = len(points)
-    if n_points == 0 :
-        return points
-    if remove_n < 1:
-        return points
-    keys = labels[:]
-    n_objs = len(objs[points[0]])
+        labels = [str(i) for i in indexes]
+    n_points = len(indexes)
+    if n_points == 0 or remove_n < 1:
+        return indexes
+    n_coords = len(coords[indexes[0]])
     
-    wpoints = points[:] #holds current indexes of points still present
-    
-    #compute matrix of objectives
-    obj_matrix = numpy.empty((n_points, n_objs))
-    for i,k in enumerate(keys):
-        obj_matrix[i, :] = objs[i]
+    points = range(len(indexes)) #holds current points still present
 
-    if verbose:
-        print 'mapping\n'
-        mapping = [(k,i,obj_matrix[i]) for (k,i) in zip(keys, wpoints)]
-        for k, i, o in mapping:
-            print k,i,o
-
-    # find indexes of extreme wpoints (max and min in each dimension)
+##     if verbose:
+##         print 'mapping\n'
+##         for k,i,o in [(labels[p], indexes[p], coords[indexes[p]]) for p in points]:
+##             print k, i, o
     
-    maxima = numpy.amax(obj_matrix, axis=0)
-    minima = numpy.amin(obj_matrix, axis=0)
+    #unfortunatelly, a copy is necessary
+    acoords = numpy.array([coords[i] for i in indexes])
+    
+    # find indexes of extreme points (max and min in each dimension)
+    maxima = numpy.amax(acoords, axis=0)
+    minima = numpy.amin(acoords, axis=0)
     
     extremes = []
-    for i in range(n_objs):
+    for i in range(n_coords):
         dimextremes = []
-        for j in wpoints:
-            v = obj_matrix[j][i]
+        for p in points:
+            v = acoords[p][i]
             if v == minima[i] or v == maxima[i]:
-                dimextremes.append(j)                
-        for j in dimextremes:
-            if j not in extremes:
-                extremes.append(j)
+                dimextremes.append(p)                
+        for p in dimextremes:
+            if p not in extremes:
+                extremes.append(p)
     extremes.sort()
     
     if verbose:
-        print 'extreme points', [keys[i] for i in extremes]
+        print '\nextreme points', [labels[x] for x in extremes]
 
     #compute distances
-    # TODO: use numpy function
+    # TODO: use scipy function
     distanceMatrix = []
-    
-    for i in range(n_points):
+    for i in points:
         distances = []
-        for j in range(n_points):
+        for j in points:
             if j < i:
                 distances.append(distanceMatrix[j][i])
             elif j ==i:
                 distances.append(0.0)
             elif j > i:
-                temp = numpy.array(obj_matrix[i]) - numpy.array(obj_matrix[j])
+                temp = acoords[i,:] - acoords[j,:]
                 d = numpy.sqrt(numpy.dot(temp,temp))
                 distances.append(d)
         distanceMatrix.append(distances)
     
     #sort distances for each point
     distances = []
-    for i in wpoints:
-        dd = zip(list(distanceMatrix[i]), range(n_points))
+    for p in points:
+        dd = zip(list(distanceMatrix[p]), points)
         dd.sort()
         distances.append(dd)
+    if verbose:
+        print '\ncomputed distances'
+        for p in points:
+            dd = distances[p]
+            print labels[p],
+            print ', '.join(["(%-5.3g to %s)"% (t1, labels[t2]) for (t1,t2) in dd])
+        print
     
     #compute k shortest (note: position 0 after sorting is always 0.0)
     last_removed = None
     
     # loop to remove each point
     for n in range(remove_n):
-        if len(wpoints) == 0:
+        if len(points) == 0:
             if verbose:
                 print '\nNo more points to remove'
-            return []
+            return points
 
         if verbose:
             print '---------------------------\nRemoving point #%d' % (n+1), ':'
             print '\nremaining points' #, points
-            print [keys[k] for k in wpoints]
+            print [labels[p] for p in points]
         
         if last_removed is not None:
             #remove reference to last removed point in list of distances
-            for i in wpoints:
+            for i in points:
                 indx_last_remove = -1
                 d = distances[i]
                 for j in range(len(d)):
@@ -105,76 +122,101 @@ def removeMostCrowded(objs, points = None, labels = None, knumber = 3, remove_n 
         
         if verbose:
             print '\nk-distances'
-            for i in wpoints:
+            for i in points:
                 dd = distances[i][1:knumber+1]
-                print keys[i],
-                print ', '.join([ "(%-5.3g to %s)"% (t1, keys[t2]) for (t1,t2) in dd])
+                print labels[i],
+                print ', '.join([ "(%-5.3g to %s)"% (t1, labels[t2]) for (t1,t2) in dd])
             print
         
-        ksums = [sum([d[0] for d in distances[i][1:knumber+1]]) for i in wpoints]
+        ksums = [sum([d[0] for d in distances[i][1:knumber+1]]) for i in points]
         
         #find and remove most crowded
         distancesAndKeys = []
         
         allextremes = True
-        for i in wpoints:
+        for i in points:
             if i not in extremes:
                 allextremes = False
                 break
 
         if not allextremes:
-            for i,k in enumerate(wpoints):
+            for i,k in enumerate(points):
                 if k in extremes:
                     distancesAndKeys.append((10**300, k))
                 else:
                     distancesAndKeys.append((ksums[i], k))
         else:
-            for i,k in enumerate(wpoints):
+            for i,k in enumerate(points):
                 distancesAndKeys.append((ksums[i], k))      
         
         last_removed = min(distancesAndKeys)[1]
-        wpoints.remove(last_removed)
-        mc_key = keys[last_removed]
+        points.remove(last_removed)
+        mc_key = labels[last_removed]
         
         if verbose:
-            mcv = objs[last_removed]
-            print 'Point to remove:', last_removed, mc_key, mcv
+            mcv = coords[indexes[last_removed]]
+            print 'Point to remove:', indexes[last_removed], mc_key, mcv
         
-    return wpoints
+    return [indexes[p] for p in points]
 
 
-def pprint(x, objs, showplot=False):
-    if len(x) == 0:
+def pprint(coords, indexes = None, labels=None, showplot=False):
+    if indexes is None:
+        indexes = range(len(coords))
+    if len(indexes) == 0:
         print 'empty data'
-    keys = x[:]
-    mapping = [(k, i) for (k,i) in zip(keys, range(len(keys)))]
-    mapping.sort()
-    keys = [i for (i,j) in mapping]
-    points = [j for (i,j) in mapping]
-    for k, p in zip(keys, points):
-        print k, objs[p]
+    if labels is None:
+        labels = [str(i) for i in indexes]
+    for k,p in zip(labels, indexes):
+        print k, '(%d)'%p, coords[p]
     if showplot:
-        xx = [objs[p][0] for p in points]
-        yy = [objs[p][1] for p in points]
+        plotlabels = labels
+        xx = [coords[p][0] for p in indexes]
+        yy = [coords[p][1] for p in indexes]
         pl.figure()
         pl.plot(xx, yy, 'bo')
-        for label, x, y in zip(keys, xx, yy):
-            pl.annotate(label, xy = (x, y), xytext = (x, y),
-            textcoords = 'offset points', ha = 'right', va = 'bottom',
-            arrowprops = None)
+        for label, x, y in zip(plotlabels, xx, yy):
+            pl.annotate(label, xy = (x, y), xytext = (x+0.02, y), 
+                        ha = 'left', 
+                        va = 'center',
+                        backgroundcolor='white',
+                        bbox=dict(facecolor='red', alpha=0.8))
         pl.show()
 
 def test():
-    x = dict(A=(0,1), B=(0,0), C=(1,1), D=(1.2,0.5), E=(1,0), F=(0,0.5),
-    G=(0.25, 0.75), H=(0.25,0.5), I=(0.5,1), J=(0.5,0.75), K=(0.5,0.5), 
-    L=(0.75,0.5))
+    x = dict(A=(0,1), B=(0,0), Bogus=(-1,-1),
+             C=(1,1), D=(1.2,0.5), E=(1,0), 
+             F=(0,0.5), G=(0.25, 0.75), H=(0.25,0.5), 
+             I=(0.5,1), J=(0.5,0.75), K=(0.5,0.5), L=(0.75,0.5))
     keys = list(x.keys())
-    objs = list(x.values())
+    keys.sort()
+    coords = [x[k] for k in keys]
+    print 'all labels', keys
+    points = range(len(coords))
+    print 'all points', points
+    
+    #remove the bogus point
+    bindx = keys.index('Bogus')
+    del(points[bindx])
+    del(keys[bindx])
+    print
+    print 'labels', keys
+    print 'use only points'
+    print points
+
+
+    print
     print 'initial data\n'
-    pprint(keys, objs, showplot=True)
-    x = removeMostCrowded(objs, labels = keys, knumber = 3, remove_n = 15, verbose=True)
+    pprint(coords, indexes=points, labels=keys, showplot=True)
+    
+    x = removeMostCrowded(coords, 
+                          indexes=points,
+                          labels = keys,
+                          knumber = 3,
+                          remove_n = 15,
+                          verbose=True)
     print 'remaining points:'
-    print [labels[k] for k in x]
+    print x
 
 if __name__ == '__main__':
     test()
