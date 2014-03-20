@@ -359,8 +359,11 @@ class GDE3Solver(DESolver):
                 excess = len(self.population) + len(ndf) - self.populationSize
                 if len(self.population) < self.populationSize and excess >= 0:
                     # create a set of solutions to exactly complete pop to populationSize
-                    temp_objs = [self.objectives[k] for k in ndf]
-                    remaining = removeMostCrowded(ndf, temp_objs, 3, excess)
+##                     temp_objs = [self.objectives[k] for k in ndf]
+                    remaining = removeMostCrowded(self.objectives,
+                                                  indexes = ndf,
+                                                  knumber = 3, 
+                                                  remove_n = excess)
                     break
                 elif len(self.population) == self.populationSize:
                     # do nothing, pop complete
@@ -371,7 +374,6 @@ class GDE3Solver(DESolver):
                     for k in ndf:
                         self.population.append(working_sols[k])
                         self.population_energies.append(self.objectives[k])
-            
             
             # use the (trimmed)  last front to complete pop to self.populationSize 
             fronts.append(remaining)
