@@ -6,7 +6,7 @@ import numpy, timecourse
 from de import DESolver
 import dynamics
 import utils
-from moo.rmc import removeMostCrowded
+from moo.rmc import remove_most_crowded
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
@@ -346,7 +346,7 @@ class GDE3Solver(DESolver):
             self.getDominanceTree(self.dom_dict.keys())
             nondominated_waves = self.ndf2list()
             flengths = [len(i) for i in nondominated_waves]
-            print 'Waves lengths:', flengths
+            print 'Front lengths:', flengths
             
             # rebuild current population to populationSize
             self.population = []
@@ -359,11 +359,10 @@ class GDE3Solver(DESolver):
                 excess = len(self.population) + len(ndf) - self.populationSize
                 if len(self.population) < self.populationSize and excess >= 0:
                     # create a set of solutions to exactly complete pop to populationSize
-##                     temp_objs = [self.objectives[k] for k in ndf]
-                    remaining = removeMostCrowded(self.objectives,
-                                                  indexes = ndf,
-                                                  knumber = 3, 
-                                                  remove_n = excess)
+                    remaining = remove_most_crowded(self.objectives,
+                                                    indexes = ndf,
+                                                    knumber = 3, 
+                                                    remove_n = excess)
                     break
                 elif len(self.population) == self.populationSize:
                     # do nothing, pop complete
@@ -371,21 +370,21 @@ class GDE3Solver(DESolver):
                 else:
                     # just copy  the whole 'wave' of non-dominated solutions into pop
                     fronts.append(ndf)
-                    for k in ndf:
-                        self.population.append(working_sols[k])
-                        self.population_energies.append(self.objectives[k])
+                    for s in ndf:
+                        self.population.append(working_sols[s])
+                        self.population_energies.append(self.objectives[s])
             
             # use the (trimmed)  last front to complete pop to self.populationSize 
             fronts.append(remaining)
-            for i in remaining:
-                self.population.append(working_sols[i])
-                self.population_energies.append(self.objectives[i])
+            for s in remaining:
+                self.population.append(working_sols[s])
+                self.population_energies.append(self.objectives[s])
             
             timeElapsed = time() - sortingtime
             print 'done, took %6.3f'% timeElapsed, 's'
 
             flengths = [len(i) for i in fronts]
-            print 'Front lengths:', flengths, ' = ', sum(flengths)
+            print 'Used front lengths:', flengths, '= %d'%sum(flengths)
             #nondominated_indxs = nondominated_solutions(self.population_energies)
             #n_nondominated = len(nondominated_indxs)
             n_nondominated = flengths[0]

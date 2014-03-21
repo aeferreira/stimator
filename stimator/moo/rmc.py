@@ -1,29 +1,29 @@
 import numpy
 import pylab as pl
 
-def removeMostCrowded(coords, 
-                      indexes = None, labels = None, 
-                      knumber = 3, remove_n = 1, 
-                      verbose = False):
-    """
-    Remove point with the smaller crowiding distance.
+def remove_most_crowded(coords, 
+                        knumber = 3, remove_n = 1, 
+                        indexes = None, labels = None, 
+                        verbose = False):
+    """Remove points with the smaller crowiding distance from a set.
 
     The crowding distance is measured as the sum of the distances 
     of the points to their k-nearest neighbours.
     
-    coords is a list of point coordinates.
-    remove_n is the number of points to remove.
-    knumber is the number of neighbours to consider in the crowding distance.
-    indexes are the indexes (list of integers) of points in coords to consider. 
-            Default: all points in coords (if None).
-    labels are a list of strings (with the same size as indexes) to label
-    points in graphs and verbose output. Default is string representation of
-    the list of indexes.
+    coords -- a list or 2D numpy array of point coordinates
+    remove_n -- the number of points to remove
+    knumber -- the number of neighbours to consider in the crowding distance
+    indexes -- indexes (list of integers) of points in coords to consider
+    (Default(None): all points are considered)
+    labels -- a list of strings (with the same size as indexes) used to label
+    points in graphs and in verbose output. (Default: string representation of
+    indexes)
     
-    coords, indexes and labels are not changed, only indexed by the function.
+    Inside the function, coords, indexes and labels are not changed,
+    only indexed.
     
-    Return is a list of integers, a subset of indexes representing the
-    remaining after removal of remove_n points.
+    Return is a list of integers (a subset of indexes) representing the
+    remaining points after removal (can be used to index coords).
     """
     
     if indexes is None:
@@ -87,7 +87,7 @@ def removeMostCrowded(coords,
         dd.sort()
         distances.append(dd)
     if verbose:
-        print '\ncomputed distances'
+        print '\nDistances'
         for p in points:
             dd = distances[p]
             print labels[p],
@@ -141,9 +141,7 @@ def removeMostCrowded(coords,
 
         if not allextremes:
             for i,k in enumerate(points):
-                if k in extremes:
-                    distancesAndKeys.append((10**300, k))
-                else:
+                if k not in extremes:
                     distancesAndKeys.append((ksums[i], k))
         else:
             for i,k in enumerate(points):
@@ -152,10 +150,11 @@ def removeMostCrowded(coords,
         last_removed = min(distancesAndKeys)[1]
         points.remove(last_removed)
         mc_key = labels[last_removed]
+        mc_index = indexes[last_removed]
         
         if verbose:
-            mcv = coords[indexes[last_removed]]
-            print 'Point to remove:', indexes[last_removed], mc_key, mcv
+            mcv = coords[mc_index]
+            print 'Point to remove:', mc_key, mcv
         
     return [indexes[p] for p in points]
 
@@ -176,11 +175,10 @@ def pprint(coords, indexes = None, labels=None, showplot=False):
         pl.figure()
         pl.plot(xx, yy, 'bo')
         for label, x, y in zip(plotlabels, xx, yy):
-            pl.annotate(label, xy = (x, y), xytext = (x+0.02, y), 
-                        ha = 'left', 
-                        va = 'center',
-                        backgroundcolor='white',
-                        bbox=dict(facecolor='red', alpha=0.8))
+            pl.text(x+0.01, y, label, 
+                    ha = 'left', 
+                    va = 'center',
+                    bbox=dict(facecolor='white', alpha=0.5))
         pl.show()
 
 def test():
@@ -209,12 +207,12 @@ def test():
     print 'initial data\n'
     pprint(coords, indexes=points, labels=keys, showplot=True)
     
-    x = removeMostCrowded(coords, 
-                          indexes=points,
-                          labels = keys,
-                          knumber = 3,
-                          remove_n = 15,
-                          verbose=True)
+    x = remove_most_crowded(coords, 
+                            indexes=points,
+                            labels=keys,
+                            knumber=3,
+                            remove_n=15,
+                            verbose=True)
     print 'remaining points:'
     print x
 
