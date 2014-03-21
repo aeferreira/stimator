@@ -270,25 +270,22 @@ class GDE3Solver(DESolver):
             time0 = time()
             print '------------------------------------\nGeneration %d'% self.generation
 
-            already_aslists = [list(i) for i in self.population]
-            
             print "Generating new candidates...",
             for p in range(self.populationSize):
                 # generate new solutions.,reject those out-of-bounds or repeated
-                insideBoundaries = False
-                while insideBoundaries == False:
+
+                while True:
                     # force a totally new solution
                     self.calcTrialSolution(p)
-                    ltrial = list(self.trialSolution)
-                    if ltrial not in already_aslists:
-                        already_aslists.append(ltrial)
-                    else:
+                    ltrial = self.trialSolution
+                    if numpy.all(ltrial == self.population[p]):
                         continue
                     # check if out of bounds
-                    inbounds = numpy.all(numpy.logical_and(self.trialSolution <= self.opt_maxs, self.trialSolution >= self.opt_mins))
+                    inbounds = numpy.all(numpy.logical_and(ltrial <= self.opt_maxs, ltrial >= self.opt_mins))
                     if inbounds: break
                     else: continue
                 
+                #Handle new solution
                 self.new_population[p,:] = self.trialSolution
                 
                 # compute trialSolution energies
