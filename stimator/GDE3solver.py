@@ -7,6 +7,7 @@ from de import DESolver
 import dynamics
 import utils
 from moo.rmc import remove_most_crowded
+from moo.sorting import MOOSorter
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
@@ -332,7 +333,7 @@ class GDE3Solver(DESolver):
                     n_keys += 2
             self.dom_dict = {}
             for indx in range(1,n_keys+1): # (1 based indexation)
-                self.dom_dict[indx] = []
+                self.dom_dict[indx] = self.objectives[indx]
             
             print 'New dominant solutions: %d' %(newBetterSols)
             print
@@ -340,8 +341,11 @@ class GDE3Solver(DESolver):
             print "Sorting solutions..."
 
             # sort solutions by dominance
-            self.getDominanceTree(self.dom_dict.keys())
-            nondominated_waves = self.ndf2list()
+            sorter = MOOSorter(obj_dict=self.dom_dict)
+            nondominated_waves = sorter.get_non_dominated_fronts()
+##             self.getDominanceTree(self.dom_dict.keys())
+##             nondominated_waves = self.ndf2list()
+            
             flengths = [len(i) for i in nondominated_waves]
             print 'Front lengths:', flengths
             
