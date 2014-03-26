@@ -260,6 +260,7 @@ class GDE3Solver(DESolver):
                     self.population_energies.append(energies)
 
             print '------- BEGIN CONTROL ----------------------------'
+            numpy.set_printoptions(precision=14)
             for i in range(30):
                 print i, self.population[i], self.population_energies[i]
             print '------- END CONTROL ------------------------------'
@@ -384,6 +385,7 @@ class GDE3Solver(DESolver):
             print 'Used front lengths:', flengths, '= %d'%sum(flengths)
             
             print '------- BEGIN CONTROL ----------------------------'
+            numpy.set_printoptions(precision=14)
             for i in fronts[0]:
                 print i, working_sols[i], objectives[i]
             print '------- END CONTROL ------------------------------'
