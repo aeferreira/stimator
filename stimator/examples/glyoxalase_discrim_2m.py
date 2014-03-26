@@ -44,8 +44,8 @@ init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
     crossoverProb = 0.7
     cutoffEnergy = 0 #Not used in multiobjective optimization
     useClassRandomNumberMethods = True
-    dump_generations = None # do not generate generation log file
-    #dump_generations = list(range(maxGenerations)) #generate log for all generations
+    #dump_generations = None # do not generate generation log file
+    dump_generations = list(range(maxGenerations)) #generate log for all generations
 
     print ('==========================================================')
     print ('Design of discriminatory experiment (initial conditions)\n')
