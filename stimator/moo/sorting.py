@@ -17,9 +17,14 @@ def dominance(vec1, vec2):
 
 class MOOSorter(object):
 
-    def __init__(self, obj_dict = {}):
-        self.objectives = obj_dict
-        self.keys = list(obj_dict.keys())
+    def __init__(self, obj_list, indexes = None, labels = None):
+        if indexes is None:
+            indexes = range(len(obj_list))
+        self.objectives = obj_list[:]
+        self.keys = indexes[:]
+        if labels is None:
+            labels = [str(k) for k in self.keys]
+        self.labels = labels
         self.dom_dict = {}
         for k in self.keys:
             self.dom_dict[k] = []
@@ -187,12 +192,12 @@ class MOOSorter(object):
         print spcs, '@@ right tree', rightTree
 
     def pprint_dominance_matrix(self, f):
-        keys = ['%3s'%str(k) for k in self.keys]
-        values = self.objectives.values()
-        print '    ' + ' '.join(keys)
-        for i, k in enumerate(keys):
+        hkeys = ['%3s'%str(k) for k in self.keys]
+        values = self.objectives
+        print '   ' + ' '.join(hkeys)
+        for i in self.keys:
             line = ''
-            for j in range(len(values)):
+            for j in self.keys:
                 if i == j:
                     c = '0'
                 else:
@@ -205,7 +210,7 @@ class MOOSorter(object):
                         c = '0'
                 line = line + '%2s' % c
             line = ' '.join(line)
-            print '%2s' % k, line
+            print '%2s' % str(i), line
 
         
 #---------------------------------------------------------------------------
@@ -214,24 +219,20 @@ class MOOSorter(object):
 
 def FangEtAL_test():
         
-    data = [[182.08, 100.13, 192.21],[187.53, 246.16, 203.2],
+    data = [[0,0,0], [182.08, 100.13, 192.21],[187.53, 246.16, 203.2],
             [197.15, 201.57, 318.86],[47.48, 74.96, 22.69],
             [37.05, 304.83, 381.19], [126.88, 54.58, 144.17],
             [101.77, 49.18, 111.91], [37.47, 18.63, 446.57]]
 
-    n_nodes = len(data)
+    n_nodes = len(data)-1
     n_objectives = len(data[0])
     print '======================================================'
     print 'Test initialized: example from'
     print 'Fang et al (2008) An Efficient Non-dominated Sorting Method'
     print 'for Evolutionary Algorithms, Evol. Comput. 16(3):355-384'
     print '\nNodes: %d  Objectives: %d' % (n_nodes, n_objectives)
-
-    objectives = {}
-    for i in range(n_nodes):
-        objectives[i+1] = data[i]
-    
-    sorter = MOOSorter(objectives)
+  
+    sorter = MOOSorter(data, indexes=range(1, n_nodes+1))
     
     print 'dominance matrix'
     sorter.pprint_dominance_matrix(dominance)
@@ -265,13 +266,13 @@ def random_objs_test(n_nodes, n_objectives, report=False):
     print 'Nodes: %d  Objectives: %d' % (n_nodes, n_objectives)
 
     numpy.random.seed(2)
-    objectives = {}
+    objectives = [[0]*n_objectives]
     for i_node in range(n_nodes):
-        objectives[i_node+1] = []
+        objectives.append([])
         for i_objective in range(n_objectives):
-            objectives[i_node+1].append(numpy.random.rand())
+            objectives[-1].append(numpy.random.rand())
     
-    sorter = MOOSorter(objectives)
+    sorter = MOOSorter(objectives, indexes=range(1,n_nodes+1))
 
     print 'dominance matrix'
     sorter.pprint_dominance_matrix(dominance)

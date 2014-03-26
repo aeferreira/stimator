@@ -331,9 +331,9 @@ class GDE3Solver(DESolver):
                     self.objectives.append(self.new_generation_energies[i])
                     working_sols.append(numpy.copy(self.new_population[i]))
                     n_keys += 2
-            self.dom_dict = {}
-            for indx in range(1,n_keys+1): # (1 based indexation)
-                self.dom_dict[indx] = self.objectives[indx]
+##             self.dom_dict = {}
+##             for indx in range(1,n_keys+1): # (1 based indexation)
+##                 self.dom_dict[indx] = self.objectives[indx]
             
             print 'New dominant solutions: %d' %(newBetterSols)
             print
@@ -341,7 +341,8 @@ class GDE3Solver(DESolver):
             print "Sorting solutions..."
 
             # sort solutions by dominance
-            sorter = MOOSorter(obj_dict=self.dom_dict)
+##             sorter = MOOSorter(obj_dict=self.dom_dict)
+            sorter = MOOSorter(self.objectives, indexes = range(1,n_keys+1))
             nondominated_waves = sorter.get_non_dominated_fronts()
 ##             self.getDominanceTree(self.dom_dict.keys())
 ##             nondominated_waves = self.ndf2list()
