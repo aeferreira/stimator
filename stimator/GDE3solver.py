@@ -91,16 +91,15 @@ class ModelSolver(object):
             
     def solve(self, trial):
         """Returns the solution for self.model for a particular trial of initial values."""
-        self.trial = trial # trial is a list of values
                     
-        for value,indx in zip(self.trial, self.optvars_indexes):
+        for value,indx in zip(trial, self.optvars_indexes):
             self.vector[indx] = value
-
-        return dynamics.solve(self.model, 
-                              tf = self.tf, 
-                              npoints = self.npoints, 
-                              t0 = self.t0, 
-                              initial = self.vector).copy(self.observed)
+        y = dynamics.solve(self.model, 
+                           tf = self.tf, 
+                           npoints = self.npoints, 
+                           t0 = self.t0, 
+                           initial = self.vector).copy(self.observed)
+        return y
  
 # helper to transform string arguments in lists:
 def listify(arguments):
@@ -259,11 +258,11 @@ class GDE3Solver(DESolver):
                 else:
                     self.population_energies.append(energies)
 
-            print '------- BEGIN CONTROL ----------------------------'
-            numpy.set_printoptions(precision=14)
-            for i in range(30):
-                print i, self.population[i], self.population_energies[i]
-            print '------- END CONTROL ------------------------------'
+##             print '------- BEGIN CONTROL ----------------------------'
+##             numpy.set_printoptions(precision=14)
+##             for i in range(30):
+##                 print i, self.population[i], self.population_energies[i]
+##             print '------- END CONTROL ------------------------------'
 
             timeElapsed = time() - time0
             print 'generation took', timeElapsed, 's'
@@ -384,11 +383,11 @@ class GDE3Solver(DESolver):
             flengths = [len(i) for i in fronts]
             print 'Used front lengths:', flengths, '= %d'%sum(flengths)
             
-            print '------- BEGIN CONTROL ----------------------------'
-            numpy.set_printoptions(precision=14)
-            for i in fronts[0]:
-                print i, working_sols[i], objectives[i]
-            print '------- END CONTROL ------------------------------'
+##             print '------- BEGIN CONTROL ----------------------------'
+##             numpy.set_printoptions(precision=14)
+##             for i in fronts[0]:
+##                 print i, working_sols[i], objectives[i]
+##             print '------- END CONTROL ------------------------------'
 
             n_nondominated = flengths[0]
             print '%d non-dominated solutions'%(n_nondominated)

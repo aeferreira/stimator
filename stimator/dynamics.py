@@ -585,15 +585,16 @@ def solve(model,
     #scale = 1.0
     
     f = getdXdt(model, scale=scale, t0=t0)
-    t  = (times-t0)/scale  # this scales time points
+    t = copy((times-t0)/scale)  # this scales time points
     output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
     if output[-1] < 0: return None
     Y = output[0]
     if title is None:
         title = model['title']        
-    
-    sol = SolutionTimeCourse (times, Y.T, names, title)
+    Y = copy(Y.T)
+
+    sol = SolutionTimeCourse (times, Y, names, title)
     
     #get outputs
     if outputs is False: # variables are output
