@@ -1,5 +1,7 @@
 from time import time
 import numpy
+from scipy import integrate
+
 import timecourse
 import dynamics
 import utils
@@ -58,52 +60,74 @@ def dominance_delta(old_energies, new_energies):
 
 
 class ModelSolver(object):
-    
     """Driver to compute timecourses, given a model and a trial vector.
-    
-    'model' is a S-timator model object;
-    't0' and 'tf' are floats;
+
+    'model' is a model object
+    't0' and 'tf' are floats
     'npoints' is a positive integer.
     'observerd' is a list of variable names to output.
     'optnames'are variable names. Their initial values will be optimized
     in the experimental design."""
-    
+
     def __init__(self, model, t0, npoints, tf, optnames, observed):
         self.t0 = t0
         self.npoints = npoints
+        if tf is None:
+            tf = 1.0
         self.tf = tf
-        
+
         self.vector = numpy.copy(dynamics.state2array(model,"init"))
 
         self.modelvarnames = model().varnames
-        
+
         self.model = model
         self.optvars = listify(optnames)
         self.observed = listify(observed)
-        
+
         #check that the names exist as variables in the model
         for name in self.optvars+self.observed:
             if not (name in self.modelvarnames):
                 raise AttributeError('%s is not a variable in model'%name)
-        
+
         self.optvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.optvars])
         self.obsvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.observed])
-            
+
+        self.times = numpy.linspace (self.t0, self.tf, self.npoints)                
+        
+        # scale times to maximum time in data
+        t0 = self.times[0]
+        scale = float(self.times[-1] - t0)
+        #scale = 1.0
+        
+        self.f = dynamics.getdXdt(model, scale=scale, t0=self.t0)
+        self.t = numpy.copy((self.times-self.t0)/scale) # this scales time points
+
     def solve(self, trial):
-        """Returns the solution for self.model for a particular trial of initial values."""
-                    
+        """Returns the solution for a particular trial of initial values."""
+        salg=integrate._odepack.odeint
+
         for value,indx in zip(trial, self.optvars_indexes):
             self.vector[indx] = value
-        y = dynamics.solve(self.model, 
-                           tf = self.tf, 
-                           npoints = self.npoints, 
-                           t0 = self.t0, 
-                           initial = self.vector).copy(self.observed)
+        y0 = numpy.copy(self.vector)
+        output = salg(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
+                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+        if output[-1] < 0: return None
+        Y = output[0]
+        title = self.model['title']        
+        Y = numpy.copy(Y.T)
+
+        y = timecourse.SolutionTimeCourse (self.times, 
+                                           Y, 
+                                           self.modelvarnames, 
+                                           title).copy(self.observed)
+
+        y = y.copy(self.observed)
         return y
- 
+
 # helper to transform string arguments in lists:
 def listify(arguments):
-    if isinstance(arguments, list) or isinstance(arguments, tuple):  return [a.strip() for a in arguments]
+    if isinstance(arguments, list) or isinstance(arguments, tuple):
+        return [a.strip() for a in arguments]
     if isinstance(arguments, str) or isinstance(arguments, unicode): 
         arguments = arguments.split()
         return [a.strip() for a in arguments]
@@ -126,7 +150,7 @@ class GDE3Solver(DESolver):
                  diffScale, crossoverProb, cutoffEnergy, 
                  useClassRandomNumberMethods, 
                  dif = '0', dump_generations = None):
-        
+
         self.models = models
         self.npoints = npoints
         self.t0 = t0
@@ -134,7 +158,7 @@ class GDE3Solver(DESolver):
         self.observed = observed
 
         self.nmodels = len(models)
-        
+
         self.toOpt = toOpt
         self.toOptKeys = []
         self.opt_maxs = []
@@ -145,11 +169,11 @@ class GDE3Solver(DESolver):
             self.opt_mins.append(min_v)
         self.opt_maxs = numpy.array(self.opt_maxs)
         self.opt_mins = numpy.array(self.opt_mins)
-        
+
         #self.toOptKeys = self.toOpt.keys()
         self.objFunc = objectiveFunction
         self.dump_generations = dump_generations
-        
+
         DESolver.__init__(self, 
                           len(toOpt), populationSize, maxGenerations, 
                           self.opt_mins, self.opt_maxs, 
@@ -157,7 +181,7 @@ class GDE3Solver(DESolver):
                           cutoffEnergy, useClassRandomNumberMethods)
 
         self.deltaT = (tf - t0)/npoints
-                
+
         self.objFuncList = []
 
         for m in self.models:
@@ -167,29 +191,29 @@ class GDE3Solver(DESolver):
                                                 self.tf, 
                                                 self.toOptKeys, 
                                                 self.observed))
-        
+
         self.dif = dif
-        
+
         # threshold for improvement based on 5 % of new solution count
         self.roomForImprovement = int(round(0.05 * populationSize))
-        
+
         #counter of number of generations with only non-dominated solutions
         self.fullnondominated = 0
-        
+
         str2distance = {'extKL'   :timecourse.extendedKLdivergence,
                         'kremling':timecourse.kremling,
                         'KL'      :timecourse.KLdivergence,
                         'L2'      :timecourse.L2}
         if self.objFunc not in str2distance.keys():
-            raise ("%s is not an implemented divergence function" % self.objFunc)
-        
+            raise ("%s is not an implemented divergence function"%self.objFunc)
+
         if self.objFunc in ('kremling','L2'):  #symetric measures
             self.trueMetric = True
         else:
             self.trueMetric = False
 
         self.distance_func = str2distance[self.objFunc]
-        
+
         # generate list of pairs of model indexes. Each pair corresponds to a different comparison
         self.model_indexes = []
         for i in range(self.nmodels-1):
@@ -198,19 +222,19 @@ class GDE3Solver(DESolver):
         # if not a true metric, include also the symetric pairs
         if not self.trueMetric:
             self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
-        
+
         # working storage arrays
         self.new_generation_energies = [[] for i in range(self.populationSize)]
         self.new_population = numpy.empty((self.populationSize,len(self.toOpt)))
         self.gen_times = []
-        
+
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
         sols = [s.solve(trial) for s in self.objFuncList]
         if self.distance_func is not None:
             return self.distance_func(sols, self.deltaT, self.model_indexes)
         return sols
-        
+
     def computeGeneration(self):
         # Hit max generations with no improvement
         if self.generationsWithNoImprovement > 20:
@@ -224,7 +248,7 @@ class GDE3Solver(DESolver):
         if self.fullnondominated >= 4:
             self.exitCode = 6
             return
-        
+
         ## # no need to try another generation if we are done (energy criterium)
         ## if self.atSolution:
             ## self.exitCode = 1
@@ -236,7 +260,7 @@ class GDE3Solver(DESolver):
             self.fullnondominated = 0
             if self.dump_generations is not None:
                 self.dumpfile = open('generations.txt', 'w')
-            
+
             time0 = time()
             self.elapsed = time0
 
