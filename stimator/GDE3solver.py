@@ -215,6 +215,18 @@ class GDE3Solver(DESolver):
         self.new_generation_energies = [[] for i in range(self.populationSize)]
         self.new_population = numpy.empty((self.populationSize,len(self.toOpt)))
         self.gen_times = []
+        self.calcTrialSolution = self.Rand1Bin
+
+    def Rand1Bin(self, candidate):
+        """This function overrides the base class (de.py).
+           The intent is to aggressively generate a new solution from
+           current population."""
+        r1,r2,r3 = self.SelectSamples(candidate, 3)
+        n = self.GetRandIntInPars()
+        self.trialSolution = numpy.copy(self.population[candidate])
+        for i in range(self.parameterCount):
+            self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] - self.population[r3][n])
+            n = (n + 1) % self.parameterCount
 
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
@@ -295,8 +307,9 @@ class GDE3Solver(DESolver):
                     # force a totally new solution
                     self.calcTrialSolution(p)
                     ltrial = self.trialSolution
-                    if numpy.all(ltrial == self.population[p]):
-                        continue
+##                     if numpy.all(ltrial == self.population[p]):
+##                         print 'SOL REPEATED'
+##                         continue
                     # check if out of bounds
                     inbounds = numpy.all(numpy.logical_and(ltrial <= self.opt_maxs, ltrial >= self.opt_mins))
                     if inbounds: break
@@ -378,7 +391,7 @@ class GDE3Solver(DESolver):
                     # do nothing, pop complete
                     break
                 else:
-                    # just copy  the whole 'wave' of non-dominated solutions into pop
+                    # just copy  the whole ndf 'front' into pop
                     fronts.append(ndf)
                     for s in ndf:
                         self.population.append(working_sols[s])
