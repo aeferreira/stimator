@@ -1,5 +1,13 @@
 import pprint
 
+# helper to transform string arguments in lists:
+def listify(arguments):
+    if isinstance(arguments, list) or isinstance(arguments, tuple):
+        return [a.strip() for a in arguments]
+    if isinstance(arguments, str) or isinstance(arguments, unicode): 
+        arguments = arguments.split()
+        return [a.strip() for a in arguments]
+
 def write2file(filename, astring):
     f = open(filename, 'w')
     f.write(astring)

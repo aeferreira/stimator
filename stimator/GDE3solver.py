@@ -78,25 +78,24 @@ class ModelSolver(object):
 
         self.vector = numpy.copy(dynamics.state2array(model,"init"))
 
-        self.modelvarnames = model().varnames
+        self.names = model().varnames
 
         self.model = model
-        self.optvars = listify(optnames)
-        self.observed = listify(observed)
+        self.optvars = utils.listify(optnames)
+        self.observed = utils.listify(observed)
 
         #check that the names exist as variables in the model
         for name in self.optvars+self.observed:
-            if not (name in self.modelvarnames):
+            if not (name in self.names):
                 raise AttributeError('%s is not a variable in model'%name)
 
-        self.optvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.optvars])
-        self.obsvars_indexes = numpy.array([self.modelvarnames.index(name) for name in self.observed])
+        self.optvars_indexes = numpy.array([self.names.index(name) for name in self.optvars])
+        self.obsvars_indexes = numpy.array([self.names.index(name) for name in self.observed])
 
         self.times = numpy.linspace (self.t0, self.tf, self.npoints)                
         
-        # scale times to maximum time in data
-        t0 = self.times[0]
-        scale = float(self.times[-1] - t0)
+        # scale times for output
+        scale = float(self.times[-1] - self.t0)
         #scale = 1.0
         
         self.f = dynamics.getdXdt(model, scale=scale, t0=self.t0)
@@ -113,28 +112,17 @@ class ModelSolver(object):
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         Y = output[0]
-        title = self.model['title']        
+        title = self.model['title']
+        if title is None:
+            title = ""
         Y = numpy.copy(Y.T)
 
-        y = timecourse.SolutionTimeCourse (self.times, 
-                                           Y, 
-                                           self.modelvarnames, 
-                                           title).copy(self.observed)
-
-        y = y.copy(self.observed)
-        return y
-
-# helper to transform string arguments in lists:
-def listify(arguments):
-    if isinstance(arguments, list) or isinstance(arguments, tuple):
-        return [a.strip() for a in arguments]
-    if isinstance(arguments, str) or isinstance(arguments, unicode): 
-        arguments = arguments.split()
-        return [a.strip() for a in arguments]
+        sol = timecourse.SolutionTimeCourse(self.times, Y, self.names, title)
+        sol = sol.copy(self.observed)
+        return sol
 
 
 class GDE3Solver(DESolver):
-
     """ 
     Adaptation of DESolver for multiobjective optimization.
     Based on 
