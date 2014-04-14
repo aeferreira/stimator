@@ -84,8 +84,8 @@ class MyShell(Shell):
 class MyFrame(wx.Frame):
 
     def __init__(self, parent, id=-1, title="S-timator", 
-                pos=(20,20),
-                size=(800, 600), style= wx.DEFAULT_FRAME_STYLE |
+                pos=(0,0),
+                size=wx.DefaultSize, style= wx.DEFAULT_FRAME_STYLE |
                                         wx.SUNKEN_BORDER |
                                         wx.CLIP_CHILDREN):
 
@@ -289,7 +289,7 @@ class MyFrame(wx.Frame):
         self.shell = MyShell(parent=self, locals=lcs)
         self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
                           Name("shell").Caption("Shell").
-                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*2/12)).CloseButton(True).MaximizeButton(True))
+                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y/2)).CloseButton(True).MaximizeButton(True))
 
         # create  center pane
             
@@ -1365,6 +1365,8 @@ class CalcOptmThread:
 def run_gui():
     app = wx.App()
     frame = MyFrame(None)
+    frame.Center()
+    frame.Maximize()
     frame.Show()
     app.MainLoop()
 
