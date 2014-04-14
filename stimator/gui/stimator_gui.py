@@ -2,7 +2,7 @@
 # -*- coding: latin1 -*-
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira
+Copyright 2005-2013 AntÃ³nio Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 stimatorVersion = "0.985"
 stimatorDate = "Fev 2013"
@@ -20,7 +20,7 @@ import wx.lib.newevent
 import resultsframe
 import stimator.modelparser
 import stimator.deode
-import stimator.analysis
+import stimator.dynamics
 from stimator.version_info import __version__
 import images
 from wx.py.shell import Shell
@@ -106,6 +106,9 @@ class MyFrame(wx.Frame):
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
         mydir = os.path.dirname(__file__)
+        mydir = self.originaldir
+        ##print 'mydir',mydir
+        ##print 'origdir',self.originaldir
         os.chdir(mydir)
         os.chdir('../examples')
         self.exampledir = os.getcwd()
@@ -134,7 +137,8 @@ class MyFrame(wx.Frame):
         file_menu.AppendSeparator()
 ##         file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
 ##         file_menu.AppendSeparator()
-        file_menu.Append(wx.ID_EXIT, 'E&xit\tAlt-X', 'Exit')
+        ##file_menu.Append(wx.ID_EXIT, 'E&xit\tAlt-X', 'Exit')
+        ##print 'OK'
 
         # Edit menu
         edit_menu = wx.Menu()
@@ -391,7 +395,6 @@ class MyFrame(wx.Frame):
         self.Bind(EVT_MSG, self.OnMsg)
         self.Bind(EVT_END_COMPUTATION, self.OnEndComputation)
         self.Bind(EVT_END_SCRIPT, self.OnEndScript)
-        
         wx.Log_SetActiveTarget(MyLog(self.shell))
         self.ModelEditor.GotoPos(self.ModelEditor.GetLastPosition())
         self.ModelEditor.SetFocus()
@@ -1109,11 +1112,11 @@ class MyFrame(wx.Frame):
                 sys.stdout = oldout
                 return
 
-        solution = stimator.analysis.solve(self.model)
+        solution = stimator.dynamics.solve(self.model)
         sys.stdout = oldout
         newfig = resultsframe.newFigure()
         
-        stimator.analysis.plot(solution, figure=newfig)
+        stimator.dynamics.plot(solution, figure=newfig)
         self.CreateResPanelFromFigure(newfig)
         self._mgr.Update()
 
