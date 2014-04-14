@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# -*- coding: latin1 -*-
+# -*- coding: utf8 -*-
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira
+Copyright 2005-2014 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
 stimatorVersion = "0.985"
 stimatorDate = "Fev 2013"
@@ -89,6 +89,14 @@ class MyFrame(wx.Frame):
                                         wx.SUNKEN_BORDER |
                                         wx.CLIP_CHILDREN):
 
+        print "Starting s-timator wxPython GUI"
+        print
+        print 'Python version'
+        print sys.version
+        print 'wx version'
+        print wx.VERSION
+        print '\nInitializing wx widgets...'
+
         wx.Frame.__init__(self, parent, id, title, pos, size, style)
 
         self._mgr = wx.aui.AuiManager(self)
@@ -106,13 +114,15 @@ class MyFrame(wx.Frame):
         self.originaldir = os.getcwd()
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
-        mydir = os.path.dirname(__file__)
-        mydir = self.originaldir
+        try:
+            mydir = os.path.dirname(os.path.abspath(__file__))
+        except:
+            mydir = os.path.dirname(os.path.abspath(sys.argv[0]))
 ##         print 'mydir',mydir
-##         print 'origdir',self.originaldir
         os.chdir(mydir)
-        os.chdir('stimator/examples')
+        os.chdir('../examples')
         self.exampledir = os.getcwd()
+        print 'Working folder:',self.exampledir
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
 
@@ -400,6 +410,7 @@ class MyFrame(wx.Frame):
         wx.Log_SetActiveTarget(MyLog(self.shell))
         self.ModelEditor.GotoPos(self.ModelEditor.GetLastPosition())
         self.ModelEditor.SetFocus()
+        print 'wx widgets initialized'
 
 
 ##------------- Write funcs

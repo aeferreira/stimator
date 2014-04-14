@@ -10,7 +10,6 @@ from wx.tools import img2py
 
 
 command_lines = [
-    "   -u -i -n Mondrian bmp_source/mondrian.ico images.py",
 ##     "-a -u -n  di_save bmp_source/save.png images.py",
 ##     "-a -u -n  di_new bmp_source/new_page.png images.py",
 ##     "-a -u -n  di_paste bmp_source/paste.png images.py",
@@ -18,7 +17,7 @@ command_lines = [
 ##     "-a -u -n  di_cut bmp_source/cut.png images.py",
 ##     "-a -u -n  di_folder bmp_source/folder.png images.py",
 ##     "-a -u -n  di_flag bmp_source/flag.png images.py",
-    "-a -u -n  di_run bmp_source/tsmall.png images.py",
+    "-u -n  di_run bmp_source/tsmall.png images.py",
 ##     "-a -u -n  di_wsearch bmp_source/window_search.png images.py",
 ##     "-a -u -n  di_wnext bmp_source/window_next.png images.py",
 ##     "-a -u -n  di_wdelete bmp_source/window_delete.png images.py",
