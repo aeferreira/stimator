@@ -37,6 +37,7 @@ demoText = """\
 ID_File_New = wx.NewId()
 ID_File_Open = wx.NewId()
 ID_File_Save_As = wx.NewId()
+ID_File_Exit = wx.NewId()
 
 ID_File_OpenScript = wx.NewId()
 
@@ -107,10 +108,10 @@ class MyFrame(wx.Frame):
         self.oldcwd = self.cwd
         mydir = os.path.dirname(__file__)
         mydir = self.originaldir
-        ##print 'mydir',mydir
-        ##print 'origdir',self.originaldir
+##         print 'mydir',mydir
+##         print 'origdir',self.originaldir
         os.chdir(mydir)
-        os.chdir('../examples')
+        os.chdir('stimator/examples')
         self.exampledir = os.getcwd()
         self.cwd = os.getcwd()
         self.oldcwd = self.cwd
@@ -137,7 +138,7 @@ class MyFrame(wx.Frame):
         file_menu.AppendSeparator()
 ##         file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
 ##         file_menu.AppendSeparator()
-        ##file_menu.Append(wx.ID_EXIT, 'E&xit\tAlt-X', 'Exit')
+        file_menu.Append(ID_File_Exit, 'E&xit\tAlt-X', 'Exit')
         ##print 'OK'
 
         # Edit menu
@@ -341,6 +342,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpenMenu, id=ID_File_Open)
         self.Bind(wx.EVT_MENU, self.OnSaveMenu, id=wx.ID_SAVE)
         self.Bind(wx.EVT_MENU, self.OnSaveAsMenu, id=ID_File_Save_As)
+        self.Bind(wx.EVT_MENU, self.OnClose, id=ID_File_Exit)
 
         self.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         self.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
