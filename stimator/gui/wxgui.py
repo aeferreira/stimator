@@ -31,6 +31,25 @@ demoText = """\
 #Write your model here...
 
 """
+
+class TestPanel(wx.Panel):
+    def __init__(self, parent, log):
+        self.log = log
+        wx.Panel.__init__(self, parent, -1)
+
+        self.nb = wx.aui.AuiNotebook(self)
+        page = wx.TextCtrl(self.nb, -1, text, style=wx.TE_MULTILINE)
+        self.nb.AddPage(page, "Welcome")
+
+        for num in range(1, 5):
+            page = wx.TextCtrl(self.nb, -1, "This is page %d" % num ,
+                               style=wx.TE_MULTILINE)
+            self.nb.AddPage(page, "Tab Number %d" % num)
+            
+        sizer = wx.BoxSizer()
+        sizer.Add(self.nb, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        wx.CallAfter(self.nb.SendSizeEvent)
 ##------------- NewEvent objects and a EVT binder functions
 
 
@@ -159,38 +178,11 @@ class MyFrame(wx.Frame):
         edit_menu.Append(wx.ID_COPY, '&Copy\tCtrl-C', 'Copy')
         edit_menu.Append(wx.ID_PASTE, 'Paste\tCtrl-V', 'Paste')
 
-##         options_menu = wx.Menu()
-##         options_menu.AppendRadioItem(ID_TransparentHint, "Transparent Hint")
-##         options_menu.AppendRadioItem(ID_VenetianBlindsHint, "Venetian Blinds Hint")
-##         options_menu.AppendRadioItem(ID_RectangleHint, "Rectangle Hint")
-##         options_menu.AppendRadioItem(ID_NoHint, "No Hint")
-##         options_menu.AppendSeparator();
-##         options_menu.AppendCheckItem(ID_HintFade, "Hint Fade-in")
-##         options_menu.AppendCheckItem(ID_AllowFloating, "Allow Floating")
-##         options_menu.AppendCheckItem(ID_NoVenetianFade, "Disable Venetian Blinds Hint Fade-in")
-##         options_menu.AppendCheckItem(ID_TransparentDrag, "Transparent Drag")
-##         options_menu.AppendCheckItem(ID_AllowActivePane, "Allow Active Pane")
-##         options_menu.AppendSeparator();
-##         options_menu.AppendRadioItem(ID_NoGradient, "No Caption Gradient")
-##         options_menu.AppendRadioItem(ID_VerticalGradient, "Vertical Caption Gradient")
-##         options_menu.AppendRadioItem(ID_HorizontalGradient, "Horizontal Caption Gradient")
-##         options_menu.AppendSeparator();
-##         options_menu.Append(ID_Settings, "Settings Pane")
-
-##         self._perspectives_menu = wx.Menu()
-##         self._perspectives_menu.Append(ID_CreatePerspective, "Create Perspective")
-##         self._perspectives_menu.Append(ID_CopyPerspective, "Copy Perspective Data To Clipboard")
-##         self._perspectives_menu.AppendSeparator()
-##         self._perspectives_menu.Append(ID_FirstPerspective+0, "Default Startup")
-##         self._perspectives_menu.Append(ID_FirstPerspective+1, "All Panes")
-
         help_menu = wx.Menu()
         help_menu.Append(ID_About, "About...")
         
         mb.Append(file_menu, "File")
         mb.Append(edit_menu, "Edit")
-##         mb.Append(self._perspectives_menu, "Perspectives")
-##         mb.Append(options_menu, "Options")
         mb.Append(help_menu, "Help")
         self.mb = mb
         
@@ -267,39 +259,7 @@ class MyFrame(wx.Frame):
 
         # add a bunch of panes
                       
-##         self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().
-##                           Name("shell").Caption("Tree Pane").
-##                           Left().Layer(1).Position(1).CloseButton(True).MaximizeButton(True))
-        
-##         sz = self.GetClientSize()
-##         self._mgr.AddPane(self.CreateLog(), wx.aui.AuiPaneInfo().
-##                           Name("log_pane").Caption("Log Pane").
-##                           Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y*5/12)).CloseButton(True).MaximizeButton(True))
-
-##         self._mgr.AddPane(SettingsPanel(self, self), wx.aui.AuiPaneInfo().
-##                           Name("settings").Caption("Settings").
-##                           Right().Layer(0).Position(0).CloseButton(True).MaximizeButton(True))
-
-##                           Name("settings").Caption("Dock Manager Settings").
-##                           Dockable(False).Float().Hide().CloseButton(True).MaximizeButton(True))
-        
-
-        sz = self.GetClientSize()
-        lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
-        self.shell = MyShell(parent=self, locals=lcs)
-        self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
-                          Name("shell").Caption("Shell").
-                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y/2)).CloseButton(True).MaximizeButton(True))
-
-        # create  center pane
-            
-        self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
-                          Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
-##                           CenterPane().Caption("Model"))
-##         self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
-##                           Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/4,200)).CloseButton(True).MaximizeButton(True))
         # add the toolbars to the manager
-                        
         self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
                           Name("tb2").Caption("Toolbar 2").
                           ToolbarPane().Top().Row(1).
@@ -309,8 +269,39 @@ class MyFrame(wx.Frame):
                           Name("tb3").Caption("Toolbar 3").
                           ToolbarPane().Top().Row(1).Position(1).
                           LeftDockable(False).RightDockable(False))
-    
+     
+        sz = self.GetClientSize()
+        lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
+        self.shell = MyShell(parent=self, locals=lcs)
+        self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
+                          Name("shell").Caption("Shell").
+                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y/2)).CloseButton(True).MaximizeButton(True))
 
+        # create  center pane
+
+        self.nb = wx.aui.AuiNotebook(self)
+        page = wx.TextCtrl(self.nb, -1, demoText, style=wx.TE_MULTILINE)
+        self.nb.AddPage(page, "Welcome")
+
+        for num in range(1, 5):
+            page = wx.TextCtrl(self.nb, -1, "This is page %d" % num ,
+                               style=wx.TE_MULTILINE)
+            self.nb.AddPage(page, "Tab Number %d" % num)
+            
+        sizer = wx.BoxSizer()
+        sizer.Add(self.nb, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+        wx.CallAfter(self.nb.SendSizeEvent)
+            
+        self._mgr.AddPane(self.nb, wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
+                          Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
+##         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
+##                           Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
+##                           CenterPane().Caption("Model"))
+##         #self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
+##                           #Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/4,200)).CloseButton(True).MaximizeButton(True))
+                        
+    
         # make some default perspectives
         
         perspective_all = self._mgr.SavePerspective()
@@ -324,7 +315,7 @@ class MyFrame(wx.Frame):
         self._mgr.GetPane("model_editor").Show()
         self._mgr.GetPane("tb3").Hide()
         self._mgr.GetPane("shell").Show()
-##         self._mgr.GetPane("script_editor").Show()
+##         #self._mgr.GetPane("script_editor").Show()
 
         perspective_default = self._mgr.SavePerspective()
 
@@ -340,6 +331,7 @@ class MyFrame(wx.Frame):
 
         # "commit" all changes made to FrameManager   
         self._mgr.Update()
+
 
         self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
         self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -408,8 +400,8 @@ class MyFrame(wx.Frame):
         self.Bind(EVT_END_COMPUTATION, self.OnEndComputation)
         self.Bind(EVT_END_SCRIPT, self.OnEndScript)
         wx.Log_SetActiveTarget(MyLog(self.shell))
-        self.ModelEditor.GotoPos(self.ModelEditor.GetLastPosition())
-        self.ModelEditor.SetFocus()
+        #self.ModelEditor.GotoPos(self.ModelEditor.GetLastPosition())
+        #self.ModelEditor.SetFocus()
         print 'wx widgets initialized'
 
 
