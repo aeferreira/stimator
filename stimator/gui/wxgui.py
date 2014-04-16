@@ -29,27 +29,8 @@ ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (__version__.fullversion, __versio
 
 demoText = """\
 #Write your model here...
-
 """
 
-class TestPanel(wx.Panel):
-    def __init__(self, parent, log):
-        self.log = log
-        wx.Panel.__init__(self, parent, -1)
-
-        self.nb = wx.aui.AuiNotebook(self)
-        page = wx.TextCtrl(self.nb, -1, text, style=wx.TE_MULTILINE)
-        self.nb.AddPage(page, "Welcome")
-
-        for num in range(1, 5):
-            page = wx.TextCtrl(self.nb, -1, "This is page %d" % num ,
-                               style=wx.TE_MULTILINE)
-            self.nb.AddPage(page, "Tab Number %d" % num)
-            
-        sizer = wx.BoxSizer()
-        sizer.Add(self.nb, 1, wx.EXPAND)
-        self.SetSizer(sizer)
-        wx.CallAfter(self.nb.SendSizeEvent)
 ##------------- NewEvent objects and a EVT binder functions
 
 
@@ -243,43 +224,29 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnRunButton, id=ID_Actions_RunModel)
         self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopComputation)
 
-
-        tb3 = wx.ToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
-                         wx.TB_FLAT | wx.TB_NODIVIDER)
-        tb3.SetToolBitmapSize(wx.Size(16,16))
-        tb3_bmp1 = wx.ArtProvider_GetBitmap(wx.ART_FOLDER, wx.ART_OTHER, wx.Size(16, 16))
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddSeparator()
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.Realize()
-
-        # add a bunch of panes
                       
         # add the toolbars to the manager
         self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
                           Name("tb2").Caption("Toolbar 2").
                           ToolbarPane().Top().Row(1).
                           LeftDockable(False).RightDockable(False))
-                      
-        self._mgr.AddPane(tb3, wx.aui.AuiPaneInfo().
-                          Name("tb3").Caption("Toolbar 3").
-                          ToolbarPane().Top().Row(1).Position(1).
-                          LeftDockable(False).RightDockable(False))
-     
+
         sz = self.GetClientSize()
-        lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
-        self.shell = MyShell(parent=self, locals=lcs)
-        self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
-                          Name("shell").Caption("Shell").
-                          Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y/2)).CloseButton(True).MaximizeButton(True))
+##         lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
+##         self.shell = MyShell(parent=self, locals=lcs)
+##         self._mgr.AddPane(self.shell, wx.aui.AuiPaneInfo().
+##                           Name("shell").Caption("Shell").
+##                           Bottom().Layer(0).Row(0).Position(0).MinSize(wx.Size(200,sz.y/2)).CloseButton(True).MaximizeButton(True))
 
         # create  center pane
 
         self.nb = wx.aui.AuiNotebook(self)
+        ed = self.CreateEditor()
+        self.nb.AddPage(ed, "Model")
+        lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
+        self.shell = MyShell(parent=self, locals=lcs)
+        self.nb.AddPage(self.shell, "Shell")
+        
         page = wx.TextCtrl(self.nb, -1, demoText, style=wx.TE_MULTILINE)
         self.nb.AddPage(page, "Welcome")
 
@@ -313,8 +280,7 @@ class MyFrame(wx.Frame):
                 all_panes[ii].Hide()
                 
         self._mgr.GetPane("model_editor").Show()
-        self._mgr.GetPane("tb3").Hide()
-        self._mgr.GetPane("shell").Show()
+##         self._mgr.GetPane("shell").Show()
 ##         #self._mgr.GetPane("script_editor").Show()
 
         perspective_default = self._mgr.SavePerspective()
@@ -324,7 +290,7 @@ class MyFrame(wx.Frame):
         self._perspectives.append(perspective_all)
 
         self._mgr.GetPane("grid_content").Hide()
-        self._mgr.GetPane("tb3").Hide()
+##         self._mgr.GetPane("tb3").Hide()
         flag = wx.aui.AUI_MGR_ALLOW_ACTIVE_PANE
         
         self._mgr.SetFlags(self._mgr.GetFlags() ^ flag)
