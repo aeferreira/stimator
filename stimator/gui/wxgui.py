@@ -118,7 +118,6 @@ class MyFrame(wx.Frame):
             mydir = os.path.dirname(os.path.abspath(__file__))
         except:
             mydir = os.path.dirname(os.path.abspath(sys.argv[0]))
-##         print 'mydir',mydir
         os.chdir(mydir)
         os.chdir('../examples')
         self.exampledir = os.getcwd()
@@ -142,14 +141,13 @@ class MyFrame(wx.Frame):
 
         file_menu.Append(ID_File_New, '&New\tCtrl-N', 'New')
         file_menu.Append(ID_File_Open, '&Open\tCtrl-O', 'Open')
-##         file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
         file_menu.Append(wx.ID_SAVE, '&Save\tCtrl-S', 'Save')
         file_menu.Append(ID_File_Save_As, 'Save &As\tCtrl-A', 'Save As')
         file_menu.AppendSeparator()
+##         file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
 ##         file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
 ##         file_menu.AppendSeparator()
         file_menu.Append(ID_File_Exit, 'E&xit\tAlt-X', 'Exit')
-        ##print 'OK'
 
         # Edit menu
         edit_menu = wx.Menu()
@@ -210,11 +208,6 @@ class MyFrame(wx.Frame):
         tb2.AddControl(b)
         self.Bind(wx.EVT_BUTTON, self.OnExampleButton, b)
         
-##         buttonId = wx.NewId()
-##         b = wx.Button(tb2, buttonId, "Run", (20, 20), style=wx.NO_BORDER|wx.BU_EXACTFIT )
-##         tb2.AddControl(b)
-##         self.Bind(wx.EVT_BUTTON, self.OnRunButton, b)
-
         tb2.Realize()
         self.tb2 = tb2
 
@@ -243,6 +236,8 @@ class MyFrame(wx.Frame):
         self.nb = wx.aui.AuiNotebook(self)
         ed = self.CreateEditor()
         self.nb.AddPage(ed, "Model")
+##         indx = self.nb.GetPageIndex(self.ModelEditor)
+##         self.nb.SetCloseButton(indx, False)
         lcs = {'ui': self.ui, 'st':stimator, 'clear': self.ui.clear}
         self.shell = MyShell(parent=self, locals=lcs)
         self.nb.AddPage(self.shell, "Shell")
@@ -250,23 +245,13 @@ class MyFrame(wx.Frame):
         page = wx.TextCtrl(self.nb, -1, demoText, style=wx.TE_MULTILINE)
         self.nb.AddPage(page, "Welcome")
 
-        for num in range(1, 5):
-            page = wx.TextCtrl(self.nb, -1, "This is page %d" % num ,
-                               style=wx.TE_MULTILINE)
-            self.nb.AddPage(page, "Tab Number %d" % num)
-            
         sizer = wx.BoxSizer()
         sizer.Add(self.nb, 1, wx.EXPAND)
         self.SetSizer(sizer)
         wx.CallAfter(self.nb.SendSizeEvent)
             
-        self._mgr.AddPane(self.nb, wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
-                          Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
-##         self._mgr.AddPane(self.CreateEditor(), wx.aui.AuiPaneInfo().Name("model_editor").Caption("Model").
-##                           Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(True).MaximizeButton(True))
-##                           CenterPane().Caption("Model"))
-##         #self._mgr.AddPane(self.CreateScriptEditor(), wx.aui.AuiPaneInfo().Name("script_editor").Caption("Script").
-##                           #Right().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x/4,200)).CloseButton(True).MaximizeButton(True))
+        self._mgr.AddPane(self.nb, wx.aui.AuiPaneInfo().Name("model_editor").Caption(" ").
+                          Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(False).MaximizeButton(False))
                         
     
         # make some default perspectives
@@ -289,7 +274,7 @@ class MyFrame(wx.Frame):
         self._perspectives.append(perspective_default)
         self._perspectives.append(perspective_all)
 
-        self._mgr.GetPane("grid_content").Hide()
+##         self._mgr.GetPane("grid_content").Hide()
 ##         self._mgr.GetPane("tb3").Hide()
         flag = wx.aui.AUI_MGR_ALLOW_ACTIVE_PANE
         
@@ -297,7 +282,6 @@ class MyFrame(wx.Frame):
 
         # "commit" all changes made to FrameManager   
         self._mgr.Update()
-
 
         self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
         self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -801,131 +785,6 @@ class MyFrame(wx.Frame):
         ed.SetSelBackground(True, 'PLUM')
         ed.SetWrapMode(True)
         ed.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction title")
-        return ed
-
-    def CreateScriptEditor(self):
-        global ID_SE; ID_SE = wx.NewId()
-        ed = resultsframe.SDLeditor(self, ID_SE , self)
-        self.ScriptEditor = ed
-        
-        ed.SetText(u"#Create script here...")
-        ed.EmptyUndoBuffer()
-        # Set up the numbers in the margin for margin #1
-        ed.SetMarginType(1, wx.stc.STC_MARGIN_NUMBER)
-        # Reasonable value for, say, 4-5 digits using a mono font (40 pix)
-        ed.SetMarginWidth(1, 40)
-        ed.SetSelBackground(True, 'PLUM')
-        ed.SetWrapMode(True)
-        ed.SetKeyWords(0, " ".join(keyword.kwlist))
-
-        ed.SetProperty("fold", "1")
-        ed.SetProperty("tab.timmy.whinge.level", "1")
-##         ed.SetMargins(0,0)
-
-        ed.SetViewWhiteSpace(False)
-
-
-        # Set left and right margins
-        ed.SetMargins(2,2)
-    
-        # Set up the numbers in the margin for margin #1
-        ed.SetMarginType(1, wx.stc.STC_MARGIN_NUMBER)
-    
-        # Indentation and tab stuff
-        ed.SetIndent(4)               # Proscribed indent size for wx
-        ed.SetIndentationGuides(True) # Show indent guides
-        ed.SetBackSpaceUnIndents(True)# Backspace unindents rather than delete 1 space
-        ed.SetTabIndents(True)        # Tab key indents
-        ed.SetTabWidth(4)             # Proscribed tab size for wx
-        ed.SetUseTabs(False)          # Use spaces rather than tabs, or
-                                        # TabTimmy will complain!    
-    
-        # EOL: Since we are loading/saving ourselves, and the
-        # strings will always have \n's in them, set the STC to
-        # edit them that way.            
-        ed.SetEOLMode(wx.stc.STC_EOL_LF)
-        ed.SetViewEOL(False)
-        
-        # No right-edge mode indicator
-        ed.SetEdgeMode(wx.stc.STC_EDGE_NONE)
-    
-        # Setup a margin to hold fold markers
-        ed.SetMarginType(2, wx.stc.STC_MARGIN_SYMBOL)
-        ed.SetMarginMask(2, wx.stc.STC_MASK_FOLDERS)
-        ed.SetMarginSensitive(2, True)
-        ed.SetMarginWidth(2, 12)
-    
-        # and now set up the fold markers
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDEREND,     wx.stc.STC_MARK_BOXPLUSCONNECTED,  "white", "black")
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDEROPENMID, wx.stc.STC_MARK_BOXMINUSCONNECTED, "white", "black")
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDERMIDTAIL, wx.stc.STC_MARK_TCORNER,  "white", "black")
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDERTAIL,    wx.stc.STC_MARK_LCORNER,  "white", "black")
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDERSUB,     wx.stc.STC_MARK_VLINE,    "white", "black")
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDER,        wx.stc.STC_MARK_BOXPLUS,  "white", "black")
-        ed.MarkerDefine(wx.stc.STC_MARKNUM_FOLDEROPEN,    wx.stc.STC_MARK_BOXMINUS, "white", "black")
-    
-        # Global default style
-        if wx.Platform == '__WXMSW__':
-            ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, 
-                              'fore:#000000,back:#FFFFFF,face:Courier New')
-        elif wx.Platform == '__WXMAC__':
-            # TODO: if this looks fine on Linux too, remove the Mac-specific case 
-            # and use this whenever OS != MSW.
-            ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, 
-                              'fore:#000000,back:#FFFFFF,face:Monaco')
-        else:
-            defsize = wx.SystemSettings.GetFont(wx.SYS_ANSI_FIXED_FONT).GetPointSize()
-            ed.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, 
-                              'fore:#000000,back:#FFFFFF,face:Courier,size:%d'%defsize)
-
-        # Clear styles and revert to default.
-        ed.StyleClearAll()
-
-        # Following style specs only indicate differences from default.
-        # The rest remains unchanged.
-
-        # Line numbers in margin
-        ed.StyleSetSpec(wx.stc.STC_STYLE_LINENUMBER,'fore:#000000,back:#99A9C2')    
-        # Highlighted brace
-        ed.StyleSetSpec(wx.stc.STC_STYLE_BRACELIGHT,'fore:#00009D,back:#FFFF00')
-        # Unmatched brace
-        ed.StyleSetSpec(wx.stc.STC_STYLE_BRACEBAD,'fore:#00009D,back:#FF0000')
-        # Indentation guide
-        ed.StyleSetSpec(wx.stc.STC_STYLE_INDENTGUIDE, "fore:#CDCDCD")
-
-        # Python styles
-        ed.StyleSetSpec(wx.stc.STC_P_DEFAULT, 'fore:#000000')
-        # Comments
-        ed.StyleSetSpec(wx.stc.STC_P_COMMENTLINE,  'fore:#008000,back:#F0FFF0')
-        ed.StyleSetSpec(wx.stc.STC_P_COMMENTBLOCK, 'fore:#008000,back:#F0FFF0')
-        # Numbers
-        ed.StyleSetSpec(wx.stc.STC_P_NUMBER, 'fore:#008080')
-        # Strings and characters
-        ed.StyleSetSpec(wx.stc.STC_P_STRING, 'fore:#800080')
-        ed.StyleSetSpec(wx.stc.STC_P_CHARACTER, 'fore:#800080')
-        # Keywords
-        ed.StyleSetSpec(wx.stc.STC_P_WORD, 'fore:#000080,bold')
-        # Triple quotes
-        ed.StyleSetSpec(wx.stc.STC_P_TRIPLE, 'fore:#800080,back:#FFFFEA')
-        ed.StyleSetSpec(wx.stc.STC_P_TRIPLEDOUBLE, 'fore:#800080,back:#FFFFEA')
-        # Class names
-        ed.StyleSetSpec(wx.stc.STC_P_CLASSNAME, 'fore:#0000FF,bold')
-        # Function names
-        ed.StyleSetSpec(wx.stc.STC_P_DEFNAME, 'fore:#008080,bold')
-        # Operators
-        ed.StyleSetSpec(wx.stc.STC_P_OPERATOR, 'fore:#800000,bold')
-        # Identifiers. I leave this as not bold because everything seems
-        # to be an identifier if it doesn't match the above criterae
-        ed.StyleSetSpec(wx.stc.STC_P_IDENTIFIER, 'fore:#000000')
-
-        # Caret color
-        ed.SetCaretForeground("BLUE")
-        # Selection background
-        ed.SetSelBackground(1, '#66CCFF')
-
-        ed.SetSelBackground(True, wx.SystemSettings_GetColour(wx.SYS_COLOUR_HIGHLIGHT))
-        ed.SetSelForeground(True, wx.SystemSettings_GetColour(wx.SYS_COLOUR_HIGHLIGHTTEXT))
-
         return ed
 
     def CreateLog(self):
