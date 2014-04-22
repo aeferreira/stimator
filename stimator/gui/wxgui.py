@@ -242,8 +242,8 @@ class MyFrame(wx.Frame):
         self.shell = MyShell(parent=self, locals=lcs)
         self.nb.AddPage(self.shell, "Shell")
         
-        page = wx.TextCtrl(self.nb, -1, demoText, style=wx.TE_MULTILINE)
-        self.nb.AddPage(page, "Welcome")
+##         page = wx.TextCtrl(self.nb, -1, demoText, style=wx.TE_MULTILINE)
+##         self.nb.AddPage(page, "Welcome")
 
         sizer = wx.BoxSizer()
         sizer.Add(self.nb, 1, wx.EXPAND)
@@ -497,16 +497,22 @@ class MyFrame(wx.Frame):
     def GetActivePaneName(self):
         for p in self._mgr.GetAllPanes():
             if p.HasFlag(wx.aui.AuiPaneInfo.optionActive):
+                print 'active pane:', p.name
                 return p.name
 
     def GetActiveEditor(self):
-        gwin = self.GetActivePaneName()
-        if gwin not in ["script_editor", "model_editor"]:
-            return None
-        if gwin == "model_editor":
+        #gwin = self.GetActivePaneName()
+        gwin = self.nb.GetSelection()
+        if gwin == 0:
             win = self.ModelEditor
-        if gwin == "script_editor":
-            win = self.ScriptEditor
+        else:
+            win = None
+##         if gwin not in ["script_editor", "model_editor"]:
+##             return None
+##         if gwin == "model_editor":
+##             win = self.ModelEditor
+##         if gwin == "script_editor":
+##             win = self.ScriptEditor
         return win
             
     
@@ -928,6 +934,7 @@ class MyFrame(wx.Frame):
         self._mgr.Update()
 
         textlines = [self.ModelEditor.GetLine(i) for i in range(self.ModelEditor.GetLineCount())]
+        #self.nb.SetSelection(1)
         
         oldout = sys.stdout #parser may need to print messages
         sys.stdout = self
