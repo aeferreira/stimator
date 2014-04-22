@@ -118,7 +118,6 @@ class MyFrame(wx.Frame):
             mydir = os.path.dirname(os.path.abspath(__file__))
         except:
             mydir = os.path.dirname(os.path.abspath(sys.argv[0]))
-##         print 'mydir',mydir
         os.chdir(mydir)
         os.chdir('../examples')
         self.exampledir = os.getcwd()
@@ -142,10 +141,10 @@ class MyFrame(wx.Frame):
 
         file_menu.Append(ID_File_New, '&New\tCtrl-N', 'New')
         file_menu.Append(ID_File_Open, '&Open\tCtrl-O', 'Open')
-##         file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
         file_menu.Append(wx.ID_SAVE, '&Save\tCtrl-S', 'Save')
         file_menu.Append(ID_File_Save_As, 'Save &As\tCtrl-A', 'Save As')
         file_menu.AppendSeparator()
+##         file_menu.Append(ID_File_OpenScript, 'Open S&cript', 'Open script')
 ##         file_menu.Append(ID_Actions_RunScript, 'Run Script', 'Run Script')
 ##         file_menu.AppendSeparator()
         file_menu.Append(ID_File_Exit, 'E&xit\tAlt-X', 'Exit')
@@ -158,31 +157,6 @@ class MyFrame(wx.Frame):
         edit_menu.Append(wx.ID_CUT, 'Cut\tCtrl-X', 'Cut')
         edit_menu.Append(wx.ID_COPY, '&Copy\tCtrl-C', 'Copy')
         edit_menu.Append(wx.ID_PASTE, 'Paste\tCtrl-V', 'Paste')
-
-##         options_menu = wx.Menu()
-##         options_menu.AppendRadioItem(ID_TransparentHint, "Transparent Hint")
-##         options_menu.AppendRadioItem(ID_VenetianBlindsHint, "Venetian Blinds Hint")
-##         options_menu.AppendRadioItem(ID_RectangleHint, "Rectangle Hint")
-##         options_menu.AppendRadioItem(ID_NoHint, "No Hint")
-##         options_menu.AppendSeparator();
-##         options_menu.AppendCheckItem(ID_HintFade, "Hint Fade-in")
-##         options_menu.AppendCheckItem(ID_AllowFloating, "Allow Floating")
-##         options_menu.AppendCheckItem(ID_NoVenetianFade, "Disable Venetian Blinds Hint Fade-in")
-##         options_menu.AppendCheckItem(ID_TransparentDrag, "Transparent Drag")
-##         options_menu.AppendCheckItem(ID_AllowActivePane, "Allow Active Pane")
-##         options_menu.AppendSeparator();
-##         options_menu.AppendRadioItem(ID_NoGradient, "No Caption Gradient")
-##         options_menu.AppendRadioItem(ID_VerticalGradient, "Vertical Caption Gradient")
-##         options_menu.AppendRadioItem(ID_HorizontalGradient, "Horizontal Caption Gradient")
-##         options_menu.AppendSeparator();
-##         options_menu.Append(ID_Settings, "Settings Pane")
-
-##         self._perspectives_menu = wx.Menu()
-##         self._perspectives_menu.Append(ID_CreatePerspective, "Create Perspective")
-##         self._perspectives_menu.Append(ID_CopyPerspective, "Copy Perspective Data To Clipboard")
-##         self._perspectives_menu.AppendSeparator()
-##         self._perspectives_menu.Append(ID_FirstPerspective+0, "Default Startup")
-##         self._perspectives_menu.Append(ID_FirstPerspective+1, "All Panes")
 
         help_menu = wx.Menu()
         help_menu.Append(ID_About, "About...")
@@ -252,19 +226,6 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopComputation)
 
 
-        tb3 = wx.ToolBar(self, -1, wx.DefaultPosition, wx.DefaultSize,
-                         wx.TB_FLAT | wx.TB_NODIVIDER)
-        tb3.SetToolBitmapSize(wx.Size(16,16))
-        tb3_bmp1 = wx.ArtProvider_GetBitmap(wx.ART_FOLDER, wx.ART_OTHER, wx.Size(16, 16))
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddSeparator()
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.AddLabelTool(101, "Test", tb3_bmp1)
-        tb3.Realize()
-
         # add a bunch of panes
                       
 ##         self._mgr.AddPane(self.CreateTreeCtrl(), wx.aui.AuiPaneInfo().
@@ -305,11 +266,6 @@ class MyFrame(wx.Frame):
                           ToolbarPane().Top().Row(1).
                           LeftDockable(False).RightDockable(False))
                       
-        self._mgr.AddPane(tb3, wx.aui.AuiPaneInfo().
-                          Name("tb3").Caption("Toolbar 3").
-                          ToolbarPane().Top().Row(1).Position(1).
-                          LeftDockable(False).RightDockable(False))
-    
 
         # make some default perspectives
         
@@ -322,7 +278,6 @@ class MyFrame(wx.Frame):
                 all_panes[ii].Hide()
                 
         self._mgr.GetPane("model_editor").Show()
-        self._mgr.GetPane("tb3").Hide()
         self._mgr.GetPane("shell").Show()
 ##         self._mgr.GetPane("script_editor").Show()
 
@@ -333,7 +288,6 @@ class MyFrame(wx.Frame):
         self._perspectives.append(perspective_all)
 
         self._mgr.GetPane("grid_content").Hide()
-        self._mgr.GetPane("tb3").Hide()
         flag = wx.aui.AUI_MGR_ALLOW_ACTIVE_PANE
         
         self._mgr.SetFlags(self._mgr.GetFlags() ^ flag)
@@ -842,7 +796,7 @@ class MyFrame(wx.Frame):
         ed.SetMarginWidth(1, 40)
         ed.SetSelBackground(True, 'PLUM')
         ed.SetWrapMode(True)
-        ed.SetKeyWords(0, "variables find timecourse rate generations genomesize in reaction title")
+        ed.SetKeyWords(0, "variables find timecourse rate generations genomesize popsize in reaction title")
         return ed
 
     def CreateScriptEditor(self):

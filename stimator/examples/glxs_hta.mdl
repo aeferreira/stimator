@@ -17,4 +17,4 @@ timecourse TSH2a.txt  # timecourses to load
 timecourse TSH2b.txt
 tf:4500
 generations = 200   # maximum generations for GA
-genomesize = 80     # population size in GA
+popsize     = 80    # population size in GA
