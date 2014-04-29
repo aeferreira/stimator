@@ -32,14 +32,16 @@ class DeODESolver(de.DESolver):
     
     def __init__(self, model, optSettings, tcs, weights = None,
                     aMsgTicker=None, anEndComputationTicker=None, 
-                    dump_pars=False, dump_predictions=False, initial = 'init'):
+                    dump_generations = None, dump_predictions=False, initial = 'init',
+                    maxGenerations_noimprovement = 20):
         self.model    = model
         self.tc       = tcs
         self.varnames = model().varnames
         self.endTicker        = anEndComputationTicker
         self.msgTicker        = aMsgTicker
-        self.dump_pars        = dump_pars
+##         self.dump_pars        = dump_pars
         self.dump_predictions = dump_predictions
+        self.dump_generations = dump_generations
         
         #reorder variables according to model
         self.tc.orderByModelVars(self.model)
@@ -54,7 +56,8 @@ class DeODESolver(de.DESolver):
                              mins, maxs,              # min and max parameter values
                              "Best2Exp",              # DE strategy
                              0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
-                             True)                    # use class random number methods
+                             True,                    # use class random number methods
+                             maxGenerations_noimprovement)
 
         # cutoffEnergy is 1e-6 of deviation from data
         self.cutoffEnergy =  1.0e-6*sum([nansum(fabs(tc.data)) for tc in self.tc])
@@ -106,10 +109,10 @@ class DeODESolver(de.DESolver):
         
         self.criterium = timecourse.getCriteriumFunction(weights, self.model,self.tc)
 
-        # open files to write parameter progression
-        parnames = [get_name(u) for u in self.model().uncertain]
-        if self.dump_pars:
-            self.parfilehandes = [open(parname+".par", 'w') for parname in parnames]
+##         # open files to write parameter progression
+##         parnames = [get_name(u) for u in self.model().uncertain]
+##         if self.dump_pars:
+##             self.parfilehandes = [open(parname+".par", 'w') for parname in parnames]
 
     def computeSolution(self,i,trial, dense = False):
         """Computes solution for timecourse i, given parameters trial."""
@@ -147,6 +150,8 @@ class DeODESolver(de.DESolver):
 
     def reportInitial (self):
         msg = "\nSolving %s..."%self.model['title']
+        if self.dump_generations is not None:
+            self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:
             print msg
         else:
@@ -158,10 +163,8 @@ class DeODESolver(de.DESolver):
             print msg
         else:
             self.msgTicker(msg)
-        if self.dump_pars:
-            for par in range(self.parameterCount):
-                parvector = [str(self.population[k][par]) for k in range(self.populationSize)]
-                print >>self.parfilehandes[par], " ".join(parvector)
+        if self.dump_generations is not None:
+            print >> self.dumpfile, self.generation_string(self.generation)
 
     def reportFinal (self):
         if self.exitCode <= 0 : outCode = -1 
@@ -172,9 +175,23 @@ class DeODESolver(de.DESolver):
             print self.reportFinalString()
         else:
             self.endTicker(outCode)
-        if self.dump_pars:
-            for par in self.parfilehandes:
-                par.close()
+        if self.dump_generations is not None:
+            print >> self.dumpfile, self.generation_string(self.generation)
+            self.dumpfile.close()
+
+    def generation_string(self, generation):
+        generation = str(generation)
+        #find if objectives is iterable
+        isiter = hasattr(self.popEnergy[0], '__contains__')
+        res = 'generation %s -------------------------\n'%generation
+        for s,o in zip(self.population, self.popEnergy):
+            sstr = ' '.join([str(i) for i in s])
+            if isiter:
+                ostr = ' '.join([str(i) for i in o])
+            else:
+                ostr = str(o)
+            res = res + '%s %s\n'%(sstr, ostr)
+        return res
 
     def generateOptimumData (self):
         #compute parameter standard errors, based on FIM-1
