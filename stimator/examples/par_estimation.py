@@ -22,11 +22,12 @@ print 'Parameter estimation: glyoxalase system example'
 print mdl
 print '-------- an example with two time courses --------------'
 
-optSettings={'genomesize':40, 'generations':200}
+optSettings={'genomesize':80, 'generations':200}
 timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], verbose=True)
 
-solver = DeODESolver(m1,optSettings, timecourses, dump_generations=True,
-                     maxGenerations_noimprovement = 50)
+## solver = DeODESolver(m1,optSettings, timecourses, dump_generations=True,
+##                      maxGenerations_noimprovement = 50)
+solver = DeODESolver(m1,optSettings, timecourses)
 solver.Solve()
 
 print solver.reportResults()
