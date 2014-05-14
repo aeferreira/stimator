@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf8 -*-
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
@@ -24,6 +23,13 @@ import stimator.dynamics
 from stimator.version_info import __version__
 import images
 from wx.py.shell import Shell
+
+## try:
+##     from agw import aui
+##     from agw.aui import aui_switcherdialog as ASD
+## except ImportError: # if it's not there locally, try the wxPython lib.
+##     import wx.lib.agw.aui as aui
+##     from wx.lib.agw.aui import aui_switcherdialog as ASD
 
 ABOUT_TEXT = __doc__ + "\n\nVersion %s, %s" % (__version__.fullversion, __version__.date)
 
@@ -233,7 +239,13 @@ class MyFrame(wx.Frame):
 
         # create  center pane
 
-        self.nb = wx.aui.AuiNotebook(self)
+        self._notebook_style = (wx.aui.AUI_NB_DEFAULT_STYLE | 
+                                wx.aui.AUI_NB_TAB_EXTERNAL_MOVE | 
+                                wx.NO_BORDER)
+        self._notebook_style &= ~(wx.aui.AUI_NB_CLOSE_BUTTON |
+                                  wx.aui.AUI_NB_CLOSE_ON_ACTIVE_TAB |
+                                  wx.aui.AUI_NB_CLOSE_ON_ALL_TABS)
+        self.nb = wx.aui.AuiNotebook(self, style=self._notebook_style)
         ed = self.CreateEditor()
         self.nb.AddPage(ed, "Model")
 ##         indx = self.nb.GetPageIndex(self.ModelEditor)
