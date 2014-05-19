@@ -223,11 +223,6 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnRunButton, id=ID_Actions_RunModel)
         self.Bind(wx.EVT_MENU, self.OnStopScript, id=ID_Actions_StopComputation)
 
-<<<<<<< HEAD
-=======
-
-        # add a bunch of panes
->>>>>>> portable
                       
         # add the toolbars to the manager
         self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
@@ -270,16 +265,7 @@ class MyFrame(wx.Frame):
         self._mgr.AddPane(self.nb, wx.aui.AuiPaneInfo().Name("model_editor").Caption(" ").
                           Center().Layer(0).Row(0).Position(0).MinSize(wx.Size(sz.x,sz.y/2)).CloseButton(False).MaximizeButton(False))
                         
-<<<<<<< HEAD
-    
-=======
-        self._mgr.AddPane(tb2, wx.aui.AuiPaneInfo().
-                          Name("tb2").Caption("Toolbar 2").
-                          ToolbarPane().Top().Row(1).
-                          LeftDockable(False).RightDockable(False))
-                      
 
->>>>>>> portable
         # make some default perspectives
         
         perspective_all = self._mgr.SavePerspective()
@@ -291,13 +277,8 @@ class MyFrame(wx.Frame):
                 all_panes[ii].Hide()
                 
         self._mgr.GetPane("model_editor").Show()
-<<<<<<< HEAD
-##         self._mgr.GetPane("shell").Show()
-##         #self._mgr.GetPane("script_editor").Show()
-=======
         self._mgr.GetPane("shell").Show()
 ##         self._mgr.GetPane("script_editor").Show()
->>>>>>> portable
 
         perspective_default = self._mgr.SavePerspective()
 
@@ -305,14 +286,7 @@ class MyFrame(wx.Frame):
         self._perspectives.append(perspective_default)
         self._perspectives.append(perspective_all)
 
-<<<<<<< HEAD
-##         self._mgr.GetPane("grid_content").Hide()
-##         self._mgr.GetPane("tb3").Hide()
-=======
-        self._mgr.GetPane("grid_content").Hide()
->>>>>>> portable
         flag = wx.aui.AUI_MGR_ALLOW_ACTIVE_PANE
-        
         self._mgr.SetFlags(self._mgr.GetFlags() ^ flag)
 
         # "commit" all changes made to FrameManager   
