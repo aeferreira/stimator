@@ -510,7 +510,7 @@ class StimatorParser:
         
         if name == "generations":
             self.optSettings['generations'] = int(value)
-        elif name == "genomesize":
+        elif name in ("genomesize", "popsize"):
             self.optSettings['genomesize'] = int(value)
         else:
             setattr (self.model, name, value)

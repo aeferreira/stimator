@@ -28,12 +28,23 @@ import scipy.optimize
 
 class DESolver:
 
-    def __init__(self, parameterCount, populationSize, maxGenerations, minInitialValue, maxInitialValue, deStrategy, diffScale, crossoverProb, cutoffEnergy, useClassRandomNumberMethods):
+    def __init__(self, parameterCount, 
+                       populationSize, 
+                       maxGenerations, 
+                       minInitialValue, 
+                       maxInitialValue, 
+                       deStrategy, 
+                       diffScale, 
+                       crossoverProb, 
+                       cutoffEnergy, 
+                       useClassRandomNumberMethods,
+                       maxGenerations_noimprovement = 20):
 
         random.seed(3)
         numpy.random.seed(3)
 
         self.maxGenerations = maxGenerations
+        self.maxGenerations_noimprovement = maxGenerations_noimprovement
         self.parameterCount = parameterCount
         self.populationSize = populationSize
         self.cutoffEnergy   = cutoffEnergy
@@ -129,7 +140,7 @@ class DESolver:
         
 
         # TODO: this is for performance on non-parallelized hardware
-        if self.generationsWithNoImprovement > 20:
+        if self.generationsWithNoImprovement > self.maxGenerations_noimprovement:
             self.exitCode = 4
             return
                 
