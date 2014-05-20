@@ -118,13 +118,16 @@ class DeODESolver(de.DESolver):
                                                          self.tc)
 
 
-    def computeSolution(self,i,trial, dense = False):
+    def computeSolution(self,i,trial, dense = None):
         """Computes solution for timecourse i, given parameters trial."""
         
         y0 = copy(self.X0[i])
         # fill uncertain initial values
         y0[self.vars_initindexes] = trial[self.trial_initindexes]
-        ts = self.times[i]
+        if dense is None:
+            ts = self.times[i]
+        else:
+            ts = linspace(self.times[i][0], self.times[i][-1], 500)
         output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0, 
                         None, None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
@@ -208,14 +211,13 @@ class DeODESolver(de.DESolver):
         #TODO: Store initial solver parameters?
 
         #generate best time-courses
-        best.tcdata = []
 
-        pars = [get_name(self.model().uncertain[i]) for i in range(len(self.bestSolution))]
-        parvalues = [value for value in self.bestSolution]
-        parszip = zip(pars, parvalues)
+        par_names = [get_name(self.model().uncertain[i]) for i in range(len(self.bestSolution))]
+        parameters = zip(par_names, [x for x in self.bestSolution])
         self.model.set_uncertain(self.bestSolution)
         
         sols = timecourse.Solutions()
+        best.tcdata = []
         
         for (i,tc) in enumerate(self.tc):
             Y = self.computeSolution(i, self.bestSolution)
@@ -233,20 +235,53 @@ class DeODESolver(de.DESolver):
         best.optimum_tcs=sols
         
         if not (fim.sympy_installed):
-            best.parameters = [(p, v, 0.0) for (p,v) in parszip]
+            best.parameters = [(p, v, 0.0) for (p,v) in parameters]
         else:
             commonvnames = timecourse.getCommonFullVars(self.tc)
             consterror   = timecourse.getRangeVars(self.tc, commonvnames)
-            consterror = timecourse.constError_func([r * 0.05 for r in consterror]) #assuming 5% of range
-            FIM1, invFIM1 = fim.computeFIM(self.model, parszip, sols, consterror, commonvnames)
-            best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
+            #assume 5% of range
+            consterror = timecourse.constError_func([r * 0.05 for r in consterror])
+            FIM1, invFIM1 = fim.computeFIM(self.model, 
+                                           parameters, 
+                                           sols, 
+                                           consterror, 
+                                           commonvnames)
+            best.parameters = [(par_names[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
         
+        sols = timecourse.Solutions()
+        for (i,tc) in enumerate(self.tc):
+            Y = self.computeSolution(i, self.bestSolution, dense = True)
+            ts = linspace(tc.t[0], tc.t[-1], 500)
+
+            sol = timecourse.SolutionTimeCourse (ts, 
+                                                 Y.T, 
+                                                 self.varnames, 
+                                                 title=tc.title)
+            sols += sol
+
+        best.optimum_dense_tcs=sols
+
         self.optimum = best
         self.generate_fitted_sols()
         
         if self.dump_predictions:
             fnames = ['pred_'+ self.tc[i].title for i in range(len(self.tc))]
             best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
+
+    def generate_fitted_sols(self):
+        solslist = []
+        bestsols = self.optimum.optimum_tcs
+        expsols = self.tc
+        tcstats = self.optimum.tcdata
+        ntc = len(bestsols)
+        for i in range(ntc):
+            newpair = timecourse.Solutions(title="%s (%d pt) %g"% tcstats[i])
+            expsol = expsols[i].copy(newtitle='exp')
+            symsol = bestsols[i].copy(newtitle='pred')
+            newpair+=expsol
+            newpair+=symsol
+            solslist.append(newpair)
+        self.fitted_tcs = solslist
 
     def reportResults(self):
         optimum = self.optimum
@@ -267,26 +302,11 @@ class DeODESolver(de.DESolver):
         res += '\n\n'
         return res
 
-    def generate_fitted_sols(self):
-        solslist = []
-        bestsols = self.optimum.optimum_tcs
-        expsols = self.tc
-        tcstats = self.optimum.tcdata
-        ntc = len(bestsols)
-        for i in range(ntc):
-            newpair = timecourse.Solutions(title="%s (%d pt) %g"% tcstats[i])
-            expsol = expsols[i].copy(newtitle='exp')
-            symsol = bestsols[i].copy(newtitle='pred')
-            newpair+=expsol
-            newpair+=symsol
-            solslist.append(newpair)
-        self.fitted_tcs = solslist
-
     def draw(self, figure):
         colours = 'brgkycm'
         figure.clear()
         tcsubplots = []
-        bestsols = self.optimum.optimum_tcs
+        bestsols = self.optimum.optimum_dense_tcs
         expsols = self.tc
         tcstats = self.optimum.tcdata
         ntc = len(bestsols)
@@ -314,7 +334,7 @@ class DeODESolver(de.DESolver):
                 colorexp = colours[icolor]+'o'
                 colorsim = colours[icolor]+'-'
                 subplot.plot(expsol.t, yexp, colorexp)
-                subplot.plot(expsol.t, ysim, colorsim, label='%s' % xname)
+                subplot.plot(symsol.t, ysim, colorsim, label='%s' % xname)
                 icolor += 1
                 if icolor == len(colours):
                     icolor = 0
