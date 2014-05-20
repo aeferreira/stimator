@@ -214,7 +214,6 @@ class DeODESolver(de.DESolver):
 
         par_names = [get_name(self.model().uncertain[i]) for i in range(len(self.bestSolution))]
         parameters = zip(par_names, [x for x in self.bestSolution])
-        self.model.set_uncertain(self.bestSolution)
         
         sols = timecourse.Solutions()
         best.tcdata = []
@@ -339,16 +338,16 @@ class DeODESolver(de.DESolver):
                 if icolor == len(colours):
                     icolor = 0
             subplot.grid()
-            box = subplot.get_position()
-            subplot.set_position([box.x0, box.y0 + box.height * 0.1,
-                 box.width, box.height * 0.9])
+##             box = subplot.get_position()
+##             subplot.set_position([box.x0, box.y0 + box.height * 0.1,
+##                  box.width, box.height * 0.9])
 
             # Put a legend below current axis
-            subplot.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-              fancybox=True, shadow=True, ncol=3)
+##             subplot.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+##               fancybox=True, shadow=True, ncol=3)
             #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), 
             #                loc=3, ncol=3, borderaxespad=0.0)
-            #subplot.legend(loc='best')
+            subplot.legend(loc='best')
 
 def test():
     m1 = read_model("""

@@ -397,6 +397,13 @@ class Model(ModelObject):
         set_name(self, title)
     
     def __setattr__(self, name, value):
+##         print "SET attR", name, '->', value
+        if '.' in name:
+            alist = name.split('.')
+            o = self.__getattr__(alist[0])
+            setattr(o, '.'.join(alist[1:]), value)
+            return
+            
         if name in self.__dict__:
             object.__setattr__(self, name, value)
             return
@@ -562,6 +569,12 @@ class Model(ModelObject):
                     return False
         return True        
     
+    def update(self, *p, **pdict):
+        dpars = dict(*p)
+        dpars.update(pdict)
+        for k in dpars:
+            self.__setattr__(k,dpars[k])
+        
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
 
@@ -752,7 +765,7 @@ def test():
     print '********** Testing model construction and printing **********'
     print '------- result of model construction:\n'
     print m
-    print "access to info as keys---------"
+    print "!!!!  access to info as keys---------"
     print "m['for what'] =", m['for what']
     del(m['where'])
     print "\nafter del(m['where'])"
@@ -781,36 +794,36 @@ def test():
 
     print
     print '********** Testing iteration of components *****************'
-    print 'iterating m().reactions'
+    print '!!!! iterating m().reactions'
     for v in m().reactions:
         print get_name(v), ':', v(), '|', v._reagents, '->', v._products
-    print '\niterating m().reactions with fully qualified rates'
+    print '\n!!!! iterating m().reactions with fully qualified rates'
     for v in m().reactions:
         print get_name(v), ':', v(fully_qualified = True), '|', v._reagents, '->', v._products
-    print '\niterating m().transformations'
+    print '\n!!!! iterating m().transformations'
     for v in m().transformations:
         print get_name(v), ':', v()
-    print '\niterating m().transformations with fully qualified rates'
+    print '\n!!!! iterating m().transformations with fully qualified rates'
     for v in m().transformations:
         print get_name(v), ':', v(fully_qualified = True)
-    print '\niterating m().varnames:'
+    print '\n!!!! iterating m().varnames:'
     for x in m().varnames:
         print x
-    print '\niterating m().extvariables'
+    print '\n!!!! iterating m().extvariables'
     for x in m().extvariables:
         print x
-    print '\niterating m().parameters'
+    print '\n!!!! iterating m().parameters'
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
-    print '\niterating m().uncertain'
+    print '\n!!!! iterating m().uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     
-    print '\niterating m.init (a state)'
+    print '\n!!!! iterating m.init (a state)'
     for xname, x in m.init:
         print '\t', xname, '=', x
 
-    print '\niterating m.v3 (iterates parameters returning (name,value) tuples)'
+    print '\n!!!! iterating m.v3 (iterates parameters returning (name,value) tuples)'
     for xname, x in m.v3:
         print '\t', xname, '=', x
     print
@@ -834,19 +847,24 @@ def test():
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
     print len(m().parameters), 'parameters total'
-    print '\nmaking m.myconstant = 5.0'
+    print '\n!!!! making m.myconstant = 5.0'
     m.myconstant = 5.0
     print 'm.myconstant :',m.myconstant
     print len(m().parameters), 'parameters total'
 
-    print '\nmaking m.myconstant = Model.react("A+B -> C"  , 3)'
+    print '\n!!!! after setattr(m, "myconstant", 7.5)'
+    setattr(m, "myconstant", 7.5)
+    print 'm.myconstant :',m.myconstant
+    print len(m().parameters), 'parameters total'
+
+    print '\n!!!! making m.myconstant = Model.react("A+B -> C"  , 3)'
     try:
         m.myconstant = Model.react("A+B -> C"  , 3)
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.myconstant :',m.myconstant, '(still!)'
     print len(m().parameters), 'parameters total'
-    print '\nmaking m.v2 = 3.14'
+    print '\n!!!! making m.v2 = 3.14'
     try:
         m.v2 = 3.14
     except BadTypeComponent:
@@ -860,12 +878,12 @@ def test():
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print len(m().uncertain), 'uncertain parameters total'
-    print '\nmaking m.V3 = [0.1, 0.2]'
+    print '\n!!!! making m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' ,m.V3.bounds
     print len(m().uncertain), 'uncertain parameters total'
-    print '\nmaking m.V4 = [0.1, 0.6]'
+    print '\n!!!! making m.V4 = [0.1, 0.6]'
     m.V4 = [0.1, 0.6]
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
@@ -873,7 +891,7 @@ def test():
     print 'iterating m.uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
-    print '\nmaking m.V4 = 0.38'
+    print '\n!!!! making m.V4 = 0.38'
     m.V4 = 0.38
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
@@ -881,32 +899,66 @@ def test():
     print 'iterating m.uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
-    print '\nmaking m.init.A = 5.0'
+    print '\n!!!! making m.init.A = 5.0'
     m.init.A = 5.0
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\nflagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
+    print '\n!!!! making setattr(m,"init.A", 6.0)'
+    setattr(m,"init.A", 6.0)
+    print 'iterating m.init'
+    for xname, x in m.init:
+        print '\t', xname, '=', x.pprint()
+    print '\n!!!! flagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
     m.init.A = (0.5, 2.5)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\ncalling    m.init.A.uncertainy(0.5,3.0)'
+    print '\n!!!! calling    m.init.A.uncertainy(0.5,3.0)'
     m.init.A.uncertainty(0.5,3.0)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\ncalling    m.init.A.uncertainy(None)'
+    print '\n!!!! calling    m.init.A.uncertainy(None)'
     m.init.A.uncertainty(None)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\nmaking m.init.A back to 1.0'
+    print '\n!!!! making m.init.A back to 1.0'
     m.init.A = 1.0
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
     print 
+    print '********** Testing update() function *****************'
+    print '\niterating m().parameters'
+    for p in m().parameters:
+        print get_name(p) , '=',  p, '\n  bounds=', p.bounds
+
+    print '\n!!!! making m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])'
+    m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])
+    print '\niterating m().parameters'
+    for p in m().parameters:
+        print get_name(p) , '=',  p, '\n  bounds=', p.bounds
+
+    print '\n!!!! making m.update(V4=1.4, V3=1.5, Km3=1.6)'
+    m.update(V4=1.4, V3=1.5, Km3=1.6)
+    print '\niterating m().parameters'
+    for p in m().parameters:
+        print get_name(p) , '=',  p, '\n  bounds=', p.bounds
+
+    print '\n!!!! making m.update([("V4",1.7)], V3=1.8, Km3=1.9)'
+    m.update([("V4",1.7)], V3=1.8, Km3=1.9)
+    print '\niterating m().parameters'
+    for p in m().parameters:
+        print get_name(p) , '=',  p, '\n  bounds=', p.bounds
+
+    print '\n!!!! making dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)'
+    dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)
+    print '\niterating m().parameters'
+    for p in m().parameters:
+        print get_name(p) , '=',  p, '\n  bounds=', p.bounds
+    
 
 
 if __name__ == "__main__":
