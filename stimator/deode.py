@@ -27,19 +27,22 @@ class DeODESolver(de.DESolver):
     """Overides energy function and report functions.
     
     The energy function solves ODEs and computes a least-squares score.
-    Ticker functions are called on generation completion and when optimization finishes.
+    Ticker functions are called on generation completion and when optimization
+    finishes.
     """
     
     def __init__(self, model, optSettings, tcs, weights = None,
-                    aMsgTicker=None, anEndComputationTicker=None, 
-                    dump_generations = None, dump_predictions=False, initial = 'init',
+                    aMsgTicker=None, 
+                    anEndComputationTicker=None, 
+                    dump_generations = None, 
+                    dump_predictions=False,
+                    initial = 'init',
                     maxGenerations_noimprovement = 20):
         self.model    = model
         self.tc       = tcs
         self.varnames = model().varnames
         self.endTicker        = anEndComputationTicker
         self.msgTicker        = aMsgTicker
-##         self.dump_pars        = dump_pars
         self.dump_predictions = dump_predictions
         self.dump_generations = dump_generations
         
@@ -52,11 +55,12 @@ class DeODESolver(de.DESolver):
         
         de.DESolver.__init__(self, len(pars), # number of parameters
                              int(optSettings['genomesize']),  # genome size
-                             int(optSettings['generations']), # max number of generations
-                             mins, maxs,              # min and max parameter values
-                             "Best2Exp",              # DE strategy
-                             0.7, 0.6, 0.0,           # DiffScale, Crossover Prob, Cut off Energy
-                             True,                    # use class random number methods
+                             int(optSettings['generations']), # max generations
+                             mins, maxs,       # min and max parameter values
+                             "Best2Exp",       # DE strategy
+                             0.7, 0.6,         # DiffScale, Crossover Prob
+                             0.0,              # Cut-off energy
+                             True,             # use class random-number methods
                              maxGenerations_noimprovement)
 
         # cutoffEnergy is 1e-6 of deviation from data
@@ -66,7 +70,10 @@ class DeODESolver(de.DESolver):
         scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
         t0 = self.tc[0].t[0]
         
-        self.calcDerivs = getdXdt(model, scale=scale, with_uncertain=True, t0=t0)
+        self.calcDerivs = getdXdt(model, 
+                                  scale=scale, 
+                                  with_uncertain=True, 
+                                  t0=t0)
         self.salg=integrate._odepack.odeint
         
         # store initial values and (scaled) time points
@@ -89,7 +96,6 @@ class DeODESolver(de.DESolver):
                 else:
                     X0.append(globalX0[ix])
             X0 = array(X0,dtype=float)
-##             X0 = copy(data[:, 0].T)
             
             self.X0.append(X0)
             t  = data.t
@@ -107,12 +113,10 @@ class DeODESolver(de.DESolver):
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
         self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
         
-        self.criterium = timecourse.getCriteriumFunction(weights, self.model,self.tc)
+        self.criterium = timecourse.getCriteriumFunction(weights, 
+                                                         self.model,
+                                                         self.tc)
 
-##         # open files to write parameter progression
-##         parnames = [get_name(u) for u in self.model().uncertain]
-##         if self.dump_pars:
-##             self.parfilehandes = [open(parname+".par", 'w') for parname in parnames]
 
     def computeSolution(self,i,trial, dense = False):
         """Computes solution for timecourse i, given parameters trial."""
@@ -121,8 +125,8 @@ class DeODESolver(de.DESolver):
         # fill uncertain initial values
         y0[self.vars_initindexes] = trial[self.trial_initindexes]
         ts = self.times[i]
-        output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0, None, 
-                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+        output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0, 
+                        None, None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         #~ if infodict['message'] != 'Integration successful.':
             #~ return (1.0E300)
@@ -219,7 +223,10 @@ class DeODESolver(de.DESolver):
                 score =self.criterium(Y, i)
             else:
                 score = 1.0E300
-            sol = timecourse.SolutionTimeCourse (tc.t, Y.T, self.varnames, title=tc.title)
+            sol = timecourse.SolutionTimeCourse (tc.t, 
+                                                 Y.T, 
+                                                 self.varnames, 
+                                                 title=tc.title)
             sols += sol
             best.tcdata.append((self.tc[i].title, tc.ntimes, score))
             
@@ -231,7 +238,6 @@ class DeODESolver(de.DESolver):
             commonvnames = timecourse.getCommonFullVars(self.tc)
             consterror   = timecourse.getRangeVars(self.tc, commonvnames)
             consterror = timecourse.constError_func([r * 0.05 for r in consterror]) #assuming 5% of range
-##             consterror = expcov.propError_func([0.05 for r in consterror]) #assuming 5% error
             FIM1, invFIM1 = fim.computeFIM(self.model, parszip, sols, consterror, commonvnames)
             best.parameters = [(pars[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
         
@@ -243,23 +249,23 @@ class DeODESolver(de.DESolver):
             best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
 
     def reportResults(self):
+        optimum = self.optimum
         headerformat = "--- %-20s -----------------------------\n"
-        reportText = "\n"
-        reportText += headerformat % 'PARAMETERS'
-        reportText += "\n".join(["%s\t%12g +- %g" % i for i in self.optimum.parameters])
-        reportText += '\n\n'
-        reportText += headerformat % 'OPTIMIZATION'
-        reportText += "%s\t%g\n" % ('Final Score', self.optimum.optimization_score)
-        reportText += "%s\t%d\n" % ('generations', self.optimum.optimization_generations)
-        reportText += "%s\t%d\n" % ('max generations', self.maxGenerations)
-        reportText += "%s\t%d\n" % ('population size', self.populationSize)
-        reportText += "%s\t%s\n" % ('Exit by',     self.optimum.optimization_exit_by)
-        reportText += '\n\n'
-        reportText += headerformat % 'TIME COURSES'
-        reportText += '\t\t'.join(['Name', 'Points', 'Score'])+'\n'
-        reportText += "\n".join(["%s\t%d\t%g" % i for i in self.optimum.tcdata])
-        reportText += '\n\n'
-        return reportText
+        res = "\n" + (headerformat % 'PARAMETERS')
+        res += "\n".join(["%s\t%12g +- %g"%i for i in optimum.parameters])
+        res += '\n\n'
+        res += headerformat % 'OPTIMIZATION'
+        res += "%s\t%g\n" % ('Final Score', optimum.optimization_score)
+        res += "%s\t%d\n" % ('generations', optimum.optimization_generations)
+        res += "%s\t%d\n" % ('max generations', self.maxGenerations)
+        res += "%s\t%d\n" % ('population size', self.populationSize)
+        res += "%s\t%s\n" % ('Exit by',     optimum.optimization_exit_by)
+        res += '\n\n'
+        res += headerformat % 'TIME COURSES'
+        res += '\t\t'.join(['Name', 'Points', 'Score'])+'\n'
+        res += "\n".join(["%s\t%d\t%g" % i for i in optimum.tcdata])
+        res += '\n\n'
+        return res
 
     def generate_fitted_sols(self):
         solslist = []
@@ -320,7 +326,8 @@ class DeODESolver(de.DESolver):
             # Put a legend below current axis
             subplot.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
               fancybox=True, shadow=True, ncol=3)
-            #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
+            #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), 
+            #                loc=3, ncol=3, borderaxespad=0.0)
             #subplot.legend(loc='best')
 
 def test():
@@ -348,7 +355,9 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
     #print m1
     optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], 'examples', names = ['SDLTSH', 'HTA'], verbose = True)
+    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], 
+                                     'examples', names = ['SDLTSH', 'HTA'], 
+                                     verbose = True)
     #intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m1,optSettings, timecourses)
@@ -371,7 +380,9 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     ## VERY IMPORTANT:
     ## only one time course can be used: 
     ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTCs(['TSH2a.txt'], 'examples', names = ['SDLTSH', 'HTA'], verbose = True)
+    timecourses = timecourse.readTCs(['TSH2a.txt'], 
+                                     'examples', names = ['SDLTSH', 'HTA'], 
+                                     verbose = True)
     #, intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODESolver(m2,optSettings, timecourses)
