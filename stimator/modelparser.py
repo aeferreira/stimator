@@ -36,6 +36,7 @@ tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
 tfpattern         = r"^\s*tf\s*(?::\s*)?(?P<tf>[^#]+)(?:#.*)?$"
+replistpattern    = r"^\s*!!\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
 statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
 dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 transfpattern     = r"^\s*(transf|~)\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
@@ -60,6 +61,7 @@ tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
 titledef  = re.compile(titlepattern)
 tfdef     = re.compile(tfpattern)
+replistdef= re.compile(replistpattern,     re.IGNORECASE)
 dxdtdef   = re.compile(dxdtpattern,        re.IGNORECASE)
 transfdef = re.compile(transfpattern,      re.IGNORECASE)
 
@@ -80,7 +82,8 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (transfdef, "transfDefParse"),
                (constdef,  "constDefParse"),
                (titledef,  "titleDefParse"),
-               (tfdef,     "tfDefParse")]
+               (tfdef,     "tfDefParse"),
+               (replistdef,"repListDefParse")]
 
 hascontpattern  = r"^.*\\$"
 hascontinuation = re.compile(hascontpattern)
@@ -557,6 +560,11 @@ class StimatorParser:
         title = match.group('tf')
         self.model['tf'] = title
         #~ setattr(self.model, 'title', title)
+    
+    def repListDefParse(self, line, loc, match):
+        title = match.group('names')
+        self.model['!!'] = title
+        #~ setattr(self.model, 'title', title)
 
 #----------------------------------------------------------------------------
 #         TESTING CODE
@@ -602,6 +610,8 @@ generations = 400
 timecourse my file.txt  # this is a timecourse filename
 timecourse anotherfile.txt
 #timecourse stillanotherfile.txt
+tf: 10
+!! SDLTSH TSH2
 
 """
     #~ f = StringIO.StringIO(modelText)

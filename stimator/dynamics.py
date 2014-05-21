@@ -608,6 +608,10 @@ def solve(model,
         #a filter string or transformation function
         f = genTransformationFunction(model, outputs)
         sol.apply_transf(f, f.names)
+    if model['!!'] is not None:
+        names = model['!!'].split()
+        sol = sol.copy(names=names)
+    
     return sol
 
 class ModelSolver(object):
