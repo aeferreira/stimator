@@ -556,7 +556,8 @@ def solve(model,
           initial = 'init', 
           times = None, 
           outputs=False, 
-          title = None):
+          title = None,
+          ignore_replist = False):
     
     salg=integrate._odepack.odeint
     names = [x for x in model().varnames]
@@ -608,7 +609,7 @@ def solve(model,
         #a filter string or transformation function
         f = genTransformationFunction(model, outputs)
         sol.apply_transf(f, f.names)
-    if model['!!'] is not None:
+    if model['!!'] is not None and ignore_replist == False:
         names = model['!!'].split()
         sol = sol.copy(names=names)
     

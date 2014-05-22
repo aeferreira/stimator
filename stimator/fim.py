@@ -77,7 +77,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
         #set init and solve
         for n,v in tc.state_at(0.0): #TODO: may not start at zero
             setattr(m.init, n, v)
-        sols += solve(m, tf = tc.t[-1])
+        sols += solve(m, tf = tc.t[-1], ignore_replist=True)
     
     #compute P
 
