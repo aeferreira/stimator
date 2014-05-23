@@ -639,7 +639,7 @@ nothing really usefull here
 
     sol = SolutionTimeCourse()
     sol.load_from(aTC)   
-    print '\n- using load_from() ----------------'
+    print '\n!! using load_from() ----------------'
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -650,7 +650,7 @@ nothing really usefull here
     
     sol.load_from_str(demodata)
     sol.orderByNames("z y".split())
-    print '\n- using load_from() with name order z y'
+    print '\n!! using load_from() with name order z y'
     print '\nnames:'
     print sol.names
     print '\ndata'
@@ -659,7 +659,7 @@ nothing really usefull here
 
     sol.load_from_str(demodata)
     sol.orderByNames("z".split())
-    print '\n- using load_from() with name order z'
+    print '\n!! using load_from() with name order z'
     print '\nnames:'
     print sol.names
     print '\ndata'
@@ -669,7 +669,7 @@ nothing really usefull here
 
     try:
         sol.load_from_str(demodata)
-        print '\n- using load_from() with name order x bof z'
+        print '\n!! using load_from() with name order x bof z'
         sol.orderByNames("x bof z".split())
         print '\nnames:'
         print sol.names
@@ -681,7 +681,7 @@ nothing really usefull here
         print
 
     sol.load_from_str(demodata)
-    print '\n- using load_from() ----------------'
+    print '\n!! using load_from() ----------------'
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -689,7 +689,7 @@ nothing really usefull here
     print '\ndata'
     print sol.data
     print
-    print '\n- now dumping, using save_to_str() ----------------'
+    print '\n!! now dumping, using save_to_str() ----------------'
     stc = sol.save_to_str()
     print stc
     print '-----------------------------------------------------'
@@ -698,7 +698,7 @@ nothing really usefull here
     print '===Reading data without a header========================='
     aTCnh.seek(0)
     sol.load_from(aTCnh)   
-    print '\n- using load_from(), names not provided'
+    print '\n!! using load_from(), names not provided'
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -708,7 +708,7 @@ nothing really usefull here
     print
     aTCnh.seek(0)
     sol.load_from(aTCnh, names = ['v1','v2','v3', 'v4', 'v5'])   
-    print '\n- using load_from() with names v1, v2 ,v3, v4, v5'
+    print '\n!! using load_from() with names v1, v2 ,v3, v4, v5'
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -718,7 +718,7 @@ nothing really usefull here
     print
     aTCnh.seek(0)
     sol.load_from(aTCnh, names = ['v1','v2'])   
-    print '\n- using load_from() with names v1, v2'
+    print '\n!! using load_from() with names v1, v2'
     print '\nnames:'
     print sol.names
     print '\nt'
@@ -729,7 +729,7 @@ nothing really usefull here
     
     #~ aTC.seek(0)
     #~ sol.load_from(aTC, atindexes=(0,3,1,2))   
-    #~ print '\n- using load_from() atindexes (0,3,1,2)'
+    #~ print '\n!! using load_from() atindexes (0,3,1,2)'
     #~ print '\nnames:'
     #~ print sol.names
     #~ print '\nt'
@@ -789,9 +789,9 @@ nothing really usefull here
     except ValueError, msg:
         print msg
     print
-    print '\n- testing write_to() ----------------'
+    print '\n!! testing write_to() ----------------'
     sol.write_to('examples/exp.txt')
-    print '\n- reading back from file ------------'
+    print '\n!! reading back from file ------------'
     sol.load_from('examples/exp.txt')
     print '\nnames:'
     print sol.names
@@ -803,7 +803,7 @@ nothing really usefull here
     
     
     sol.load_from('examples/TSH2b.txt')
-    print '\n- using load_from() ----------------'
+    print '\n!! using load_from() ----------------'
     print '\nnames:'
     print sol.names
     print '\nnumber of times'
@@ -818,7 +818,7 @@ nothing really usefull here
     
     sol2 = sol.clone()
     del(sol)
-    print '\n- using a cloned solution ----------'
+    print '\n!! using a cloned solution ----------'
     print '\nnames:'
     print sol2.names
     print '\nnumber of times'
@@ -833,7 +833,7 @@ nothing really usefull here
     
     sol = sol2.copy()
     del(sol2)
-    print '\n- a cloned with copy() solution -----'
+    print '\n!! a cloned with copy() solution -----'
     print '\nnames:'
     print sol.names
     print '\nnumber of times'
@@ -848,7 +848,7 @@ nothing really usefull here
 
     sol2 = sol.copy('HTA')
     del(sol)
-    print "\n- a cloned with copy('HTA') solution --"
+    print "\n!! a cloned with copy('HTA') solution --"
     print '\nnames:'
     print sol2.names
     print '\nnumber of times'
@@ -922,7 +922,7 @@ nothing really usefull here
         print tc.shortname
         print
 
-    print "- Reading tcs using info declared in a model def -"
+    print "!! Reading tcs using info declared in a model def -"
     tcs = readTCs(m, 'examples', verbose=True)
     for i, tc in enumerate(tcs):
         print tc.shape
@@ -940,7 +940,7 @@ nothing really usefull here
     variables SDLTSH HTA
     """)
 
-    print "- Reading tcs using info declared in a model def -"
+    print "!! Reading tcs using info declared in a model def -"
     print "(relative paths declared)"
     tcs = readTCs(m, verbose=True)
     for i, tc in enumerate(tcs):
