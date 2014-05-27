@@ -1,2 +1,3 @@
+include *.rst LICENSE
 recursive-include stimator/examples *.*
 recursive-include stimator/tests *.py
