@@ -17,12 +17,13 @@ packages = [
     'stimator.moo'
 ]
 
-requires = []
+requires = ['sympy']
 
     
 setup(name = "stimator",
     version = "0.9.85",
-    description = "S-timator : a Python package for the analysis of ODE models.",
+    license = "BSD",
+    description = "Analysis of ODE models with focus on model selection and parametrization.",
     author = "António Ferreira",
     author_email = "aeferreira@fc.ul.pt",
     url = "http://enzymology.fc.ul.pt/software.htm",
@@ -30,6 +31,7 @@ setup(name = "stimator",
     packages = packages,
     package_data={'stimator': ['examples/*.*']},
     scripts = ["run_wxgui.py"],
-    long_description = readme 
-) 
+    long_description = readme,
+    install_requires = requires)
+
 
