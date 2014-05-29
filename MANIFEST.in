@@ -1,3 +1,5 @@
 include *.rst LICENSE
 recursive-include stimator/examples *.*
 recursive-include stimator/tests *.py
+prune stimator/examples/ui_demos
+prune stimator/examples/.ipynb_checkpoints
