@@ -4,6 +4,21 @@ try:
 except ImportError:
     from distutils.core import setup
 
+import re
+import os
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+def find_version(*file_paths):
+    p = os.path.join(here, *file_paths)
+    with open(p) as f:
+        version_file = f.read()
+    version_match = re.search(r"^__version__\.version = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
+
 with open('README.rst') as f:
     readme = f.read()
 ## with open('HISTORY.rst') as f:
@@ -37,7 +52,7 @@ classifs=[
         'Topic :: Scientific/Engineering :: Physics']
     
 setup(name = "stimator",
-    version = "0.9.85",
+    version=find_version('stimator', 'version_info.py'),
     license = "BSD",
     description = "Analysis of ODE models with focus on model selection and parameter estimation.",
     author = "António Ferreira",
@@ -45,12 +60,12 @@ setup(name = "stimator",
     url = "http://enzymology.fc.ul.pt/software.htm",
     include_package_data=True,
     packages = packages,
-    package_data={'stimator': ['examples/*.py', 
-                               'examples/*.ipynb', 
-                               'examples/*.mdl', 
-                               'examples/*.txt']},
-    scripts = ["run_wxgui.py"],
-    keywords = "hello world example examples",
+    entry_points = {
+        'gui_scripts': [
+            'start_stimator_wx = stimator.gui.run_wxgui',
+        ]
+    },
+    keywords = "ODE-models estimation dynamics",
     classifiers=classifs,
     long_description = readme,
     install_requires = requires)

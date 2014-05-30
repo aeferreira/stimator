@@ -4,3 +4,4 @@ recursive-include stimator/examples *.ipynb
 recursive-include stimator/examples *.mdl
 recursive-include stimator/examples *.txt
 recursive-include stimator/tests *.py
+prune stimator/examples/.ipynb_checkpoints

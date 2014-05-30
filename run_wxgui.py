@@ -1,3 +1,3 @@
 import stimator.gui
 
-stimator.gui.run_gui()
+stimator.gui.run_wxgui()

@@ -1,1 +1,1 @@
-from wxgui import run_gui
+from wxgui import run_wxgui

@@ -1195,7 +1195,7 @@ class CalcOptmThread:
         self.solver.finalize()
         self.running = False
 
-def run_gui():
+def run_wxgui():
     app = wx.App()
     frame = MyFrame(None)
     frame.Center()
@@ -1204,4 +1204,4 @@ def run_gui():
     app.MainLoop()
 
 if __name__ == "__main__":
-    run_gui()
+    run_wxgui()
