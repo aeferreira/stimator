@@ -2,7 +2,9 @@
 ===========================================================================================
 
 *S-timator* is a Python library to analyse ODE-based models
-(also known as *dynamic* or *kinetic* models). These models are often found in many scientific fields, particularly in Physics, Chemistry, Biology and Engeneering.
+(also known as *dynamic* or *kinetic* models). These models are often found
+in many scientific fields, particularly in Physics, Chemistry, Biology and
+Engineering.
 
 Features include:
 
@@ -14,23 +16,16 @@ Features include:
   built-in numerical optimizers can find parameter values and assist you in the
   experimental design for model selection.
 
-*S-timator* is in an alpha stage: many new feature will be available soon.
+*S-timator* is in an alpha stage: many new features will be available soon.
 
 Requirements
 ------------
 
-*S-timator* supports Python versions 2.6 and up, but support to 3.x is
-comming soon.
+*S-timator* supports Python versions 2.6 and up, but support of 3.x is
+coming soon.
 
-*S-timator* depends on the "scientific python stack".  
-The following "scientific python" distributions are recommended, **as they provide 
-an easy installation of all the requirements**:
-
-- `Anaconda <https://store.continuum.io/cshop/anaconda/>`_ (or `Miniconda <http://conda.pydata.org/miniconda.html>`_ followed by the necessary ``conda install``'s)
-- `Python (x,y) <https://code.google.com/p/pythonxy/>`_
-- `Enthought Canopy <https://www.enthought.com/products/canopy/>`_
-
-The **mandatory** requirements for *S-timator* are the following libraries:
+*S-timator* depends on the "scientific python stack". The **mandatory**
+requirements for *S-timator* are the following libraries:
 
 - ``Python (2.6 or 2.7)``
 - ``numpy``
@@ -38,10 +33,19 @@ The **mandatory** requirements for *S-timator* are the following libraries:
 - ``matplotlib``
 - ``pip``
 
-Optional, but strongly recommended:
+One of the following "scientific python" distributions is recommended, **as they all provide 
+an easy installation of all requirements**:
 
-- ``sympy``
-- ``IPython`` and all its dependencies: some *S-timator* examples are provided as IPython notebooks.
+- `Anaconda <https://store.continuum.io/cshop/anaconda/>`_ (or `Miniconda <http://conda.pydata.org/miniconda.html>`_ followed by the necessary ``conda install``'s)
+- `Python (x,y) <https://code.google.com/p/pythonxy/>`_
+- `Enthought Canopy <https://www.enthought.com/products/canopy/>`_
+
+The installation of these Python libraries is optional, but strongly recommended:
+
+- ``sympy``: necessary to compute dynamic sensitivities, error estimates of
+  parameters and other symbolic computations.
+- ``IPython`` and all its dependencies: some *S-timator* examples are provided
+  as IPython notebooks.
 - ``wxPython``: although *S-timator* is a python library meant to be used for scripting or in
   IPython *literate programming* interface, a simple GUI is included. This interface
   requires wxPython.
@@ -50,11 +54,13 @@ Optional, but strongly recommended:
 Installation
 ------------
 
-Provided that ``Python``, ``numpy``, ``scipy``, ``matplotlib`` and ``pip`` are already installed, the easiest way to install *S-timator* is with ``pip``::
+After installing the required libraries, (``Python``, ``numpy``, ``scipy``,
+``matplotlib`` and ``pip``) the easiest way to install *S-timator* is
+with ``pip``::
 
     $ pip install stimator
 
-The classical way also works, **if the requirements are fullfilled**::
+The classical way also works, but is not recomended::
     
     $ python setup.py install
 
@@ -190,7 +196,7 @@ Model selection (experimental design)
 -------------------------------------
 
 One of the examples included in *S-timator* solves an experimental design problem: 
-finding a feasable set of experimental conditions that lead to the clear selection between 2 models.
+finding a feasible set of experimental conditions that lead to the clear selection between 2 models.
 
 Run example ``glyoxalase_discrim_2m.py``.
 
