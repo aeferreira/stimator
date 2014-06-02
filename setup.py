@@ -52,7 +52,7 @@ classifs=[
         'Topic :: Scientific/Engineering :: Physics']
     
 setup(name = "stimator",
-    version=find_version('stimator', 'version_info.py'),
+    version=find_version('stimator', '__init__.py'),
     license = "BSD",
     description = "Analysis of ODE models with focus on model selection and parameter estimation.",
     author = "António Ferreira",

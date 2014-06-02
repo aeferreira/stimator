@@ -1,13 +1,10 @@
-
 from stimator import *
 from stimator.deode import DeODESolver
 import pylab as pl
 
-mdl = """
-# Example file for S-timator
+mdl = """# Example file for S-timator
 title Example 2
 
-#reactions (with stoichiometry and rate)
 vin  : -> x1     , rate = k1
 v2   : x1 ->  x2 , rate = k2 * x1
 vout : x2 ->     , rate = k3 * x2
@@ -25,27 +22,16 @@ generations = 200   # maximum generations for GA
 genomesize = 60     # population size in GA
 """
 m1 = read_model(mdl)
-
-print '================================================='
 print mdl
-print '-------- an example with two time courses --------------'
 
 optSettings={'genomesize':60, 'generations':200}
 timecourses = readTCs(['ex2data.txt'], verbose=True)
 
 solver = DeODESolver(m1,optSettings, timecourses)
 solver.Solve()
-
 print solver.reportResults()
-
 fig1 = pl.figure()
 solver.draw(fig1)
-
-best = """
-k3=0.293992
-k2=0.478249
-k1=0.990811
-"""
 
 m2 = m1.clone()
 best = solver.optimum.parameters

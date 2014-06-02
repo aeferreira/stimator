@@ -1,7 +1,7 @@
-Primer for documentation on model.py
-************************************
+Primer for documentation on ``model.py``
+****************************************
 
-model.py includes class Model and utility functions for describing a kinetic network with possible uncertain parameters.
+``model.py`` includes class ``Model`` and utility functions for describing a kinetic network with possible uncertain parameters.
 
 1- Building a model
 ===================
@@ -29,7 +29,7 @@ Example::
     m.afterwards = state(A = 1.0, C = 2)
     m.afterwards.C.uncertainty(1,3)
 
-Model constructor string argument is a title for the model.
+``Model()`` constructor string argument is a title for the model.
 
 All model data is inserted through assignment (using the mighty dot). 
 
@@ -40,10 +40,10 @@ and the value is the rate constant.
 
 Model variables are guessed from the stoichiometry of reactions.
 
-transf()creates time varying expressions. Single argument (a string) is the 
+``transf()`` creates time varying expressions. Single argument (a string) is the 
 expression to be computed. It can depend on variables and parameters.
 
-Parameters are created by assignment to constant floats or ints.
+Parameters are created by assignment to constant ``float``'s or ``int``'s.
 
 If a variable (guessed by stoichiometry) is assigned to a constant it becomes 
 a parameter (an 'external' or 'independent' variable). In the example, 
@@ -70,7 +70,7 @@ estimated, by using function uncertainty.
 2- printing and cloning
 =======================
 
-Models can be printed with print and cloned with function clone()::
+Models can be printed with print and cloned with function ``clone()``::
 
     print m
 
@@ -104,7 +104,6 @@ Models can be printed with print and cloned with function clone()::
     V3 = ? (0.1, 1.0)
     afterwards.C = ? (1.0, 3.0)
 
-::
     m2 = m.clone()
     print m2
 
@@ -122,8 +121,6 @@ Most components have a name attribute. (Model has a title).
 Parameters and values in states behave has floats. 
 
 States can be iterated with for. (name, value) tuples are returned.::
-
-
 
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
@@ -143,14 +140,6 @@ States can be iterated with for. (name, value) tuples are returned.::
     iterating m.init
         A = 1.0
         C = 1.0
-
-
-
-
-
-
-
-
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
     print len(m.parameters), 'parameters total'
@@ -212,7 +201,6 @@ States can be iterated with for. (name, value) tuples are returned.::
     for name, x in m.init:
         print '	', name, '=', x.pprint()
     print 
-
     print '********** Testing stoichiometry matrix ********************'
     print 'Stoichiometry matrix:'
     N = m.genStoichiometryMatrix()
@@ -227,33 +215,27 @@ States can be iterated with for. (name, value) tuples are returned.::
     print 'calcstring for v3 with uncertain parameters:
     ', m.rateCalcString(m.v3.rate, True)
     print
-
     print '********** Testing rate and dXdt generating functions ******'
     print 'Operating point:'
     varvalues = [1.0, 1.0]
     pars      = [1.0]
-
     print 'variables  =', dict((v.name, value) for v,value in zip(m.variables, varvalues))
     print 'parameters =', dict((p.name, p)     for p in m.parameters)
-
     print '---- rates using Model.rates_func() -------------------------'
     vratesfunc = m.rates_func()
     vrates = vratesfunc(varvalues,0)
     for v,r in zip(m.reactions, vrates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
-
     print '---- transformations using Model.transf_func() --------------'
     tratesfunc = m.transf_func()
     trates = tratesfunc(varvalues,0)
     for v,r in zip(m.transf, trates):
         print "%s = %-20s = %s" % (v.name, v.rate, r)
-
     print '---- dXdt using Model.dXdt() --------------------------------'
     #f = m.getdXdt()
     dXdt = m.dXdt(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
-
     print '---- dXdt using Model.dXdt() setting uncertain parameters ---'
     print 'f = m.getdXdt(with_uncertain = True)'
     f = m.getdXdt(with_uncertain = True)
@@ -263,15 +245,12 @@ States can be iterated with for. (name, value) tuples are returned.::
     dXdt = f(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
-
     print '---- dXdt using Model.dXdt_with(pars) ------------------------'
     print 'f = m.dXdt_with(pars)'
     f = m.dXdt_with(pars)
     dXdt   = f(varvalues,0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
-
-
     print '---- dXdt using Model.dXdt() with a state argument (m.init) --'
     print 'm.init:', m.init
     print 'making m.V3 = 1.0'
@@ -284,7 +263,6 @@ States can be iterated with for. (name, value) tuples are returned.::
     dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
-
     print '---- same, changing state argument ---------------------------'
     m.init.A = 2.0
     print 'after m.init.A = 2.0'
@@ -296,3 +274,5 @@ States can be iterated with for. (name, value) tuples are returned.::
     dXdt = f(m.vectorize("init"),0)
     for x,r in zip(m.variables, dXdt):
         print "d%s/dt = %s" % (x.name, r)
+
+All docs, for now. IPython based docs are comming soon.
