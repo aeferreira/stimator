@@ -62,7 +62,7 @@ setup(name = "stimator",
     packages = packages,
     entry_points = {
         'gui_scripts': [
-            'start_stimator_wx = stimator.gui.run_wxgui',
+            'start_stimator_wx = stimator.gui:run_wxgui',
         ]
     },
     keywords = "ODE-models estimation dynamics",

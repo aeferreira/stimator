@@ -1,10 +1,6 @@
 # -*- coding: utf8 -*-
-"""S-timator : Time-course parameter estimation using Differential Evolution.
+"""wxPython GUI for S-timator."""
 
-Copyright 2005-2014 António Ferreira
-S-timator uses Python, SciPy, NumPy, matplotlib, wxPython, and wxWindows."""
-stimatorVersion = "0.985"
-stimatorDate = "Fev 2013"
 
 import sys
 import os
@@ -20,7 +16,7 @@ import resultsframe
 import stimator.modelparser
 import stimator.deode
 import stimator.dynamics
-from stimator.version_info import __version__
+from stimator import __version__
 import images
 from wx.py.shell import Shell
 
@@ -176,7 +172,7 @@ class MyFrame(wx.Frame):
         # statusbar configuration
         self.mainstatusbar = wx.StatusBar(self, -1)
         self.mainstatusbar.SetFieldsCount(2)
-        self.mainstatusbar.SetStatusText("S-timator %s"%(stimatorVersion), 0)
+        self.mainstatusbar.SetStatusText("S-timator %s"%(__version__.fullversion), 0)
         self.mainstatusbar.SetStatusText("", 1)
         self.SetStatusBar(self.mainstatusbar)
 
