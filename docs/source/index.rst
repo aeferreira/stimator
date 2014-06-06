@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
    
    model
+   solving.rst
 
 Indices and tables
 ==================
