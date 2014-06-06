@@ -104,7 +104,7 @@ html_theme = 'nature'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-#html_title = None
+html_title = "S-timator documentation (release %s)" % release
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -140,9 +140,11 @@ html_static_path = ['_static']
 
 # If false, no module index is generated.
 #html_domain_indices = True
+html_domain_indices = False
 
 # If false, no index is generated.
 #html_use_index = True
+html_use_index = False
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False
@@ -223,7 +225,7 @@ man_pages = [
 epub_title = u'stimator'
 epub_author = u'António Ferreira'
 epub_publisher = u'António Ferreira'
-epub_copyright = u'2011, António Ferreira'
+epub_copyright = u'2014, António Ferreira'
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.
