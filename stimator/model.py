@@ -1,5 +1,5 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""S-timator Model related classes."""
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR

@@ -1,10 +1,20 @@
-Primer for documentation on ``model.py``
-****************************************
+.. module:: model
+    :synopsis: S-timator Model class and related functions.
 
-``model.py`` includes class ``Model`` and utility functions for describing a kinetic network with possible uncertain parameters.
+1. Defining models (``model.py``)
+*********************************
 
-1- Building a model
-===================
+Most of what you can accomplish with S-timator begins by defining a model or
+fetching it from a text file (in the future from an online location).
+
+The primary purpose of a ``model`` is to describe a kinetic network
+with possible uncertain parameters.
+
+This functionality is provided in the module ``model`` which implements a 
+``Model`` class.
+
+Building a model
+================
 
 Example::
 
@@ -67,14 +77,16 @@ be used as the name for the default initial value state.
 In the example, the variable C of state afterwards has been flagged to be 
 estimated, by using function uncertainty.
 
-2- printing and cloning
-=======================
+Printing and cloning
+====================
 
 Models can be printed with print and cloned with function ``clone()``::
 
     print m
 
-    Prints:
+
+This prints::
+    
     My first model
 
     Variables: A C
@@ -104,23 +116,22 @@ Models can be printed with print and cloned with function ``clone()``::
     V3 = ? (0.1, 1.0)
     afterwards.C = ? (1.0, 3.0)
 
+Cloning a model is also possible. The following prints the same data!::
+    
     m2 = m.clone()
     print m2
 
-Prints the same data!
 
+Component retrieval
+===================
 
-3-Component retrieval
-=====================
-
-Most of the data in a Model can be retrieved by using the dot 
+Most of the data in a Model can be retrieved by using the **dot** 
 access (attribute referencing).
-
-Most components have a name attribute. (Model has a title). 
 
 Parameters and values in states behave has floats. 
 
-States can be iterated with for. (name, value) tuples are returned.::
+States can be iterated with ``for``. (name, value) tuples are returned.::
+
 
     print '********** Testing component retrieval *********************'
     print 'm.K3 :',m.Km3
@@ -132,7 +143,8 @@ States can be iterated with for. (name, value) tuples are returned.::
         print '	', name, '=', x
     print
 
-    Prints:
+Prints::
+
     m.K3 : 4.0
     m.K3.name : Km3 (a float with a name attr)
     m.init: (A = 1.0, C = 1.0)
@@ -140,6 +152,9 @@ States can be iterated with for. (name, value) tuples are returned.::
     iterating m.init
         A = 1.0
         C = 1.0
+
+::    
+
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
     print len(m.parameters), 'parameters total'
