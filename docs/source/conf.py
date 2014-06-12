@@ -69,7 +69,7 @@ release = '0.9.90' #TODO apply DRY and pull from stimator.__init__.
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+exclude_patterns = ['build', '_themes']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -98,6 +98,9 @@ pygments_style = 'sphinx'
 # a list of builtin themes.
 # html_theme = 'default'
 html_theme = 'nature'
+## import sphinx_rtd_theme
+## html_theme = "sphinx_rtd_theme"
+## html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
