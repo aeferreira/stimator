@@ -4,7 +4,7 @@ import pprint
 def listify(arguments):
     if isinstance(arguments, list) or isinstance(arguments, tuple):
         return [a.strip() for a in arguments]
-    if isinstance(arguments, str) or isinstance(arguments, unicode): 
+    if isinstance(arguments, str) or isinstance(arguments, unicode):
         arguments = arguments.split()
         return [a.strip() for a in arguments]
 
@@ -71,7 +71,9 @@ if __name__ == '__main__':
     cfg = DictDotLookup(cfg_data)
 
     #   Standard nested dictionary lookup.
-    print 'normal lookup :', cfg['foo']['bar']['tdata'][0]['baz']
+    print(('normal lookup :', cfg['foo']['bar']['tdata'][0]['baz']))
+
 
     #   Dot-style nested lookup.
-    print 'dot lookup    :', cfg.foo.bar.tdata[0].baz
+    print(('dot lookup    :', cfg.foo.bar.tdata[0].baz))
+
