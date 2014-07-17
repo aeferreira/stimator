@@ -24,7 +24,7 @@ init       = state(Ca = 0.1, CaComp = 0.63655)
 print m
 
 def run_normal():
-    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    s = Solutions(title="CICR model: Effect of stimulus on citosolic calcium")
     time0 = time()
     ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
     print 'starting'
@@ -33,7 +33,7 @@ def run_normal():
 
     print 'using ModelSolver done in', time()-time0, 's'
 
-    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    s = Solutions(title="CICR model: Effect of stimulus on citosolic calcium")
 
     time0 = time()
     for stimulus in linspace(0.0,1.0,200):
@@ -42,7 +42,7 @@ def run_normal():
 
     print 'using solve done in', time()-time0, 's'
 
-    s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
+    s = Solutions(title="CICR model: Effect of stimulus on citosolic calcium")
 
     ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
     for stimulus in 0.0, 0.2, 0.4, 0.78:
@@ -52,7 +52,7 @@ def run_normal():
         m.B = stimulus
         s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
 
-    plot(s,ynormalize = True, show = True)
+    s.plot(ynormalize = True, show = True)
     #plot(s, superimpose=True)
 
 def test():

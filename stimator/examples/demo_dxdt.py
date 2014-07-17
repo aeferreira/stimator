@@ -1,5 +1,5 @@
 """S-timator : DEMO of dX/dt solution."""
-from stimator import *
+from stimator import read_model, solve, Solutions
 from stimator.dynamics import getdXdt
 
 print __doc__
@@ -31,4 +31,4 @@ init       = state(Ca = 0.1, CaComp = 0.63655)
 x = solve(m, tf = 6.0, npoints = 5000, title = 'X')
 dxdt = x.copy(newtitle = 'dX/dt').apply_transf(getdXdt(m))
 
-plot([x,dxdt], show = True)
+Solutions([x,dxdt]).plot(show = True)

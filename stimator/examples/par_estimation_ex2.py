@@ -1,4 +1,4 @@
-from stimator import *
+from stimator import read_model, readTCs, solve
 from stimator.deode import DeODESolver
 import pylab as pl
 
@@ -38,6 +38,6 @@ best = solver.optimum.parameters
 best = [(n,v) for n,v,e in best]
 m2.update(best)
 s2 = solve(m2, tf=20.0)
-plot(s2)
+s2.plot()
 
 pl.show()

@@ -4,7 +4,7 @@
 """S-timator : DEMO of dynamic sensitivities."""
 
 from numpy import *
-from stimator import *
+from stimator import read_model, solve, Solutions
 from stimator.dynamics import add_dSdt_to_model
 
 print __doc__
@@ -46,10 +46,10 @@ add_dSdt_to_model(m, pars)
 
 print '\nSolving with sensitivities...'
 sol = solve(m, tf = 4030.0)
-plots = [sol.copy(names = "HTA SDLTSH", newtitle = 'X')]
+plots = Solutions([sol.copy(names = "HTA SDLTSH", newtitle = 'X')])
 for p in pars:
     plots.append(sol.copy(names = 'd_HTA_d_%s d_SDLTSH_d_%s'%(p,p), 
                           newtitle ='dX/d'+p))
 
 print '\nDONE!'
-plot(plots, show = True)
+plots.plot(show = True)
