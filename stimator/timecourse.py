@@ -13,6 +13,7 @@ import re
 from numpy import *
 import model
 import modelparser
+import pylab as pl
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
@@ -276,6 +277,10 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[array(newindexes, dtype=int)]
 
+    def plot(self):
+        ss = Solutions([self])
+        ss.plot()
+
 #----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
 #----------------------------------------------------------------------------
@@ -284,13 +289,18 @@ class SolutionTimeCourse(object):
 class Solutions(object):
     """Holds a colection of objects of class SolutionTimeCourse"""
 
-    def __init__(self, title=""):
+    def __init__(self, aList=None, title=""):
         self.title = title
         self.solutions = []
         self.shortnames = []
         self.filenames = []
         self.basedir = None
         self.defaultnames = None  # list of names to use if headers are missing
+        # aList argument must be an iterable
+        #TODO: throw Exception if it isn't
+        if aList is not None:
+            for s in aList:
+                self.append(s)
 
     def __str__(self):
         if len(self.filenames) > 0:
@@ -401,6 +411,138 @@ class Solutions(object):
         vnames = [x for x in amodel().varnames]
         self.orderByNames(vnames)
 
+    def plot(self, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None, marker_threshold=150):
+        if figure is None:
+            figure = pl.figure()
+        colours = ['%s-'%c for c in 'brgkycm']
+        ntc = len(self)
+        #print ntc
+        ncols = int(math.ceil(math.sqrt(ntc)))
+        nrows = int(math.ceil(float(ntc)/ncols))
+        first = True
+        
+        if superimpose:
+            curraxis=figure.add_subplot(1,1,1)
+            icolour = 0                
+            for isolution,solution in enumerate(self):
+                rangelines = range(len(solution))
+                use_dots = True
+                for i in rangelines:
+                    if len(solution[i]) > marker_threshold:
+                        use_dots = False
+                        break
+                if use_dots:
+                    ls, marker = 'None', 'o'
+                else:
+                    ls, marker = '-', 'None'
+                
+                names = ['n/a' for i in rangelines]
+                for i, name in enumerate(solution.names):
+                    names[i] = name
+                for i in rangelines:
+                    if len(solution) == 1:
+                        label = "%s"%(solution.title)
+                    else:
+                        label = "%s, %s"%(names[i], solution.title)
+                    curraxis.plot(solution.t, 
+                                  solution[i], 
+                                  colours[icolour], 
+                                  label = label, 
+                                  ls=ls, 
+                                  marker=marker)
+                    icolour +=1
+                    if icolour == len(colours):
+                        icolour = 0
+            curraxis.grid()
+            if legend:
+                h, l = curraxis.get_legend_handles_labels()
+                curraxis.legend(h, l, loc='best')
+                #box = curraxis.get_position()
+                #curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
+                     #box.width, box.height * 0.9])
+
+                # Put a legend below current axis
+                #curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                  #fancybox=True, shadow=True, ncol=5)
+                #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
+            curraxis.set_xlabel('')
+            curraxis.set_ylabel('')
+            if yrange is not None:
+                curraxis.set_ylim(yrange)
+            if hasattr(self, 'title'):
+                curraxis.set_title(self.title)
+        else:
+            for isolution,solution in enumerate(self):
+                curraxis=figure.add_subplot(nrows,ncols,isolution+1)
+                icolour = 0
+                rangelines = range(len(solution))
+                use_dots = True
+                for i in rangelines:
+                    if len(solution[i]) > marker_threshold:
+                        use_dots = False
+                        break
+                if use_dots:
+                    ls, marker = 'None', 'o'
+                else:
+                    ls, marker = '-', 'None'
+                names = ['n/a' for i in rangelines]
+                for i, name in enumerate(solution.names):
+                    names[i] = name
+                for i in rangelines:
+                    curraxis.plot(solution.t, 
+                                  solution[i], 
+                                  colours[icolour], 
+                                  label=names[i], 
+                                  ls=ls, 
+                                  marker=marker)
+                    icolour += 1
+                    if icolour == len(colours):
+                        icolour = 0 
+                curraxis.grid()
+                if legend:
+                    h, l = curraxis.get_legend_handles_labels()
+                    curraxis.legend(h, l, loc='best')
+                    #box = curraxis.get_position()
+                    #curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
+                         #box.width, box.height * 0.9])
+
+                    # Put a legend below current axis
+                    #curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                      #ancybox=True, shadow=True, ncol=5)
+                    #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
+
+                curraxis.set_xlabel('')
+                curraxis.set_ylabel('')
+                if titles is not None:
+                    curraxis.set_title(titles[isolution])
+                else:
+                    curraxis.set_title(solution.title)
+                yscale = curraxis.get_ylim()
+                if first:
+                    yscale_all = list(yscale)
+                    if yrange is not None:
+                        ynormalize = True
+                    first = False
+                else:
+                    if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
+                    if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
+            if hasattr(self, 'title'):
+                figure.suptitle(self.title)
+
+        if not superimpose and ynormalize:
+            for isolution in range(ntc):
+                curraxis=figure.add_subplot(nrows,ncols,isolution+1)
+                if yrange is not None:
+                    curraxis.set_ylim(yrange)
+                else:
+                    curraxis.set_ylim(yscale_all)
+        if save2file is not None:
+            figure.savefig(save2file)
+        if show:
+            if save2file is not None:
+                if hasattr(save2file,'read'):
+                    save2file.close()
+            pl.show()
 
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
     tcs = Solutions()

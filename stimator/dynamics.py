@@ -19,7 +19,6 @@ from scipy import integrate
 from timecourse import SolutionTimeCourse, Solutions
 
 from examples import models
-import pylab as p
 
 
 def state2array(m, state):
@@ -708,117 +707,6 @@ class ModelSolver(object):
         if self.tranf_f is not None:
             sol.apply_transf(self.tranf_f, self.tranf_names)
         return sol
-
-
-def plot(solutions, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None):
-    if isinstance(solutions, SolutionTimeCourse):
-        s = Solutions()
-        s.append(solutions)
-        solutions = s
-    if figure is None:
-        figure = p.figure()
-    colours = 'brgkycm'
-    colours = ['%s-'%c for c in colours]
-    #colours = ['r-', 'b-', 'g-', 'k-', 'y-']
-    ntc = len(solutions)
-    ncols = int(math.ceil(math.sqrt(ntc)))
-    nrows = int(math.ceil(float(ntc)/ncols))
-    first = True
-    
-    if superimpose:
-        curraxis=figure.add_subplot(1,1,1)
-        icolour = 0                
-        for isolution,solution in enumerate(solutions):
-            rangelines = range(len(solution))
-            names = ['n/a' for i in rangelines]
-            for i, name in enumerate(solution.names):
-                names[i] = name
-            for i in rangelines:
-                if len(solution) == 1:
-                    label = "%s"%(solution.title)
-                else:
-                    label = "%s, %s"%(names[i], solution.title)
-                curraxis.plot(solution.t, solution[i], colours[icolour], label = label)
-                icolour +=1
-                if icolour == len(colours):
-                    icolour = 0
-        curraxis.grid()
-        if legend:
-            h, l = curraxis.get_legend_handles_labels()
-            curraxis.legend(h, l, loc='best')
-            #box = curraxis.get_position()
-            #curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
-                 #box.width, box.height * 0.9])
-
-            # Put a legend below current axis
-            #curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-              #fancybox=True, shadow=True, ncol=5)
-            #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
-        curraxis.set_xlabel('')
-        curraxis.set_ylabel('')
-        if yrange is not None:
-            curraxis.set_ylim(yrange)
-        if hasattr(solutions, 'title'):
-            curraxis.set_title(solutions.title)
-    else:
-        for isolution,solution in enumerate(solutions):
-            curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-            icolour = 0
-            rangelines = range(len(solution))
-            names = ['n/a' for i in rangelines]
-            for i, name in enumerate(solution.names):
-                names[i] = name
-            for i in rangelines:
-                curraxis.plot(solution.t, solution[i], colours[icolour], label=names[i])
-                icolour += 1
-                if icolour == len(colours):
-                    icolour = 0 
-            curraxis.grid()
-            if legend:
-                h, l = curraxis.get_legend_handles_labels()
-                curraxis.legend(h, l, loc='best')
-                #box = curraxis.get_position()
-                #curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
-                     #box.width, box.height * 0.9])
-
-                # Put a legend below current axis
-                #curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-                  #ancybox=True, shadow=True, ncol=5)
-                #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
-
-            curraxis.set_xlabel('')
-            curraxis.set_ylabel('')
-            if titles is not None:
-                curraxis.set_title(titles[isolution])
-            else:
-                curraxis.set_title(solution.title)
-            yscale = curraxis.get_ylim()
-            if first:
-                yscale_all = list(yscale)
-                if yrange is not None:
-                    ynormalize = True
-                first = False
-            else:
-                if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
-                if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
-        if hasattr(solutions, 'title'):
-            figure.suptitle(solutions.title)
-
-    if not superimpose and ynormalize:
-        for isolution in range(ntc):
-            curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-            if yrange is not None:
-                curraxis.set_ylim(yrange)
-            else:
-                curraxis.set_ylim(yscale_all)
-    if save2file is not None:
-        figure.savefig(save2file)
-    if show:
-        if save2file is not None:
-            if hasattr(save2file,'read'):
-                save2file.close()
-        p.show()
-
 
 def test():
      

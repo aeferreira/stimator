@@ -1,7 +1,7 @@
 """S-timator package"""
 
 from model import Model, transf, state, variable, register_kin_func, get_name, set_name
-from dynamics import solve, plot, ModelSolver
+from dynamics import solve, ModelSolver
 from timecourse import readTCs, Solutions, TimeCourses
 from modelparser import read_model
 import examples
