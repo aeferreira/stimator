@@ -5,7 +5,7 @@
 #         PROJECT S-TIMATOR
 #
 # S-timator timecourse functions
-# Copyright António Ferreira 2006-2013
+# Copyright António Ferreira 2006-2014
 #----------------------------------------------------------------------------
 import os.path
 import StringIO
@@ -13,7 +13,8 @@ import re
 from numpy import *
 import model
 import modelparser
-import pylab as pl
+from matplotlib import pylab as pl
+import matplotlib.cm as cm
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
@@ -414,7 +415,6 @@ class Solutions(object):
     def plot(self, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None, marker_threshold=150):
         if figure is None:
             figure = pl.figure()
-        colours = ['%s-'%c for c in 'brgkycm']
         ntc = len(self)
         #print ntc
         ncols = int(math.ceil(math.sqrt(ntc)))
@@ -427,10 +427,10 @@ class Solutions(object):
             for isolution,solution in enumerate(self):
                 rangelines = range(len(solution))
                 use_dots = True
-                for i in rangelines:
-                    if len(solution[i]) > marker_threshold:
-                        use_dots = False
-                        break
+##                 for i in rangelines:
+##                     if len(solution[i]) > marker_threshold:
+##                         use_dots = False
+##                         break
                 if use_dots:
                     ls, marker = 'None', 'o'
                 else:
@@ -439,20 +439,24 @@ class Solutions(object):
                 names = ['n/a' for i in rangelines]
                 for i, name in enumerate(solution.names):
                     names[i] = name
+                if len(rangelines) <= 1:
+                    delta = 1.0
+                else:
+                    delta = 1.0/float(len(rangelines)-1)
+                cindex = 0.0
                 for i in rangelines:
                     if len(solution) == 1:
                         label = "%s"%(solution.title)
                     else:
                         label = "%s, %s"%(names[i], solution.title)
+                    c = cm.rainbow(cindex, 1)
                     curraxis.plot(solution.t, 
                                   solution[i], 
-                                  colours[icolour], 
-                                  label = label, 
+                                  color=c, 
+                                  label=label, 
                                   ls=ls, 
                                   marker=marker)
-                    icolour +=1
-                    if icolour == len(colours):
-                        icolour = 0
+                    cindex +=delta
             curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
@@ -474,13 +478,12 @@ class Solutions(object):
         else:
             for isolution,solution in enumerate(self):
                 curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-                icolour = 0
                 rangelines = range(len(solution))
                 use_dots = True
-                for i in rangelines:
-                    if len(solution[i]) > marker_threshold:
-                        use_dots = False
-                        break
+##                 for i in rangelines:
+##                     if len(solution[i]) > marker_threshold:
+##                         use_dots = False
+##                         break
                 if use_dots:
                     ls, marker = 'None', 'o'
                 else:
@@ -488,16 +491,20 @@ class Solutions(object):
                 names = ['n/a' for i in rangelines]
                 for i, name in enumerate(solution.names):
                     names[i] = name
+                if len(rangelines) <= 1:
+                    delta = 1.0
+                else:
+                    delta = 1.0/float(len(rangelines)-1)
+                cindex = 0.0
                 for i in rangelines:
+                    c = cm.rainbow(cindex, 1)
                     curraxis.plot(solution.t, 
                                   solution[i], 
-                                  colours[icolour], 
+                                  color=c, 
                                   label=names[i], 
                                   ls=ls, 
                                   marker=marker)
-                    icolour += 1
-                    if icolour == len(colours):
-                        icolour = 0 
+                    cindex += delta
                 curraxis.grid()
                 if legend:
                     h, l = curraxis.get_legend_handles_labels()
@@ -767,15 +774,15 @@ if __name__ == "__main__":
     demodata = """
 #this is demo data with a header
 t x y z
-0       1 0         0
+0       0.95 0         0
 0.1                  0.1
 
   0.2 skip 0.2 skip this
 nothing really usefull here
 - 0.3 0.3 this line should be skipped
 #0.4 0.4
-0.5  - 0.5 - -
-0.6 0.6 0.8 0.9
+0.5 0.6 0.8 0.9
+0.6  - 0.5 - -
 
 """
     demodata_noheader = """
@@ -873,6 +880,7 @@ nothing really usefull here
     print '\ndata'
     print sol.data
     print
+        
     aTCnh.seek(0)
     sol.load_from(aTCnh, names=['v1', 'v2'])
     print '\n!! using load_from() with names v1, v2'
@@ -957,6 +965,10 @@ nothing really usefull here
     print '\ndata'
     print sol.data
     print
+    
+    print '\n!! testing plot() ----------------'
+
+    sol.plot()
 
     sol.load_from('examples/TSH2b.txt')
     print '\n!! using load_from() ----------------'
@@ -1027,6 +1039,9 @@ nothing really usefull here
         print tc.filename
         print tc.shortname
         print
+    
+    print "!! Plotting tcs, using plot() -----------"
+    tcs.plot()
 
     print "Providing default names HTA SDLTSH ------------------------"
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
@@ -1040,6 +1055,9 @@ nothing really usefull here
         print tc.last
         print tc.shortname
         print
+
+    print "!! Plotting tcs, using plot() -----------"
+    tcs.plot(show=True)
 
     print "After changing order to HTA SDLTSH ------------------------"
 
@@ -1109,3 +1127,4 @@ nothing really usefull here
         print tc.last
         print tc.shortname
         print
+
