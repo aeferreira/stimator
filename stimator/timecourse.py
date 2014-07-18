@@ -38,11 +38,12 @@ class StimatorTCError(Exception):
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
 
-    def __init__(self, t=array([]), data=array([]), names=[], title=""):
+    def __init__(self, t=array([]), data=array([]), names=[], title="", dense = False):
         self.t = t          # values of time points
         self.data = data    # table of points: series in rows, times in cols
         self.names = names  # names of the series
         self.title = title  # a title for the solution
+        self.dense = dense
 
         #for solutions read from a file
         self.filename = ""
@@ -238,7 +239,7 @@ class SolutionTimeCourse(object):
         tc = SolutionTimeCourse(self.t.copy(),
                                 self.data.copy(),
                                 self.names[:],
-                                self.title)
+                                self.title, self.dense)
         tc.filename = self.filename
         tc.shortname = self.shortname
         return tc
@@ -261,7 +262,7 @@ class SolutionTimeCourse(object):
             title = newtitle
         else:
             title = self.title
-        tc = SolutionTimeCourse(t, data, names[:], title)
+        tc = SolutionTimeCourse(t, data, names[:], title, dense=self.dense)
         tc.filename = self.filename
         tc.shortname = self.shortname
         return tc
@@ -412,7 +413,7 @@ class Solutions(object):
         vnames = [x for x in amodel().varnames]
         self.orderByNames(vnames)
 
-    def plot(self, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None, marker_threshold=150):
+    def plot(self, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None):
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
@@ -426,7 +427,7 @@ class Solutions(object):
             icolour = 0                
             for isolution,solution in enumerate(self):
                 rangelines = range(len(solution))
-                use_dots = True
+                use_dots = not solution.dense
 ##                 for i in rangelines:
 ##                     if len(solution[i]) > marker_threshold:
 ##                         use_dots = False
@@ -479,7 +480,7 @@ class Solutions(object):
             for isolution,solution in enumerate(self):
                 curraxis=figure.add_subplot(nrows,ncols,isolution+1)
                 rangelines = range(len(solution))
-                use_dots = True
+                use_dots = not solution.dense
 ##                 for i in rangelines:
 ##                     if len(solution[i]) > marker_threshold:
 ##                         use_dots = False

@@ -594,7 +594,7 @@ def solve(model,
         title = model['title']        
     Y = copy(Y.T)
 
-    sol = SolutionTimeCourse (times, Y, names, title)
+    sol = SolutionTimeCourse (times, Y, names, title, dense = True)
     
     #get outputs
     if outputs is False: # variables are output
@@ -702,7 +702,7 @@ class ModelSolver(object):
         Y = output[0]
         if title is None:
             title = self.title
-        sol = SolutionTimeCourse (self.times, Y.T, self.names, title)
+        sol = SolutionTimeCourse (self.times, Y.T, self.names, title, dense=True)
         
         if self.tranf_f is not None:
             sol.apply_transf(self.tranf_f, self.tranf_names)
@@ -913,8 +913,8 @@ def test():
     
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
-
-    plot ([solution1, solution2, solution3, solution4], superimpose=False, show = True, save2file=savingfile)
+    sols = Solutions([solution1, solution2, solution3, solution4])
+    sols.plot(superimpose=False, show = True, save2file=savingfile)
     
     if os.path.exists(savingfile):
         print 'removing temp figure file'
