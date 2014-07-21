@@ -1,6 +1,5 @@
 from stimator import read_model, readTCs, solve
 from stimator.deode import DeODESolver
-import pylab as pl
 
 mdl = """# Example file for S-timator
 title Example 2
@@ -30,14 +29,11 @@ timecourses = readTCs(['ex2data.txt'], verbose=True)
 solver = DeODESolver(m1,optSettings, timecourses)
 solver.Solve()
 print solver.reportResults()
-fig1 = pl.figure()
-solver.draw(fig1)
+solver.draw()
 
 m2 = m1.clone()
 best = solver.optimum.parameters
 best = [(n,v) for n,v,e in best]
 m2.update(best)
 s2 = solve(m2, tf=20.0)
-s2.plot()
-
-pl.show()
+s2.plot(show=True)

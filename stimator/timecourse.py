@@ -279,9 +279,9 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[array(newindexes, dtype=int)]
 
-    def plot(self):
+    def plot(self, **kwargs):
         ss = Solutions([self])
-        ss.plot()
+        ss.plot(kwargs)
 
 #----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -413,7 +413,7 @@ class Solutions(object):
         vnames = [x for x in amodel().varnames]
         self.orderByNames(vnames)
 
-    def plot(self, show = False, figure = None, style = None, titles=None, ynormalize = False, yrange=None, superimpose = False, suptitlegend=False, legend=True, save2file=None):
+    def plot(self, show=False, figure=None, style=None, titles=None, ynormalize=False, yrange=None, superimpose=False, suptitlegend=False, legend=True, save2file=None):
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
@@ -424,14 +424,10 @@ class Solutions(object):
         
         if superimpose:
             curraxis=figure.add_subplot(1,1,1)
-            icolour = 0                
             for isolution,solution in enumerate(self):
-                rangelines = range(len(solution))
+                nlines = len(solution)
+                rangelines = range(nlines)
                 use_dots = not solution.dense
-##                 for i in rangelines:
-##                     if len(solution[i]) > marker_threshold:
-##                         use_dots = False
-##                         break
                 if use_dots:
                     ls, marker = 'None', 'o'
                 else:
@@ -440,13 +436,13 @@ class Solutions(object):
                 names = ['n/a' for i in rangelines]
                 for i, name in enumerate(solution.names):
                     names[i] = name
-                if len(rangelines) <= 1:
+                if nlines <= 1:
                     delta = 1.0
                 else:
-                    delta = 1.0/float(len(rangelines)-1)
+                    delta = 1.0/float(nlines-1)
                 cindex = 0.0
                 for i in rangelines:
-                    if len(solution) == 1:
+                    if nlines == 1:
                         label = "%s"%(solution.title)
                     else:
                         label = "%s, %s"%(names[i], solution.title)
@@ -462,14 +458,6 @@ class Solutions(object):
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
-                #box = curraxis.get_position()
-                #curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
-                     #box.width, box.height * 0.9])
-
-                # Put a legend below current axis
-                #curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-                  #fancybox=True, shadow=True, ncol=5)
-                #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
             if yrange is not None:
@@ -479,12 +467,9 @@ class Solutions(object):
         else:
             for isolution,solution in enumerate(self):
                 curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-                rangelines = range(len(solution))
+                nlines = len(solution)
+                rangelines = range(nlines)
                 use_dots = not solution.dense
-##                 for i in rangelines:
-##                     if len(solution[i]) > marker_threshold:
-##                         use_dots = False
-##                         break
                 if use_dots:
                     ls, marker = 'None', 'o'
                 else:
@@ -492,10 +477,10 @@ class Solutions(object):
                 names = ['n/a' for i in rangelines]
                 for i, name in enumerate(solution.names):
                     names[i] = name
-                if len(rangelines) <= 1:
+                if nlines <= 1:
                     delta = 1.0
                 else:
-                    delta = 1.0/float(len(rangelines)-1)
+                    delta = 1.0/float(nlines-1)
                 cindex = 0.0
                 for i in rangelines:
                     c = cm.rainbow(cindex, 1)
@@ -510,14 +495,6 @@ class Solutions(object):
                 if legend:
                     h, l = curraxis.get_legend_handles_labels()
                     curraxis.legend(h, l, loc='best')
-                    #box = curraxis.get_position()
-                    #curraxis.set_position([box.x0, box.y0 + box.height * 0.1,
-                         #box.width, box.height * 0.9])
-
-                    # Put a legend below current axis
-                    #curraxis.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-                      #ancybox=True, shadow=True, ncol=5)
-                    #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, borderaxespad=0.0)
 
                 curraxis.set_xlabel('')
                 curraxis.set_ylabel('')
@@ -782,7 +759,10 @@ t x y z
 nothing really usefull here
 - 0.3 0.3 this line should be skipped
 #0.4 0.4
+0.3 0.4 0.5 0.55
+0.4 0.5 0.6 0.7
 0.5 0.6 0.8 0.9
+0.55 0.7 0.85 0.95
 0.6  - 0.5 - -
 
 """
@@ -1042,6 +1022,10 @@ nothing really usefull here
         print
     
     print "!! Plotting tcs, using plot() -----------"
+    tcs.plot()
+    tcs.plot(superimpose=True)
+    tcs[0].dense=True
+    tcs[1].dense=True
     tcs.plot()
 
     print "Providing default names HTA SDLTSH ------------------------"

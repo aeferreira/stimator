@@ -14,6 +14,8 @@ from dynamics import *
 from modelparser import read_model
 import fim
 import timecourse
+from matplotlib import pylab as pl
+import matplotlib.cm as cm
 
 #----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
@@ -301,7 +303,9 @@ class DeODESolver(de.DESolver):
         res += '\n\n'
         return res
 
-    def draw(self, figure):
+    def draw(self, figure=None, show=False):
+        if figure is None:
+            figure = pl.figure()
         colours = 'brgkycm'
         figure.clear()
         tcsubplots = []
@@ -320,7 +324,13 @@ class DeODESolver(de.DESolver):
             subplot.set_title("%s (%d pt) %g"% tcstats[i], fontsize = 12)
             expsol = expsols[i]
             symsol = bestsols[i]
-            icolor = 0
+            
+            nlines = len(expsol)
+            if nlines <= 1:
+                delta = 1.0
+            else:
+                delta = 1.0/float(nlines-1)
+            cindex = 0.0
             for line in range(len(expsol)):
                 #count NaN and do not plot if they are most of the timecourse
                 yexp = expsol[line]
@@ -329,25 +339,17 @@ class DeODESolver(de.DESolver):
                 #otherwise plot lines
                 xname = expsol.names[line]
                 ysim = symsol[symsol.names.index(xname)]
-                #ysim = symsol[line]
-                colorexp = colours[icolor]+'o'
-                colorsim = colours[icolor]+'-'
-                subplot.plot(expsol.t, yexp, colorexp)
-                subplot.plot(symsol.t, ysim, colorsim, label='%s' % xname)
-                icolor += 1
-                if icolor == len(colours):
-                    icolor = 0
+                c = cm.rainbow(cindex, 1)
+                lsexp, mexp = 'None', 'o'
+                lssim, msim = '-', 'None'
+                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, color=c)
+                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c, 
+                             label='%s' % xname)
+                cindex +=delta
             subplot.grid()
-##             box = subplot.get_position()
-##             subplot.set_position([box.x0, box.y0 + box.height * 0.1,
-##                  box.width, box.height * 0.9])
-
-            # Put a legend below current axis
-##             subplot.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-##               fancybox=True, shadow=True, ncol=3)
-            #curraxis.legend(h, l, bbox_to_anchor=(0., 1.02, 1., .102), 
-            #                loc=3, ncol=3, borderaxespad=0.0)
             subplot.legend(loc='best')
+            if show:
+                pl.show()
 
 def test():
     m1 = read_model("""

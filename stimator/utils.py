@@ -13,6 +13,12 @@ def write2file(filename, astring):
     f.write(astring)
     f.close()
 
+def readfile(filename):
+    f = open(filename)
+    s = f.read()
+    f.close()
+    return s
+
 def s2HMS(seconds):
     m, s = divmod(seconds, 60.0)
     h, m = divmod(m, 60.0)
