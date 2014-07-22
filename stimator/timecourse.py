@@ -413,114 +413,114 @@ class Solutions(object):
         vnames = [x for x in amodel().varnames]
         self.orderByNames(vnames)
 
-    def plot(self, show=False, figure=None, style=None, titles=None, ynormalize=False, yrange=None, superimpose=False, suptitlegend=False, legend=True, save2file=None):
+    def plot(self, show=False, 
+                   figure=None, 
+                   style=None, 
+                   titles=None, 
+                   ynormalize=False, 
+                   yrange=None, 
+                   group=False, 
+                   suptitlegend=None, 
+                   legend=True, 
+                   save2file=None):
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
-        #print ntc
-        ncols = int(math.ceil(math.sqrt(ntc)))
-        nrows = int(math.ceil(float(ntc)/ncols))
-        first = True
+        pnames = ['time course %d'%(i+1) for i in range(ntc)]
+        for i in range(ntc):
+            if self[i].title:
+                pnames[i] = self[i].title
+        #find how many plots
+        if group:
+            nplots = len(group)
+        else:
+            nplots = ntc
         
-        if superimpose:
-            curraxis=figure.add_subplot(1,1,1)
-            for isolution,solution in enumerate(self):
-                nlines = len(solution)
-                rangelines = range(nlines)
-                use_dots = not solution.dense
-                if use_dots:
-                    ls, marker = 'None', 'o'
-                else:
-                    ls, marker = '-', 'None'
-                
-                names = ['n/a' for i in rangelines]
-                for i, name in enumerate(solution.names):
-                    names[i] = name
-                if nlines <= 1:
-                    delta = 1.0
-                else:
-                    delta = 1.0/float(nlines-1)
-                cindex = 0.0
-                for i in rangelines:
-                    if nlines == 1:
-                        label = "%s"%(solution.title)
-                    else:
-                        label = "%s, %s"%(names[i], solution.title)
-                    c = cm.rainbow(cindex, 1)
-                    curraxis.plot(solution.t, 
-                                  solution[i], 
-                                  color=c, 
-                                  label=label, 
-                                  ls=ls, 
-                                  marker=marker)
-                    cindex +=delta
+        ncols = int(math.ceil(math.sqrt(nplots)))
+        nrows = int(math.ceil(float(nplots)/ncols))
+        
+        axis_set = [figure.add_subplot(nrows,ncols,i+1) for i in range(nplots)]
+        
+        plots_desc = []
+        plot_names = []
+        
+        if not group:
+            for k,solution in enumerate(self):
+                plot_names.append(pnames[k])
+                pcurves = []
+                for i in range(len(solution)):
+                    pcurves.append((solution.names[i], k, i))
+                plots_desc.append(pcurves)
+        else:
+            for vname in group:
+                plot_names.append(vname)
+                pcurves = []
+                for k,solution in enumerate(self):
+                    if vname in solution.names:
+                        indx = solution.names.index(vname)
+                        pcurves.append((pnames[k], k, indx))
+                plots_desc.append(pcurves)
+
+##         print 'layout of plots ======>>>>', plots_desc
+##         for i,c in enumerate(plots_desc):
+##             print 'plot', i, plot_names[i]
+##             for j in c:
+##                 print '\t', 'tc', j[1], 'line', j[2], '(',j[0],')'
+##         print '======>>>>'
+
+        first = True
+
+        for iplot,p in enumerate(plots_desc):
+            curraxis = axis_set[iplot]
+            nlines = len(p)
+            use_dots = not self[0].dense
+            if use_dots:
+                ls, marker = 'None', 'o'
+            else:
+                ls, marker = '-', 'None'
+            
+            if nlines <= 1:
+                delta = 1.0
+            else:
+                delta = 1.0/float(nlines-1)
+            cindex = 0.0
+            
+            for line in p:
+                c = cm.rainbow(cindex, 1)
+                curraxis.plot(self[line[1]].t, self[line[1]] [line[2]], 
+                              color=c, ls=ls, marker=marker,
+                              label=line[0])
+                cindex += delta
+            if yrange is not None:
+                curraxis.set_ylim(yrange)
+            curraxis.set_title(plot_names[iplot])
             curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
-            if yrange is not None:
-                curraxis.set_ylim(yrange)
-            if hasattr(self, 'title'):
-                curraxis.set_title(self.title)
-        else:
-            for isolution,solution in enumerate(self):
-                curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-                nlines = len(solution)
-                rangelines = range(nlines)
-                use_dots = not solution.dense
-                if use_dots:
-                    ls, marker = 'None', 'o'
-                else:
-                    ls, marker = '-', 'None'
-                names = ['n/a' for i in rangelines]
-                for i, name in enumerate(solution.names):
-                    names[i] = name
-                if nlines <= 1:
-                    delta = 1.0
-                else:
-                    delta = 1.0/float(nlines-1)
-                cindex = 0.0
-                for i in rangelines:
-                    c = cm.rainbow(cindex, 1)
-                    curraxis.plot(solution.t, 
-                                  solution[i], 
-                                  color=c, 
-                                  label=names[i], 
-                                  ls=ls, 
-                                  marker=marker)
-                    cindex += delta
-                curraxis.grid()
-                if legend:
-                    h, l = curraxis.get_legend_handles_labels()
-                    curraxis.legend(h, l, loc='best')
+##                 yscale = curraxis.get_ylim()
+##                 if first:
+##                     yscale_all = list(yscale)
+##                     if yrange is not None:
+##                         ynormalize = True
+##                     first = False
+##                 else:
+##                     if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
+##                     if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
+        if suptitlegend is not None:
+            figure.suptitle(suptitlegend)
+        elif hasattr(self, 'title'):
+            figure.suptitle(self.title)
 
-                curraxis.set_xlabel('')
-                curraxis.set_ylabel('')
-                if titles is not None:
-                    curraxis.set_title(titles[isolution])
-                else:
-                    curraxis.set_title(solution.title)
-                yscale = curraxis.get_ylim()
-                if first:
-                    yscale_all = list(yscale)
-                    if yrange is not None:
-                        ynormalize = True
-                    first = False
-                else:
-                    if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
-                    if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
-            if hasattr(self, 'title'):
-                figure.suptitle(self.title)
-
-        if not superimpose and ynormalize:
-            for isolution in range(ntc):
-                curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-                if yrange is not None:
-                    curraxis.set_ylim(yrange)
-                else:
-                    curraxis.set_ylim(yscale_all)
+##         if not superimpose and ynormalize:
+##             for isolution in range(ntc):
+##                 curraxis=figure.add_subplot(nrows,ncols,isolution+1)
+##                 if yrange is not None:
+##                     curraxis.set_ylim(yrange)
+##                 else:
+##                     curraxis.set_ylim(yscale_all)
         if save2file is not None:
             figure.savefig(save2file)
         if show:
@@ -781,8 +781,26 @@ nothing really usefull here
 
 """
 
+    demodata2 = """
+#this is demo data with a header
+t x y z
+0       0.95 0         0
+0.1                  0.09
+
+  0.2 skip 0.2 skip this
+nothing really usefull here
+- 0.3 0.3 this line should be skipped
+#0.4 0.4
+0.3 0.45 0.55 0.58
+0.4 0.5 0.65 0.75
+0.5 0.65 0.85 0.98
+0.55 0.7 0.9 0.95
+0.6  - 0.4 - -
+"""
+
     aTC = StringIO.StringIO(demodata)
     aTCnh = StringIO.StringIO(demodata_noheader)
+    aTC2 = StringIO.StringIO(demodata2)
 
     sol = SolutionTimeCourse()
     sol.load_from(aTC)
@@ -948,8 +966,21 @@ nothing really usefull here
     print
     
     print '\n!! testing plot() ----------------'
-
-    sol.plot()
+    
+    sols = Solutions(title='all time courses')
+    aTC.seek(0)
+    sol1 = SolutionTimeCourse(title='the first tc')
+    sol1.load_from(aTC)
+    sols += sol1
+    aTC2.seek(0)
+    sol2 = SolutionTimeCourse()
+    sol2.load_from(aTC2)
+    sols += sol2
+    print '\n!! plotting the two time courses...'
+    sols.plot()
+    print '\n!! plotting grouping variables z and x...'
+    sols.plot(group=['z', 'x'])
+    
 
     sol.load_from('examples/TSH2b.txt')
     print '\n!! using load_from() ----------------'
@@ -1021,12 +1052,12 @@ nothing really usefull here
         print tc.shortname
         print
     
-    print "!! Plotting tcs, using plot() -----------"
-    tcs.plot()
-    tcs.plot(superimpose=True)
-    tcs[0].dense=True
-    tcs[1].dense=True
-    tcs.plot()
+##     print "!! Plotting tcs, using plot() -----------"
+##     tcs.plot()
+##     tcs.plot(superimpose=True)
+##     tcs[0].dense=True
+##     tcs[1].dense=True
+##     tcs.plot()
 
     print "Providing default names HTA SDLTSH ------------------------"
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
@@ -1041,8 +1072,9 @@ nothing really usefull here
         print tc.shortname
         print
 
-    print "!! Plotting tcs, using plot() -----------"
-    tcs.plot(show=True)
+##     print "!! Plotting tcs, using plot() -----------"
+##     tcs.plot()
+##     tcs.plot(group=['SDLTSH'], show=True)
 
     print "After changing order to HTA SDLTSH ------------------------"
 
@@ -1112,4 +1144,6 @@ nothing really usefull here
         print tc.last
         print tc.shortname
         print
+    
+    pl.show()
 
