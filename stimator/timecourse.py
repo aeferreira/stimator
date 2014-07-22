@@ -415,7 +415,6 @@ class Solutions(object):
 
     def plot(self, show=False, 
                    figure=None, 
-                   style=None, 
                    titles=None, 
                    ynormalize=False, 
                    yrange=None, 
@@ -428,8 +427,12 @@ class Solutions(object):
         ntc = len(self)
         pnames = ['time course %d'%(i+1) for i in range(ntc)]
         for i in range(ntc):
-            if self[i].title:
-                pnames[i] = self[i].title
+            if titles:
+                pnames[i] = titles[i]
+            else:
+                if self[i].title:
+                    pnames[i] = self[i].title
+                
         #find how many plots
         if group:
             nplots = len(group)
@@ -441,38 +444,34 @@ class Solutions(object):
         
         axis_set = [figure.add_subplot(nrows,ncols,i+1) for i in range(nplots)]
         
-        plots_desc = []
-        plot_names = []
-        
+        plots_desc = []        
         if not group:
             for k,solution in enumerate(self):
-                plot_names.append(pnames[k])
-                pcurves = []
-                for i in range(len(solution)):
-                    pcurves.append((solution.names[i], k, i))
-                plots_desc.append(pcurves)
+                rsol = range(len(solution))
+                pdesc = dict(name=pnames[k],
+                             lines=[(solution.names[i], k, i) for i in rsol])
+                plots_desc.append(pdesc)
         else:
             for vname in group:
-                plot_names.append(vname)
-                pcurves = []
+                pdesc = dict(name=vname)
+                plines = []
                 for k,solution in enumerate(self):
                     if vname in solution.names:
                         indx = solution.names.index(vname)
-                        pcurves.append((pnames[k], k, indx))
-                plots_desc.append(pcurves)
+                        plines.append((pnames[k], k, indx))
+                pdesc['lines'] = plines
+                plots_desc.append(pdesc)
 
 ##         print 'layout of plots ======>>>>', plots_desc
 ##         for i,c in enumerate(plots_desc):
-##             print 'plot', i, plot_names[i]
-##             for j in c:
-##                 print '\t', 'tc', j[1], 'line', j[2], '(',j[0],')'
+##             print 'plot', i, c['name']
+##             for lname, ltc, li in c['lines']:
+##                 print '\t', 'tc', ltc, 'line', li, '(',lname,')'
 ##         print '======>>>>'
 
-        first = True
-
-        for iplot,p in enumerate(plots_desc):
-            curraxis = axis_set[iplot]
-            nlines = len(p)
+        for i,p in enumerate(plots_desc):
+            curraxis = axis_set[i]
+            nlines = len(p['lines'])
             use_dots = not self[0].dense
             if use_dots:
                 ls, marker = 'None', 'o'
@@ -485,42 +484,30 @@ class Solutions(object):
                 delta = 1.0/float(nlines-1)
             cindex = 0.0
             
-            for line in p:
+            for lname, ltc, li in p['lines']:
                 c = cm.rainbow(cindex, 1)
-                curraxis.plot(self[line[1]].t, self[line[1]] [line[2]], 
-                              color=c, ls=ls, marker=marker,
-                              label=line[0])
+                curraxis.plot(self[ltc].t, self[ltc] [li], 
+                              color=c, ls=ls, marker=marker, label=lname)
                 cindex += delta
             if yrange is not None:
                 curraxis.set_ylim(yrange)
-            curraxis.set_title(plot_names[iplot])
+            curraxis.set_title(p['name'])
             curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
-##                 yscale = curraxis.get_ylim()
-##                 if first:
-##                     yscale_all = list(yscale)
-##                     if yrange is not None:
-##                         ynormalize = True
-##                     first = False
-##                 else:
-##                     if yscale[0] < yscale_all[0]: yscale_all[0] = yscale[0]
-##                     if yscale[1] > yscale_all[1]: yscale_all[1] = yscale[1]
         if suptitlegend is not None:
             figure.suptitle(suptitlegend)
         elif hasattr(self, 'title'):
             figure.suptitle(self.title)
 
-##         if not superimpose and ynormalize:
-##             for isolution in range(ntc):
-##                 curraxis=figure.add_subplot(nrows,ncols,isolution+1)
-##                 if yrange is not None:
-##                     curraxis.set_ylim(yrange)
-##                 else:
-##                     curraxis.set_ylim(yscale_all)
+        if ynormalize and not yrange:
+            rs = [a.get_ylim() for a in axis_set]
+            common_range = min([l for l,h in rs]), max([h for l,h in rs])
+            for a in axis_set:
+                a.set_ylim(common_range)
         if save2file is not None:
             figure.savefig(save2file)
         if show:
@@ -794,7 +781,7 @@ nothing really usefull here
 0.3 0.45 0.55 0.58
 0.4 0.5 0.65 0.75
 0.5 0.65 0.85 0.98
-0.55 0.7 0.9 0.95
+0.55 0.7 0.9 1.45
 0.6  - 0.4 - -
 """
 
@@ -979,7 +966,11 @@ nothing really usefull here
     print '\n!! plotting the two time courses...'
     sols.plot()
     print '\n!! plotting grouping variables z and x...'
-    sols.plot(group=['z', 'x'])
+    sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
+    print '\n!! plotting the two time courses with yrange'
+    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
+    print '\n!! plotting the two time courses with ynormalize'
+    sols.plot(ynormalize=True, suptitlegend='with ynormalize')
     
 
     sol.load_from('examples/TSH2b.txt')
