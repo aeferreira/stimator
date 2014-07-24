@@ -206,6 +206,7 @@ class SolutionTimeCourse(object):
         self.names = header[1:]
         self.t = data[:, 0].T
         self.data = data[:, 1:].T
+        return self
 
     def save_to_str(self):
         aTC = StringIO.StringIO()
@@ -408,10 +409,12 @@ class Solutions(object):
     def orderByNames(self, varnames):
         for sol in self.solutions:
             sol.orderByNames(varnames)
+        return self
 
     def orderByModelVars(self, amodel):
         vnames = [x for x in amodel().varnames]
         self.orderByNames(vnames)
+        return self
 
     def plot(self, show=False, 
                    figure=None, 
@@ -956,22 +959,27 @@ nothing really usefull here
     
     sols = Solutions(title='all time courses')
     aTC.seek(0)
-    sol1 = SolutionTimeCourse(title='the first tc')
-    sol1.load_from(aTC)
-    sols += sol1
+    sols += SolutionTimeCourse(title='the first tc').load_from(aTC)
     aTC2.seek(0)
-    sol2 = SolutionTimeCourse()
-    sol2.load_from(aTC2)
-    sols += sol2
+    sols += SolutionTimeCourse().load_from(aTC2)
+    
     print '\n!! plotting the two time courses...'
     sols.plot()
+    
     print '\n!! plotting grouping variables z and x...'
     sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
-    print '\n!! plotting the two time courses with yrange'
-    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
-    print '\n!! plotting the two time courses with ynormalize'
-    sols.plot(ynormalize=True, suptitlegend='with ynormalize')
     
+    print '\n!! plotting the two time courses with yrange...'
+    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
+    
+    print '\n!! plotting the two time courses with ynormalize...'
+    sols.plot(ynormalize=True, suptitlegend='with ynormalize')    
+    
+##     for s in sols:
+##         s.dense = True
+
+##     print '\n!! plotting the two time courses as dense...'
+##     sols.plot(suptitlegend="plotting as dense")
 
     sol.load_from('examples/TSH2b.txt')
     print '\n!! using load_from() ----------------'
@@ -1034,13 +1042,17 @@ nothing really usefull here
 
     print "-Reading tcs, using readTCs() -----------"
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples', verbose=True)
+    print '\nResulting type:', type(tcs)
+    print '\nElements:'
     for i, tc in enumerate(tcs):
-        print tc.shape
-        print tc.names
-        print tc.state_at(0.0)
-        print tc.last
-        print tc.filename
-        print tc.shortname
+        print i, '---->>>'
+        print 'type:', type(tc)
+        print 'shape', tc.shape
+        print 'names:',tc.names
+        print 'state at 0.0', tc.state_at(0.0)
+        print 'last', tc.last
+        print 'filename:', tc.filename
+        print 'shortname:', tc.shortname
         print
     
 ##     print "!! Plotting tcs, using plot() -----------"
@@ -1050,17 +1062,22 @@ nothing really usefull here
 ##     tcs[1].dense=True
 ##     tcs.plot()
 
-    print "Providing default names HTA SDLTSH ------------------------"
+    print "-Providing default names HTA SDLTSH ------------------------"
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
                    'examples',
                    names="SDLTSH HTA".split(),
                    verbose=True)
+    print '\nResulting type:', type(tcs)
+    print '\nElements:'
     for i, tc in enumerate(tcs):
-        print tc.shape
-        print tc.names
-        print tc.state_at(0.0)
-        print tc.last
-        print tc.shortname
+        print i, '---->>>'
+        print 'type:', type(tc)
+        print 'shape', tc.shape
+        print 'names:',tc.names
+        print 'state at 0.0', tc.state_at(0.0)
+        print 'last', tc.last
+        print 'filename:', tc.filename
+        print 'shortname:', tc.shortname
         print
 
 ##     print "!! Plotting tcs, using plot() -----------"
@@ -1071,12 +1088,13 @@ nothing really usefull here
 
     tcs.orderByNames('HTA SDLTSH'.split())
     for i, tc in enumerate(tcs):
-        print tc.shape
-        print tc.names
-        print tc.state_at(0.0)
-        print tc.data[:, 0]
-        print tc.last
-        print tc.shortname
+        print i, '---->>>'
+        print 'type:', type(tc)
+        print 'shape', tc.shape
+        print 'names:',tc.names
+        print 'data[:,0] ->', tc.data[:, 0]
+        print 'last', tc.last
+        print 'shortname:', tc.shortname
         print
 
     print "saving to different files"
@@ -1099,22 +1117,28 @@ nothing really usefull here
 
     tcs.orderByModelVars(m)
     for i, tc in enumerate(tcs):
-        print tc.shape
-        print tc.names
-        print tc.state_at(0.0)
-        print tc.data[:, 0]
-        print tc.last
-        print tc.shortname
+        print i, '---->>>'
+        print 'type:', type(tc)
+        print 'shape', tc.shape
+        print 'names:',tc.names
+        print 'data[:,0] ->', tc.data[:, 0]
+        print 'last', tc.last
+        print 'shortname:', tc.shortname
         print
 
     print "!! Reading tcs using info declared in a model def -"
     tcs = readTCs(m, 'examples', verbose=True)
+    print '\nResulting type:', type(tcs)
+    print '\nElements:'
     for i, tc in enumerate(tcs):
-        print tc.shape
-        print tc.names
-        print tc.state_at(0.0)
-        print tc.last
-        print tc.shortname
+        print i, '---->>>'
+        print 'type:', type(tc)
+        print 'shape', tc.shape
+        print 'names:',tc.names
+        print 'state at 0.0', tc.state_at(0.0)
+        print 'last', tc.last
+        print 'filename:', tc.filename
+        print 'shortname:', tc.shortname
         print
 
     m = modelparser.read_model("""
@@ -1128,12 +1152,17 @@ nothing really usefull here
     print "!! Reading tcs using info declared in a model def -"
     print "(relative paths declared)"
     tcs = readTCs(m, verbose=True)
+    print '\nResulting type:', type(tcs)
+    print '\nElements:'
     for i, tc in enumerate(tcs):
-        print tc.shape
-        print tc.names
-        print tc.state_at(0.0)
-        print tc.last
-        print tc.shortname
+        print i, '---->>>'
+        print 'type:', type(tc)
+        print 'shape', tc.shape
+        print 'names:',tc.names
+        print 'state at 0.0', tc.state_at(0.0)
+        print 'last', tc.last
+        print 'filename:', tc.filename
+        print 'shortname:', tc.shortname
         print
     
     pl.show()
