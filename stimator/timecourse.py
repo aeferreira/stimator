@@ -15,6 +15,7 @@ import model
 import modelparser
 from matplotlib import pylab as pl
 import matplotlib.cm as cm
+import matplotlib as mpl
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
@@ -423,8 +424,10 @@ class Solutions(object):
                    yrange=None, 
                    group=False, 
                    suptitlegend=None, 
-                   legend=True, 
+                   legend=True,
+                   force_dense=False,
                    save2file=None):
+        mpl.rcParams['legend.numpoints'] = 1
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
@@ -476,6 +479,8 @@ class Solutions(object):
             curraxis = axis_set[i]
             nlines = len(p['lines'])
             use_dots = not self[0].dense
+            if force_dense:
+                use_dots = False
             if use_dots:
                 ls, marker = 'None', 'o'
             else:
@@ -975,11 +980,8 @@ nothing really usefull here
     print '\n!! plotting the two time courses with ynormalize...'
     sols.plot(ynormalize=True, suptitlegend='with ynormalize')    
     
-##     for s in sols:
-##         s.dense = True
-
-##     print '\n!! plotting the two time courses as dense...'
-##     sols.plot(suptitlegend="plotting as dense")
+    print '\n!! plotting the two time courses as dense...'
+    sols.plot(suptitlegend="plotting as dense", force_dense=True)
 
     sol.load_from('examples/TSH2b.txt')
     print '\n!! using load_from() ----------------'

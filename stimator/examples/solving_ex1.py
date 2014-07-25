@@ -1,5 +1,4 @@
 from stimator import read_model, solve
-import pylab as pl
 
 mdl = """# Example file for S-timator
 title Example 1
@@ -25,6 +24,4 @@ print mdl
 print '--------------------------------------------------------'
 
 s1 = solve(m, tf=5.0)
-s1.plot()
-
-pl.show()
+s1.plot(show=True)
