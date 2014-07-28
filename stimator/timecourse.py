@@ -427,6 +427,9 @@ class Solutions(object):
                    legend=True,
                    force_dense=False,
                    save2file=None):
+        
+        """Generate a graph of the time course using matplotlib."""
+        
         mpl.rcParams['legend.numpoints'] = 1
         if figure is None:
             figure = pl.figure()
@@ -494,7 +497,11 @@ class Solutions(object):
             
             for lname, ltc, li in p['lines']:
                 c = cm.rainbow(cindex, 1)
-                curraxis.plot(self[ltc].t, self[ltc] [li], 
+                y = self[ltc] [li]
+                data_loc = logical_not(isnan(y))
+                x = self[ltc].t[data_loc]
+                y = y[data_loc]
+                curraxis.plot(x, y, 
                               color=c, ls=ls, marker=marker, label=lname)
                 cindex += delta
             if yrange is not None:
@@ -962,10 +969,10 @@ nothing really usefull here
     
     print '\n!! testing plot() ----------------'
     
-    sols = Solutions(title='all time courses')
     aTC.seek(0)
-    sols += SolutionTimeCourse(title='the first tc').load_from(aTC)
     aTC2.seek(0)
+    sols = Solutions(title='all time courses')
+    sols += SolutionTimeCourse(title='the first tc').load_from(aTC)
     sols += SolutionTimeCourse().load_from(aTC2)
     
     print '\n!! plotting the two time courses...'
@@ -1057,13 +1064,6 @@ nothing really usefull here
         print 'shortname:', tc.shortname
         print
     
-##     print "!! Plotting tcs, using plot() -----------"
-##     tcs.plot()
-##     tcs.plot(superimpose=True)
-##     tcs[0].dense=True
-##     tcs[1].dense=True
-##     tcs.plot()
-
     print "-Providing default names HTA SDLTSH ------------------------"
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
                    'examples',
@@ -1082,9 +1082,10 @@ nothing really usefull here
         print 'shortname:', tc.shortname
         print
 
-##     print "!! Plotting tcs, using plot() -----------"
-##     tcs.plot()
-##     tcs.plot(group=['SDLTSH'], show=True)
+    print "!! Plotting tcs, using plot() -----------"
+    tcs.plot()
+    tcs.plot(group=['SDLTSH'])
+    tcs.plot(force_dense=True)
 
     print "After changing order to HTA SDLTSH ------------------------"
 
