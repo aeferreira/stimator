@@ -23,5 +23,4 @@ print '========= model ========================================'
 print mdl
 print '--------------------------------------------------------'
 
-s1 = solve(m, tf=5.0)
-s1.plot(show=True)
+solve(m, tf=5.0).plot(show=True, fig_size=(6.5, 6))

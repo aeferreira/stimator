@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+from __future__ import print_function
 # -*- coding: utf8-*-
 
 #----------------------------------------------------------------------------
@@ -283,7 +283,7 @@ class SolutionTimeCourse(object):
 
     def plot(self, **kwargs):
         ss = Solutions([self])
-        ss.plot(kwargs)
+        ss.plot(**kwargs)
 
 #----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -360,7 +360,7 @@ class Solutions(object):
         self.data = []
         nTCsOK = 0
         if verbose:
-            print "-------------------------------------------------------"
+            print ("-------------------------------------------------------")
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 print ("Time course file \n%s\ndoes not exist" % filename)
@@ -369,12 +369,12 @@ class Solutions(object):
             sol = SolutionTimeCourse()
             sol.load_from(filename, names=names)
             if sol.shape == (0, 0):
-                print "File\n%s\ndoes not contain valid time-course data" % filename
+                print ("File\n%s\ndoes not contain valid time-course data" % filename)
                 os.chdir(cwd)
                 return nTCsOK
             else:
                 if verbose:
-                    print "%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename)
+                    print ("%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename))
                 self.append(sol)
                 nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
@@ -387,7 +387,7 @@ class Solutions(object):
 
     def saveTimeCoursesTo(self, filenames, filedir=None, verbose=False):
         if len(self) == 0:
-            print "No time courses to save!"
+            print ("No time courses to save!")
             return 0
 
         # check and load timecourses
@@ -400,11 +400,11 @@ class Solutions(object):
         pathlist = [os.path.abspath(k) for k in filenames]
 
         if verbose:
-            print "-------------------------------------------------------"
+            print ("-------------------------------------------------------")
         for fn, sol in zip(pathlist, self.solutions):
             sol.write_to(fn)
             if verbose:
-                print "%d time points for %d variables written to file %s" % (sol.ntimes, len(sol), fn)
+                print ("%d time points for %d variables written to file %s" % (sol.ntimes, len(sol), fn))
         os.chdir(cwd)
 
     def orderByNames(self, varnames):
@@ -419,6 +419,7 @@ class Solutions(object):
 
     def plot(self, show=False, 
                    figure=None, 
+                   fig_size=None,
                    titles=None, 
                    ynormalize=False, 
                    yrange=None, 
@@ -426,11 +427,17 @@ class Solutions(object):
                    suptitlegend=None, 
                    legend=True,
                    force_dense=False,
-                   save2file=None):
+                   save2file=None, **kwargs):
         
         """Generate a graph of the time course using matplotlib."""
         
         mpl.rcParams['legend.numpoints'] = 1
+        original_figsize =  mpl.rcParams['figure.figsize']
+        #print ('original_figsize', original_figsize)
+        if fig_size is not None:
+            mpl.rcParams['figure.figsize'] = fig_size
+            #print ('figure size set to ',  mpl.rcParams['figure.figsize'])
+        
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
@@ -529,7 +536,9 @@ class Solutions(object):
             if save2file is not None:
                 if hasattr(save2file,'read'):
                     save2file.close()
+            mpl.rcParams['figure.figsize'] = original_figsize
             pl.show()
+        mpl.rcParams['figure.figsize'] = original_figsize
 
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
     tcs = Solutions()
@@ -749,7 +758,7 @@ def getCriteriumFunction(weights, model, tc):
 
 if __name__ == "__main__":
 
-    print '\n===Parsing in-code timecourse ========================'
+    print ('\n===Parsing in-code timecourse ========================')
 
     demodata = """
 #this is demo data with a header
@@ -806,92 +815,85 @@ nothing really usefull here
 
     sol = SolutionTimeCourse()
     sol.load_from(aTC)
-    print '\n!! using load_from() ----------------'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
+    print ('\n!! using load_from() ----------------')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nt')
+    print (sol.t)
+    print ('\ndata')
+    print (sol.data, '\n')
 
     sol.load_from_str(demodata)
     sol.orderByNames("z y".split())
-    print '\n!! using load_from() with name order z y'
-    print '\nnames:'
-    print sol.names
-    print '\ndata'
-    print sol.data
-    print
+    print ('\n!! using load_from() with name order z y')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\ndata')
+    print (sol.data, '\n')
 
     sol.load_from_str(demodata)
     sol.orderByNames("z".split())
-    print '\n!! using load_from() with name order z'
-    print '\nnames:'
-    print sol.names
-    print '\ndata'
-    print sol.data
-    print
+    print ('\n!! using load_from() with name order z')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\ndata')
+    print (sol.data, '\n')
 
     try:
         sol.load_from_str(demodata)
-        print '\n!! using load_from() with name order x bof z'
+        print ('\n!! using load_from() with name order x bof z')
         sol.orderByNames("x bof z".split())
-        print '\nnames:'
-        print sol.names
-        print '\ndata'
-        print sol.data
-        print
+        print ('\nnames:')
+        print (sol.names)
+        print ('\ndata')
+        print (sol.data, '\n')
     except StimatorTCError, msg:
-        print msg
-        print
+        print (msg, '\n')
 
     sol.load_from_str(demodata)
-    print '\n!! using load_from() ----------------'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
-    print '\n!! now dumping, using save_to_str() ----------------'
-    stc = sol.save_to_str()
-    print stc
-    print '-----------------------------------------------------'
+    print ('\n!! using load_from() ----------------')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nt')
+    print (sol.t)
+    print ('\ndata')
+    print (sol.data, '\n')
 
-    print '===Reading data without a header========================='
+    print ('\n!! now dumping, using save_to_str() ----------------')
+    stc = sol.save_to_str()
+    print (stc)
+    print ('-----------------------------------------------------')
+
+    print ('===Reading data without a header=========================')
     aTCnh.seek(0)
     sol.load_from(aTCnh)
-    print '\n!! using load_from(), names not provided'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
+    print ('\n!! using load_from(), names not provided')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nt')
+    print (sol.t)
+    print ('\ndata')
+    print (sol.data, '\n')
+
     aTCnh.seek(0)
     sol.load_from(aTCnh, names=['v1', 'v2', 'v3', 'v4', 'v5'])
-    print '\n!! using load_from() with names v1, v2 ,v3, v4, v5'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
+    print ('\n!! using load_from() with names v1, v2 ,v3, v4, v5')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nt')
+    print (sol.t)
+    print ('\ndata')
+    print (sol.data, '\n')
         
     aTCnh.seek(0)
     sol.load_from(aTCnh, names=['v1', 'v2'])
-    print '\n!! using load_from() with names v1, v2'
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
+    print ('\n!! using load_from() with names v1, v2')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nt')
+    print (sol.t)
+    print ('\ndata')
+    print (sol.data, '\n')
 
     #~ aTC.seek(0)
     #~ sol.load_from(aTC, atindexes=(0,3,1,2))
@@ -904,70 +906,69 @@ nothing really usefull here
     #~ print sol.data
     #~ print
 
-    print '==Using SolutionTimeCourse interface ===================='
+    print ('==Using SolutionTimeCourse interface ====================')
     aTC.seek(0)
     sol.load_from(aTC)
-    print 'retrieving components...'
+    print ('retrieving components...')
     try:
-        print '\nnames:'
-        print sol.names
-        print '\nt'
-        print sol.t
-        print '\ndata'
-        print sol.data
-        print
-        print 'len(sol)'
-        print len(sol)
-        print 'sol.ntimes'
-        print sol.ntimes
-        print 'sol[0] (first var, "x")'
-        print sol[0]
-        print 'sol.t'
-        print sol.t
-        print "sol['x']"
-        print sol['x']
-        print "sol.names"
-        print sol.names
-        print 'Last time point, sol[:,-1] returns array'
-        print sol[:, -1]
-        print 'The following return model.StateArray objects:'
-        print 'sol.state_at(0.2)'
-        print sol.state_at(0.2)
-        print 'sol.state_at(0.55)'
-        print sol.state_at(0.55)
-        print 'sol.state_at(0.0)'
-        print sol.state_at(0.0)
-        print 'sol.state_at(0.6)'
-        print sol.state_at(0.6)
-        print 'sol.last (Last time point the easy way)'
-        print sol.last
-        print 'sol.last.x'
-        print sol.last.x
-        print 'for i in range(len(sol)): print sol[i]'
-        for i in range(len(sol)):
-            print sol[i]
-        print 'for i in sol: print i'
-        for i in sol:
-            print i
+        print ('\nnames:')
+        print (sol.names)
+        print ('\nt')
+        print (sol.t)
+        print ('\ndata')
+        print (sol.data, '\n')
 
-        print "sol['k']"
-        print sol['k']
+        print ('len(sol)')
+        print (len(sol))
+        print ('sol.ntimes')
+        print (sol.ntimes)
+        print ('sol[0] (first var, "x")')
+        print (sol[0])
+        print ('sol.t')
+        print (sol.t)
+        print ("sol['x']")
+        print (sol['x'])
+        print ("sol.names")
+        print (sol.names)
+        print ('Last time point, sol[:,-1] returns array')
+        print (sol[:, -1])
+        print ('The following return model.StateArray objects:')
+        print ('sol.state_at(0.2)')
+        print (sol.state_at(0.2))
+        print ('sol.state_at(0.55)')
+        print (sol.state_at(0.55))
+        print ('sol.state_at(0.0)')
+        print (sol.state_at(0.0))
+        print ('sol.state_at(0.6)')
+        print (sol.state_at(0.6))
+        print ('sol.last (Last time point the easy way)')
+        print (sol.last)
+        print ('sol.last.x')
+        print (sol.last.x)
+        print ('for i in range(len(sol)): print sol[i]')
+        for i in range(len(sol)):
+            print (sol[i])
+        print ('for i in sol: print i')
+        for i in sol:
+            print (i)
+
+        print ("sol['k']")
+        print (sol['k'])
     except ValueError, msg:
-        print msg
-    print
-    print '\n!! testing write_to() ----------------'
+        print (msg)
+    print ('\n')
+    print ('\n!! testing write_to() ----------------')
     sol.write_to('examples/exp.txt')
-    print '\n!! reading back from file ------------'
+    print ('\n!! reading back from file ------------')
     sol.load_from('examples/exp.txt')
-    print '\nnames:'
-    print sol.names
-    print '\nt'
-    print sol.t
-    print '\ndata'
-    print sol.data
-    print
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nt')
+    print (sol.t)
+    print ('\ndata')
+    print (sol.data, '\n')
     
-    print '\n!! testing plot() ----------------'
+    print ('\n!! testing plot() ----------------')
     
     aTC.seek(0)
     aTC2.seek(0)
@@ -975,132 +976,116 @@ nothing really usefull here
     sols += SolutionTimeCourse(title='the first tc').load_from(aTC)
     sols += SolutionTimeCourse().load_from(aTC2)
     
-    print '\n!! plotting the two time courses...'
-    sols.plot()
-    
-    print '\n!! plotting grouping variables z and x...'
+    sols.plot(suptitlegend="plotting the two time courses")
+    sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
     sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
-    
-    print '\n!! plotting the two time courses with yrange...'
     sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
-    
-    print '\n!! plotting the two time courses with ynormalize...'
-    sols.plot(ynormalize=True, suptitlegend='with ynormalize')    
-    
-    print '\n!! plotting the two time courses as dense...'
-    sols.plot(suptitlegend="plotting as dense", force_dense=True)
+    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
+    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
 
     sol.load_from('examples/TSH2b.txt')
-    print '\n!! using load_from() ----------------'
-    print '\nnames:'
-    print sol.names
-    print '\nnumber of times'
-    print sol.ntimes
-    print '\nshape'
-    print sol.shape
-    print '\nstate at 0.0:'
-    print sol.state_at(0)
-    print '\nlast time point:'
-    print sol.last
-    print
+    print ('\n!! using load_from() ----------------')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nnumber of times')
+    print (sol.ntimes)
+    print ('\nshape')
+    print (sol.shape)
+    print ('\nstate at 0.0:')
+    print (sol.state_at(0))
+    print ('\nlast time point:')
+    print (sol.last, '\n')
 
     sol2 = sol.clone()
     del(sol)
-    print '\n!! using a cloned solution ----------'
-    print '\nnames:'
-    print sol2.names
-    print '\nnumber of times'
-    print sol2.ntimes
-    print '\nshape'
-    print sol2.shape
-    print '\nstate at 0.0:'
-    print sol2.state_at(0)
-    print '\nlast time point:'
-    print sol2.last
-    print
+    print ('\n!! using a cloned solution ----------')
+    print ('\nnames:')
+    print (sol2.names)
+    print ('\nnumber of times')
+    print (sol2.ntimes)
+    print ('\nshape')
+    print (sol2.shape)
+    print ('\nstate at 0.0:')
+    print (sol2.state_at(0))
+    print ('\nlast time point:')
+    print (sol2.last, '\n')
 
     sol = sol2.copy()
     del(sol2)
-    print '\n!! a cloned with copy() solution -----'
-    print '\nnames:'
-    print sol.names
-    print '\nnumber of times'
-    print sol.ntimes
-    print '\nshape'
-    print sol.shape
-    print '\nstate at 0.0:'
-    print sol.state_at(0)
-    print '\nlast time point:'
-    print sol.last
-    print
+    print ('\n!! a cloned with copy() solution -----')
+    print ('\nnames:')
+    print (sol.names)
+    print ('\nnumber of times')
+    print (sol.ntimes)
+    print ('\nshape')
+    print (sol.shape)
+    print ('\nstate at 0.0:')
+    print (sol.state_at(0))
+    print ('\nlast time point:')
+    print (sol.last, '\n')
 
     sol2 = sol.copy('HTA')
     del(sol)
-    print "\n!! a cloned with copy('HTA') solution --"
-    print '\nnames:'
-    print sol2.names
-    print '\nnumber of times'
-    print sol2.ntimes
-    print '\nshape'
-    print sol2.shape
-    print '\nstate at 0.0:'
-    print sol2.state_at(0)
-    print '\nlast time point:'
-    print sol2.last
-    print
+    print ("\n!! a cloned with copy('HTA') solution --")
+    print ('\nnames:')
+    print (sol2.names)
+    print ('\nnumber of times')
+    print (sol2.ntimes)
+    print ('\nshape')
+    print (sol2.shape)
+    print ('\nstate at 0.0:')
+    print (sol2.state_at(0))
+    print ('\nlast time point:')
+    print (sol2.last, '\n')
 
-    print "-Reading tcs, using readTCs() -----------"
+    print ("-Reading tcs, using readTCs() -----------")
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples', verbose=True)
-    print '\nResulting type:', type(tcs)
-    print '\nElements:'
+    print ('\nResulting type:', type(tcs))
+    print ('\nElements:')
     for i, tc in enumerate(tcs):
-        print i, '---->>>'
-        print 'type:', type(tc)
-        print 'shape', tc.shape
-        print 'names:',tc.names
-        print 'state at 0.0', tc.state_at(0.0)
-        print 'last', tc.last
-        print 'filename:', tc.filename
-        print 'shortname:', tc.shortname
-        print
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:',tc.names)
+        print ('state at 0.0', tc.state_at(0.0))
+        print ('last', tc.last)
+        print ('filename:', tc.filename)
+        print ('shortname:', tc.shortname, '\n')
     
-    print "-Providing default names HTA SDLTSH ------------------------"
+    print ("-Providing default names HTA SDLTSH ------------------------")
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
                    'examples',
                    names="SDLTSH HTA".split(),
                    verbose=True)
-    print '\nResulting type:', type(tcs)
-    print '\nElements:'
+    print ('\nResulting type:', type(tcs))
+    print ('\nElements:')
     for i, tc in enumerate(tcs):
-        print i, '---->>>'
-        print 'type:', type(tc)
-        print 'shape', tc.shape
-        print 'names:',tc.names
-        print 'state at 0.0', tc.state_at(0.0)
-        print 'last', tc.last
-        print 'filename:', tc.filename
-        print 'shortname:', tc.shortname
-        print
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:',tc.names)
+        print ('state at 0.0', tc.state_at(0.0))
+        print ('last', tc.last)
+        print ('filename:', tc.filename)
+        print ('shortname:', tc.shortname, '\n')
 
-    print "!! Plotting tcs, using plot() -----------"
-    tcs.plot()
-    tcs.plot(group=['SDLTSH'])
-    tcs.plot(force_dense=True)
+    tcs.plot(suptitlegend="read from file")
+    tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
+    tcs.plot(force_dense=True, suptitlegend="read from file with force_dense=True")
 
-    print "After changing order to HTA SDLTSH ------------------------"
+    print ("After changing order to HTA SDLTSH ------------------------")
 
     tcs.orderByNames('HTA SDLTSH'.split())
     for i, tc in enumerate(tcs):
-        print i, '---->>>'
-        print 'type:', type(tc)
-        print 'shape', tc.shape
-        print 'names:',tc.names
-        print 'data[:,0] ->', tc.data[:, 0]
-        print 'last', tc.last
-        print 'shortname:', tc.shortname
-        print
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:',tc.names)
+        print ('data[:,0] ->', tc.data[:, 0])
+        print ('last', tc.last)
+        print ('shortname:', tc.shortname, '\n')
 
-    print "saving to different files"
+    print ("saving to different files")
     tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'],
                            'examples',
                            verbose=True)
@@ -1114,35 +1099,32 @@ nothing really usefull here
     """)
     #print m
 
-    print
-    print
-    print "After changing order according to model variables ------"
+    print ('\n\n')
+    print ("After changing order according to model variables ------")
 
     tcs.orderByModelVars(m)
     for i, tc in enumerate(tcs):
-        print i, '---->>>'
-        print 'type:', type(tc)
-        print 'shape', tc.shape
-        print 'names:',tc.names
-        print 'data[:,0] ->', tc.data[:, 0]
-        print 'last', tc.last
-        print 'shortname:', tc.shortname
-        print
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:',tc.names)
+        print ('data[:,0] ->', tc.data[:, 0])
+        print ('last', tc.last)
+        print ('shortname:', tc.shortname, '\n')
 
-    print "!! Reading tcs using info declared in a model def -"
+    print ("!! Reading tcs using info declared in a model def -")
     tcs = readTCs(m, 'examples', verbose=True)
-    print '\nResulting type:', type(tcs)
-    print '\nElements:'
+    print ('\nResulting type:', type(tcs))
+    print ('\nElements:')
     for i, tc in enumerate(tcs):
-        print i, '---->>>'
-        print 'type:', type(tc)
-        print 'shape', tc.shape
-        print 'names:',tc.names
-        print 'state at 0.0', tc.state_at(0.0)
-        print 'last', tc.last
-        print 'filename:', tc.filename
-        print 'shortname:', tc.shortname
-        print
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:',tc.names)
+        print ('state at 0.0', tc.state_at(0.0))
+        print ('last', tc.last)
+        print ('filename:', tc.filename)
+        print ('shortname:', tc.shortname, '\n')
 
     m = modelparser.read_model("""
     v1:        -> SDLTSH, rate = 1 ..
@@ -1152,21 +1134,20 @@ nothing really usefull here
     variables SDLTSH HTA
     """)
 
-    print "!! Reading tcs using info declared in a model def -"
-    print "(relative paths declared)"
+    print ("!! Reading tcs using info declared in a model def -")
+    print ("(relative paths declared)")
     tcs = readTCs(m, verbose=True)
-    print '\nResulting type:', type(tcs)
-    print '\nElements:'
+    print ('\nResulting type:', type(tcs))
+    print ('\nElements:')
     for i, tc in enumerate(tcs):
-        print i, '---->>>'
-        print 'type:', type(tc)
-        print 'shape', tc.shape
-        print 'names:',tc.names
-        print 'state at 0.0', tc.state_at(0.0)
-        print 'last', tc.last
-        print 'filename:', tc.filename
-        print 'shortname:', tc.shortname
-        print
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:',tc.names)
+        print ('state at 0.0', tc.state_at(0.0))
+        print ('last', tc.last)
+        print ('filename:', tc.filename)
+        print ('shortname:', tc.shortname, '\n')
     
     pl.show()
 

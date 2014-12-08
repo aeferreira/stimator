@@ -52,7 +52,7 @@ def run_normal():
         m.B = stimulus
         s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
 
-    s.plot(ynormalize = True, show = True)
+    s.plot(ynormalize = True, fig_size=(16,9), show = True)
     #plot(s, superimpose=True)
 
 def test():
