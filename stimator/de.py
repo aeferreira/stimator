@@ -26,7 +26,7 @@ import time
 import numpy
 import scipy.optimize
 
-class DESolver:
+class DESolver(object):
 
     def __init__(self, parameterCount, 
                        populationSize, 

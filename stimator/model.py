@@ -50,25 +50,6 @@ def identifiersInExpr(_expr):
 #----------------------------------------------------------------------------
 #         Utility functions
 #----------------------------------------------------------------------------
-def isNumber(value):
-    for numtype in (float,int,long):
-        if isinstance(value, numtype):
-            return True
-    return False
-
-
-def isPairOfNums(value):
-    if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
-        for pos in (0,1):
-            typeOK = False
-            for numtype in (float,int,long):
-                if isinstance(value[pos], numtype):
-                    typeOK = True
-                    break
-            if not typeOK:
-                return False
-        return True
-    return False
 
 def processStoich(expr):
     match = stoichiom.match(expr)
@@ -136,7 +117,7 @@ def set_name(obj, name):
     obj._ModelObject__name = name
 
 class ModelObject(object):
-    def __init__(self, name = '?'):
+    def __init__(self, name='?'):
         self.__dict__['_ModelObject__metadata'] = {}
         self.__dict__['_ModelObject__name'] = name
     
@@ -171,32 +152,81 @@ class ModelObject(object):
                 return False
         return True
 
+## def isNumber(value):
+##     for numtype in (float,int,long):
+##         if isinstance(value, numtype):
+##             return True
+##     return False
+
+## def isPairOfNums(value):
+##     
+##     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
+##         for pos in (0,1):
+##             typeOK = False
+##             for numtype in (float,int,long):
+##                 if isinstance(value[pos], numtype):
+##                     typeOK = True
+##                     break
+##             if not typeOK:
+##                 return False
+##         return True
+##     return False
+
+def toConstOrBounds(name, value):
+    try:
+        lv = len(value)
+    except TypeError: # value has no len...
+        vv = float(value) # can raise ValueError
+        return constValue(value, name=name)
+    
+    # value has len...
+    #must be exactely two
+    if lv != 2:
+        raise TypeError(value + ' is not a pair of numbers')
+    vv0 = float(value[0]) # can raise ValueError
+    vv1 = float(value[1]) # can raise ValueError
+    return Bounds(name, vv0, vv1)
+
+def constValue(value = None, name = '?'):
+    if isinstance(value, float) or isinstance(value, int) or isinstance(value, long):
+        v = float(value)
+        res = ConstValue(v)
+        res.initialize(name)
+    else:
+        raise TypeError( value + ' is not a float or int')
+    return res
+
 def setPar(obj, name, value):
     # accept only ContsValue's or Bounds
-    if isNumber(value):
-        value = constValue(float(value))
-    elif isPairOfNums(value):
-        value = Bounds(float(value[0]), float(value[1]))
-    else:
+##     if isNumber(value):
+##         value = constValue(float(value), name=name)
+##     elif isPairOfNums(value):
+##         value = Bounds(name, float(value[0]), float(value[1]))
+##     else:
+##         raise BadTypeComponent( "%s.%s"%(get_name(obj),name) + ' can not be assigned to ' + type(value).__name__)
+
+    try:
+        vv = toConstOrBounds(name, value)
+    except (TypeError, ValueError):
         raise BadTypeComponent( "%s.%s"%(get_name(obj),name) + ' can not be assigned to ' + type(value).__name__)
-    
+        
+        
     collection = obj.__dict__['_ownparameters']
     already_exists = name in collection
     if not already_exists:
-        if isinstance(value, ConstValue):
-            newvalue = constValue(value, name=name)
+        if isinstance(vv, ConstValue):
+            newvalue = vv
         else: #Bounds object
-            newvalue = constValue((float(value.min)+float(value.max))/2.0, name=name)
-            newvalue.bounds = value
-            set_name(newvalue.bounds, name)
+            newvalue = constValue((float(vv.min)+float(vv.max))/2.0, name=name)
+            newvalue.bounds = vv
+
     else: #aready exists
-        if isinstance(value, ConstValue):
-            newvalue = constValue(value, name=name)
+        if isinstance(vv, ConstValue):
+            newvalue = vv
             newvalue.bounds = collection[name].bounds
         else: #Bounds object
             newvalue = constValue(collection[name], name=name)
-            newvalue.bounds = value
-            set_name(newvalue.bounds, name)
+            newvalue.bounds = vv
     collection[name] = newvalue
 
 class _HasOwnParameters(ModelObject):
@@ -297,8 +327,10 @@ def transf(rate = 0.0, pars = {}):
     return Transformation(rate, parvalues = pars)
 
 class ConstValue(float,ModelObject):
+    
     def __new__(cls, value):
         return float.__new__(cls,value)
+    
     def initialize(self, aname = '?'):
         ModelObject.__init__(self, aname)
         self.bounds = None
@@ -309,13 +341,14 @@ class ConstValue(float,ModelObject):
             return
         if len(pars) != 2:
             return #TODO raise exception
-        self.bounds = Bounds(float(pars[0]), float(pars[1]))
-        set_name(self.bounds, get_name(self))
+        self.bounds = Bounds(get_name(self), float(pars[0]), float(pars[1]))
+    
     def pprint(self):
         res = float.__str__(self)
         if self.bounds:
             res+= " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
         return res
+    
     def __eq__(self, other):
         if repr(self) != repr(other):
             return False
@@ -331,18 +364,9 @@ class ConstValue(float,ModelObject):
     ##         print "#### eq ConstValue %s passed" % get_name(self)
         return True
 
-def constValue(value = None, name = '?'):
-    if isinstance(value, float) or isinstance(value, int):
-        v = float(value)
-        res = ConstValue(v)
-        res.initialize(name)
-    else:
-        raise TypeError( value + ' is not a float or int')
-    return res
-        
 class Bounds(ModelObject):
-    def __init__(self, min = 0.0, max = 1.0):
-        ModelObject.__init__(self)
+    def __init__(self, aname, min = 0.0, max = 1.0):
+        ModelObject.__init__(self, name=aname)
         self.min = min
         self.max = max
     def __str__(self):
@@ -690,8 +714,7 @@ class ModelQuerier(object):
                     retname = get_name(v) + '.' + iname
                     ret.initialize(retname)
                     if value.bounds:
-                        b = Bounds(value.bounds.min, value.bounds.max)
-                        set_name(b, retname)
+                        b = Bounds(retname, value.bounds.min, value.bounds.max)
                         ret.bounds = b
                     yield ret
     iparameters = property(get_iparameters)
@@ -711,8 +734,9 @@ class ModelQuerier(object):
         for s in self.m._Model__states:
             for iname, value in s:
                 if value.bounds:
-                    ret = Bounds(value.bounds.min, value.bounds.max)
-                    set_name(ret, get_name(s) + '.' + iname)
+                    ret = Bounds(get_name(s) + '.' + iname,
+                                 value.bounds.min, 
+                                 value.bounds.max)
                     yield ret
     iuncertain = property(get_iuncertain)
 
@@ -794,36 +818,36 @@ def test():
 
     print
     print '********** Testing iteration of components *****************'
-    print '!!!! iterating m().reactions'
+    print '---- iterating m().reactions'
     for v in m().reactions:
         print get_name(v), ':', v(), '|', v._reagents, '->', v._products
-    print '\n!!!! iterating m().reactions with fully qualified rates'
+    print '\n---- iterating m().reactions with fully qualified rates'
     for v in m().reactions:
         print get_name(v), ':', v(fully_qualified = True), '|', v._reagents, '->', v._products
-    print '\n!!!! iterating m().transformations'
+    print '\n---- iterating m().transformations'
     for v in m().transformations:
         print get_name(v), ':', v()
-    print '\n!!!! iterating m().transformations with fully qualified rates'
+    print '\n---- iterating m().transformations with fully qualified rates'
     for v in m().transformations:
         print get_name(v), ':', v(fully_qualified = True)
-    print '\n!!!! iterating m().varnames:'
+    print '\n---- iterating m().varnames:'
     for x in m().varnames:
         print x
-    print '\n!!!! iterating m().extvariables'
+    print '\n---- iterating m().extvariables'
     for x in m().extvariables:
         print x
-    print '\n!!!! iterating m().parameters'
+    print '\n---- iterating m().parameters'
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
-    print '\n!!!! iterating m().uncertain'
+    print '\n---- iterating m().uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     
-    print '\n!!!! iterating m.init (a state)'
+    print '\n---- iterating m.init (a state)'
     for xname, x in m.init:
         print '\t', xname, '=', x
 
-    print '\n!!!! iterating m.v3 (iterates parameters returning (name,value) tuples)'
+    print '\n---- iterating m.v3 (iterates parameters returning (name,value) tuples)'
     for xname, x in m.v3:
         print '\t', xname, '=', x
     print
@@ -847,24 +871,32 @@ def test():
     print '********** Testing component reassignment *****************'
     print 'm.myconstant :',m.myconstant
     print len(m().parameters), 'parameters total'
-    print '\n!!!! making m.myconstant = 5.0'
+    print '\n---- making m.myconstant = 5.0'
     m.myconstant = 5.0
     print 'm.myconstant :',m.myconstant
     print len(m().parameters), 'parameters total'
 
-    print '\n!!!! after setattr(m, "myconstant", 7.5)'
+    print '\n---- after setattr(m, "myconstant", 7.5)'
     setattr(m, "myconstant", 7.5)
     print 'm.myconstant :',m.myconstant
     print len(m().parameters), 'parameters total'
 
-    print '\n!!!! making m.myconstant = Model.react("A+B -> C"  , 3)'
+    print '\n---- making m.myconstant = "k9"'
+    try:
+        m.myconstant = 'k9'
+    except BadTypeComponent:
+        print 'Failed! BadTypeComponent was caught.'
+    print 'm.myconstant :',m.myconstant, '(still!)'
+    print len(m().parameters), 'parameters total'
+
+    print '\n---- making m.myconstant = Model.react("A+B -> C"  , 3)'
     try:
         m.myconstant = Model.react("A+B -> C"  , 3)
     except BadTypeComponent:
         print 'Failed! BadTypeComponent was caught.'
     print 'm.myconstant :',m.myconstant, '(still!)'
     print len(m().parameters), 'parameters total'
-    print '\n!!!! making m.v2 = 3.14'
+    print '\n---- making m.v2 = 3.14'
     try:
         m.v2 = 3.14
     except BadTypeComponent:
@@ -878,12 +910,12 @@ def test():
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
     print len(m().uncertain), 'uncertain parameters total'
-    print '\n!!!! making m.V3 = [0.1, 0.2]'
+    print '\n---- making m.V3 = [0.1, 0.2]'
     m.V3 = [0.1, 0.2]
     print 'm.V3 :', m.V3
     print 'm.V3.bounds:' ,m.V3.bounds
     print len(m().uncertain), 'uncertain parameters total'
-    print '\n!!!! making m.V4 = [0.1, 0.6]'
+    print '\n---- making m.V4 = [0.1, 0.6]'
     m.V4 = [0.1, 0.6]
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
@@ -891,7 +923,7 @@ def test():
     print 'iterating m.uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
-    print '\n!!!! making m.V4 = 0.38'
+    print '\n---- making m.V4 = 0.38'
     m.V4 = 0.38
     print 'm.V4 :', m.V4
     print 'm.V4.bounds:' ,m.V4.bounds
@@ -899,32 +931,32 @@ def test():
     print 'iterating m.uncertain'
     for x in m().uncertain:
         print '\t', get_name(x), 'in (', x.min, ',', x.max, ')'
-    print '\n!!!! making m.init.A = 5.0'
+    print '\n---- making m.init.A = 5.0'
     m.init.A = 5.0
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\n!!!! making setattr(m,"init.A", 6.0)'
+    print '\n---- making setattr(m,"init.A", 6.0)'
     setattr(m,"init.A", 6.0)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\n!!!! flagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
+    print '\n---- flagging init.A as uncertain with   m.init.A = (0.5, 2.5)'
     m.init.A = (0.5, 2.5)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\n!!!! calling    m.init.A.uncertainy(0.5,3.0)'
+    print '\n---- calling    m.init.A.uncertainy(0.5,3.0)'
     m.init.A.uncertainty(0.5,3.0)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\n!!!! calling    m.init.A.uncertainy(None)'
+    print '\n---- calling    m.init.A.uncertainy(None)'
     m.init.A.uncertainty(None)
     print 'iterating m.init'
     for xname, x in m.init:
         print '\t', xname, '=', x.pprint()
-    print '\n!!!! making m.init.A back to 1.0'
+    print '\n---- making m.init.A back to 1.0'
     m.init.A = 1.0
     print 'iterating m.init'
     for xname, x in m.init:
@@ -935,25 +967,25 @@ def test():
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
 
-    print '\n!!!! making m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])'
+    print '\n---- making m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])'
     m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])
     print '\niterating m().parameters'
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
 
-    print '\n!!!! making m.update(V4=1.4, V3=1.5, Km3=1.6)'
+    print '\n---- making m.update(V4=1.4, V3=1.5, Km3=1.6)'
     m.update(V4=1.4, V3=1.5, Km3=1.6)
     print '\niterating m().parameters'
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
 
-    print '\n!!!! making m.update([("V4",1.7)], V3=1.8, Km3=1.9)'
+    print '\n---- making m.update([("V4",1.7)], V3=1.8, Km3=1.9)'
     m.update([("V4",1.7)], V3=1.8, Km3=1.9)
     print '\niterating m().parameters'
     for p in m().parameters:
         print get_name(p) , '=',  p, '\n  bounds=', p.bounds
 
-    print '\n!!!! making dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)'
+    print '\n---- making dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)'
     dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)
     print '\niterating m().parameters'
     for p in m().parameters:

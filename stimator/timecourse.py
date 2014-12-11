@@ -1,4 +1,3 @@
-from __future__ import print_function
 # -*- coding: utf8-*-
 
 #----------------------------------------------------------------------------
@@ -7,13 +6,14 @@ from __future__ import print_function
 # S-timator timecourse functions
 # Copyright António Ferreira 2006-2014
 #----------------------------------------------------------------------------
+from __future__ import print_function
 import os.path
 import StringIO
 import re
 from numpy import *
 import model
 import modelparser
-from matplotlib import pylab as pl
+from matplotlib import pyplot as pl
 import matplotlib.cm as cm
 import matplotlib as mpl
 
@@ -530,6 +530,9 @@ class Solutions(object):
             common_range = min([l for l,h in rs]), max([h for l,h in rs])
             for a in axis_set:
                 a.set_ylim(common_range)
+        
+        #pl.tight_layout()
+        
         if save2file is not None:
             figure.savefig(save2file)
         if show:
