@@ -417,13 +417,22 @@ def _ConvertPair2Reaction(value):
 
 class _Collection_Accessor(object):
     def __init__(self, model, collection):
-        self.model = model
-        self.collection = collection
+        self.__dict__['model'] = model
+        self.__dict__['collection'] = collection
         
     def __iter__(self):
         return iter(self.collection)
     def __len__(self):
         return len(self.collection)
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        r = self.collection.get(name)
+        if r is not None:
+            return r
+        raise AttributeError(name + ' is not in this model')
+        
 
 class _init_Accessor(object):
     def __init__(self, model):
@@ -437,8 +446,8 @@ class _init_Accessor(object):
 class _Parameters_Accessor(object):
     def __init__(self, model):
         self.model = model
-        self.reactions = self.model._Model__reactions
-        self.transf = self.model._Model__transf
+        self.reactions = model._Model__reactions
+        self.transf = model._Model__transf
             
     def _get_iparameters(self):
         for p in self.model._ownparameters.values():
@@ -667,7 +676,6 @@ class Model(ModelObject):
             for i in collection:
                 res += str(i)
         res += 'init: '+ str(self._init) + '\n'
-        #mq = self()
         for p in self.parameters:
             res += p.name +' = '+ str(p) + '\n'
         for u in self.with_bounds:
@@ -981,7 +989,7 @@ def test():
 ##     for xname, x in m.v3:
 ##         print '\t', xname, '=', x
 ##     print
-
+    
     print
     print '********** Testing faulty assignments *****************'
     print 'm.getp("myconstant") :',m.getp('myconstant')
@@ -1004,27 +1012,43 @@ def test():
     print '********** Testing update() function *****************'
     print '\niterating m.parameters'
     for p in m.parameters:
-        print p.name , '=',  p, '\n  bounds=', p.bounds
+        print p.name , '=',  p
 
     print '\n---- after m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])'
     m.update([("V4",1.1),("V3",1.2),("Km3",1.3)])
     for p in m.parameters:
-        print p.name , '=',  p, '\n  bounds=', p.bounds
+        print p.name , '=',  p
 
     print '\n---- after m.update(V4=1.4, V3=1.5, Km3=1.6)'
     m.update(V4=1.4, V3=1.5, Km3=1.6)
     for p in m.parameters:
-        print p.name , '=',  p, '\n  bounds=', p.bounds
+        print p.name , '=',  p
 
     print '\n---- after m.update([("V4",1.7)], V3=1.8, Km3=1.9)'
     m.update([("V4",1.7)], V3=1.8, Km3=1.9)
     for p in m.parameters:
-        print p.name , '=',  p, '\n  bounds=', p.bounds
+        print p.name , '=',  p
 
     print '\n---- after dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)'
     dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)
     for p in m.parameters:
-        print p.name , '=',  p, '\n  bounds=', p.bounds
+        print p.name , '=',  p
+        
+    print
+    print '********** Testing accessors *****************'
+    print '--- m.reactions.v3'
+    print m.reactions.v3
+    print '--- m.reactions.v3()'
+    print m.reactions.v3()
+    print '--- m.reactions.v3.name'
+    print m.reactions.v3.name
+    print '--- m.reactions.v3.stoichiometry_string()'
+    print m.reactions.v3.stoichiometry_string()
+    print '--- m.transformations.t1'
+    print m.transformations.t1
+    print '--- m.transformations.t1()'
+    print m.transformations.t1()
+
     
 if __name__ == "__main__":
     test()
