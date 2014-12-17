@@ -228,6 +228,28 @@ class _HasOwnParameters(ModelObject):
                 return False
         return True
 
+
+class _Has_Parameters_Accessor(object):
+    def __init__(self, collection):
+        self.__dict__['_collection'] = collection
+        
+    def __len__(self):
+        return len(self._collection._ownparameters)
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        r = self._collection.getp(name)
+        if r is not None:
+            return r
+        raise AttributeError(name + ' is not in %s'% collection.name)
+
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            self._collection.setp(name, value)
+        else:
+            object.__setattr__(self, name, value)
+        
 class StateArray(_HasOwnParameters):
     def __init__(self, name, varvalues):
         _HasOwnParameters.__init__(self, name, varvalues)
@@ -388,6 +410,22 @@ class ConstValue(float,ModelObject):
                 if (self.bounds.lower != other.bounds.lower) or (self.bounds.upper != other.bounds.upper):
                     return False
         return True
+    
+    def set_bounds(self, value):
+        try:
+            b = toConstOrBounds(self.name, value, is_bounds=True)
+        except (TypeError, ValueError):
+            raise BadTypeComponent("Can not assign"+str(value)+"to %s bounds"%(self.name))
+        self.bounds = b
+    
+    def get_bounds(self):
+        if self.bounds is None:
+            return None
+        else:
+            return (self.bounds.lower, self.bounds.upper)
+    
+    def reset_bounds(self):
+        self.bounds = None
 
 class Bounds(ModelObject):
     def __init__(self, aname, lower = 0.0, upper = 1.0):
@@ -436,23 +474,34 @@ class _Collection_Accessor(object):
 
 class _init_Accessor(object):
     def __init__(self, model):
-        self.model = model
+        self._model = model
         
     def __iter__(self):
-        return self.model._init.__iter__()
+        return self._model._init.__iter__()
     def __len__(self):
-        return len(self.model._init._ownparameters)
+        return len(self._model._init._ownparameters)
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        return self._model._init.getp(name)
+    
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            self._model._init.setp(name, value)
+        else:
+            object.__setattr__(self, name, value)
 
 class _Parameters_Accessor(object):
     def __init__(self, model):
-        self.model = model
-        self.reactions = model._Model__reactions
-        self.transf = model._Model__transf
+        self._model = model
+        self._reactions = model._Model__reactions
+        self._transf = model._Model__transf
             
     def _get_iparameters(self):
-        for p in self.model._ownparameters.values():
+        for p in self._model._ownparameters.values():
             yield p
-        collections = [self.reactions, self.transf]
+        collections = [self._reactions, self._transf]
         for c in collections:
             for v in c:
                 for iname, value in v._ownparameters.items():
@@ -463,19 +512,39 @@ class _Parameters_Accessor(object):
     
     def __len__(self):
         return len(list(self._get_iparameters()))
+    
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        o = self._reactions.get(name)
+        if o:
+            return _Has_Parameters_Accessor(o)
+        o = self._transf.get(name)
+        if o:
+            return _Has_Parameters_Accessor(o)
+        if name in self._model._ownparameters:
+            return self._model.getp(name)
+        else:
+            raise AttributeError(name + ' is not a parameter of '+ self._model.name)
+    
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            self._model.setp(name, value)
+        else:
+            object.__setattr__(self, name, value)
 
 class _With_Bounds_Accessor(_Parameters_Accessor):
     def __init__(self, model):
         _Parameters_Accessor.__init__(self, model)
         
     def _get_iparameters(self):
-        for p in self.model._ownparameters.values():
+        for p in self._model._ownparameters.values():
             if p.bounds is not None:
                 yield p
-        for iname, x in self.model._init._ownparameters.items():
+        for iname, x in self._model._init._ownparameters.items():
             if x.bounds is not None:
                 yield x.copy(new_name = 'init.' + iname)
-        collections = [self.reactions, self.transf]
+        collections = [self._reactions, self._transf]
         for c in collections:
             for v in c:
                 for iname, x in v._ownparameters.items():
@@ -490,7 +559,6 @@ class Model(ModelObject):
         self.__dict__['_ownparameters']            = {}
         self.__dict__['_Model__transf']            = QueriableList()
         self._init = StateArray('init', dict())
-        #self.__dict__['_Model__states']            = QueriableList()
         ModelObject.__init__(self, name=title)
         self.__dict__['_Model__m_Parameters']      = None
         self.metadata['title'] = title
@@ -540,14 +608,14 @@ class Model(ModelObject):
     def setp(self, name, value):
         if '.' in name:
             alist = name.split('.')
-            vname, name = alist[:2]
+            vn, name = alist[:2]
             # find if the model has an existing  object with that name
             # start with strict types
-            o = self.__reactions.get(vname)
+            o = self.__reactions.get(vn)
             if o is None:
-                o = self.__transf.get(vname)
+                o = self.__transf.get(vn)
             if o is None:
-                raise AttributeError('%s is not a component of this model'%vname)
+                raise AttributeError('%s is not a component of this model'%vn)
         else:
             o = self
         _setPar(o, name, value)
@@ -555,17 +623,17 @@ class Model(ModelObject):
     def set_bounds(self, name, value):
         if '.' in name:
             alist = name.split('.')
-            vname, name = alist[:2]
+            vn, name = alist[:2]
             # find if the model has an existing  object with that name
             # start with strict types
-            if vname == 'init':
+            if vn == 'init':
                 o = self._init
             else:
-                o = self.__reactions.get(vname)
+                o = self.__reactions.get(vn)
                 if o is None:
-                    o = self.__transf.get(vname)
+                    o = self.__transf.get(vn)
                 if o is None:
-                    raise AttributeError('%s is not a component of this model'%vname)
+                    raise AttributeError('%s is not a component of this model'%vn)
         else:
             o = self
         if value is None:
@@ -1035,7 +1103,10 @@ def test():
         print p.name , '=',  p
         
     print
+    print '**********************************************'
     print '********** Testing accessors *****************'
+    print '**********************************************'
+    print
     print '--- m.reactions.v3'
     print m.reactions.v3
     print '--- m.reactions.v3()'
@@ -1044,12 +1115,54 @@ def test():
     print m.reactions.v3.name
     print '--- m.reactions.v3.stoichiometry_string()'
     print m.reactions.v3.stoichiometry_string()
+    print '----------------------------------------'
     print '--- m.transformations.t1'
     print m.transformations.t1
     print '--- m.transformations.t1()'
     print m.transformations.t1()
+    print '----------------------------------------'
+    print '--- m.parameters.V3'
+    print m.parameters.V3
+    print '--- m.parameters.V3 = 2.5'
+    m.parameters.V3 = 2.5
+    print '--- m.getp("V3")'
+    print m.getp("V3")
+    print '--- m.parameters.V3'
+    print m.parameters.V3
+    print '--- m.parameters.V3.get_bounds()'
+    print m.parameters.V3.get_bounds()
+    print '----------------------------------------'
+    print '--- m.parameters.v3.Km'
+    print m.parameters.v3.Km
+    print '--- m.parameters.v3.Km = 2.5'
+    m.parameters.v3.Km = 2.5
+    print '--- m.getp("v3.Km")'
+    print m.getp("v3.Km")
+    print '--- m.parameters.v3.Km'
+    print m.parameters.v3.Km
+    print '--- m.parameters.v3.V3.get_bounds()'
+    print m.parameters.v3.V3.get_bounds()
+    print '--- m.parameters.v3.Km.get_bounds()'
+    print m.parameters.v3.Km.get_bounds()
+    print '--- m.parameters.v3.Km.set_bounds((0.3,0.7))'
+    m.parameters.v3.Km.set_bounds((0.3,0.7))
+    print '--- m.parameters.v3.Km.get_bounds()'
+    print m.parameters.v3.Km.get_bounds()
+    print '--- m.parameters.v3.Km.bounds'
+    print m.parameters.v3.Km.bounds
+    print '----------------------------------------'
+    print '--- m.init.A'
+    print m.init.A
+    print '--- m.init.A = 0.9'
+    m.init.A = 0.9
+    print '--- m.init.A'
+    print m.init.A
+    print '--- m.init.E'
+    try:
+        print m.init.E
+    except AttributeError:
+        print 'raised AttributeError'
 
-    
 if __name__ == "__main__":
     test()
  
