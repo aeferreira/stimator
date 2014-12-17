@@ -46,6 +46,12 @@ def _is_sequence(arg):
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
 
+def _is_number(a):
+    if isinstance(a, float) or isinstance(a, int) or isinstance(a, long):
+        return True
+    else:
+        return False
+
 def processStoich(expr):
     match = stoichiom.match(expr)
     if not match:
@@ -61,7 +67,7 @@ def processStoich(expr):
     fields = [(reagents,'reagents'),(products,'products')]
     for target,f in fields:
         complexesstring = match.group(f).strip()
-        if len(complexesstring)==0:  #empty complexes allowed
+        if len(complexesstring) == 0:  #empty complexes allowed
             continue
         complexcomps = complexesstring.split("+")
         for c in complexcomps:
@@ -135,7 +141,7 @@ def toConstOrBounds(name, value, is_bounds=False):
     return Bounds(name, vv0, vv1)
 
 def constValue(value = None, name = '?'):
-    if isinstance(value, float) or isinstance(value, int) or isinstance(value, long):
+    if _is_number(value):
         v = float(value)
         res = ConstValue(v)
         res.initialize(name)
@@ -249,7 +255,15 @@ class _Has_Parameters_Accessor(object):
             self._collection.setp(name, value)
         else:
             object.__setattr__(self, name, value)
-        
+    
+    def __contains__(self, item):
+        r = self._collection.getp(name)
+        if r is not None:
+            return True
+        else:
+            return None
+
+
 class StateArray(_HasOwnParameters):
     def __init__(self, name, varvalues):
         _HasOwnParameters.__init__(self, name, varvalues)
@@ -470,7 +484,13 @@ class _Collection_Accessor(object):
         if r is not None:
             return r
         raise AttributeError(name + ' is not in this model')
-        
+    
+    def __contains__(self, item):
+        r = self.collection.get(item)
+        if r is not None:
+            return True
+        else:
+            return None
 
 class _init_Accessor(object):
     def __init__(self, model):
@@ -491,6 +511,13 @@ class _init_Accessor(object):
             self._model._init.setp(name, value)
         else:
             object.__setattr__(self, name, value)
+    
+    def __contains__(self, item):
+        if item in self._model._init._ownparameters:
+            return True
+        else:
+            return None
+
 
 class _Parameters_Accessor(object):
     def __init__(self, model):
@@ -525,13 +552,22 @@ class _Parameters_Accessor(object):
         if name in self._model._ownparameters:
             return self._model.getp(name)
         else:
-            raise AttributeError(name + ' is not a parameter of '+ self._model.name)
+            report = (name, self._model.name)
+            raise AttributeError('%s is not a parameter of %s' % report)
+    
+    def __contains__(self, item):
+        try:
+            o = self._model.getp(item)
+        except AttributeError:
+            return False
+        return True
     
     def __setattr__(self, name, value):
         if not name.startswith('_'):
             self._model.setp(name, value)
         else:
             object.__setattr__(self, name, value)
+
 
 class _With_Bounds_Accessor(_Parameters_Accessor):
     def __init__(self, model):
@@ -580,7 +616,7 @@ class Model(ModelObject):
         
     def set_reaction(self, name, stoichiometry, rate=0.0, pars=None):
         r,p,i = processStoich(stoichiometry)
-        if isinstance(rate,float) or isinstance(rate,int) or isinstance(rate,long):
+        if _is_number(rate):
             rate = massActionStr(rate, r)
         
         newobj = Reaction(name, r, p, rate, pars, i)
@@ -589,7 +625,7 @@ class Model(ModelObject):
         self._refreshVars()
         
     def set_transformation(self, name, rate=0.0, pars=None):
-        if isinstance(rate,float) or isinstance(rate,int) or isinstance(rate,long):
+        if _is_number(rate):
             rate = str(float(rate))
         
         newobj = Transformation(name, rate, pars)
@@ -597,7 +633,7 @@ class Model(ModelObject):
         self._refreshVars()
         
     def set_variable_dXdt(self, name, rate=0.0, pars=None):
-        if isinstance(rate, float) or isinstance(rate, int) or isinstance(rate,long):
+        if _is_number(rate):
             rate = str(float(rate))
 
         react_name = 'd_%s_dt'% name
@@ -837,7 +873,8 @@ class Model(ModelObject):
                 yield p
 
     def _refreshVars(self):
-        del(self.__variables[:]) #can't use self.__variables= [] : Triggers __setattr__
+        #can't use self.__variables=[] Triggers __setattr__
+        del(self.__variables[:])
         del(self.__extvariables[:])
         for v in self.__reactions:
             for rp in (v._reagents, v._products):
@@ -850,9 +887,6 @@ class Model(ModelObject):
                                 self.__extvariables.append(vname)
                         else:
                             self.__variables.append(vname)
-##     def __call__(self):
-##         mq = ModelQuerier(self)
-##         return mq
 
 def _test_with_everything(valueexpr, model, obj): 
     locs = {}
@@ -1115,6 +1149,10 @@ def test():
     print m.reactions.v3.name
     print '--- m.reactions.v3.stoichiometry_string()'
     print m.reactions.v3.stoichiometry_string()
+    print '--- "v3" in m.reactions'
+    print "v3" in m.reactions
+    print '--- "v10" in m.reactions'
+    print "v10" in m.reactions
     print '----------------------------------------'
     print '--- m.transformations.t1'
     print m.transformations.t1
@@ -1131,6 +1169,10 @@ def test():
     print m.parameters.V3
     print '--- m.parameters.V3.get_bounds()'
     print m.parameters.V3.get_bounds()
+    print '--- "V3" in m.parameters'
+    print "V3" in m.parameters
+    print '--- "k10" in m.parameters'
+    print "k10" in m.parameters
     print '----------------------------------------'
     print '--- m.parameters.v3.Km'
     print m.parameters.v3.Km
@@ -1150,6 +1192,10 @@ def test():
     print m.parameters.v3.Km.get_bounds()
     print '--- m.parameters.v3.Km.bounds'
     print m.parameters.v3.Km.bounds
+    print '--- "v3.Km" in m.parameters'
+    print "v3.Km" in m.parameters
+    print '--- "v3.kk" in m.parameters'
+    print "v3.kk" in m.parameters
     print '----------------------------------------'
     print '--- m.init.A'
     print m.init.A
@@ -1162,6 +1208,10 @@ def test():
         print m.init.E
     except AttributeError:
         print 'raised AttributeError'
+    print '--- "A" in m.init'
+    print "A" in m.init
+    print '--- "E" in m.init'
+    print "E" in m.init
 
 if __name__ == "__main__":
     test()
