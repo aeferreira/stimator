@@ -1,12 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-#----------------------------------------------------------------------------
-#         PROJECT S-TIMATOR
-#
-# S-timator Parser class
-# Copyright António Ferreira 2006-2014
-#----------------------------------------------------------------------------
 """This module contains code to parse a model definition text,
 
 The class ('StimatorParser') parses text representing a valid model.
@@ -203,8 +195,8 @@ def read_model(text):
     parser = StimatorParser()
     parser.parse(text)
     if parser.error is None:
-        parser.model['timecourses']= parser.tc
-        parser.model['optSettings'] = parser.optSettings
+        parser.model.metadata['timecourses']= parser.tc
+        parser.model.metadata['optSettings'] = parser.optSettings
         return parser.model
     logloc = parser.errorloc
     ppos = getPhysicalLineData(text, logloc)
@@ -213,8 +205,8 @@ def read_model(text):
 def try2read_model(text):
     try:
         m= read_model(text)
-        tc = m['timecourses']
-        print '\n-------- Model %s successfuly read ------------------'% m['title']
+        tc = m.metadata['timecourses']
+        print '\n-------- Model %s successfuly read ------------------'% m.metadata['title']
         print m
         if len(tc.filenames) >0:
             print "the timecourses to load are", tc.filenames
@@ -320,13 +312,14 @@ class StimatorParser:
                 indx = self.vname.index(vn)
                 if vn.startswith('d_') and vn.endswith('_dt'):
                     msg = msg.replace('in rate of', 'in the definition of')
-                tt = getattr(self.model, vn)
+                
+                tt = self.model._get_reaction_or_transf(vn)
                 if isinstance(tt, model.Transformation):
                     msg = msg.replace('in rate of', 'in the definition of')
                     
                 self.setError(msg, self.rateloc[indx])
-                expr = getattr(self.model, vn)()
-                self.setIfNameError(msg, expr, self.errorloc)
+                rateexpr = tt()
+                self.setIfNameError(msg, rateexpr, self.errorloc)
                 return
 
     def setError(self, text, errorloc):
@@ -346,9 +339,13 @@ class StimatorParser:
         """Uses builtin eval function to check for the validity of a math expression.
 
            Constants previously defined can be used"""
+##         print '\n==== Test of expr |', valueexpr
         locs = {}
         for (name, value) in self.model._genlocs4rate():
             locs[name] = value
+##         print '||| locs dict ||||'
+##         print locs
+##         print '|||||||||||||||'
         try :
            value = float(eval(valueexpr, vars(math), locs))
         except Exception, e:
@@ -357,11 +354,12 @@ class StimatorParser:
            if excpt_type == "SyntaxError":
                excpt_msg = "Bad math expression"
            return ("%s : %s"%(excpt_type,excpt_msg), 0.0)
+##         print 'expr OK, value=', value
         return ("", value)
  
     def _process_consts_in_rate(self, rate, loc):
         pardict = {}
-##         print '\n*****DEBUG of rate', rate
+##         print '\n!!! DEBUG of rate\n', rate
         decls = rate.split(',')
         n_localpars = 0
         for dindex in range(len(decls)-1, 0, -1):
@@ -392,7 +390,7 @@ class StimatorParser:
     def rateDefParse(self, line, loc, match):
         #process name
         name = match.group('name')
-        if self.model().reactions.get(name): #repeated declaration
+        if name in self.model.reactions: #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         #process rate
@@ -421,7 +419,8 @@ class StimatorParser:
                 rate = float(value) # it will be a float and mass action kinetics will be assumed
             
         try:
-            setattr(self.model, name, model.Model.react(stoich, rate, pars=pardict))
+            #setattr(self.model, name, model.Model.react(stoich, rate, pars=pardict))
+            self.model.set_reaction(name, stoich, rate, pars=pardict)
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end   = match.end('stoich')
@@ -435,7 +434,7 @@ class StimatorParser:
     def dxdtDefParse(self, line, loc, match):
         name = match.group('name')
         dxdtname = "d_%s_dt"%name
-        if self.model().reactions.get(dxdtname): #repeated declaration
+        if dxdtname in self.model.reactions: #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
@@ -447,7 +446,8 @@ class StimatorParser:
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
-        setattr(self.model, name, model.variable(expr, pars=pardict))
+        #setattr(self.model, name, model.variable(expr, pars=pardict))
+        self.model.set_variable_dXdt(name, expr, pars=pardict)
         loc.start = match.start('value')
         loc.end   = match.end('value')
         self.rateloc.append(loc)
@@ -455,7 +455,7 @@ class StimatorParser:
     
     def transfDefParse(self, line, loc, match):
         name = match.group('name')
-        if self.model().transformations.get(name): #repeated declaration
+        if name in self.model.transformations: #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
@@ -467,7 +467,8 @@ class StimatorParser:
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
-        setattr(self.model, name, model.transf(expr, pars=pardict))
+        #setattr(self.model, name, model.transf(expr, pars=pardict))
+        self.model.set_transformation(name, expr, pars=pardict)
         loc.start = match.start('value')
         loc.end   = match.end('value')
         self.rateloc.append(loc)
@@ -483,14 +484,16 @@ class StimatorParser:
     
     def stateDefParse(self, line, loc, match):
         name = match.group('name')
-        if self.model().reactions.get(name): #repeated declaration
-            self.setError("Repeated declaration", loc)
-            return
         state = match.group('value')
-        state = "model.%s"%state
+        state = state.replace('state', 'self.model.set_init')
+        print 'stateDefParse'
+        print 'name', name
+        print 'state', state
+
         try:
             value = eval(state)
-            setattr(self.model, name, value)
+            #self.model.set_init(value)
+            #setattr(self.model, name, value)
         except Exception:
            self.setError("Bad '%s' state definition"%name, loc) 
            return
@@ -499,7 +502,7 @@ class StimatorParser:
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
 
-        if self.model().parameters.get(name): #repeated declaration
+        if name in self.model.parameters: #repeated declaration
             self.setError("Repeated declaration", loc)
             return
         
@@ -516,7 +519,7 @@ class StimatorParser:
         elif name in ("genomesize", "popsize"):
             self.optSettings['genomesize'] = int(value)
         else:
-            setattr (self.model, name, value)
+            self.model.setp(name, value)
         
     def atDefParse(self, line, nline, match):
         pass # for now
@@ -532,11 +535,6 @@ class StimatorParser:
 
     def findDefParse(self, line, loc, match):
         name = match.group('name')
-        obj = self.model
-        names = name.split('.')
-        name = names[-1]
-        for n in names[:-1]:
-            obj = getattr(obj, n)
 
         lulist = ['lower', 'upper']
         flulist = []
@@ -550,20 +548,21 @@ class StimatorParser:
                 self.setIfNameError(resstring, valueexpr, loc)
                 return
             flulist.append(v)
-        setattr(obj, name, (flulist[0],flulist[1]))
+        self.model.set_bounds(name, (flulist[0],flulist[1]))
+        #setattr(obj, name, (flulist[0],flulist[1]))
 
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
-        self.model['title'] = title
+        self.model.metadata['title'] = title
         #~ setattr(self.model, 'title', title)
     def tfDefParse(self, line, loc, match):
         title = match.group('tf')
-        self.model['tf'] = title
+        self.model.metadata['tf'] = title
         #~ setattr(self.model, 'title', title)
     
     def repListDefParse(self, line, loc, match):
         title = match.group('names')
-        self.model['!!'] = title
+        self.model.metadata['!!'] = title
         #~ setattr(self.model, 'title', title)
 
 #----------------------------------------------------------------------------
@@ -627,6 +626,7 @@ tf: 10
     print modelText
     print '------------------------------------------------'
     
+    m= read_model(modelText)
     try2read_model(modelText)
     
     textlines = modelText.split('\n')

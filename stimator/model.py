@@ -164,7 +164,7 @@ def _setPar(obj, name, value, is_bounds=False):
         if isinstance(vv, ConstValue):
             newvalue = vv
         else: #Bounds object
-            newvalue = constValue((float(vv.min)+float(vv.max))/2.0, name=name)
+            newvalue = constValue((float(vv.lower)+float(vv.upper))/2.0, name=name)
             newvalue.bounds = vv
     else: #aready exists
         if isinstance(vv, ConstValue):
@@ -647,14 +647,18 @@ class Model(ModelObject):
             vn, name = alist[:2]
             # find if the model has an existing  object with that name
             # start with strict types
-            o = self.__reactions.get(vn)
-            if o is None:
-                o = self.__transf.get(vn)
-            if o is None:
-                raise AttributeError('%s is not a component of this model'%vn)
+            o = self._get_reaction_or_transf(vn)
         else:
             o = self
         _setPar(o, name, value)
+        
+    def _get_reaction_or_transf(self, name):
+        o = self.__reactions.get(name)
+        if o is None:
+            o = self.__transf.get(name)
+        if o is None:
+            raise AttributeError('%s is not a component of this model'%vn)
+        return o
         
     def set_bounds(self, name, value):
         if '.' in name:
@@ -665,11 +669,7 @@ class Model(ModelObject):
             if vn == 'init':
                 o = self._init
             else:
-                o = self.__reactions.get(vn)
-                if o is None:
-                    o = self.__transf.get(vn)
-                if o is None:
-                    raise AttributeError('%s is not a component of this model'%vn)
+                o = self._get_reaction_or_transf(vn)
         else:
             o = self
         if value is None:
@@ -686,11 +686,7 @@ class Model(ModelObject):
             if vname == 'init':
                 o = self._init
             else:
-                o = self.__reactions.get(vname)
-                if o is None:
-                    o = self.__transf.get(vname)
-                if o is None:
-                    raise AttributeError('%s is not a component of this model'%vname)
+                o = self._get_reaction_or_transf(vname)
             o.reset_bounds(name)
         else:
             if name in self._ownparameters:
@@ -702,13 +698,7 @@ class Model(ModelObject):
         if '.' in name:
             alist = name.split('.')
             vname, name = alist[:2]
-            # find if the model has an existing  object with that name
-            # start with strict types
-            o = self.__reactions.get(vname)
-            if o is None:
-                o = self.__transf.get(vname)
-            if o is None:
-                raise AttributeError('%s is not a component of this model'%vname)
+            o = self._get_reaction_or_transf(vname)
             return o.getp(name)
         else:
             if name in self._ownparameters:
@@ -725,11 +715,7 @@ class Model(ModelObject):
             if vname == 'init':
                 o = self._init
             else:
-                o = self.__reactions.get(vname)
-                if o is None:
-                    o = self.__transf.get(vname)
-                if o is None:
-                    raise AttributeError('%s is not a component of this model'%vname)
+                o = self._get_reaction_or_transf(vname)
             return o.get_bounds(name)
         else:
             if name in self._ownparameters:
@@ -866,7 +852,7 @@ class Model(ModelObject):
         collections = [self.__reactions, self.__transf]
         for c in collections:
             for v in c:
-                yield (v.name, v)
+                yield (v.name, _Has_Parameters_Accessor(v))
         
         if (obj is not None) and (len(obj._ownparameters) > 0):
             for p in obj._ownparameters.items():
@@ -922,10 +908,6 @@ def _test_with_everything(valueexpr, model, obj):
 ##        print 'returned on second pass'
        return ("%s : %s"%(str(e.__class__.__name__),str(e)), 0.0)
     return "", value
-
-#----------------------------------------------------------------------------
-#         Queries for Model network collections
-#----------------------------------------------------------------------------
 
 class QueriableList(list):
     def get(self, aname):
@@ -985,6 +967,9 @@ def test():
     
     m.setp('at', 1.0)
     m.setp('top', 2.0)
+    m.set_bounds('bottom', (0,2))
+    m.set_bounds('v3.Km2', (0,2))
+    m.set_bounds('init.E', (0,2))
     
     m.set_transformation('input2', "4*step(t,at,top)")
     m.set_transformation('input3', "force(top, t)")
