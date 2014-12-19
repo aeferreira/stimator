@@ -486,9 +486,9 @@ class StimatorParser:
         name = match.group('name')
         state = match.group('value')
         state = state.replace('state', 'self.model.set_init')
-        print 'stateDefParse'
-        print 'name', name
-        print 'state', state
+##         print 'stateDefParse'
+##         print 'name', name
+##         print 'state', state
 
         try:
             value = eval(state)
@@ -626,7 +626,7 @@ tf: 10
     print modelText
     print '------------------------------------------------'
     
-    m= read_model(modelText)
+    #m= read_model(modelText)
     try2read_model(modelText)
     
     textlines = modelText.split('\n')

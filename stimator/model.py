@@ -47,10 +47,9 @@ def _is_sequence(arg):
             hasattr(arg, "__iter__"))
 
 def _is_number(a):
-    if isinstance(a, float) or isinstance(a, int) or isinstance(a, long):
-        return True
-    else:
-        return False
+    return (isinstance(a, float) or 
+            isinstance(a, int) or 
+            isinstance(a, long))
 
 def processStoich(expr):
     match = stoichiom.match(expr)
@@ -726,8 +725,13 @@ class Model(ModelObject):
             else:
                 raise AttributeError(name + ' is not a parameter of '+ self.name)
 
-    def set_init(self, **varvalues):
-        self._init = StateArray('init', varvalues)
+    def set_init(self, *p, **pdict):
+        dpars = dict(*p)
+        dpars.update(pdict)
+        for k in dpars:
+            self._init.setp(k,dpars[k])
+        
+        #self._init = StateArray('init', varvalues)
     
     def reset_init(self):
         self._init.reset()
@@ -963,6 +967,11 @@ def test():
     m.set_bounds('v3.V3', m.get_bounds('V3'))
     
     m.set_init(A = 1.0, C = 1, D = 2)
+    m.set_init((('A', 1.0), ('C', 1), ('D', 2)))
+    
+    d = {'A': 1.0, 'C': 1, 'Z': 2}
+    m.set_init(d)
+    
     m.set_bounds('init.A', (0.8,3))
     
     m.setp('at', 1.0)
