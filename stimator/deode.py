@@ -9,8 +9,7 @@ S-timator uses Python, SciPy, NumPy, matplotlib."""
 import de
 from numpy import *
 from scipy import integrate
-from model import *
-from dynamics import *
+from dynamics import getdXdt, init2array
 from modelparser import read_model
 import fim
 import timecourse
@@ -42,7 +41,7 @@ class DeODESolver(de.DESolver):
                     maxGenerations_noimprovement = 20):
         self.model    = model
         self.tc       = tcs
-        self.varnames = model().varnames
+        self.varnames = model.varnames
         self.endTicker        = anEndComputationTicker
         self.msgTicker        = aMsgTicker
         self.dump_predictions = dump_predictions
@@ -51,9 +50,9 @@ class DeODESolver(de.DESolver):
         #reorder variables according to model
         self.tc.orderByModelVars(self.model)
 
-        pars = model().uncertain
-        mins = array([u.min for u in pars])
-        maxs = array([u.max for u in pars])
+        pars = model.with_bounds
+        mins = array([u.bounds.lower for u in pars])
+        maxs = array([u.bounds.upper for u in pars])
         
         de.DESolver.__init__(self, len(pars), # number of parameters
                              int(optSettings['genomesize']),  # genome size
@@ -81,9 +80,9 @@ class DeODESolver(de.DESolver):
         # store initial values and (scaled) time points
         if isinstance(initial, str) or isinstance(initial, StateArray):
             try:
-                globalX0 = copy(state2array(model,initial))
+                globalX0 = copy(init2array(model))
             except AttributeError:
-                globalX0 = zeros(len(model().varnames))
+                globalX0 = zeros(len(model.varnames))
     
         else:
             globalX0 = copy(initial)
@@ -92,7 +91,7 @@ class DeODESolver(de.DESolver):
         self.times = []
         for data in self.tc:
             X0 = []
-            for ix, xname in enumerate(model().varnames):
+            for ix, xname in enumerate(model.varnames):
                 if xname in data.names:
                     X0.append(data[xname][0])
                 else:
@@ -107,9 +106,9 @@ class DeODESolver(de.DESolver):
         
         # find uncertain initial values
         mapinit2trial = []
-        for iu, u in enumerate(self.model().uncertain):
-            if get_name(u).startswith('init'):
-                varname = get_name(u).split('.')[-1]
+        for iu, u in enumerate(self.model.with_bounds):
+            if u.name.startswith('init'):
+                varname = u.name.split('.')[-1]
                 ix = self.varnames.index(varname)
                 mapinit2trial.append((ix,iu))
         self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
@@ -158,7 +157,7 @@ class DeODESolver(de.DESolver):
         return globalscore
 
     def reportInitial (self):
-        msg = "\nSolving %s..."%self.model['title']
+        msg = "\nSolving %s..."%self.model.metadata.get('title', '')
         if self.dump_generations is not None:
             self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:
@@ -214,7 +213,8 @@ class DeODESolver(de.DESolver):
 
         #generate best time-courses
 
-        par_names = [get_name(self.model().uncertain[i]) for i in range(len(self.bestSolution))]
+        #par_names = [self.model.with_bounds[i].name for i in range(len(self.bestSolution))]
+        par_names = [p.name for p in self.model.with_bounds]
         parameters = zip(par_names, [x for x in self.bestSolution])
         
         sols = timecourse.Solutions()
@@ -388,13 +388,13 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
 
     #--- an example with unknown initial values --------------------
     
-    m2 = m1.clone()
+    m2 = m1.copy()
     
     # Now, assume init.HTA is uncertain
-    m2.init.HTA.uncertainty(0.05,0.25)
+    m2.set_bounds('init.HTA', (0.05,0.25))
     # do not estimate Km1 and Km2 to help the analysis
-    m2.Km1.uncertainty(None)
-    m2.Km2.uncertainty(None)
+    m2.set_bounds('Km1', None)
+    m2.set_bounds('Km2', None)
     
     optSettings={'genomesize':60, 'generations':200}
     

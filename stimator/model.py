@@ -283,6 +283,7 @@ class StateArray(_HasOwnParameters):
     def __str__(self):
         return '(%s)' % ", ".join(['%s = %s'% (x,str(float(value))) for (x,value) in  self._ownparameters.items()])
 
+
 class _HasRate(_HasOwnParameters):
     
     def __init__(self, name='?', rate='0.0', parvalues=None):
@@ -368,11 +369,6 @@ class Reaction(_HasRate):
         return True
 
 
-class Variable_dXdt(_HasRate):
-    def __init__(self, name, rate, parvalues=None):
-        _HasRate.__init__(self, name, rate, parvalues = parvalues)
-
-
 class Transformation(_HasRate):
     def __init__(self, name, rate, parvalues=None):
         _HasRate.__init__(self, name, rate, parvalues = parvalues)
@@ -387,13 +383,13 @@ class ConstValue(float,ModelObject):
         ModelObject.__init__(self, aname)
         self.bounds = None
     
-    def uncertainty(self, *pars):
-        if len(pars) == 0 or pars[0]==None:
-            self.bounds = None
-            return
-        if len(pars) != 2:
-            return #TODO raise exception
-        self.bounds = Bounds(get_name(self), float(pars[0]), float(pars[1]))
+##     def uncertainty(self, *pars):
+##         if len(pars) == 0 or pars[0]==None:
+##             self.bounds = None
+##             return
+##         if len(pars) != 2:
+##             return #TODO raise exception
+##         self.bounds = Bounds(get_name(self), float(pars[0]), float(pars[1]))
     
     def pprint(self):
         res = float.__str__(self)
@@ -448,6 +444,7 @@ class Bounds(ModelObject):
     def __str__(self):
         return "(lower=%f, upper=%f)" % (self.lower, self.upper)
 
+
 def _ConvertPair2Reaction(value):
     if (isinstance(value, tuple) or isinstance(value, list)) and len(value)==2:
         if isinstance(value[0], str):
@@ -465,6 +462,7 @@ def _ConvertPair2Reaction(value):
                     rate = massActionStr(rate, res[0])
             return Reaction(res[0], res[1], rate, {}, res[2])
     return value
+
 
 class _Collection_Accessor(object):
     def __init__(self, model, collection):
@@ -491,12 +489,32 @@ class _Collection_Accessor(object):
         else:
             return None
 
+
+class _Simple_Collection_Accessor(object):
+    def __init__(self, model, collection):
+        self.__dict__['model'] = model
+        self.__dict__['collection'] = collection
+        
+    def __iter__(self):
+        return iter(self.collection)
+    
+    def __len__(self):
+        return len(self.collection)
+    
+    def __contains__(self, item):
+        if item in self.collection:
+            return True
+        else:
+            return None
+
+
 class _init_Accessor(object):
     def __init__(self, model):
         self._model = model
         
     def __iter__(self):
         return self._model._init.__iter__()
+    
     def __len__(self):
         return len(self._model._init._ownparameters)
 
@@ -600,8 +618,8 @@ class Model(ModelObject):
         
         self.reactions = _Collection_Accessor(self, self.__reactions)
         self.transformations = _Collection_Accessor(self, self.__transf)
-        self.varnames = _Collection_Accessor(self, self.__variables)
-        self.extvariables = _Collection_Accessor(self, self.__extvariables)
+        self.varnames = self.__variables
+        self.extvariables = self.__extvariables
         self.init = _init_Accessor(self)
         self.parameters = _Parameters_Accessor(self)
         self.with_bounds = _With_Bounds_Accessor(self)
@@ -656,8 +674,24 @@ class Model(ModelObject):
         if o is None:
             o = self.__transf.get(name)
         if o is None:
-            raise AttributeError('%s is not a component of this model'%vn)
+            raise AttributeError('%s is not a component of this model'%name)
         return o
+
+    def _findComponent(self, name):
+        if name in self._ownparameters:
+            return -1, 'parameters'
+        o = self.__reactions.get(name)
+        if o is not None :
+            return o, 'reactions'
+        try:
+            c = self.__variables.index(name)
+            return c, 'variables'
+        except:
+            pass
+        o = self.__transf.get(name)
+        if o is not None :
+            return o, 'transf'
+        raise AttributeError('%s is not a component in this model'%name)
         
     def set_bounds(self, name, value):
         if '.' in name:
@@ -736,14 +770,22 @@ class Model(ModelObject):
     def reset_init(self):
         self._init.reset()
     
-    def get_init(self, names=None):
+    def get_init(self, names=None, default=0.0):
         if names is None:
             return self._init._ownparameters
         if not _is_sequence(names):
-            return self._init.getp(names)
+            try:
+                p = self._init.getp(names)
+            except AttributeError:
+                p = default
+            return p
         r = {}
         for n in names:
-            r[n] = self._init.getp(n)
+            try:
+                p = self._init.getp(n)
+            except AttributeError:
+                p = default
+            r[n] = p
         return r
 
     def checkRates(self):
@@ -915,11 +957,17 @@ def _test_with_everything(valueexpr, model, obj):
 
 class QueriableList(list):
     def get(self, aname):
-        for i in self:
-            if i.name == aname:
-                return i
+        for o in self:
+            if o.name == aname:
+                return o
         return None
         
+    def get_i(self, aname):
+        for i,o in enumerate(self):
+            if o.name == aname:
+                return i
+        return None
+
 class BadStoichError(Exception):
     """Used to flag a wrong stoichiometry expression"""
 
@@ -1197,15 +1245,20 @@ def test():
     m.init.A = 0.9
     print '--- m.init.A'
     print m.init.A
-    print '--- m.init.E'
+    print '--- m.init.X'
     try:
-        print m.init.E
+        print m.init.X
     except AttributeError:
         print 'raised AttributeError'
     print '--- "A" in m.init'
     print "A" in m.init
-    print '--- "E" in m.init'
-    print "E" in m.init
+    print '--- "X" in m.init'
+    print "X" in m.init
+    print '----------------------------------------'
+    print '--- "E" in m.varnames'
+    print "E" in m.varnames
+    print '--- "C" in m.varnames'
+    print "C" in m.varnames
 
 if __name__ == "__main__":
     test()

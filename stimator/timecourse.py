@@ -1,17 +1,11 @@
 # -*- coding: utf8-*-
 
-#----------------------------------------------------------------------------
-#         PROJECT S-TIMATOR
-#
-# S-timator timecourse functions
-# Copyright António Ferreira 2006-2014
-#----------------------------------------------------------------------------
 from __future__ import print_function
 import os.path
 import StringIO
 import re
 from numpy import *
-import model
+from model import Model
 import modelparser
 from matplotlib import pyplot as pl
 import matplotlib.cm as cm
@@ -96,7 +90,7 @@ class SolutionTimeCourse(object):
             y = yl + m * (t - tl)
         else:
             y = self.data[:, ileft]
-        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+        return dict([(x, value) for (x, value) in zip(self.names, y)])
 
     def i_time(self, t):
         """Retrieves the closest index for time t."""
@@ -119,7 +113,7 @@ class SolutionTimeCourse(object):
     def __getLastState(self):
         """Retrieves state_at last timepoint"""
         y = self.data[:, -1]
-        return model.StateArray(dict([(x, value) for (x, value) in zip(self.names, y)]), '?')
+        return dict([(x, value) for (x, value) in zip(self.names, y)])
     last = property(__getLastState)  # use as 'sol.last'
 
     def apply_transf(self, f, newnames=None):
@@ -413,7 +407,7 @@ class Solutions(object):
         return self
 
     def orderByModelVars(self, amodel):
-        vnames = [x for x in amodel().varnames]
+        vnames = [x for x in amodel.varnames]
         self.orderByNames(vnames)
         return self
 
@@ -546,9 +540,9 @@ class Solutions(object):
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
     tcs = Solutions()
     tcsnames = None
-    if isinstance(source, model.Model):
+    if isinstance(source, Model):
         #retrieve info from model declaration
-        stcs = source['timecourses']
+        stcs = source.metadata['timecourses']
         tcs.filenames = stcs.filenames
         tcsnames = stcs.defaultnames
     else:
@@ -673,7 +667,7 @@ def getFullTCvarIndexes(model, tcs):
             if nnan >= nt - 1: continue
             varindexes.append(ivar)
             vname = data.names[ivar]
-            indx = model().varnames.index(vname)
+            indx = model.varnames.index(vname)
             modelvarindexes.append(indx)
         alltcvarindexes.append(array(varindexes, int))
         allmodelvarindexes.append(array(modelvarindexes, int))
@@ -935,9 +929,11 @@ nothing really usefull here
         print (sol.names)
         print ('Last time point, sol[:,-1] returns array')
         print (sol[:, -1])
-        print ('The following return model.StateArray objects:')
+        print (type(sol[:, -1]))
+        print ('The following return dictionaries:')
         print ('sol.state_at(0.2)')
         print (sol.state_at(0.2))
+        print (type(sol.state_at(0.2)))
         print ('sol.state_at(0.55)')
         print (sol.state_at(0.55))
         print ('sol.state_at(0.0)')
@@ -946,8 +942,9 @@ nothing really usefull here
         print (sol.state_at(0.6))
         print ('sol.last (Last time point the easy way)')
         print (sol.last)
-        print ('sol.last.x')
-        print (sol.last.x)
+        print (type(sol.last))
+        print ('sol.last["x"]')
+        print (sol.last['x'])
         print ('for i in range(len(sol)): print sol[i]')
         for i in range(len(sol)):
             print (sol[i])

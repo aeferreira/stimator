@@ -39,13 +39,13 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     vars is a list of names of variables to be considered in the timecourses
     
     """
-    m  = model.clone()
+    m  = model.copy()
     
     #ensure m has init attr
     inits = {}
-    for x in m().varnames:
+    for x in m.varnames:
         inits[str(x)] = 0.0
-    setattr(m, 'init', state(**inits))
+    m.set_init(inits)
     
     if isinstance(pars,dict):
         parnames = pars.keys()
@@ -55,28 +55,16 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
         parvalues = [v for (n,v) in pars]
     
     for n,v in zip(parnames,parvalues):
-        obj = m
-        names = n.split('.')
-        name = names[-1]
-        for n in names[:-1]:
-            obj = getattr(obj, n)
-        setattr(obj, name, v)
-    
+        m.setp(n,v)
     # Adding sensitivity ODEs
     npars = len(pars)
     nvars = len(vars)
     Snames = add_dSdt_to_model(m, parnames)
-##     print '\ndXdt_strings(): --------------------------'
-##     for xname,dxdt in dXdt_strings(m):
-##         print '(d %s /dt) ='%(xname),dxdt
-##     print
-##     print "*****Snames =", Snames
 
     sols = timecourse.Solutions()
     for tc in timecoursedata:
         #set init and solve
-        for n,v in tc.state_at(0.0): #TODO: may not start at zero
-            setattr(m.init, n, v)
+        m.set_init(tc.state_at(0.0))
         sols += solve(m, tf = tc.t[-1], ignore_replist=True)
     
     #compute P
@@ -86,7 +74,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     
     #keep indexes of variables considered
     if vars is not None:
-        vnames = m().varnames
+        vnames = m.varnames
         xindexes = []
         for vname in vars:
             for i,y in enumerate(vnames):
@@ -137,6 +125,9 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     return sumFIM, P
 
 def computeFIM(model, pars, TCs, COV, vars = None):
+    print '----------parameters into computeFIM'
+    print pars
+    print '----------'
     FIM, P = __computeNormalizedFIM(model, pars, TCs, COV, vars)
     # compute inverse of P to "descale"
     PINV = linalg.inv(P)
@@ -151,18 +142,18 @@ def computeFIM(model, pars, TCs, COV, vars = None):
 def test():
     
     m = Model("Glyoxalase system")
-    m.glo1 = Model.react("HTA -> SDLTSH", rate = "V*HTA/(Km1 + HTA)", pars=dict(V= 2.57594e-05))
-    m.glo2 = Model.react("SDLTSH -> "   , rate = "V2*SDLTSH/(Km2 + SDLTSH)")
-    m.V   = 2.57594e-05
-    m.Km1 = 0.252531
-    m.V2  = 2.23416e-05
-    m.Km2 = 0.0980973
-    m.init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+    m.set_reaction('glo1', "HTA -> SDLTSH", "V*HTA/(Km1 + HTA)", pars=dict(V= 2.57594e-05))
+    m.set_reaction('glo2', "SDLTSH -> "   , "V2*SDLTSH/(Km2 + SDLTSH)")
+    m.setp('V', 2.57594e-05)
+    m.setp('Km1', 0.252531)
+    m.setp('V2', 2.23416e-05)
+    m.setp('Km2', 0.0980973)
+    m.set_init(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
 ##     pars = "V Km1".split()
 ##     parvalues = [m.V, m.Km1]
     pars = "glo1.V Km1".split()
-    parvalues = [m.glo1.V, m.Km1]
+    parvalues = [m.parameters.glo1.V, m.parameters.Km1]
     
     sols = timecourse.Solutions()
     sols += solve(m, tf = 4030.0) 
