@@ -55,6 +55,14 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
         parvalues = [v for (n,v) in pars]
     
     for n,v in zip(parnames,parvalues):
+        if '.' in n:
+            alist = n.split('.')
+            vname, name = alist[:2]
+            # find if the model has an existing  object with that name
+            # start with strict types
+            if vname == 'init':
+                m.set_init([(name,v)])
+                continue
         m.setp(n,v)
     # Adding sensitivity ODEs
     npars = len(pars)
