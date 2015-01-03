@@ -31,7 +31,7 @@ solver.Solve()
 print solver.reportResults()
 solver.draw()
 
-m2 = m1.clone()
+m2 = m1.copy()
 best = solver.optimum.parameters
 best = [(n,v) for n,v,e in best]
 m2.update(best)

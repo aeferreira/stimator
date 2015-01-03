@@ -41,15 +41,15 @@ solver.draw(fig1)
 
 print '-------- an example with unknown initial values --------------'
 
-m2 = m1.clone()
+m2 = m1.copy()
 
 # Now, assume init.HTA is uncertain
-m2.init.HTA.uncertainty(0.05,0.25)
+m2.init.HTA.set_bounds((0.05,0.25))
 # do not estimate Km1 and Km2 to help the analysis
-m2.Km1.uncertainty(None)
-m2.Km2.uncertainty(None)
-m2.Km1 = 0.252531
-m2.Km2 = 0.0980973
+m2.parameters.Km1.reset_bounds()
+m2.parameters.Km2.reset_bounds()
+m2.parameters.Km1 = 0.252531
+m2.parameters.Km2 = 0.0980973
 
 optSettings={'genomesize':60, 'generations':200}
 

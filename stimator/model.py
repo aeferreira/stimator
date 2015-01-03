@@ -421,10 +421,13 @@ class ConstValue(float,ModelObject):
         return True
     
     def set_bounds(self, value):
+        if value is None:
+            self.reset_bounds()
+            return
         try:
             b = toConstOrBounds(self.name, value, is_bounds=True)
         except (TypeError, ValueError):
-            raise BadTypeComponent("Can not assign"+str(value)+"to %s bounds"%(self.name))
+            raise BadTypeComponent("Can not assign %s to bounds of %s"%(str(value), self.name))
         self.bounds = b
     
     def get_bounds(self):

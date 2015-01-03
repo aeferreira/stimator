@@ -133,9 +133,6 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     return sumFIM, P
 
 def computeFIM(model, pars, TCs, COV, vars = None):
-    print '----------parameters into computeFIM'
-    print pars
-    print '----------'
     FIM, P = __computeNormalizedFIM(model, pars, TCs, COV, vars)
     # compute inverse of P to "descale"
     PINV = linalg.inv(P)

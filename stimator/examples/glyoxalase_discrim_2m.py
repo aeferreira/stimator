@@ -1,5 +1,5 @@
 from stimator import utils
-from stimator import Model, state, read_model
+from stimator import Model, read_model
 from stimator.GDE3solver import GDE3Solver
 from time import time
 
@@ -22,11 +22,11 @@ km2   = 2.86
 init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
 """)
 
-    m2 = m1.clone(new_title = 'model 2')
-    m2.r1 = Model.react("mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
-    m2.kcat1 = 17046
-    m2.km11  = 0.875
-    m2.km12  = 1.178
+    m2 = m1.copy(new_title = 'model 2')
+    m2.set_reaction('r1', "mgo + gsh -> sdlt"  , "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
+    m2.parameters.kcat1 = 17046
+    m2.parameters.km11  = 0.875
+    m2.parameters.km12  = 1.178
     
     models   = [m1, m2]
     

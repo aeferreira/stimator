@@ -76,9 +76,9 @@ class ModelSolver(object):
             tf = 1.0
         self.tf = tf
 
-        self.vector = numpy.copy(dynamics.state2array(model,"init"))
+        self.vector = numpy.copy(dynamics.init2array(model))
 
-        self.names = model().varnames
+        self.names = model.varnames
 
         self.model = model
         self.optvars = utils.listify(optnames)
@@ -230,7 +230,7 @@ class GDE3Solver(DESolver):
 
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
-        sols = [s.solve(trial, ignore_replist = True) for s in self.objFuncList]
+        sols = [s.solve(trial, ignore_replist=True) for s in self.objFuncList]
         if self.distance_func is not None:
             return self.distance_func(sols, self.deltaT, self.model_indexes)
         return sols
