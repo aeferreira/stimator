@@ -1,5 +1,5 @@
 from stimator import *
-from stimator.model import isPairOfNums
+#from stimator.model import isPairOfNums
 from nose.tools import *
 
 def test_M1():
