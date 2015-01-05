@@ -112,9 +112,7 @@ class ModelSolver(object):
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         Y = output[0]
-        title = self.model['title']
-        if title is None:
-            title = ""
+        title = self.model.metadata.get('title', '')
         Y = numpy.copy(Y.T)
 
         sol = timecourse.SolutionTimeCourse(self.times, Y, self.names, title)
@@ -230,7 +228,7 @@ class GDE3Solver(DESolver):
 
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
-        sols = [s.solve(trial, ignore_replist=True) for s in self.objFuncList]
+        sols = [s.solve(trial) for s in self.objFuncList]
         if self.distance_func is not None:
             return self.distance_func(sols, self.deltaT, self.model_indexes)
         return sols
