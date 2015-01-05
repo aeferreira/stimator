@@ -671,6 +671,7 @@ class Model(ModelObject):
         else:
             o = self
         _setPar(o, name, value)
+        self._refreshVars()        
         
     def _get_reaction_or_transf(self, name):
         o = self.__reactions.get(name)
@@ -767,8 +768,7 @@ class Model(ModelObject):
         dpars.update(pdict)
         for k in dpars:
             self._init.setp(k,dpars[k])
-        
-        #self._init = StateArray('init', varvalues)
+        self._refreshVars()
     
     def reset_init(self):
         self._init.reset()
@@ -792,6 +792,7 @@ class Model(ModelObject):
         return r
 
     def checkRates(self):
+        self._refreshVars()
         for collection in (self.__reactions, self.__transf):
             for v in collection:
                 resstring, value = _test_with_everything(v(),self, v)
@@ -803,6 +804,7 @@ class Model(ModelObject):
         return self.info()
 
     def info(self, no_check=False):
+        self._refreshVars()
         if not no_check:
             check, msg = self.checkRates()
             if not check:
@@ -838,6 +840,7 @@ class Model(ModelObject):
         m.metadata.update(self.metadata)
         if new_title is not None:
             m.metadata['title'] = new_title
+        self._refreshVars()
         return m
     
     def __eq__(self, other):
@@ -846,6 +849,7 @@ class Model(ModelObject):
     def _is_equal_to(self, other, verbose=False):
         if not ModelObject.__eq__(self, other):
             return False
+        self._refreshVars()
         cnames = ('reactions', 'transf', 'init', 'pars', 'vars', 'extvars')
         collections1 = [self.__reactions, 
                         self.__transf, 
@@ -1056,6 +1060,8 @@ def test():
     print '********** Testing equality of models *****************'
     print "m2 == m"
     print m2._is_equal_to(m, verbose=True)
+    print "\nm2 == m, again"
+    print m2 == m
 
     print
     m3 = m.copy(new_title = 'another model')
