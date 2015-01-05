@@ -910,10 +910,10 @@ class MyFrame(wx.Frame):
         sys.stdout = self
         try:
             self.model = stimator.modelparser.read_model(textlines)
-            self.tc = self.model['timecourses']
-            self.optSettings = self.model['optSettings']
-            if self.model['title'] == "":
-               self.model['title'] = self.GetFileName(self.ModelEditor)
+            self.tc = self.model.metadata['timecourses']
+            self.optSettings = self.model.metadata['optSettings']
+            if self.model.metadata.get('title','') == "":
+               self.model.metadata['title'] = self.GetFileName(self.ModelEditor)
         except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout
@@ -945,10 +945,10 @@ class MyFrame(wx.Frame):
         sys.stdout = self
         try:
             self.model = stimator.modelparser.read_model(textlines)
-            self.tc = self.model['timecourses']
-            self.optSettings = self.model['optSettings']
-            if self.model['title'] == "":
-               self.model['title'] = self.GetFileName(self.ModelEditor)
+            self.tc = self.model.metadata['timecourses']
+            self.optSettings = self.model.metadata['optSettings']
+            if self.model.metadata.get('title','') == "":
+               self.model.metadata['title'] = self.GetFileName(self.ModelEditor)
         except stimator.modelparser.StimatorParserError, expt:
                 self.IndicateError(expt)
                 sys.stdout = oldout
@@ -958,7 +958,8 @@ class MyFrame(wx.Frame):
         sys.stdout = oldout
         newfig = resultsframe.newFigure()
         
-        stimator.dynamics.plot(solution, figure=newfig)
+        #stimator.dynamics.plot(solution, figure=newfig)
+        solution.plot(figure=newfig)
         self.CreateResPanelFromFigure(newfig)
         self._mgr.Update()
 
