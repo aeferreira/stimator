@@ -691,19 +691,21 @@ class ModelSolver(object):
         if par_values is not None:
             par_values = array(par_values)
             for (ip, pname) in self.par_enumeration:
-                setattr(self.model, pname, par_values[ip])
+                self.model.setp(pname, par_values[ip])
             y0[self.vars_initindexes] = par_values[self.pars_initindexes]
         vs = self.model.reactions
         ratebytecode = compile_rates(self.model, vs, with_uncertain = False)
         for i, rbc in enumerate(ratebytecode):
             self.expose_enum[i] = (i,rbc)
-        output = integrate._odepack.odeint(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
-                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+        output = integrate._odepack.odeint(self.f, y0, self.t, (), 
+                                           None, 0, -1, -1, 0, None,
+                                           None, None, 0.0, 0.0, 0.0, 
+                                           0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         Y = output[0]
         if title is None:
             title = self.title
-        sol = SolutionTimeCourse (self.times, Y.T, self.names, title, dense=True)
+        sol = SolutionTimeCourse(self.times, Y.T, self.names, title, dense=True)
         
         if self.tranf_f is not None:
             sol.apply_transf(self.tranf_f, self.tranf_names)
