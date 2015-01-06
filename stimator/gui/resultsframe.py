@@ -352,7 +352,7 @@ class YetAnotherPlot(wx.Panel):
     def draw(self):
         #self._SetSize()    #?????
         if self.solver:
-            self.solver.draw(self.figure)
+            self.solver.optimum.plot(self.figure)
 
     def SetColor( self, rgbtuple=None ):
         """Set figure and canvas colours to be the same."""
@@ -468,7 +468,7 @@ class BestPlotPanel(PlotPanel):
     def draw(self):
         #self._SetSize()    #?????
         if self.solver:
-            self.solver.draw(self.figure)
+            self.solver.optimum.plot(self.figure)
 
 
 ##------------- Results Frame

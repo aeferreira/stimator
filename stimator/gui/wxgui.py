@@ -982,7 +982,7 @@ class MyFrame(wx.Frame):
             self.write("\nOptimization aborted by user!")
         else:
             self.write(solver.reportFinalString())
-            reportText = solver.reportResults()
+            reportText = solver.optimum.info()
             self.write(reportText)
             self.CreateResPanel(self.model, solver)
         

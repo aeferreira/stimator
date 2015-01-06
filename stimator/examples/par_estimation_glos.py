@@ -1,7 +1,6 @@
 
-from stimator import *
+from stimator import read_model, readTCs
 from stimator.deode import DeODEOptimizer
-import pylab as pl
 
 mdl = """
 title Glyoxalase system in L. Infantum
@@ -30,10 +29,8 @@ timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], ver
 optimizer = DeODEOptimizer(m1, optSettings, timecourses)
 optimizer.run()
 
-print optimizer.reportResults()
-
-fig1 = pl.figure()
-optimizer.draw(fig1)
+print optimizer.optimum.info()
+optimizer.optimum.plot()
 ## #save predicted timecourses to files
 ## redsols = solver.optimum.optimum_tcs
 ## redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
@@ -61,8 +58,5 @@ timecourses = readTCs(['TSH2a.txt'], '.', names = ['SDLTSH', 'HTA'], verbose=Tru
 optimizer = DeODEOptimizer(m2,optSettings, timecourses)
 optimizer.run()
 
-print optimizer.reportResults()
-
-fig2 = pl.figure()
-optimizer.draw(fig2)
-pl.show()
+optimizer.optimum.print_info()
+optimizer.optimum.plot(show=True)

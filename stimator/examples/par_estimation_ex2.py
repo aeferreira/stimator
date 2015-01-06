@@ -26,11 +26,11 @@ timecourses = readTCs(['ex2data.txt'], verbose=True)
 
 optimizer = DeODEOptimizer(m1,optSettings, timecourses)
 optimizer.run()
-print optimizer.reportResults()
-optimizer.draw()
+best = optimizer.optimum
+print best.info()
+best.plot()
 
 m2 = m1.copy()
-best = optimizer.optimum.parameters
-best = [(n,v) for n,v,e in best]
-m2.update(best)
+bestpars = [(n,v) for n,v,e in best.parameters]
+m2.update(bestpars)
 solve(m2, tf=20.0).plot(show=True)

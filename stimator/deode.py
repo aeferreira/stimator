@@ -22,7 +22,80 @@ import matplotlib.cm as cm
 
 class OptimumData(object):
     """Object that holds optimum solution data."""
-    pass
+    
+    def __init__(self, optimizer):
+        self.optimizer = optimizer
+    
+    def info(self):
+        optimum = self
+        headerformat = "--- %-20s -----------------------------\n"
+        res = "\n" + (headerformat % 'PARAMETERS')
+        res += "\n".join(["%s\t%12g +- %g"%i for i in optimum.parameters])
+        res += '\n\n'
+        res += headerformat % 'OPTIMIZATION'
+        res += "%s\t%g\n" % ('Final Score', optimum.optimization_score)
+        res += "%s\t%d\n" % ('generations', optimum.optimization_generations)
+
+        res += "%s\t%d\n" % ('max generations', optimum.max_generations)
+        res += "%s\t%d\n" % ('population size', optimum.pop_size)
+        res += "%s\t%s\n" % ('Exit by',     optimum.optimization_exit_by)
+        res += '\n\n'
+
+        res += headerformat % 'TIME COURSES'
+        res += '\t\t'.join(['Name', 'Points', 'Score'])+'\n'
+        res += "\n".join(["%s\t%d\t%g" % i for i in optimum.tcdata])
+        res += '\n\n'
+        return res
+    
+    def print_info(self):
+        print (self.info())
+
+    def plot(self, figure=None, show=False):
+        if figure is None:
+            figure = pl.figure()
+        figure.clear()
+        tcsubplots = []
+        bestsols = self.optimum_dense_tcs
+        expsols = self.optimizer.tc
+        tcstats = self.tcdata
+        ntc = len(bestsols)
+        ncols = int(math.ceil(math.sqrt(ntc)))
+        nrows = int(math.ceil(float(ntc)/ncols))
+        for i in range(ntc):
+            tcsubplots.append(figure.add_subplot(nrows,ncols,i+1))
+
+        for i in range(ntc):
+            subplot = tcsubplots[i]
+            #subplot.set_xlabel("time")
+            subplot.set_title("%s (%d pt) %g"% tcstats[i], fontsize = 12)
+            expsol = expsols[i]
+            symsol = bestsols[i]
+            
+            nlines = len(expsol)
+            if nlines <= 1:
+                delta = 1.0
+            else:
+                delta = 1.0/float(nlines-1)
+            cindex = 0.0
+            for line in range(len(expsol)):
+                #count NaN and do not plot if they are most of the timecourse
+                yexp = expsol[line]
+                nnan = len(yexp[isnan(yexp)])
+                if nnan >= expsol.ntimes-1: continue
+                #otherwise plot lines
+                xname = expsol.names[line]
+                ysim = symsol[symsol.names.index(xname)]
+                c = cm.rainbow(cindex, 1)
+                lsexp, mexp = 'None', 'o'
+                lssim, msim = '-', 'None'
+                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, color=c)
+                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c, 
+                             label='%s' % xname)
+                cindex +=delta
+            subplot.grid()
+            subplot.legend(loc='best')
+            if show:
+                pl.show()
 
 class DeODEOptimizer(de.DESolver):
     """Overides energy function and report functions.
@@ -156,7 +229,7 @@ class DeODEOptimizer(de.DESolver):
         globalscore = self.timecourse_scores.sum()
         return globalscore
 
-    def reportInitial (self):
+    def reportInitial(self):
         msg = "\nSolving %s..."%self.model.metadata.get('title', '')
         if self.dump_generations is not None:
             self.dumpfile = open('generations.txt', 'w')
@@ -165,7 +238,7 @@ class DeODEOptimizer(de.DESolver):
         else:
             self.msgTicker(msg)
 
-    def reportGeneration (self):
+    def reportGeneration(self):
         msg = "%-4d: %f" % (self.generation, float(self.bestEnergy))
         if not self.msgTicker:
             print msg
@@ -174,7 +247,7 @@ class DeODEOptimizer(de.DESolver):
         if self.dump_generations is not None:
             print >> self.dumpfile, self.generation_string(self.generation)
 
-    def reportFinal (self):
+    def reportFinal(self):
         if self.exitCode <= 0 : outCode = -1 
         else: 
             outCode = self.exitCode
@@ -201,13 +274,15 @@ class DeODEOptimizer(de.DESolver):
             res = res + '%s %s\n'%(sstr, ostr)
         return res
 
-    def generateOptimumData (self):
+    def generateOptimumData(self):
         #compute parameter standard errors, based on FIM-1
         #generate TC solutions
-        best = OptimumData()
+        best = OptimumData(self)
         best.optimization_score = self.bestEnergy
         best.optimization_generations = self.generation
         best.optimization_exit_by = self.exitCodeStrings[self.exitCode]
+        best.max_generations = self.maxGenerations
+        best.pop_size = self.populationSize
 
         #TODO: Store initial solver parameters?
 
@@ -263,93 +338,26 @@ class DeODEOptimizer(de.DESolver):
         best.optimum_dense_tcs=sols
 
         self.optimum = best
-        self.generate_fitted_sols()
+        #self.generate_fitted_sols()
         
         if self.dump_predictions:
             fnames = ['pred_'+ self.tc[i].title for i in range(len(self.tc))]
             best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
 
-    def generate_fitted_sols(self):
-        solslist = []
-        bestsols = self.optimum.optimum_tcs
-        expsols = self.tc
-        tcstats = self.optimum.tcdata
-        ntc = len(bestsols)
-        for i in range(ntc):
-            newpair = timecourse.Solutions(title="%s (%d pt) %g"% tcstats[i])
-            expsol = expsols[i].copy(newtitle='exp')
-            symsol = bestsols[i].copy(newtitle='pred')
-            newpair+=expsol
-            newpair+=symsol
-            solslist.append(newpair)
-        self.fitted_tcs = solslist
-
-    def reportResults(self):
-        optimum = self.optimum
-        headerformat = "--- %-20s -----------------------------\n"
-        res = "\n" + (headerformat % 'PARAMETERS')
-        res += "\n".join(["%s\t%12g +- %g"%i for i in optimum.parameters])
-        res += '\n\n'
-        res += headerformat % 'OPTIMIZATION'
-        res += "%s\t%g\n" % ('Final Score', optimum.optimization_score)
-        res += "%s\t%d\n" % ('generations', optimum.optimization_generations)
-        res += "%s\t%d\n" % ('max generations', self.maxGenerations)
-        res += "%s\t%d\n" % ('population size', self.populationSize)
-        res += "%s\t%s\n" % ('Exit by',     optimum.optimization_exit_by)
-        res += '\n\n'
-        res += headerformat % 'TIME COURSES'
-        res += '\t\t'.join(['Name', 'Points', 'Score'])+'\n'
-        res += "\n".join(["%s\t%d\t%g" % i for i in optimum.tcdata])
-        res += '\n\n'
-        return res
-
-    def draw(self, figure=None, show=False):
-        if figure is None:
-            figure = pl.figure()
-        colours = 'brgkycm'
-        figure.clear()
-        tcsubplots = []
-        bestsols = self.optimum.optimum_dense_tcs
-        expsols = self.tc
-        tcstats = self.optimum.tcdata
-        ntc = len(bestsols)
-        ncols = int(math.ceil(math.sqrt(ntc)))
-        nrows = int(math.ceil(float(ntc)/ncols))
-        for i in range(ntc):
-            tcsubplots.append(figure.add_subplot(nrows,ncols,i+1))
-
-        for i in range(ntc):
-            subplot = tcsubplots[i]
-            #subplot.set_xlabel("time")
-            subplot.set_title("%s (%d pt) %g"% tcstats[i], fontsize = 12)
-            expsol = expsols[i]
-            symsol = bestsols[i]
-            
-            nlines = len(expsol)
-            if nlines <= 1:
-                delta = 1.0
-            else:
-                delta = 1.0/float(nlines-1)
-            cindex = 0.0
-            for line in range(len(expsol)):
-                #count NaN and do not plot if they are most of the timecourse
-                yexp = expsol[line]
-                nnan = len(yexp[isnan(yexp)])
-                if nnan >= expsol.ntimes-1: continue
-                #otherwise plot lines
-                xname = expsol.names[line]
-                ysim = symsol[symsol.names.index(xname)]
-                c = cm.rainbow(cindex, 1)
-                lsexp, mexp = 'None', 'o'
-                lssim, msim = '-', 'None'
-                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, color=c)
-                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c, 
-                             label='%s' % xname)
-                cindex +=delta
-            subplot.grid()
-            subplot.legend(loc='best')
-            if show:
-                pl.show()
+##     def generate_fitted_sols(self):
+##         solslist = []
+##         bestsols = self.optimum.optimum_tcs
+##         expsols = self.tc
+##         tcstats = self.optimum.tcdata
+##         ntc = len(bestsols)
+##         for i in range(ntc):
+##             newpair = timecourse.Solutions(title="%s (%d pt) %g"% tcstats[i])
+##             expsol = expsols[i].copy(newtitle='exp')
+##             symsol = bestsols[i].copy(newtitle='pred')
+##             newpair+=expsol
+##             newpair+=symsol
+##             solslist.append(newpair)
+##         self.fitted_tcs = solslist
 
 def test():
     m1 = read_model("""
@@ -384,7 +392,8 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     optimizer = DeODEOptimizer(m1,optSettings, timecourses)
     optimizer.run()
     
-    print optimizer.reportResults()
+    optimizer.optimum.print_info()
+    optimizer.optimum.plot()
 
     #--- an example with unknown initial values --------------------
     
@@ -409,7 +418,8 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     optimizer = DeODEOptimizer(m2,optSettings, timecourses)
     optimizer.run()
 
-    print optimizer.reportResults()
+    optimizer.optimum.print_info()
+    optimizer.optimum.plot(show=True)
 
 if __name__ == "__main__":
     test()
