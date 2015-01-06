@@ -381,10 +381,10 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
                                      verbose = True)
     #intvarsorder=(0,2,1), verbose=True)
     
-    solver = DeODEOptimizer(m1,optSettings, timecourses)
-    solver.run()
+    optimizer = DeODEOptimizer(m1,optSettings, timecourses)
+    optimizer.run()
     
-    print solver.reportResults()
+    print optimizer.reportResults()
 
     #--- an example with unknown initial values --------------------
     
@@ -393,8 +393,8 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     # Now, assume init.HTA is uncertain
     m2.set_bounds('init.HTA', (0.05,0.25))
     # do not estimate Km1 and Km2 to help the analysis
-    m2.set_bounds('Km1', None)
-    m2.set_bounds('Km2', None)
+    m2.reset_bounds('Km1')
+    m2.reset_bounds('Km2')
     
     optSettings={'genomesize':60, 'generations':200}
     
@@ -406,10 +406,10 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
                                      verbose = True)
     #, intvarsorder=(0,2,1), verbose=True)
     
-    solver = DeODEOptimizer(m2,optSettings, timecourses)
-    solver.run()
+    optimizer = DeODEOptimizer(m2,optSettings, timecourses)
+    optimizer.run()
 
-    print solver.reportResults()
+    print optimizer.reportResults()
 
 if __name__ == "__main__":
     test()

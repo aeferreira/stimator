@@ -1,13 +1,10 @@
-#!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-# Module DESolver. A component of
-# S-timator : Time-course parameter estimation using Differential Evolution.
+# Module DESolver. A component of project S-timator.
 
-# Copyright 2005-2014 António Ferreira
-# S-timator uses Python, SciPy, NumPy, matplotlib.
+# Copyright 2005-2015 António Ferreira
 
-# This module is also based on...
+# This module is based on
 #    PythonEquations is a collection of equations expressed as Python classes
 #    Copyright (C) 2007 James R. Phillips
 #    2548 Vera Cruz Drive
@@ -17,7 +14,7 @@
 
 """DE : Real-value optimization by Differential evolution
 
-Copyright 2005-2014 António Ferreira
+Copyright 2005-2015 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib."""
 
 import utils
@@ -94,20 +91,20 @@ class DESolver(object):
     def reportGenerationString (self):
         return "%-4d: %f" % (self.generation, self.bestEnergy)
 
-    def reportFinalString (self):
+    def reportFinalString(self):
         res = "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
         % (DESolver.exitCodeStrings[self.exitCode], self.generation, self.bestEnergy, self.bestSolution)
         res += "\nOptimization took %g s (%s)" % (self.elapsed, utils.s2HMS(self.elapsed))
         return res
 
-    def reportInitial (self):
-        print self.reportInitialString ()
+    def reportInitial(self):
+        print self.reportInitialString()
 
-    def reportGeneration (self):
-        print self.reportGenerationString ()
+    def reportGeneration(self):
+        print self.reportGenerationString()
 
-    def reportFinal (self):
-        print self.reportFinalString ()
+    def reportFinal(self):
+        print self.reportFinalString()
 
     def GetRandIntInPars(self):
         return random.randint(0, self.parameterCount-1)

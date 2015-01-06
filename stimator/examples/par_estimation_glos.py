@@ -25,15 +25,15 @@ print '-------- an example with two time courses --------------'
 optSettings={'genomesize':80, 'generations':200}
 timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], verbose=True)
 
-## solver = DeODEOptimizer(m1,optSettings, timecourses, dump_generations=True,
-##                         maxGenerations_noimprovement = 50)
-solver = DeODEOptimizer(m1,optSettings, timecourses)
-solver.run()
+## optimizer = DeODEOptimizer(m1,optSettings, timecourses, dump_generations=True,
+##                            maxGenerations_noimprovement = 50)
+optimizer = DeODEOptimizer(m1, optSettings, timecourses)
+optimizer.run()
 
-print solver.reportResults()
+print optimizer.reportResults()
 
 fig1 = pl.figure()
-solver.draw(fig1)
+optimizer.draw(fig1)
 ## #save predicted timecourses to files
 ## redsols = solver.optimum.optimum_tcs
 ## redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
@@ -58,11 +58,11 @@ optSettings={'genomesize':60, 'generations':200}
 ## cannot fit one uncertain initial value to several timecourses!!!
 timecourses = readTCs(['TSH2a.txt'], '.', names = ['SDLTSH', 'HTA'], verbose=True)
 
-solver = DeODEOptimizer(m2,optSettings, timecourses)
-solver.run()
+optimizer = DeODEOptimizer(m2,optSettings, timecourses)
+optimizer.run()
 
-print solver.reportResults()
+print optimizer.reportResults()
 
 fig2 = pl.figure()
-solver.draw(fig2)
+optimizer.draw(fig2)
 pl.show()

@@ -24,13 +24,13 @@ print mdl
 optSettings={'genomesize':60, 'generations':200}
 timecourses = readTCs(['ex2data.txt'], verbose=True)
 
-solver = DeODEOptimizer(m1,optSettings, timecourses)
-solver.run()
-print solver.reportResults()
-solver.draw()
+optimizer = DeODEOptimizer(m1,optSettings, timecourses)
+optimizer.run()
+print optimizer.reportResults()
+optimizer.draw()
 
 m2 = m1.copy()
-best = solver.optimum.parameters
+best = optimizer.optimum.parameters
 best = [(n,v) for n,v,e in best]
 m2.update(best)
 solve(m2, tf=20.0).plot(show=True)
