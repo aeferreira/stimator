@@ -67,7 +67,7 @@ init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
                        cutoffEnergy, 
                        useClassRandomNumberMethods,
                        dump_generations = dump_generations)#, dif = '-')
-    solver.Solve()
+    solver.run()
     
     print ('-----------------------------------------------')
     print ('Final front:')

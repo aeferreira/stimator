@@ -218,8 +218,8 @@ class DESolver(object):
         self.elapsed = round(self.elapsed, 3)
         self.reportFinal()
 
-    def Solve(self):
-        while self.exitCode ==0:
+    def run(self):
+        while self.exitCode == 0:
             self.computeGeneration()
         self.finalize()
 
@@ -399,7 +399,7 @@ class DESolver(object):
         return s
 
     def SetupClassRandomNumberMethods(self):
-        numpy.random.seed(3) # this yields same results each time Solve() is run
+        numpy.random.seed(3) # this yields same results each time run() is run
         self.nonStandardRandomCount = self.populationSize * self.parameterCount * 3
         if self.nonStandardRandomCount < 523: # set a minimum number of random numbers
             self.nonStandardRandomCount = 523

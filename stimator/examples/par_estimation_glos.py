@@ -28,7 +28,7 @@ timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], ver
 ## solver = DeODEOptimizer(m1,optSettings, timecourses, dump_generations=True,
 ##                         maxGenerations_noimprovement = 50)
 solver = DeODEOptimizer(m1,optSettings, timecourses)
-solver.Solve()
+solver.run()
 
 print solver.reportResults()
 
@@ -59,7 +59,7 @@ optSettings={'genomesize':60, 'generations':200}
 timecourses = readTCs(['TSH2a.txt'], '.', names = ['SDLTSH', 'HTA'], verbose=True)
 
 solver = DeODEOptimizer(m2,optSettings, timecourses)
-solver.Solve()
+solver.run()
 
 print solver.reportResults()
 

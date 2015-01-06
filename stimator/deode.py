@@ -382,7 +382,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     #intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODEOptimizer(m1,optSettings, timecourses)
-    solver.Solve()
+    solver.run()
     
     print solver.reportResults()
 
@@ -407,7 +407,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     #, intvarsorder=(0,2,1), verbose=True)
     
     solver = DeODEOptimizer(m2,optSettings, timecourses)
-    solver.Solve()
+    solver.run()
 
     print solver.reportResults()
 

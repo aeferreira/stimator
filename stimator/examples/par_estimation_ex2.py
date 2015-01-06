@@ -25,7 +25,7 @@ optSettings={'genomesize':60, 'generations':200}
 timecourses = readTCs(['ex2data.txt'], verbose=True)
 
 solver = DeODEOptimizer(m1,optSettings, timecourses)
-solver.Solve()
+solver.run()
 print solver.reportResults()
 solver.draw()
 

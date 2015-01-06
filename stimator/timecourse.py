@@ -354,7 +354,7 @@ class Solutions(object):
         self.data = []
         nTCsOK = 0
         if verbose:
-            print ("-------------------------------------------------------")
+            print ("-- reading time courses -------------------------------")
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
                 os.chdir(cwd)
@@ -366,7 +366,8 @@ class Solutions(object):
                 raise StimatorTCError("File\n%s\ndoes not contain valid data" % filename)
             else:
                 if verbose:
-                    print("%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename))
+                    print("file %s:" % (filename))
+                    print("%d time points, %d variables"%(sol.ntimes, len(sol)))
                 self.append(sol)
                 nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
