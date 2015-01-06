@@ -357,18 +357,16 @@ class Solutions(object):
             print ("-------------------------------------------------------")
         for filename in pathlist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
-                print ("Time course file \n%s\ndoes not exist" % filename)
                 os.chdir(cwd)
-                return nTCsOK
+                raise StimatorTCError("File \n%s\ndoes not exist" % filename)
             sol = SolutionTimeCourse()
             sol.load_from(filename, names=names)
             if sol.shape == (0, 0):
-                print ("File\n%s\ndoes not contain valid time-course data" % filename)
                 os.chdir(cwd)
-                return nTCsOK
+                raise StimatorTCError("File\n%s\ndoes not contain valid data" % filename)
             else:
                 if verbose:
-                    print ("%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename))
+                    print("%d time points for %d variables read from file %s" % (sol.ntimes, len(sol), filename))
                 self.append(sol)
                 nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]

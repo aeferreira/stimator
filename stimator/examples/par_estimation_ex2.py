@@ -35,5 +35,4 @@ m2 = m1.copy()
 best = solver.optimum.parameters
 best = [(n,v) for n,v,e in best]
 m2.update(best)
-s2 = solve(m2, tf=20.0)
-s2.plot(show=True)
+solve(m2, tf=20.0).plot(show=True)
