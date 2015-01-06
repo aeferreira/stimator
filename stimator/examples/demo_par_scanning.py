@@ -26,7 +26,9 @@ print m
 def run_normal():
     s = Solutions(title="CICR model: Effect of stimulus on citosolic calcium")
     time0 = time()
-    ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
+    ms = ModelSolver(m,tf = 6.0, npoints = 1000, 
+                     outputs="Ca CaComp", 
+                     changing_pars = "B") 
     print 'starting'
     for stimulus in linspace(0.0,1.0,200):
         s += ms.solve(title = 'stimulus = %g'% stimulus, par_values = [stimulus])
@@ -37,27 +39,35 @@ def run_normal():
 
     time0 = time()
     for stimulus in linspace(0.0,1.0,200):
-        m.B = stimulus
-        s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+        m.parameters.B = stimulus
+        s += solve(m, tf = 6.0, npoints = 1000, 
+                   title = 'stimulus = %g'% (m.parameters.B), 
+                   outputs="Ca CaComp")#mytransformation)
 
     print 'using solve done in', time()-time0, 's'
 
     s = Solutions(title="CICR model: Effect of stimulus on citosolic calcium")
 
-    ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
+    ms = ModelSolver(m,tf = 6.0, npoints = 1000, 
+                     outputs="Ca CaComp", 
+                     changing_pars = "B") 
     for stimulus in 0.0, 0.2, 0.4, 0.78:
         s += ms.solve(title = 'stimulus = %g'% stimulus, par_values = [stimulus])
 
     for stimulus in 0.0, 0.2, 0.4, 0.78:
-        m.B = stimulus
-        s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+        m.parameters.B = stimulus
+        s += solve(m, tf = 6.0, npoints = 1000, 
+                   title = 'stimulus = %g'% (m.parameters.B), 
+                   outputs="Ca CaComp")#mytransformation)
 
     s.plot(ynormalize = True, fig_size=(16,9), show = True)
     #plot(s, superimpose=True)
 
 def test():
     s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
-    ms = ModelSolver(m,tf = 6.0, npoints = 1000, outputs="Ca CaComp", changing_pars = "B") 
+    ms = ModelSolver(m,tf = 6.0, npoints = 1000, 
+                     outputs="Ca CaComp", 
+                     changing_pars = "B") 
     print 'starting'
     for stimulus in linspace(0.0,1.0,200):
         s += ms.solve(par_values = [stimulus])
@@ -65,8 +75,10 @@ def test():
 def test2():
     s = Solutions("CICR model: Effect of stimulus on citosolic calcium")
     for stimulus in linspace(0.0,1.0,200):
-        m.B = stimulus
-        s += solve(m, tf = 6.0, npoints = 1000, title = 'stimulus = %g'% (m.B), outputs="Ca CaComp")#mytransformation)
+        m.parameters.B = stimulus
+        s += solve(m, tf = 6.0, npoints = 1000, 
+                   title = 'stimulus = %g'% (m.parameters.B), 
+                   outputs="Ca CaComp")#mytransformation)
 
 def profile_test():
     # This is the main function for profiling 
