@@ -26,7 +26,7 @@ Km1 = 0.252531
 V2  = 2.23416e-05
 Km2 = 0.0980973
 
-init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+init: SDLTSH = 7.69231E-05, HTA = 0.1357
 """
 m = read_model(glos)
 print m

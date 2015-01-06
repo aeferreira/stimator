@@ -8,7 +8,7 @@ lorentz.text = """title Lorentz model: sensitivity to initial conditions
 x' = 10*(y-x)
 y' = x*(28-z)-y
 z' = x*y - (8/3)*z
-init = state(x = 1, y = 1, z = 1)
+init: x = 1, y = 1, z = 1
 """
 
 rossler = ExampleModel()
@@ -19,7 +19,7 @@ X1' = X2 - X3
 X2' = 0.36 * X2 - X1
 X3' = X1 *X3 - 22.5 * X3 - 49.6 * X1 + 1117.8
 
-init = state(X1 = 19.0, X2 = 47, X3 = 50)
+init : (X1 = 19.0, X2 = 47, X3 = 50)
 tf:200
 ~ x3 = X3 -50.0
 ~ x1 = X1 -18.0
@@ -42,7 +42,7 @@ leak       = CaComp -> Ca, 1 ..
     
 v2         = Ca -> CaComp, 65 * Ca**2 / (1+Ca**2)
 v3         = CaComp -> Ca, 500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)
-init       = state(Ca = 0.1, CaComp = 0.63655)
+init       : Ca = 0.1, CaComp = 0.63655
 """
 
 branched = ExampleModel()
@@ -56,7 +56,7 @@ v4 = C -> E, k4*C**0.5, k4 = 8
 v5 = D ->  , k5*D**0.5, k5 = 1.25
 v6 = E ->  , k6*E**0.5, k6 = 5
 A  = 0.5
-init = state(B = 2, C = 0.25, D = 0.64, E = 0.64)
+init : (B = 2, C = 0.25, D = 0.64, E = 0.64)
 !! B D
 tf: 10
 """
@@ -75,7 +75,7 @@ find Km1 in [0.01, 1]
 find V2  in [0.00001, 0.0001]
 find Km2 in [0.01, 1]
 pi = 3.14159
-init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 timecourse TSH2a.txt  # timecourses to load
 timecourse TSH2b.txt
@@ -93,6 +93,6 @@ V1  = 2.57594e-05
 Km1 = 0.252531
 V2  = 2.23416e-05
 Km2 = 0.0980973
-init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+init :(SDLTSH = 7.69231E-05, HTA = 0.1357)
 tf: 4030
 """

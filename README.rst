@@ -8,7 +8,7 @@ Engineering.
 
 Features include:
 
-- **A model description mini language**: models can be input as plain text 
+- **A mini language used to describe models**: models can be input as plain text 
   following a very simple and human-readable language.
 - **Basic analysis**: numerical solution of ODE's, parameter scanning.
 - **Parameter estimation** and **model selection**: given experimental data in
@@ -60,7 +60,7 @@ with ``pip``::
 
     $ pip install stimator
 
-The classical way also works, but is not recomended::
+The classical way also works, but is not recommended::
     
     $ python setup.py install
 

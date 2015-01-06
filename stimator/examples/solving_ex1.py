@@ -12,7 +12,7 @@ vout : x2 ->     , rate = k3 * x2
 k1 = 1
 k2 = 2
 k3 = 1
-init = state(x1=0, x2=0)
+init: (x1=0, x2=0)
 
 #filter what you want to plot
 !! x1 x2"""

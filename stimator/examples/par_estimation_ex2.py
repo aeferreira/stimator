@@ -8,7 +8,7 @@ vin  : -> x1     , rate = k1
 v2   : x1 ->  x2 , rate = k2 * x1
 vout : x2 ->     , rate = k3 * x2
 
-init = state(x1=0, x2=0)
+init : x1=0, x2=0
 !! x2
 find k1 in [0, 2]
 find k2 in [0, 2]

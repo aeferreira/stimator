@@ -12,7 +12,7 @@ find V1  in [0.00001, 0.0001]
 find Km1 in [0.01, 1]
 find V2  in [0.00001, 0.0001]
 find Km2 in [0.01, 1]
-init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
+init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 """
 m1 = read_model(mdl)
 

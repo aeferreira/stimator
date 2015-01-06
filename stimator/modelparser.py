@@ -30,6 +30,7 @@ titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
 tfpattern         = r"^\s*tf\s*(?::\s*)?(?P<tf>[^#]+)(?:#.*)?$"
 replistpattern    = r"^\s*!!\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
 statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
+initpattern       = r"^\s*(?P<name>init)\s*:\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 transfpattern     = r"^\s*(transf|~)\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 
@@ -49,6 +50,7 @@ varlist   = re.compile(varlistpattern,     re.IGNORECASE)
 finddef   = re.compile(finddefpattern,     re.IGNORECASE)
 ratedef   = re.compile(ratedefpattern,     re.IGNORECASE)
 statedef  = re.compile(statepattern,       re.IGNORECASE)
+initdef   = re.compile(initpattern,        re.IGNORECASE)
 tcdef     = re.compile(tcdefpattern)
 atdef     = re.compile(atdefpattern)
 titledef  = re.compile(titlepattern)
@@ -70,6 +72,7 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (tcdef,     "tcDefParse"),
                (atdef,     "atDefParse"),
                (statedef,  "stateDefParse"),
+               (initdef,   "initDefParse"),
                (dxdtdef,   "dxdtDefParse"),
                (transfdef, "transfDefParse"),
                (constdef,  "constDefParse"),
@@ -498,6 +501,26 @@ class StimatorParser:
            self.setError("Bad '%s' state definition"%name, loc) 
            return
            
+    def initDefParse(self, line, loc, match):
+        name = match.group('name')
+        state = match.group('value')
+##         print 'initDefParse'
+##         print 'name', name
+##         print 'state', state
+        if state[0]=='(' and state[-1]==')':
+            state = state[1:-1]
+        state = 'self.model.set_init(%s)'%state
+        
+        #state = state.replace('state', 'self.model.set_init')
+
+        try:
+            value = eval(state)
+            #self.model.set_init(value)
+            #setattr(self.model, name, value)
+        except Exception:
+           self.setError("Bad '%s' state definition"%name, loc) 
+           return
+           
     def constDefParse(self, line, loc, match):
         name      = match.group('name')
         valueexpr = match.group('value').rstrip()
@@ -601,7 +624,8 @@ find export.kout in (3,4)
 
 @ 3.4 pi = 2*pi
 x' = MG/2
-init  = state(TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0)
+#init  = state(TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0)
+init: TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0
 
 genomesize = 50 #should be enough
 generations = 400

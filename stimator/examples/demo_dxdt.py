@@ -25,7 +25,7 @@ v2         = Ca -> CaComp, \
                   65 * Ca**2 / (1+Ca**2)    
 v3         = CaComp -> Ca, \
                   500*CaComp**2/(CaComp**2+4) * Ca**4/(Ca**4 + 0.6561)
-init       = state(Ca = 0.1, CaComp = 0.63655)
+init       : Ca = 0.1, CaComp = 0.63655
 """)
 
 x = solve(m, tf = 6.0, npoints = 5000, title = 'X')
