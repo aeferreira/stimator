@@ -72,8 +72,7 @@ solving and plotting:
 
 .. code:: python
 
-    from stimator import read_model, solve, plot
-    import pylab as pl
+    from stimator import read_model, solve
 
     mdl = """# Example file for S-timator
     title Example 1
@@ -87,7 +86,7 @@ solving and plotting:
     k1 = 1
     k2 = 2
     k3 = 1
-    init = state(x1=0, x2=0)
+    init: (x1=0, x2=0)
 
     #filter what you want to plot
     !! x1 x2"""
@@ -98,11 +97,7 @@ solving and plotting:
     print mdl
     print '--------------------------------------------------------'
 
-    s1 = solve(m, tf=5.0)
-    plot(s1)
-
-    pl.show()
-
+    solve(m, tf=5.0).plot(show=True)
 
 Parameter estimation
 --------------------
@@ -112,9 +107,8 @@ Model parameter estimation, based on experimental time-course data
 
 .. code:: python
 
-    from stimator import *
-    from stimator.deode import DeODESolver
-    import pylab as pl
+    from stimator import read_model, readTCs, solve
+    from stimator.deode import DeODEOptimizer
 
     mdl = """# Example file for S-timator
     title Example 2
@@ -122,12 +116,10 @@ Model parameter estimation, based on experimental time-course data
     vin  : -> x1     , rate = k1
     v2   : x1 ->  x2 , rate = k2 * x1
     vout : x2 ->     , rate = k3 * x2
-    k1 = 1
-    k2 = 2
-    k3 = 1
-    init = state(x1=0, x2=0)
+
+    init : x1=0, x2=0
     !! x2
-    find k1  in [0, 2]
+    find k1 in [0, 2]
     find k2 in [0, 2]
     find k3 in [0, 2]
 
@@ -141,25 +133,18 @@ Model parameter estimation, based on experimental time-course data
     optSettings={'genomesize':60, 'generations':200}
     timecourses = readTCs(['ex2data.txt'], verbose=True)
 
-    solver = DeODESolver(m1,optSettings, timecourses)
-    solver.Solve()
-    print solver.reportResults()
-    fig1 = pl.figure()
-    solver.draw(fig1)
-
-    m2 = m1.clone()
-    best = solver.optimum.parameters
-    best = [(n,v) for n,v,e in best]
-    m2.update(best)
-    s2 = solve(m2, tf=20.0)
-    plot(s2)
-
-    pl.show()
+    optimizer = DeODEOptimizer(m1,optSettings, timecourses)
+    optimizer.run()
+    
+    best = optimizer.optimum
+    print best.info()
+    best.plot()
 
 This produces the following output::
 
     -------------------------------------------------------
-    11 time points for 2 variables read from file .../examples/ex2data.txt
+    file .../examples/ex2data.txt:
+    11 time points, 2 variables    
 
     Solving Example 2...
     0   : 3.837737
