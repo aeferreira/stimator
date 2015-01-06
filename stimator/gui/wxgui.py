@@ -928,7 +928,12 @@ class MyFrame(wx.Frame):
         
         self.oldout = sys.stdout
         sys.stdout = MyWriter(self)
-        solver = stimator.deode.DeODESolver(self.model,self.optSettings, self.tc, None, None,  self.finalTick)#, self.msgTick, self.finalTick)
+        solver = stimator.deode.DeODEOptimizer(self.model,
+                                               self.optSettings, 
+                                               self.tc, None, None, 
+                                               self.finalTick)
+                                               #, self.msgTick, 
+                                               #  self.finalTick)
         self.optimizerThread=CalcOptmThread()
         self.optimizerThread.Start(solver)
         

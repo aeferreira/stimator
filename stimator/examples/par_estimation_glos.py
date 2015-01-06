@@ -1,6 +1,6 @@
 
 from stimator import *
-from stimator.deode import DeODESolver
+from stimator.deode import DeODEOptimizer
 import pylab as pl
 
 mdl = """
@@ -25,9 +25,9 @@ print '-------- an example with two time courses --------------'
 optSettings={'genomesize':80, 'generations':200}
 timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], verbose=True)
 
-## solver = DeODESolver(m1,optSettings, timecourses, dump_generations=True,
-##                      maxGenerations_noimprovement = 50)
-solver = DeODESolver(m1,optSettings, timecourses)
+## solver = DeODEOptimizer(m1,optSettings, timecourses, dump_generations=True,
+##                         maxGenerations_noimprovement = 50)
+solver = DeODEOptimizer(m1,optSettings, timecourses)
 solver.Solve()
 
 print solver.reportResults()
@@ -58,7 +58,7 @@ optSettings={'genomesize':60, 'generations':200}
 ## cannot fit one uncertain initial value to several timecourses!!!
 timecourses = readTCs(['TSH2a.txt'], '.', names = ['SDLTSH', 'HTA'], verbose=True)
 
-solver = DeODESolver(m2,optSettings, timecourses)
+solver = DeODEOptimizer(m2,optSettings, timecourses)
 solver.Solve()
 
 print solver.reportResults()

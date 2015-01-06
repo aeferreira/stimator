@@ -24,12 +24,12 @@ class OptimumData(object):
     """Object that holds optimum solution data."""
     pass
 
-class DeODESolver(de.DESolver):
+class DeODEOptimizer(de.DESolver):
     """Overides energy function and report functions.
     
     The energy function solves ODEs and computes a least-squares score.
-    Ticker functions are called on generation completion and when optimization
-    finishes.
+    Ticker functions are called on completion of a generation and when
+    optimization finishes.
     """
     
     def __init__(self, model, optSettings, tcs, weights = None,
@@ -381,7 +381,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
                                      verbose = True)
     #intvarsorder=(0,2,1), verbose=True)
     
-    solver = DeODESolver(m1,optSettings, timecourses)
+    solver = DeODEOptimizer(m1,optSettings, timecourses)
     solver.Solve()
     
     print solver.reportResults()
@@ -406,7 +406,7 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
                                      verbose = True)
     #, intvarsorder=(0,2,1), verbose=True)
     
-    solver = DeODESolver(m2,optSettings, timecourses)
+    solver = DeODEOptimizer(m2,optSettings, timecourses)
     solver.Solve()
 
     print solver.reportResults()
