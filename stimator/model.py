@@ -32,12 +32,6 @@ chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+")?)\s*(?P<variable>[_a
 stoichiom   = re.compile(stoichiompattern,    re.IGNORECASE)
 chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
 
-identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
-
-def identifiersInExpr(_expr):
-    iterator = identifier.finditer(_expr)
-    return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
-
 #----------------------------------------------------------------------------
 #         Utility functions
 #----------------------------------------------------------------------------

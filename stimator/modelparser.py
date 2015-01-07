@@ -265,7 +265,8 @@ class StimatorParser:
         self.model       = model.Model()
         self.tc          = timecourse.TimeCourses()
         # default Differential Evolution num of generations and population size
-        self.optSettings = {'generations':200, 'genomesize' :10}
+        self.optSettings = {'generations':200, 'genomesize' :10,
+                            'max.generations':200, 'pop.size' :10}
 
         self.tclines     = []  #location of timecourse def lines for error reporting
         self.vname       = []
@@ -537,10 +538,12 @@ class StimatorParser:
             self.setIfNameError(resstring, valueexpr, loc)
             return
         
-        if name == "generations":
+        if name in ("generations", "maxgenerations"):
             self.optSettings['generations'] = int(value)
+            self.optSettings['max.generations'] = int(value)
         elif name in ("genomesize", "popsize"):
             self.optSettings['genomesize'] = int(value)
+            self.optSettings['pop.size'] = int(value)
         else:
             self.model.setp(name, value)
         

@@ -1,13 +1,13 @@
-#!/usr/bin/env python
 # -*- coding: utf-8- *-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator dynamical systems related functions
-# Copyright António Ferreira 2006-2014
+# Copyright António Ferreira 2006-2015
 #----------------------------------------------------------------------------
-from model import *
+
+import re
 import math
 from kinetics import *
 from numpy import *
@@ -19,6 +19,12 @@ from scipy import integrate
 from timecourse import SolutionTimeCourse, Solutions
 
 from examples import models
+
+identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
+
+def identifiersInExpr(_expr):
+    iterator = identifier.finditer(_expr)
+    return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
 
 
 def init2array(model):
