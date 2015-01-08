@@ -1,4 +1,4 @@
-from stimator import read_model, readTCs, solve
+from stimator import read_model, readTCs
 from stimator.deode import DeODEOptimizer
 
 mdl = """# Example file for S-timator
@@ -33,4 +33,5 @@ best.plot()
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.update(bestpars)
-solve(m2, tf=20.0).plot(show=True)
+#solve(m2, tf=20.0).plot(show=True)
+m2.solve(tf=20.0).plot(show=True)

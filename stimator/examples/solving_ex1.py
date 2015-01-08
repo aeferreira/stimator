@@ -1,4 +1,4 @@
-from stimator import read_model, solve
+from stimator import read_model
 
 mdl = """# Example file for S-timator
 title Example 1
@@ -23,4 +23,4 @@ print '========= model ========================================'
 print mdl
 print '--------------------------------------------------------'
 
-solve(m, tf=5.0).plot(show=True, fig_size=(6.5, 6))
+m.solve(tf=5.0).plot(show=True, fig_size=(6.5, 6))

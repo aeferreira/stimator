@@ -890,6 +890,9 @@ class Model(ModelObject):
         dpars.update(pdict)
         for k in dpars:
             self.setp(k,dpars[k])
+    
+    def solve(self, **kwargs):
+        return dynamics.solve(self, **kwargs)
         
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
