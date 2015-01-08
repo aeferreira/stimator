@@ -1,15 +1,13 @@
-#!/usr/bin/env python
 # -*- coding: utf8 -*-
 
 """S-timator : Time-course parameter estimation using Differential Evolution.
 
-Copyright 2005-2013 António Ferreira
+Copyright 2005-2015 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib."""
 
 from numpy import *
-from model import *
 from dynamics import add_dSdt_to_model, dXdt_strings, solve
-import timecourse
+from timecourse import Solutions, constError_func
 
 sympy_installed = True
 try:
@@ -69,7 +67,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
     nvars = len(vars)
     Snames = add_dSdt_to_model(m, parnames)
 
-    sols = timecourse.Solutions()
+    sols = Solutions()
     for tc in timecoursedata:
         #set init and solve
         m.set_init(tc.state_at(0.0))
@@ -145,7 +143,7 @@ def computeFIM(model, pars, TCs, COV, vars = None):
     return realFIM, INVFIM
 
 def test():
-    
+    from model import Model
     m = Model("Glyoxalase system")
     m.set_reaction('glo1', "HTA -> SDLTSH", "V*HTA/(Km1 + HTA)", pars=dict(V= 2.57594e-05))
     m.set_reaction('glo2', "SDLTSH -> "   , "V2*SDLTSH/(Km2 + SDLTSH)")
@@ -160,15 +158,15 @@ def test():
     pars = "glo1.V Km1".split()
     parvalues = [m.parameters.glo1.V, m.parameters.Km1]
     
-    sols = timecourse.Solutions()
+    sols = Solutions()
     sols += solve(m, tf = 4030.0) 
     
     parsdict = dict (zip(pars, parvalues))
     
     errors = (0.01,0.001)
-    errors = timecourse.constError_func(errors)
+    errors = constError_func(errors)
     errorsSDLonly = 0.001
-    errorsSDLonly = timecourse.constError_func(errorsSDLonly)
+    errorsSDLonly = constError_func(errorsSDLonly)
 
     print '\n------------------------------------------------'
     print 'Glyoxalase model, 1 timecourse, parameters %s and %s'% (pars[0],pars[1])

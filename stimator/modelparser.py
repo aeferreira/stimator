@@ -9,7 +9,7 @@ import StringIO
 import re
 import math
 import model
-import timecourse
+from timecourse import TimeCourses
 
 #----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
@@ -263,7 +263,7 @@ class StimatorParser:
         self.errorloc = None
         
         self.model       = model.Model()
-        self.tc          = timecourse.TimeCourses()
+        self.tc          = TimeCourses()
         # default Differential Evolution num of generations and population size
         self.optSettings = {'generations':200, 'genomesize' :10,
                             'max.generations':200, 'pop.size' :10}

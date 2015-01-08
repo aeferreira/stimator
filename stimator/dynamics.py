@@ -12,7 +12,6 @@ import math
 from kinetics import *
 from numpy import *
 import pprint
-from modelparser import read_model
 import os
 import os.path
 from scipy import integrate
@@ -718,7 +717,7 @@ class ModelSolver(object):
         return sol
 
 def test():
-     
+    from modelparser import read_model     
     m = read_model("""
     title a simple 2 enzyme system
     v1 = A -> B, rate = V*A/(Km1 + A), V = 1, Km = 1

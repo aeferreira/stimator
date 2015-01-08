@@ -5,8 +5,6 @@ import os.path
 import StringIO
 import re
 from numpy import *
-from model import Model
-import modelparser
 from matplotlib import pyplot as pl
 import matplotlib.cm as cm
 import matplotlib as mpl
@@ -539,7 +537,7 @@ class Solutions(object):
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
     tcs = Solutions()
     tcsnames = None
-    if isinstance(source, Model):
+    if hasattr(source, 'metadata'):
         #retrieve info from model declaration
         stcs = source.metadata['timecourses']
         tcs.filenames = stcs.filenames
@@ -753,6 +751,7 @@ def getCriteriumFunction(weights, model, tc):
 #----------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    from modelparser import read_model
 
     print ('\n===Parsing in-code timecourse ========================')
 
@@ -1089,7 +1088,7 @@ nothing really usefull here
                            'examples',
                            verbose=True)
 
-    m = modelparser.read_model("""
+    m = read_model("""
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
     timecourse TSH2b.txt
@@ -1125,7 +1124,7 @@ nothing really usefull here
         print ('filename:', tc.filename)
         print ('shortname:', tc.shortname, '\n')
 
-    m = modelparser.read_model("""
+    m = read_model("""
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
     timecourse ../stimator/examples/TSH2b.txt

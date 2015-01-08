@@ -1,6 +1,7 @@
 import re
 import math
 from kinetics import *
+import dynamics
 
 #----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
