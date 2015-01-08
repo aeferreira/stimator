@@ -45,12 +45,9 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars = None):
         inits[str(x)] = 0.0
     m.set_init(inits)
     
-    if isinstance(pars,dict):
-        parnames = pars.keys()
-        parvalues = pars.values()
-    else:
-        parnames = [n for (n,v) in pars]
-        parvalues = [v for (n,v) in pars]
+    pars = dict(pars)
+    parnames = list(pars.keys())
+    parvalues = list(pars.values())
     
     for n,v in zip(parnames,parvalues):
         if '.' in n:
@@ -153,15 +150,13 @@ def test():
     m.setp('Km2', 0.0980973)
     m.set_init(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
-##     pars = "V Km1".split()
-##     parvalues = [m.V, m.Km1]
     pars = "glo1.V Km1".split()
     parvalues = [m.parameters.glo1.V, m.parameters.Km1]
     
     sols = Solutions()
-    sols += solve(m, tf = 4030.0) 
+    sols += solve(m, tf=4030.0) 
     
-    parsdict = dict (zip(pars, parvalues))
+    parsdict = dict(zip(pars, parvalues))
     
     errors = (0.01,0.001)
     errors = constError_func(errors)

@@ -3,111 +3,119 @@ import math
 from kinetics import *
 import dynamics
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 __globs = {}
 __haskinetics = {}
 for k, v in globals().items():
-    if hasattr(v,"is_rate"):
+    if hasattr(v, "is_rate"):
         __haskinetics[k] = v
 __globs.update(__haskinetics)
 __globs.update(vars(math))
+
 
 def register_kin_func(f):
     f.is_rate = True
     __globs[f.__name__] = f
     globals()[f.__name__] = f
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Regular expressions for stoichiometry patterns
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 fracnumber = re.compile(fracnumberpattern, re.IGNORECASE)
 realnumber = re.compile(realnumberpattern, re.IGNORECASE)
 
-stoichiompattern   = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
+stoichiompattern = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
 chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+")?)\s*(?P<variable>[_a-z]\w*)\s*$"
 
-stoichiom   = re.compile(stoichiompattern,    re.IGNORECASE)
+stoichiom = re.compile(stoichiompattern,    re.IGNORECASE)
 chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Utility functions
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
+
 def _is_sequence(arg):
     return (not hasattr(arg, "strip") and
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
 
+
 def _is_number(a):
-    return (isinstance(a, float) or 
-            isinstance(a, int) or 
+    return (isinstance(a, float) or
+            isinstance(a, int) or
             isinstance(a, long))
+
 
 def processStoich(expr):
     match = stoichiom.match(expr)
     if not match:
-        raise BadStoichError("Bad stoichiometry definition:\n"+ expr)
+        raise BadStoichError("Bad stoichiometry definition:\n" + expr)
 
-    #process irreversible
+    # process irreversible
     irrsign = match.group('irreversible')
     irreversible = irrsign == "->"
     reagents = []
     products = []
 
-    #process stoichiometry
-    fields = [(reagents,'reagents'),(products,'products')]
-    for target,f in fields:
+    # process stoichiometry
+    fields = [(reagents, 'reagents'), (products, 'products')]
+    for target, f in fields:
         complexesstring = match.group(f).strip()
-        if len(complexesstring) == 0:  #empty complexes allowed
+        if len(complexesstring) == 0:  # empty complexes allowed
             continue
         complexcomps = complexesstring.split("+")
         for c in complexcomps:
             m = chemcomplex.match(c)
             if m:
-               coef = m.group('coef')
-               var = m.group('variable')
-               if coef == "":
-                  coef = 1.0
-               else:
-                  coef = float(coef)
-               if coef == 0.0: continue # a coef equal to zero means ignore
-               target.append((var,coef))
+                coef = m.group('coef')
+                var = m.group('variable')
+                if coef == "":
+                    coef = 1.0
+                else:
+                    coef = float(coef)
+                if coef == 0.0:
+                    continue  # a coef equal to zero means ignore
+                target.append((var, coef))
             else:
-               raise BadStoichError("Bad stoichiometry definition:\n"+ expr)
+                raise BadStoichError("Bad stoichiometry definition:\n" + expr)
     return reagents, products, irreversible
 
-def massActionStr(k = 1.0, reagents = []):
+
+def massActionStr(k=1.0, reagents=[]):
     res = str(float(k))
     factors = []
     for var, coef in reagents:
         if coef == 0.0:
             factor = ''
         if coef == 1.0:
-            factor = '%s'% var
+            factor = '%s' % var
         else:
-            factor = '%s**%f' % (var,coef)
+            factor = '%s**%f' % (var, coef)
         factors.append(factor)
     factors = '*'.join(factors)
     if factors != '':
         res = res + '*' + factors
     return res
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Model and Model component classes
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
 
 class ModelObject(object):
     """Base for all model components.
-       
+
        The only common features are a name and a dictionary with metadata"""
 
     def __init__(self, name='?'):
         self.metadata = {}
         self.name = name
-    
+
     def __eq__(self, other):
         if self.name != other.name:
             return False
@@ -117,6 +125,7 @@ class ModelObject(object):
             if repr(self.metadata[k]) != repr(other.metadata[k]):
                 return False
         return True
+
 
 def toConstOrBounds(name, value, is_bounds=False):
     if not is_bounds:
@@ -759,8 +768,7 @@ class Model(ModelObject):
                 raise AttributeError(name + ' is not a parameter of '+ self.name)
 
     def set_init(self, *p, **pdict):
-        dpars = dict(*p)
-        dpars.update(pdict)
+        dpars = dict(*p, **pdict)
         for k in dpars:
             self._init.setp(k,dpars[k])
         self._refreshVars()
@@ -886,8 +894,7 @@ class Model(ModelObject):
         return True        
     
     def update(self, *p, **pdict):
-        dpars = dict(*p)
-        dpars.update(pdict)
+        dpars = dict(*p, **pdict)
         for k in dpars:
             self.setp(k,dpars[k])
     
@@ -1182,6 +1189,12 @@ def test():
 
     print '\n---- after dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)'
     dd={"V4":2.1, "V3":2.2, "Km3":2.3}; m.update(dd)
+    for p in m.parameters:
+        print p.name , '=',  p
+        
+    print '\n---- after dd={"V4":3.14, "v3.V3":2.2, "v3.new":0.1}; m.update(dd)'
+    print '---- notice "v3.new"'
+    dd={"V4":3.14, "v3.V3":2.2, "v3.new":0.1}; m.update(dd)
     for p in m.parameters:
         print p.name , '=',  p
         

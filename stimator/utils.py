@@ -1,5 +1,8 @@
 import pprint
 
+def make_dict_from_args(*args, **kwargs):
+    return dict(*args, **kwargs)
+
 # helper to transform string arguments in lists:
 def listify(arguments):
     if isinstance(arguments, list) or isinstance(arguments, tuple):
