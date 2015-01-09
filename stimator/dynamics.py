@@ -988,6 +988,7 @@ def test():
 ##     scans = {'B' : [0.1, 0.1, 0.3, 0.3, 0.8, 0.8],
 ##              'k1' : [7.3, 5.0, 7.3, 5.0, 7.3, 5.0]}
     scans = {'B' : [0.0, 0.1, 0.3, 0.5, 0.8, 1.0]}
+    #scans = [('B' , [0.0, 0.1, 0.3, 0.5, 0.8, 1.0])]
     
     sols2 = scan(m3, scans, tf=10.0)
     sols2.plot(superimpose=False, legend=False, ynormalize=True, 

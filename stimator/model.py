@@ -900,6 +900,9 @@ class Model(ModelObject):
     
     def solve(self, **kwargs):
         return dynamics.solve(self, **kwargs)
+
+    def scan(self, plan, **kwargs):
+        return dynamics.scan(self, plan, **kwargs)
         
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters

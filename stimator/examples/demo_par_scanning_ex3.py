@@ -1,6 +1,6 @@
 """S-timator : DEMO of  parameter scanning."""
 from stimator import *
-from stimator.dynamics import scan
+#from stimator.dynamics import scan
 from time import time, sleep
 from numpy import linspace
 
@@ -32,8 +32,8 @@ def run_normal():
     print (title)
     bvalues = {'B': (0.0, 0.1, 0.3, 0.5, 0.8, 1.0)}
 
-    s = scan(m, bvalues, tf=10, npoints=npoints)
-    s.plot(ynormalize = True, fig_size=(16,9), suptitlegend=title, show=True)
+    s = m.scan(bvalues, tf=10, npoints=npoints)
+    s.plot(ynormalize = True, fig_size=(16,8), suptitlegend=title, show=True)
     #plot(s, superimpose=True)
 
 if __name__ == "__main__":
