@@ -74,7 +74,8 @@ solving and plotting:
 
     from stimator import read_model, solve
 
-    mdl = """# Example file for S-timator
+    mdl = """
+    # Example file for S-timator
     title Example 1
 
     #reactions (with stoichiometry and rate)
@@ -89,7 +90,8 @@ solving and plotting:
     init: (x1=0, x2=0)
 
     #filter what you want to plot
-    !! x1 x2"""
+    !! x1 x2
+    """
 
     m = read_model(mdl)
 
@@ -110,7 +112,8 @@ Model parameter estimation, based on experimental time-course data
     from stimator import read_model, readTCs, solve
     from stimator.deode import DeODEOptimizer
 
-    mdl = """# Example file for S-timator
+    mdl = """
+    # Example file for S-timator
     title Example 2
 
     vin  : -> x1     , rate = k1

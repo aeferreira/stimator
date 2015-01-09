@@ -30,9 +30,8 @@ ca = ExampleModel()
 ca.desc = "CICR model. Calcium spikes"
 ca.text = """title CICR model. Calcium spikes
 v0         = -> Ca, 1
-v1         = -> Ca, Bstep*k1
-    
-Bstep      = 0.4
+v1         = -> Ca, k1*B*step(t, t_stimulus)
+
 k1         = 7.3
 B          = 0.4
 t_stimulus = 1.0

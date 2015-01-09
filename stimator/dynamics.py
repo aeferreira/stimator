@@ -9,11 +9,9 @@
 
 import re
 import math
+import itertools
 from kinetics import *
 from numpy import *
-import pprint
-import os
-import os.path
 from scipy import integrate
 from timecourse import SolutionTimeCourse, Solutions
 
@@ -716,6 +714,57 @@ class ModelSolver(object):
             sol.apply_transf(self.tranf_f, self.tranf_names)
         return sol
 
+
+def scan(model, plan,
+        tf = 1.0, 
+        npoints = 500, 
+        t0 = 0.0, 
+        initial = 'init', 
+        times = None, 
+        outputs=False, 
+        titles = None,
+        changing_pars = None):
+        
+        """Wrapper around ModelSolver."""
+                        
+        plan = dict(plan)
+        names = list(plan.keys())
+        # zip, terminating on the shortestsequence
+        design = list(itertools.izip(*list(plan.values())))
+        nruns = len(design)
+        
+        if titles is None:
+            titles = []
+            for v in design:
+                pairs = list(zip(names, v))
+                pairs = ['%s = %g'%(n,v) for (n,v) in pairs]
+                titles.append(', '.join(pairs))
+
+##         print 'plan'
+##         print plan
+##         print '---'
+##         print 'parameter names'
+##         print names
+##         print '---'
+##         print 'design'
+##         print design
+##         print '---'
+##         print 'titles'
+##         print titles
+##         print '---'
+        
+        ms = ModelSolver(model, tf=tf, npoints=npoints, t0=t0, 
+                        initial=initial, times=times, outputs=outputs, 
+                        changing_pars=names)
+    
+        s = Solutions()
+        for title,p in zip(titles,design):
+            s += ms.solve(title = title, par_values = p)
+
+        return s
+    
+    
+    
 def test():
     from modelparser import read_model     
     m = read_model("""
@@ -806,9 +855,9 @@ def test():
 
     print "t =", t
     print 'variables:'
-    pprint.pprint(dict((n, value) for n,value in zip(m.varnames, varvalues)))
+    print (dict((n, value) for n,value in zip(m.varnames, varvalues)))
     print 'parameters:'
-    pprint.pprint(dict((p.name, p)     for p in m.parameters))
+    print (dict((p.name, p) for p in m.parameters))
  
     print '\n---- rates using rates_func(m) -------------------------'
     vratesfunc = rates_func(m)
@@ -899,10 +948,10 @@ def test():
 
     solution2 = solve(m2, tf = 10.0, times=times)
 
-    #print '---------------- EXAMPLE 3 ------------------'
+    print '---------------- EXAMPLE 3 ------------------'
     m3 = read_model(models.ca.text)
 
-    #print m3
+    print models.ca.text
 
     ms = ModelSolver(m3, tf = 8.0, npoints = 2000)
     solution3 = ms.solve()
@@ -926,11 +975,24 @@ def test():
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
     sols = Solutions([solution1, solution2, solution3, solution4])
-    sols.plot(superimpose=False, show = True, save2file=savingfile)
+    sols.plot(superimpose=False, save2file=savingfile)
     
+    import os
+    import os.path
     if os.path.exists(savingfile):
         print 'removing temp figure file'
         os.remove(savingfile)
+
+    print '---------------- scanning example ------------------'
+    m3 = read_model(models.ca.text)
+##     scans = {'B' : [0.1, 0.1, 0.3, 0.3, 0.8, 0.8],
+##              'k1' : [7.3, 5.0, 7.3, 5.0, 7.3, 5.0]}
+    scans = {'B' : [0.0, 0.1, 0.3, 0.5, 0.8, 1.0]}
+    
+    sols2 = scan(m3, scans, tf=10.0)
+    sols2.plot(superimpose=False, legend=False, ynormalize=True, 
+               fig_size=(16,9), show=True)
+
 
 if __name__ == "__main__":
     test()
