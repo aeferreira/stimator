@@ -417,6 +417,7 @@ class Solutions(object):
                    group=False, 
                    suptitlegend=None, 
                    legend=True,
+                   grid=False,
                    force_dense=False,
                    save2file=None, **kwargs):
         
@@ -505,7 +506,8 @@ class Solutions(object):
             if yrange is not None:
                 curraxis.set_ylim(yrange)
             curraxis.set_title(p['name'])
-            curraxis.grid()
+            if grid:
+                curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')

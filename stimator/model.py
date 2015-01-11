@@ -129,21 +129,22 @@ class ModelObject(object):
 
 def toConstOrBounds(name, value, is_bounds=False):
     if not is_bounds:
-        vv = float(value) # can raise ValueError
+        vv = float(value)  # can raise ValueError
         return constValue(value, name=name)
 
     # seeking proper bounds pair
-    lv = len(value) # can raise TypeError
-    
+    lv = len(value)  # can raise TypeError
+
     # value has len...
-    #must be exactely two
+    # must be exactely two
     if lv != 2:
         raise TypeError(value + ' is not a pair of numbers')
-    vv0 = float(value[0]) # can raise ValueError
-    vv1 = float(value[1]) # can raise ValueError
+    vv0 = float(value[0])  # can raise ValueError
+    vv1 = float(value[1])  # can raise ValueError
     return Bounds(name, vv0, vv1)
 
-def constValue(value = None, name = '?'):
+
+def constValue(value=None, name='?'):
     if _is_number(value):
         v = float(value)
         res = ConstValue(v)
@@ -152,24 +153,25 @@ def constValue(value = None, name = '?'):
         raise TypeError(value+' is not a float or int')
     return res
 
+
 def _setPar(obj, name, value, is_bounds=False):
     try:
         vv = toConstOrBounds(name, value, is_bounds)
     except (TypeError, ValueError):
         if is_bounds:
-            raise BadTypeComponent("Can not assign"+str(value)+"to %s.%s bounds"%(obj.name,name))
+            raise BadTypeComponent("Can not assign"+str(value)+"to %s.%s bounds" % (obj.name, name))
         else:
-            raise BadTypeComponent("Can not assign"+str(value)+"to %s.%s"%(obj.name,name))
+            raise BadTypeComponent("Can not assign"+str(value)+"to %s.%s" % (obj.name, name))
 
     c = obj.__dict__['_ownparameters']
     already_exists = name in c
     if not already_exists:
         if isinstance(vv, ConstValue):
             newvalue = vv
-        else: #Bounds object
+        else:  # Bounds object
             newvalue = constValue((float(vv.lower)+float(vv.upper))/2.0, name=name)
             newvalue.bounds = vv
-    else: #aready exists
+    else:  # aready exists
         if isinstance(vv, ConstValue):
             newvalue = vv
             newvalue.bounds = c[name].bounds
@@ -177,6 +179,7 @@ def _setPar(obj, name, value, is_bounds=False):
             newvalue = constValue(c[name], name=name)
             newvalue.bounds = vv
     c[name] = newvalue
+
 
 class _HasOwnParameters(ModelObject):
     def __init__(self, name='?', parvalues=None):
@@ -1285,4 +1288,3 @@ def test():
 
 if __name__ == "__main__":
     test()
- 
