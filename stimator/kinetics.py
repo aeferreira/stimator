@@ -1,11 +1,10 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #----------------------------------------------------------------------------
 #         PROJECT S-TIMATOR
 #
 # S-timator kinetics functions
-# Copyright António Ferreira 2006-2014
+# Copyright António Ferreira 2006-2015
 #----------------------------------------------------------------------------
 
 def step (t, at, top=1.0):

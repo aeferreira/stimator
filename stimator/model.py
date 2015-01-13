@@ -457,25 +457,6 @@ class Bounds(ModelObject):
         return "(lower=%f, upper=%f)" % (self.lower, self.upper)
 
 
-def _ConvertPair2Reaction(value):
-    if (isinstance(value, tuple) or isinstance(value, list)) and len(value) == 2:
-        if isinstance(value[0], str):
-            good2nd = False
-            for numtype in (str, float, int, long):
-                if isinstance(value[1], numtype):
-                    good2nd = True
-                    break
-            if not good2nd:
-                return value
-            res = processStoich(value[0])
-            rate = value[1]
-            for numtype in (float, int, long):
-                if isinstance(rate, numtype):
-                    rate = massActionStr(rate, res[0])
-            return Reaction(res[0], res[1], rate, {}, res[2])
-    return value
-
-
 class _Collection_Accessor(object):
     def __init__(self, model, collection):
         self.__dict__['model'] = model

@@ -24,6 +24,10 @@ def identifiersInExpr(_expr):
     return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
 
 
+def _is_string(a):
+    return (isinstance(a, str) or
+            isinstance(a, unicode))
+
 def init2array(model):
     """Transforms a state object into a numpy.array object.
        
@@ -361,12 +365,12 @@ def genTransformationFunction(m, f):
     if not callable(f):
         if isinstance(f,list) or isinstance(f, tuple):
             for a in f:
-                if not (isinstance(a,str) or isinstance(a,unicode)):
+                if not _is_string(a):
                     raise TypeError(str(a) + ' must be a list of strings')
             argnames = f[:]
             names = argnames
         else:
-            if not (isinstance(f,str) or isinstance(f,unicode)):
+            if not _is_string(f):
                 raise TypeError('argument must be a string, list or callable.')
             argnames = f.split()
             names = argnames
@@ -627,6 +631,7 @@ class ModelSolver(object):
           times = None, 
           outputs=False, 
           title = None,
+          ignore_replist = False,
           changing_pars = None):
         self.model = model.copy()
         self.salg=integrate._odepack.odeint
@@ -634,7 +639,7 @@ class ModelSolver(object):
         self.changing_pars = changing_pars
         if self.changing_pars is None:
             self.changing_pars = []
-        if isinstance(self.changing_pars, str):
+        if _is_string(self.changing_pars):
             self.changing_pars = self.changing_pars.split()
         self.par_enumeration = []
 
@@ -653,7 +658,6 @@ class ModelSolver(object):
 
         #get initial values, possibly from a state in the model
         if initial == 'init':
-        #if isinstance(initial, str) or isinstance(initial, StateArray):
             self.y0 = copy(init2array(self.model))
         else:
             self.y0 = copy(initial)
@@ -670,6 +674,7 @@ class ModelSolver(object):
         self.expose_enum = [0.0 for i in range(len(self.model.reactions))]
         self.f = getdXdt_exposing_rbc(self.model, self.expose_enum, scale=scale, t0=t0)
         self.t  = (self.times-t0)/scale  # this scales time points
+        self.ignore_replist = ignore_replist
         self.title = title
         if self.title is None:
             self.title = self.model.metadata.get('title', '')
@@ -682,7 +687,7 @@ class ModelSolver(object):
             #compute model transformations
             self.tranf_f     = self.model.transf_func()
             self.tranf_names = [x.name for x in self.model.transf]
-        elif isinstance(outputs, str) or callable(outputs): 
+        elif _is_string(outputs) or callable(outputs): 
             #a filter string or transformation function
             self.tranf_f = genTransformationFunction(self.model, outputs)
             self.tranf_names = self.tranf_f.names
@@ -710,8 +715,12 @@ class ModelSolver(object):
             title = self.title
         sol = SolutionTimeCourse(self.times, Y.T, self.names, title, dense=True)
         
+        # a filter string or transformation function
         if self.tranf_f is not None:
             sol.apply_transf(self.tranf_f, self.tranf_names)
+        if self.model.metadata.get('!!', None) is not None and self.ignore_replist == False:
+            names = self.model.metadata['!!'].split()
+            sol = sol.copy(names=names)
         return sol
 
 
