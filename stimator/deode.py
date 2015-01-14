@@ -10,7 +10,6 @@ import de
 from numpy import *
 from scipy import integrate
 from dynamics import getdXdt, init2array
-from modelparser import read_model
 import fim
 import timecourse
 from matplotlib import pylab as pl
@@ -359,7 +358,13 @@ class DeODEOptimizer(de.DESolver):
 ##             solslist.append(newpair)
 ##         self.fitted_tcs = solslist
 
+def s_timate(model, optSettings, tcs, **kwargs):
+    optimizer = DeODEOptimizer(model, optSettings, tcs, **kwargs)
+    optimizer.run()
+    return optimizer.optimum
+
 def test():
+    from modelparser import read_model
     m1 = read_model("""
 title Glyoxalase system in L. Infantum
 
@@ -389,11 +394,16 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
                                      verbose = True)
     #intvarsorder=(0,2,1), verbose=True)
     
-    optimizer = DeODEOptimizer(m1,optSettings, timecourses)
-    optimizer.run()
+    optimum = s_timate(m1,optSettings, timecourses)
     
-    optimizer.optimum.print_info()
-    optimizer.optimum.plot()
+    optimum.print_info()
+    optimum.plot()
+
+##     optimizer = DeODEOptimizer(m1,optSettings, timecourses)
+##     optimizer.run()
+##     
+##     optimizer.optimum.print_info()
+##     optimizer.optimum.plot()
 
     #--- an example with unknown initial values --------------------
     
@@ -415,11 +425,16 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
                                      verbose = True)
     #, intvarsorder=(0,2,1), verbose=True)
     
-    optimizer = DeODEOptimizer(m2,optSettings, timecourses)
-    optimizer.run()
+    optimum = s_timate(m2,optSettings, timecourses)
 
-    optimizer.optimum.print_info()
-    optimizer.optimum.plot(show=True)
+    optimum.print_info()
+    optimum.plot(show=True)
+
+##     optimizer = DeODEOptimizer(m2,optSettings, timecourses)
+##     optimizer.run()
+
+##     optimizer.optimum.print_info()
+##     optimizer.optimum.plot(show=True)
 
 if __name__ == "__main__":
     test()
