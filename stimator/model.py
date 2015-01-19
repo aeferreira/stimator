@@ -2,7 +2,7 @@ import re
 import math
 from kinetics import *
 import dynamics
-import deode
+import estimation
 
 # ----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -894,7 +894,7 @@ class Model(ModelObject):
         return dynamics.scan(self, plan, **kwargs)
 
     def estimate(self, tcs, **kwargs):
-        return deode.s_timate(self, tcs, **kwargs)
+        return estimation.s_timate(self, tcs, **kwargs)
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
