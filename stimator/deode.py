@@ -7,7 +7,8 @@ Copyright 2005-2013 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib."""
 
 import de
-from numpy import *
+from numpy import array, nansum, fabs, copy, empty, linspace, isnan
+import math
 from scipy import integrate
 from dynamics import getdXdt, init2array
 import fim
@@ -126,18 +127,23 @@ class DeODEOptimizer(de.DESolver):
         mins = array([u.bounds.lower for u in pars])
         maxs = array([u.bounds.upper for u in pars])
         
+        if optSettings.get('pop_size', None) is None:
+            optSettings['pop_size'] = optSettings['genomesize']
+        if optSettings.get('max_generations', None) is None:
+            optSettings['max_generations'] = optSettings['generations']
+        
         de.DESolver.__init__(self, len(pars), # number of parameters
-                             int(optSettings['genomesize']),  # genome size
-                             int(optSettings['generations']), # max generations
-                             mins, maxs,       # min and max parameter values
-                             "Best2Exp",       # DE strategy
-                             0.7, 0.6,         # DiffScale, Crossover Prob
-                             0.0,              # Cut-off energy
-                             True,             # use class random-number methods
+                             int(optSettings['pop_size']),  # pop size
+                             int(optSettings['max_generations']), # max gens
+                             mins, maxs,  # min and max parameter values
+                             "Best2Exp",  # DE strategy
+                             0.7, 0.6,  # DiffScale, Crossover Prob
+                             0.0,  # Cut-off energy
+                             True,  # use class random-number methods
                              maxGenerations_noimprovement)
 
         # cutoffEnergy is 1e-6 of deviation from data
-        self.cutoffEnergy =  1.0e-6*sum([nansum(fabs(tc.data)) for tc in self.tc])
+        self.cutoffEnergy =  1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
         
         # scale times to maximum time in data
         scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
@@ -358,8 +364,24 @@ class DeODEOptimizer(de.DESolver):
 ##             solslist.append(newpair)
 ##         self.fitted_tcs = solslist
 
-def s_timate(model, optSettings, tcs, **kwargs):
-    optimizer = DeODEOptimizer(model, optSettings, tcs, **kwargs)
+def s_timate(model, tcs,
+             pop_size=80,
+             max_generations=200,
+             tc_dir=None,
+             intvarsorder=None,
+             names=None,
+             verbose_readingTCs=True,
+             **kwargs):
+
+    timecourses = timecourse.readTCs(tcs,
+                                     filedir=tc_dir,
+                                     intvarsorder=intvarsorder,
+                                     names=names,
+                                     verbose=verbose_readingTCs)
+
+    optSettings={'genomesize':pop_size, 'generations':max_generations}
+    
+    optimizer = DeODEOptimizer(model, optSettings, timecourses, **kwargs)
     optimizer.run()
     return optimizer.optimum
 
@@ -388,22 +410,13 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
 """)
     
     #print m1
-    optSettings={'genomesize':80, 'generations':200}
-    timecourses = timecourse.readTCs(['TSH2a.txt', 'TSH2b.txt'], 
-                                     'examples', names = ['SDLTSH', 'HTA'], 
-                                     verbose = True)
-    #intvarsorder=(0,2,1), verbose=True)
-    
-    optimum = s_timate(m1,optSettings, timecourses)
+
+    optimum = s_timate(m1, ['TSH2a.txt', 'TSH2b.txt'], tc_dir='examples',
+                       names=['SDLTSH', 'HTA'])
+    # ... intvarsorder=(0,2,1) ...
     
     optimum.print_info()
     optimum.plot()
-
-##     optimizer = DeODEOptimizer(m1,optSettings, timecourses)
-##     optimizer.run()
-##     
-##     optimizer.optimum.print_info()
-##     optimizer.optimum.plot()
 
     #--- an example with unknown initial values --------------------
     
@@ -411,30 +424,20 @@ init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
     
     # Now, assume init.HTA is uncertain
     m2.set_bounds('init.HTA', (0.05,0.25))
-    # do not estimate Km1 and Km2 to help the analysis
+    # do not estimate Km1 and Km2, to help the analysis
     m2.reset_bounds('Km1')
     m2.reset_bounds('Km2')
     
-    optSettings={'genomesize':60, 'generations':200}
-    
     ## VERY IMPORTANT:
     ## only one time course can be used: 
-    ## cannot fit one uncertain initial value to several timecourses!!!
-    timecourses = timecourse.readTCs(['TSH2a.txt'], 
-                                     'examples', names = ['SDLTSH', 'HTA'], 
-                                     verbose = True)
-    #, intvarsorder=(0,2,1), verbose=True)
+    ## cannot fit one initial value using several timecourses!!!
     
-    optimum = s_timate(m2,optSettings, timecourses)
+    optimum = s_timate(m2, ['TSH2a.txt'], tc_dir='examples',
+                       pop_size=60,
+                       names=['SDLTSH', 'HTA'])
 
     optimum.print_info()
     optimum.plot(show=True)
-
-##     optimizer = DeODEOptimizer(m2,optSettings, timecourses)
-##     optimizer.run()
-
-##     optimizer.optimum.print_info()
-##     optimizer.optimum.plot(show=True)
 
 if __name__ == "__main__":
     test()

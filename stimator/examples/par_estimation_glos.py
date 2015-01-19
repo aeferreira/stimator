@@ -1,6 +1,4 @@
-
-from stimator import read_model, readTCs
-from stimator.deode import DeODEOptimizer
+from stimator import read_model
 
 mdl = """
 title Glyoxalase system in L. Infantum
@@ -21,18 +19,14 @@ print 'Parameter estimation: glyoxalase system example'
 print mdl
 print '-------- an example with two time courses --------------'
 
-optSettings={'genomesize':80, 'generations':200}
-timecourses = readTCs(['TSH2a.txt', 'TSH2b.txt'], names = ['SDLTSH', 'HTA'], verbose=True)
 
-## optimizer = DeODEOptimizer(m1,optSettings, timecourses, dump_generations=True,
-##                            maxGenerations_noimprovement = 50)
-optimizer = DeODEOptimizer(m1, optSettings, timecourses)
-optimizer.run()
+optimum = m1.estimate(['TSH2a.txt', 'TSH2b.txt'], names=['SDLTSH', 'HTA'])
+#  ... dump_generations=True, maxGenerations_noimprovement = 50)
 
-print optimizer.optimum.info()
-optimizer.optimum.plot()
+print optimum.info()
+optimum.plot()
 ## #save predicted timecourses to files
-## redsols = solver.optimum.optimum_tcs
+## redsols = optimum.optimum_tcs
 ## redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
 
 
@@ -48,15 +42,11 @@ m2.parameters.Km2.reset_bounds()
 m2.parameters.Km1 = 0.252531
 m2.parameters.Km2 = 0.0980973
 
-optSettings={'genomesize':60, 'generations':200}
-
 ## VERY IMPORTANT:
 ## only one time course can be used: 
-## cannot fit one uncertain initial value to several timecourses!!!
-timecourses = readTCs(['TSH2a.txt'], '.', names = ['SDLTSH', 'HTA'], verbose=True)
+## cannot fit one uncertain initial using several timecourses!!!
 
-optimizer = DeODEOptimizer(m2,optSettings, timecourses)
-optimizer.run()
+optimum = m2.estimate(['TSH2a.txt'], names=['SDLTSH', 'HTA'], pop_size=60)
 
-optimizer.optimum.print_info()
-optimizer.optimum.plot(show=True)
+optimum.print_info()
+optimum.plot(show=True)

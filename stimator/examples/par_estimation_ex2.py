@@ -1,5 +1,4 @@
-from stimator import read_model, readTCs
-from stimator.deode import DeODEOptimizer
+from stimator import read_model
 
 mdl = """# Example file for S-timator
 title Example 2
@@ -21,17 +20,13 @@ genomesize = 60     # population size in GA
 m1 = read_model(mdl)
 print mdl
 
-optSettings={'genomesize':60, 'generations':200}
-timecourses = readTCs(['ex2data.txt'], verbose=True)
+best = m1.estimate(['ex2data.txt'], pop_size=60)
 
-optimizer = DeODEOptimizer(m1,optSettings, timecourses)
-optimizer.run()
-best = optimizer.optimum
 print best.info()
 best.plot()
 
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.update(bestpars)
-#solve(m2, tf=20.0).plot(show=True)
+
 m2.solve(tf=20.0, outputs='x2').plot(show=True)

@@ -24,21 +24,27 @@ class StimatorTCError(Exception):
         return self.msg
 
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         THE BASIC TIMECOURSE CLASS
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
 
-    def __init__(self, t=array([]), data=array([]), names=[], title="", dense = False):
+    def __init__(self, t=None, data=None, names=None, title="", dense=False):
+        if t is None:
+            t = array([])
         self.t = t          # values of time points
+        if data is None:
+            data = array([])
         self.data = data    # table of points: series in rows, times in cols
+        if names is None:
+            names = []
         self.names = names  # names of the series
         self.title = title  # a title for the solution
         self.dense = dense
 
-        #for solutions read from a file
+        # for solutions read from a file
         self.filename = ""
         self.shortname = ""
 
@@ -119,7 +125,7 @@ class SolutionTimeCourse(object):
 
            f is the transformation function, with signature
            f(variables,t). variables is an array, list or tuple, t is a scalar.
-           This function must return an array with the same size as 'variables'.
+           This function must return an array with the same size as 'variables'
            newnames is a list of names of the transformed variables.
            results are kept 'in place': data is substituted."""
 
@@ -163,7 +169,7 @@ class SolutionTimeCourse(object):
                 continue    # empty lines are skipped
             if line.startswith('#'):
                 continue    # comment lines are skipped
-            #print line
+            # print line
             items = line.split()
 
             if identifier.match(items[0]):
@@ -186,7 +192,7 @@ class SolutionTimeCourse(object):
         if isname:
             f.close()
 
-        #create default names "t, x1, x2, x3,..." or use names if provided
+        # create default names "t, x1, x2, x3,..." or use names if provided
         if len(header) == 0:
             header = ['t']
             for i in range(1, nvars):
@@ -248,7 +254,7 @@ class SolutionTimeCourse(object):
             names = self.names
         nameindexes = []
         for name in names:
-            if not name in self.names:
+            if name not in self.names:
                 raise ValueError("No data for '%s' in timecourse" % name)
             nameindexes.append(self.names.index(name))
         data = self.data[nameindexes, :].copy()
@@ -277,9 +283,9 @@ class SolutionTimeCourse(object):
         ss = Solutions([self])
         ss.plot(**kwargs)
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 class Solutions(object):
@@ -293,7 +299,7 @@ class Solutions(object):
         self.basedir = None
         self.defaultnames = None  # list of names to use if headers are missing
         # aList argument must be an iterable
-        #TODO: throw Exception if it isn't
+        # TODO: throw Exception if it isn't
         if aList is not None:
             for s in aList:
                 self.append(s)
@@ -320,7 +326,7 @@ class Solutions(object):
         elif isinstance(other, list) or isinstance(other, tuple):
             for s in other:
                 if not isinstance(s, SolutionTimeCourse):
-                    raise TypeError("Must add a solution or collection of them")
+                    raise TypeError("Must add a solution or a set of them")
             self.solutions.extend(list(other))
         elif isinstance(other, SolutionTimeCourse):
             self.solutions.append(other)
@@ -361,11 +367,12 @@ class Solutions(object):
             sol.load_from(filename, names=names)
             if sol.shape == (0, 0):
                 os.chdir(cwd)
-                raise StimatorTCError("File\n%s\ndoes not contain valid data" % filename)
+                error_msg = "File\n%s\ndoes not contain valid data" % filename
+                raise StimatorTCError(error_msg)
             else:
                 if verbose:
                     print("file %s:" % (filename))
-                    print("%d time points, %d variables"%(sol.ntimes, len(sol)))
+                    print("%d time points, %d variables" % (sol.ntimes, len(sol)))
                 self.append(sol)
                 nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
@@ -408,53 +415,53 @@ class Solutions(object):
         self.orderByNames(vnames)
         return self
 
-    def plot(self, show=False, 
-                   figure=None, 
-                   fig_size=None,
-                   titles=None, 
-                   ynormalize=False, 
-                   yrange=None, 
-                   group=False, 
-                   suptitlegend=None, 
-                   legend=True,
-                   grid=False,
-                   force_dense=False,
-                   save2file=None, **kwargs):
-        
+    def plot(self, show=False,
+             figure=None,
+             fig_size=None,
+             titles=None,
+             ynormalize=False,
+             yrange=None,
+             group=False,
+             suptitlegend=None,
+             legend=True,
+             grid=False,
+             force_dense=False,
+             save2file=None, **kwargs):
+
         """Generate a graph of the time course using matplotlib."""
-        
+
         mpl.rcParams['legend.numpoints'] = 1
-        original_figsize =  mpl.rcParams['figure.figsize']
-        #print ('original_figsize', original_figsize)
+        original_figsize = mpl.rcParams['figure.figsize']
+        # print ('original_figsize', original_figsize)
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
-            #print ('figure size set to ',  mpl.rcParams['figure.figsize'])
-        
+            # print ('figure size set to ',  mpl.rcParams['figure.figsize'])
+
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
-        pnames = ['time course %d'%(i+1) for i in range(ntc)]
+        pnames = ['time course %d' % (i+1) for i in range(ntc)]
         for i in range(ntc):
             if titles:
                 pnames[i] = titles[i]
             else:
                 if self[i].title:
                     pnames[i] = self[i].title
-                
-        #find how many plots
+
+        # find how many plots
         if group:
             nplots = len(group)
         else:
             nplots = ntc
-        
+
         ncols = int(math.ceil(math.sqrt(nplots)))
         nrows = int(math.ceil(float(nplots)/ncols))
-        
-        axis_set = [figure.add_subplot(nrows,ncols,i+1) for i in range(nplots)]
-        
-        plots_desc = []        
+
+        axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
+
+        plots_desc = []
         if not group:
-            for k,solution in enumerate(self):
+            for k, solution in enumerate(self):
                 rsol = range(len(solution))
                 pdesc = dict(name=pnames[k],
                              lines=[(solution.names[i], k, i) for i in rsol])
@@ -463,7 +470,7 @@ class Solutions(object):
             for vname in group:
                 pdesc = dict(name=vname)
                 plines = []
-                for k,solution in enumerate(self):
+                for k, solution in enumerate(self):
                     if vname in solution.names:
                         indx = solution.names.index(vname)
                         plines.append((pnames[k], k, indx))
