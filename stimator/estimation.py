@@ -16,21 +16,22 @@ import timecourse
 from matplotlib import pylab as pl
 import matplotlib.cm as cm
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
 
 class OptimumData(object):
     """Object that holds optimum solution data."""
-    
+
     def __init__(self, optimizer):
         self.optimizer = optimizer
-    
+
     def info(self):
         optimum = self
         headerformat = "--- %-20s -----------------------------\n"
         res = "\n" + (headerformat % 'PARAMETERS')
-        res += "\n".join(["%s\t%12g +- %g"%i for i in optimum.parameters])
+        res += "\n".join(["%s\t%12g +- %g" % i for i in optimum.parameters])
         res += '\n\n'
         res += headerformat % 'OPTIMIZATION'
         res += "%s\t%g\n" % ('Final Score', optimum.optimization_score)
@@ -46,7 +47,7 @@ class OptimumData(object):
         res += "\n".join(["%s\t%d\t%g" % i for i in optimum.tcdata])
         res += '\n\n'
         return res
-    
+
     def print_info(self):
         print (self.info())
 
@@ -62,15 +63,15 @@ class OptimumData(object):
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
         for i in range(ntc):
-            tcsubplots.append(figure.add_subplot(nrows,ncols,i+1))
+            tcsubplots.append(figure.add_subplot(nrows, ncols, i+1))
 
         for i in range(ntc):
             subplot = tcsubplots[i]
-            #subplot.set_xlabel("time")
-            subplot.set_title("%s (%d pt) %g"% tcstats[i], fontsize = 12)
+            # subplot.set_xlabel("time")
+            subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
             expsol = expsols[i]
             symsol = bestsols[i]
-            
+
             nlines = len(expsol)
             if nlines <= 1:
                 delta = 1.0
@@ -78,63 +79,65 @@ class OptimumData(object):
                 delta = 1.0/float(nlines-1)
             cindex = 0.0
             for line in range(len(expsol)):
-                #count NaN and do not plot if they are most of the timecourse
+                # count NaN and do not plot if they are most of the timecourse
                 yexp = expsol[line]
                 nnan = len(yexp[isnan(yexp)])
-                if nnan >= expsol.ntimes-1: continue
-                #otherwise plot lines
+                if nnan >= expsol.ntimes-1:
+                    continue
+                # otherwise plot lines
                 xname = expsol.names[line]
                 ysim = symsol[symsol.names.index(xname)]
                 c = cm.rainbow(cindex, 1)
                 lsexp, mexp = 'None', 'o'
                 lssim, msim = '-', 'None'
                 subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, color=c)
-                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c, 
+                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c,
                              label='%s' % xname)
-                cindex +=delta
+                cindex += delta
             subplot.grid()
             subplot.legend(loc='best')
             if show:
                 pl.show()
 
+
 class DeODEOptimizer(de.DESolver):
     """Overides energy function and report functions.
-    
+
     The energy function solves ODEs and computes a least-squares score.
     Ticker functions are called on completion of a generation and when
     optimization finishes.
     """
-    
-    def __init__(self, model, optSettings, tcs, weights = None,
-                    aMsgTicker=None, 
-                    anEndComputationTicker=None, 
-                    dump_generations = None, 
-                    dump_predictions=False,
-                    initial = 'init',
-                    maxGenerations_noimprovement = 20):
-        self.model    = model
-        self.tc       = tcs
+
+    def __init__(self, model, optSettings, tcs, weights=None,
+                 aMsgTicker=None,
+                 anEndComputationTicker=None,
+                 dump_generations=None,
+                 dump_predictions=False,
+                 initial='init',
+                 maxGenerations_noimprovement=20):
+        self.model = model
+        self.tc = tcs
         self.varnames = model.varnames
-        self.endTicker        = anEndComputationTicker
-        self.msgTicker        = aMsgTicker
+        self.endTicker = anEndComputationTicker
+        self.msgTicker = aMsgTicker
         self.dump_predictions = dump_predictions
         self.dump_generations = dump_generations
-        
-        #reorder variables according to model
+
+        # reorder variables according to model
         self.tc.orderByModelVars(self.model)
 
         pars = model.with_bounds
         mins = array([u.bounds.lower for u in pars])
         maxs = array([u.bounds.upper for u in pars])
-        
+
         if optSettings.get('pop_size', None) is None:
             optSettings['pop_size'] = optSettings['genomesize']
         if optSettings.get('max_generations', None) is None:
             optSettings['max_generations'] = optSettings['generations']
-        
-        de.DESolver.__init__(self, len(pars), # number of parameters
+
+        de.DESolver.__init__(self, len(pars),  # number of parameters
                              int(optSettings['pop_size']),  # pop size
-                             int(optSettings['max_generations']), # max gens
+                             int(optSettings['max_generations']),  # max gens
                              mins, maxs,  # min and max parameter values
                              "Best2Exp",  # DE strategy
                              0.7, 0.6,  # DiffScale, Crossover Prob
@@ -143,25 +146,25 @@ class DeODEOptimizer(de.DESolver):
                              maxGenerations_noimprovement)
 
         # cutoffEnergy is 1e-6 of deviation from data
-        self.cutoffEnergy =  1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
-        
+        self.cutoffEnergy = 1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
+
         # scale times to maximum time in data
-        scale = float(max([ (tc.t[-1]-tc.t[0]) for tc in self.tc]))
+        scale = float(max([(tc.t[-1]-tc.t[0]) for tc in self.tc]))
         t0 = self.tc[0].t[0]
-        
-        self.calcDerivs = getdXdt(model, 
-                                  scale=scale, 
-                                  with_uncertain=True, 
+
+        self.calcDerivs = getdXdt(model,
+                                  scale=scale,
+                                  with_uncertain=True,
                                   t0=t0)
-        self.salg=integrate._odepack.odeint
-        
+        self.salg = integrate._odepack.odeint
+
         # store initial values and (scaled) time points
         if isinstance(initial, str) or isinstance(initial, StateArray):
             try:
                 globalX0 = copy(init2array(model))
             except AttributeError:
                 globalX0 = zeros(len(model.varnames))
-    
+
         else:
             globalX0 = copy(initial)
 
@@ -174,32 +177,31 @@ class DeODEOptimizer(de.DESolver):
                     X0.append(data[xname][0])
                 else:
                     X0.append(globalX0[ix])
-            X0 = array(X0,dtype=float)
-            
+            X0 = array(X0, dtype=float)
+
             self.X0.append(X0)
-            t  = data.t
-            times = (t-t0)/scale #+t0  # this scales time points
+            t = data.t
+            times = (t-t0)/scale  # +t0  # this scales time points
             self.times.append(times)
         self.timecourse_scores = empty(len(self.tc))
-        
+
         # find uncertain initial values
         mapinit2trial = []
         for iu, u in enumerate(self.model.with_bounds):
             if u.name.startswith('init'):
                 varname = u.name.split('.')[-1]
                 ix = self.varnames.index(varname)
-                mapinit2trial.append((ix,iu))
-        self.trial_initindexes = array([j for (i,j) in mapinit2trial], dtype=int)
-        self.vars_initindexes = array([i for (i,j) in mapinit2trial], dtype=int)
-        
-        self.criterium = timecourse.getCriteriumFunction(weights, 
+                mapinit2trial.append((ix, iu))
+        self.trial_initindexes = array([j for (i, j) in mapinit2trial], dtype=int)
+        self.vars_initindexes = array([i for (i, j) in mapinit2trial], dtype=int)
+
+        self.criterium = timecourse.getCriteriumFunction(weights,
                                                          self.model,
                                                          self.tc)
 
-
-    def computeSolution(self,i,trial, dense = None):
+    def computeSolution(self, i, trial, dense=None):
         """Computes solution for timecourse i, given parameters trial."""
-        
+
         y0 = copy(self.X0[i])
         # fill uncertain initial values
         y0[self.vars_initindexes] = trial[self.trial_initindexes]
@@ -207,35 +209,35 @@ class DeODEOptimizer(de.DESolver):
             ts = self.times[i]
         else:
             ts = linspace(self.times[i][0], self.times[i][-1], 500)
-        output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0, 
-                        None, None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
-        if output[-1] < 0: return None
-        #~ if infodict['message'] != 'Integration successful.':
-            #~ return (1.0E300)
+        output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0,
+                           None, None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
+        if output[-1] < 0:
+            return None
+        # if infodict['message'] != 'Integration successful.':
+        #     return (1.0E300)
         return output[0]
-        
 
-    def externalEnergyFunction(self,trial):
-        #if out of bounds flag with error energy
+    def externalEnergyFunction(self, trial):
+        # if out of bounds flag with error energy
         for trialpar, minInitialValue, maxInitialValue in zip(trial, self.minInitialValue, self.maxInitialValue):
             if trialpar > maxInitialValue or trialpar < minInitialValue:
                 return 1.0E300
-        #set parameter values from trial
+        # set parameter values from trial
         self.model.set_uncertain(trial)
-        
-        #compute solutions and scores
+
+        # compute solutions and scores
         for i in range(len(self.tc)):
-            Y = self.computeSolution(i,trial)
+            Y = self.computeSolution(i, trial)
             if Y is not None:
-                self.timecourse_scores[i]=self.criterium(Y, i)
+                self.timecourse_scores[i] = self.criterium(Y, i)
             else:
                 return (1.0E300)
-        
+
         globalscore = self.timecourse_scores.sum()
         return globalscore
 
     def reportInitial(self):
-        msg = "\nSolving %s..."%self.model.metadata.get('title', '')
+        msg = "\nSolving %s..." % self.model.metadata.get('title', '')
         if self.dump_generations is not None:
             self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:
@@ -253,8 +255,9 @@ class DeODEOptimizer(de.DESolver):
             print >> self.dumpfile, self.generation_string(self.generation)
 
     def reportFinal(self):
-        if self.exitCode <= 0 : outCode = -1 
-        else: 
+        if self.exitCode <= 0:
+            outCode = -1
+        else:
             outCode = self.exitCode
             self.generateOptimumData()
         if not self.endTicker:
@@ -267,21 +270,21 @@ class DeODEOptimizer(de.DESolver):
 
     def generation_string(self, generation):
         generation = str(generation)
-        #find if objectives is iterable
+        # find if objectives is iterable
         isiter = hasattr(self.popEnergy[0], '__contains__')
-        res = 'generation %s -------------------------\n'%generation
-        for s,o in zip(self.population, self.popEnergy):
+        res = 'generation %s -------------------------\n' % generation
+        for s, o in zip(self.population, self.popEnergy):
             sstr = ' '.join([str(i) for i in s])
             if isiter:
                 ostr = ' '.join([str(i) for i in o])
             else:
                 ostr = str(o)
-            res = res + '%s %s\n'%(sstr, ostr)
+            res = res + '%s %s\n' % (sstr, ostr)
         return res
 
     def generateOptimumData(self):
-        #compute parameter standard errors, based on FIM-1
-        #generate TC solutions
+        # compute parameter standard errors, based on FIM-1
+        # generate TC solutions
         best = OptimumData(self)
         best.optimization_score = self.bestEnergy
         best.optimization_generations = self.generation
@@ -289,101 +292,100 @@ class DeODEOptimizer(de.DESolver):
         best.max_generations = self.maxGenerations
         best.pop_size = self.populationSize
 
-        #TODO: Store initial solver parameters?
+        # TODO: Store initial solver parameters?
 
-        #generate best time-courses
+        # generate best time-courses
 
-        #par_names = [self.model.with_bounds[i].name for i in range(len(self.bestSolution))]
+        # par_names = [self.model.with_bounds[i].name for i in range(len(self.bestSolution))]
         par_names = [p.name for p in self.model.with_bounds]
         parameters = zip(par_names, [x for x in self.bestSolution])
-        
+
         sols = timecourse.Solutions()
         best.tcdata = []
-        
-        for (i,tc) in enumerate(self.tc):
+
+        for (i, tc) in enumerate(self.tc):
             Y = self.computeSolution(i, self.bestSolution)
             if Y is not None:
-                score =self.criterium(Y, i)
+                score = self.criterium(Y, i)
             else:
                 score = 1.0E300
-            sol = timecourse.SolutionTimeCourse (tc.t, 
-                                                 Y.T, 
-                                                 self.varnames, 
-                                                 title=tc.title)
+            sol = timecourse.SolutionTimeCourse(tc.t,
+                                                Y.T,
+                                                self.varnames,
+                                                title=tc.title)
             sols += sol
             best.tcdata.append((self.tc[i].title, tc.ntimes, score))
-            
-        best.optimum_tcs=sols
-        
+
+        best.optimum_tcs = sols
+
         if not (fim.sympy_installed):
-            best.parameters = [(p, v, 0.0) for (p,v) in parameters]
+            best.parameters = [(p, v, 0.0) for (p, v) in parameters]
         else:
             commonvnames = timecourse.getCommonFullVars(self.tc)
-            consterror   = timecourse.getRangeVars(self.tc, commonvnames)
-            #assume 5% of range
+            consterror = timecourse.getRangeVars(self.tc, commonvnames)
+            # assume 5% of range
             consterror = timecourse.constError_func([r * 0.05 for r in consterror])
-            FIM1, invFIM1 = fim.computeFIM(self.model, 
-                                           parameters, 
-                                           sols, 
-                                           consterror, 
+            FIM1, invFIM1 = fim.computeFIM(self.model,
+                                           parameters,
+                                           sols,
+                                           consterror,
                                            commonvnames)
-            best.parameters = [(par_names[i], value, invFIM1[i,i]**0.5) for (i,value) in enumerate(self.bestSolution)]
-        
+            best.parameters = [(par_names[i], value, invFIM1[i, i]**0.5) for (i, value) in enumerate(self.bestSolution)]
+
         sols = timecourse.Solutions()
-        for (i,tc) in enumerate(self.tc):
-            Y = self.computeSolution(i, self.bestSolution, dense = True)
+        for (i, tc) in enumerate(self.tc):
+            Y = self.computeSolution(i, self.bestSolution, dense=True)
             ts = linspace(tc.t[0], tc.t[-1], 500)
 
-            sol = timecourse.SolutionTimeCourse (ts, 
-                                                 Y.T, 
-                                                 self.varnames, 
-                                                 title=tc.title)
+            sol = timecourse.SolutionTimeCourse(ts,
+                                                Y.T,
+                                                self.varnames,
+                                                title=tc.title)
             sols += sol
 
-        best.optimum_dense_tcs=sols
+        best.optimum_dense_tcs = sols
 
         self.optimum = best
-        #self.generate_fitted_sols()
-        
+        # self.generate_fitted_sols()
+
         if self.dump_predictions:
-            fnames = ['pred_'+ self.tc[i].title for i in range(len(self.tc))]
+            fnames = ['pred_' + self.tc[i].title for i in range(len(self.tc))]
             best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
 
-##     def generate_fitted_sols(self):
-##         solslist = []
-##         bestsols = self.optimum.optimum_tcs
-##         expsols = self.tc
-##         tcstats = self.optimum.tcdata
-##         ntc = len(bestsols)
-##         for i in range(ntc):
-##             newpair = timecourse.Solutions(title="%s (%d pt) %g"% tcstats[i])
-##             expsol = expsols[i].copy(newtitle='exp')
-##             symsol = bestsols[i].copy(newtitle='pred')
-##             newpair+=expsol
-##             newpair+=symsol
-##             solslist.append(newpair)
-##         self.fitted_tcs = solslist
 
-def s_timate(model, tcs,
-             pop_size=80,
-             max_generations=200,
+def s_timate(model, timecourses=None, opt_settings=None,
              tc_dir=None,
              intvarsorder=None,
              names=None,
              verbose_readingTCs=True,
              **kwargs):
 
-    timecourses = timecourse.readTCs(tcs,
-                                     filedir=tc_dir,
-                                     intvarsorder=intvarsorder,
-                                     names=names,
-                                     verbose=verbose_readingTCs)
+    # create a default dict of optimizer settings,
+    # then update with .metadata['optSettings']
+    # finally, update with argument opt_settings
+    optSettings = {'pop_size': 80,
+                   'max_generations': 200,
+                   'optimizer': 'DeODEOptimizer'}
+    if model.metadata.get('optSettings', None) is not None:
+        optSettings.update(model.metadata['optSettings'])
+    if opt_settings is not None:
+        optSettings.update(opt_settings)
 
-    optSettings={'genomesize':pop_size, 'generations':max_generations}
-    
-    optimizer = DeODEOptimizer(model, optSettings, timecourses, **kwargs)
+    # timecourses argument is used to indicate time-course files
+    # if it is None, then use model.metadata['timecourses']
+    if timecourses is None:
+        timecourses = model  # use model as source in readTCs
+
+    tcs = timecourse.readTCs(timecourses,
+                             filedir=tc_dir,
+                             intvarsorder=intvarsorder,
+                             names=names,
+                             verbose=verbose_readingTCs)
+
+    optimizer = DeODEOptimizer(model, optSettings, tcs, **kwargs)
     optimizer.run()
     return optimizer.optimum
+
 
 def test():
     from modelparser import read_model
@@ -406,34 +408,36 @@ find V2 in [0.00001, 0.0001]
 Km2 = 0.0980973
 find Km2 in (0.01, 1)
 
-init = state(SDLTSH = 7.69231E-05, HTA = 0.1357)
-""")
-    
-    #print m1
+init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
-    optimum = s_timate(m1, ['TSH2a.txt', 'TSH2b.txt'], tc_dir='examples',
-                       names=['SDLTSH', 'HTA'])
+timecourse TSH2a.txt
+timecourse TSH2b.txt
+""")
+
+    # print m1
+
+    optimum = s_timate(m1, tc_dir='examples', names=['SDLTSH', 'HTA'])
     # ... intvarsorder=(0,2,1) ...
-    
+
     optimum.print_info()
     optimum.plot()
 
-    #--- an example with unknown initial values --------------------
-    
+    # --- an example with unknown initial values --------------------
+
     m2 = m1.copy()
-    
+
     # Now, assume init.HTA is uncertain
-    m2.set_bounds('init.HTA', (0.05,0.25))
+    m2.set_bounds('init.HTA', (0.05, 0.25))
     # do not estimate Km1 and Km2, to help the analysis
     m2.reset_bounds('Km1')
     m2.reset_bounds('Km2')
-    
-    ## VERY IMPORTANT:
-    ## only one time course can be used: 
-    ## cannot fit one initial value using several timecourses!!!
-    
-    optimum = s_timate(m2, ['TSH2a.txt'], tc_dir='examples',
-                       pop_size=60,
+
+    # VERY IMPORTANT:
+    # only one time course can be used:
+    # cannot fit one initial value using several timecourses!!!
+
+    optimum = s_timate(m2, timecourses=['TSH2a.txt'], tc_dir='examples',
+                       opt_settings={'pop_size': 60},
                        names=['SDLTSH', 'HTA'])
 
     optimum.print_info()

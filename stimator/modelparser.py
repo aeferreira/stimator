@@ -265,8 +265,9 @@ class StimatorParser:
         self.model       = model.Model()
         self.tc          = TimeCourses()
         # default Differential Evolution num of generations and population size
-        self.optSettings = {'generations':200, 'genomesize' :10,
-                            'max.generations':200, 'pop.size' :10}
+        self.optSettings = {}
+##         self.optSettings = {'generations':200, 'genomesize' :80,
+##                             'max_generations':200, 'pop_size' :80}
 
         self.tclines     = []  #location of timecourse def lines for error reporting
         self.vname       = []
@@ -540,10 +541,10 @@ class StimatorParser:
         
         if name in ("generations", "maxgenerations"):
             self.optSettings['generations'] = int(value)
-            self.optSettings['max.generations'] = int(value)
+            self.optSettings['max_generations'] = int(value)
         elif name in ("genomesize", "popsize"):
             self.optSettings['genomesize'] = int(value)
-            self.optSettings['pop.size'] = int(value)
+            self.optSettings['pop_size'] = int(value)
         else:
             self.model.setp(name, value)
         
@@ -632,6 +633,7 @@ init: TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0
 
 genomesize = 50 #should be enough
 generations = 400
+popsize = 20
 
 timecourse my file.txt  # this is a timecourse filename
 timecourse anotherfile.txt

@@ -893,8 +893,8 @@ class Model(ModelObject):
     def scan(self, plan, **kwargs):
         return dynamics.scan(self, plan, **kwargs)
 
-    def estimate(self, tcs, **kwargs):
-        return estimation.s_timate(self, tcs, **kwargs)
+    def estimate(self, timecourses=None, **kwargs):
+        return estimation.s_timate(self, timecourses=timecourses, **kwargs)
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters

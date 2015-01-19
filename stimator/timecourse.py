@@ -331,7 +331,7 @@ class Solutions(object):
         elif isinstance(other, SolutionTimeCourse):
             self.solutions.append(other)
         else:
-            raise TypeError("Must add a solutions or collection of solutions")
+            raise TypeError("Must add a solutions or a set of solutions")
         return self
 
     def __iter__(self):
@@ -341,10 +341,14 @@ class Solutions(object):
         return self.__iadd__(other)
 
     def loadTimeCourses(self, filedir=None, names=None, verbose=False):
+##         print ('------DEBUG----')
+##         print ('self.filenames')
+##         print (self.filenames)
+##         print ('----------#####--------')
         if len(self.filenames) == 0:
-            print ("No time courses to load!")
-            print ("Please indicate time courses with 'timecourse <filename>'")
-            return 0
+            error_msg = "No time courses to load!"
+            error_msg += "Please indicate time courses with 'timecourse <filename>'"
+            raise StimatorTCError(error_msg)
 
         # check and load timecourses
         cwd = os.getcwdu()

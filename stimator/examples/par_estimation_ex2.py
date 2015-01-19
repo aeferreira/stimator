@@ -14,13 +14,12 @@ find k2 in [0, 2]
 find k3 in [0, 2]
 
 timecourse ex2data.txt
-generations = 200   # maximum generations for GA
-genomesize = 60     # population size in GA
+popsize = 60     # population size in GA
 """
 m1 = read_model(mdl)
 print mdl
 
-best = m1.estimate(['ex2data.txt'], pop_size=60)
+best = m1.estimate()
 
 print best.info()
 best.plot()

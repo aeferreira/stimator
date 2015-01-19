@@ -12,6 +12,7 @@ find V2  in [0.00001, 0.0001]
 find Km2 in [0.01, 1]
 init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 """
+
 m1 = read_model(mdl)
 
 print '================================================='
@@ -25,9 +26,9 @@ optimum = m1.estimate(['TSH2a.txt', 'TSH2b.txt'], names=['SDLTSH', 'HTA'])
 
 print optimum.info()
 optimum.plot()
-## #save predicted timecourses to files
-## redsols = optimum.optimum_tcs
-## redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
+# save predicted timecourses to files
+# redsols = optimum.optimum_tcs
+# redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
 
 
 print '-------- an example with unknown initial values --------------'
@@ -46,7 +47,11 @@ m2.parameters.Km2 = 0.0980973
 ## only one time course can be used: 
 ## cannot fit one uncertain initial using several timecourses!!!
 
-optimum = m2.estimate(['TSH2a.txt'], names=['SDLTSH', 'HTA'], pop_size=60)
+# overide the default pop_size:80
+opt_settings = {'pop_size':60}
+
+optimum = m2.estimate(timecourses=['TSH2a.txt'], opt_settings=opt_settings,
+                      names=['SDLTSH', 'HTA'])
 
 optimum.print_info()
 optimum.plot(show=True)
