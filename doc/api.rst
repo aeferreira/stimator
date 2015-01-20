@@ -3,20 +3,15 @@
 API reference
 =============
 
-.. automodule:: stimator
-.. automodule:: stimator.dynamics
-.. automodule:: stimator.estimation
+.. automodule:: stimator.model
  
 .. currentmodule:: stimator
+
+Model class
+-----------
 
 .. autoclass:: Model
     :members:
 
 
-Model class
-------------------
 
-.. autosummary::
-    :toctree: generated/
-
-    stimator

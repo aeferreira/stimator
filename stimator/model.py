@@ -643,6 +643,7 @@ class Model(ModelObject):
     the description of a kinetic model.
     
     A model is comprised of:
+    
     - reactions
     - parameters
     - initial values
@@ -687,6 +688,22 @@ class Model(ModelObject):
         col.append(newobj)
 
     def set_reaction(self, name, stoichiometry, rate=0.0, pars=None):
+        """Insert or modify a reaction in the model.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the reaction.
+        stoichiometry : str
+            The stoichiometry of the reaction.
+        rate : str or int or float.
+            The kinetic function of the reaction. If it is a number,
+            a mass-action rate will be assumed.
+        pars : dict of iterable of (name, value) pairs
+            The 'local' parameters of the reaction.
+
+        """
         r, p, i = processStoich(stoichiometry)
         if _is_number(rate):
             rate = massActionStr(rate, r)
