@@ -1,3 +1,9 @@
+"""Model class and supporting functions.
+
+This module defines the Model class, used to hold the structure and metadata
+of a kinetic model.
+
+"""
 import re
 import math
 from kinetics import *
@@ -53,6 +59,36 @@ def _is_number(a):
 
 
 def processStoich(expr):
+    """Split a stoichiometry string into reagents, products and irreversible flag.
+
+    This function accepts a string that conforms to a pattern like
+    
+    2 A + B -> 3.5 C
+    
+    and splits into reagents, products and a boolean flag for irreversibility.
+
+    Parameters
+    ----------
+    expr : str
+        A stoichiomety pattern.
+
+    Returns
+    -------
+    tuple as (reagents, products, irreversible)
+        `reagents` and `products` are lists of
+        (`name`: str, `coefficient`:float)
+        describing the 'complexes' of the stoichiometry.
+        
+        `irreversible` (bool) True if '->' is the separator, False if '<=>'
+        is the separator.
+        
+    Raises
+    ------
+    BadStoichError
+        If `expr` is not a properly formatted stoichiometry string.
+
+    """
+    
     match = stoichiom.match(expr)
     if not match:
         raise BadStoichError("Bad stoichiometry definition:\n" + expr)
@@ -601,6 +637,29 @@ class _With_Bounds_Accessor(_Parameters_Accessor):
 
 
 class Model(ModelObject):
+    """The class that holds the description of a kinetic model.
+
+    This class holds several members describing the data associated with
+    the description of a kinetic model.
+    
+    A model is comprised of:
+    - reactions
+    - parameters
+    - initial values
+    - transformations
+    - external variables
+
+    Attributes
+    ----------
+    attr1 : str
+        Description of `attr1`.
+    attr2 : list of str
+        Description of `attr2`.
+    attr3 : int
+        Description of `attr3`.
+
+    """
+
     def __init__(self, title=""):
         self.__dict__['_Model__reactions']         = QueriableList()
         self.__dict__['_Model__variables']         = []
