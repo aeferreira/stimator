@@ -3,15 +3,31 @@
 API reference
 =============
 
-.. automodule:: stimator.model
- 
 .. currentmodule:: stimator
 
-Model class
------------
+Model representation
+--------------------
 
-.. autoclass:: Model
-    :members:
+.. autosummary::
+    :toctree: generated/
+    
+    read_model
+    model.Model
 
+Dynamics
+--------
 
+.. autosummary::
+    :toctree: generated/
+    
+    dynamics.solve
+    dynamics.scan
 
+Parameter estimation
+--------------------
+
+.. autosummary::
+    :toctree: generated/
+    
+    estimation.s_timate
+    estimation.DeODEOptimizer

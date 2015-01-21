@@ -772,8 +772,7 @@ def scan(model, plan,
 
         return s
     
-    
-    
+
 def test():
     from modelparser import read_model     
     m = read_model("""

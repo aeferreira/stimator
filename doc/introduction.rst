@@ -1,29 +1,11 @@
 .. _introduction:
 
-An introduction to S-timator
-============================
+Basic use
+=========
 
-``S-timator`` is a Python library to analyse **ODE-based models**
-(also known as *dynamic* or *kinetic* models). These models are often found
-in many scientific fields, particularly in Physics, Chemistry, Biology and
-Engineering.
 
-Some of the features that ``S-timator`` offers are
-
-- **A mini language used to describe models**: models can be input as plain text 
-  following a very simple and human-readable language.
-- **Basic analysis**: numerical solution of ODE's, parameter scanning.
-- **Parameter estimation** and **model selection**: given experimental data in
-  the form of time series and constrains on model operating ranges,
-  built-in numerical optimizers can find parameter values and assist you in the
-  experimental design for model selection.
-
-``S-timator`` is in an **alpha stage**: many new features will be available soon.
-
-For more detailed information and copious examples of the syntax and resulting plots, you can check out the :ref:`example gallery <example_gallery>`, :ref:`tutorial <tutorial>` or :ref:`API reference <api_ref>`.
-
-Basic use: solution of ODE models
----------------------------------
+Solution of ODE models
+----------------------
 
 This is a warm-up example that illustrates model description, ODE numerical 
 solving and plotting:
