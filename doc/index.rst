@@ -47,11 +47,10 @@ Tutorial:
 .. toctree::
    :maxdepth: 1
 
-   tutorial/models
+   tutorial/solving
    tutorial/basic_dynamics
    tutorial/parameter_scanning
    tutorial/parameter_estimation
-
 
 Indices and tables
 ==================
