@@ -3,7 +3,7 @@ import subprocess
 import shutil
 import os
 
-nbfiles = [{'nb':'solving.ipynb', 'name':'solving'}]
+nbfiles = [{'nb':'basic_features.ipynb', 'name':'basic_features'}]
 
 def process_list(nbfiles):
     for nbf in nbfiles:
@@ -13,7 +13,7 @@ def process_list(nbfiles):
         shutil.copyfile(os.path.realpath(name), os.path.realpath(name)+".bak")
         
         print ('--------- executing notebook {0} ------------'.format(name))
-        aaa = ['runipy', '-o', name]
+        aaa = ['runipy', '--matplotlib', '-o', name]
         print (subprocess.check_output(aaa))
 
         print ('--------- converting notebook {0} -----------'.format(name))

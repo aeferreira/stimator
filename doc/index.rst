@@ -45,9 +45,9 @@ Tutorial:
 ---------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   tutorial/solving
+   tutorial/basic_features
    tutorial/basic_dynamics
    tutorial/parameter_scanning
    tutorial/parameter_estimation
