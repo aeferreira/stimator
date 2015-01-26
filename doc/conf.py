@@ -38,8 +38,7 @@ extensions = [
     'sphinx.ext.ifconfig',
 #    'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
-    'numpydoc'
-]
+    'numpydoc']
 
 # Generate the API documentation when building
 #autosummary_generate = True
