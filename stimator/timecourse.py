@@ -305,10 +305,7 @@ class Solutions(object):
                 self.append(s)
 
     def __str__(self):
-        if len(self.filenames) > 0:
-            return str(self.filenames)
-        else:
-            return 'No timecourses'
+        return str(self.filenames)
 
     def __getitem__(self, key):
         """retrieves a series by index"""

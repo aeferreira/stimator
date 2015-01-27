@@ -62,9 +62,9 @@ def processStoich(expr):
     """Split a stoichiometry string into reagents, products and irreversible flag.
 
     This function accepts a string that conforms to a pattern like
-    
+
     2 A + B -> 3.5 C
-    
+
     and splits into reagents, products and a boolean flag for irreversibility.
 
     Parameters
@@ -78,17 +78,17 @@ def processStoich(expr):
         `reagents` and `products` are lists of
         (`name`: str, `coefficient`:float)
         describing the 'complexes' of the stoichiometry.
-        
+
         `irreversible` (bool) True if '->' is the separator, False if '<=>'
         is the separator.
-        
+
     Raises
     ------
     BadStoichError
         If `expr` is not a properly formatted stoichiometry string.
 
     """
-    
+
     match = stoichiom.match(expr)
     if not match:
         raise BadStoichError("Bad stoichiometry definition:\n" + expr)
@@ -347,7 +347,6 @@ class _HasRate(_HasOwnParameters):
         if fully_qualified:
             for localparname in self._ownparameters:
                 fully = '%s.%s' % (self.name, localparname)
-##                 rate = rate.replace(localparname, fully)
                 rate = re.sub(r"(?<!\.)\b%s\b(?![.\[])" % localparname, fully, rate)
         return rate
 
@@ -427,14 +426,6 @@ class ConstValue(float, ModelObject):
         ModelObject.__init__(self, aname)
         self.bounds = None
 
-##     def uncertainty(self, *pars):
-##         if len(pars) == 0 or pars[0]==None:
-##             self.bounds = None
-##             return
-##         if len(pars) != 2:
-##             return #TODO raise exception
-##         self.bounds = Bounds(get_name(self), float(pars[0]), float(pars[1]))
-
     def pprint(self):
         res = float.__str__(self)
         if self.bounds:
@@ -471,7 +462,8 @@ class ConstValue(float, ModelObject):
         try:
             b = toConstOrBounds(self.name, value, is_bounds=True)
         except (TypeError, ValueError):
-            raise BadTypeComponent("Can not assign %s to bounds of %s" % (str(value), self.name))
+            msg = "Can not assign %s to %s.bounds" % (str(value), self.name)
+            raise BadTypeComponent(msg)
         self.bounds = b
 
     def get_bounds(self):
@@ -641,9 +633,9 @@ class Model(ModelObject):
 
     This class holds several members describing the data associated with
     the description of a kinetic model.
-    
+
     A model is comprised of:
-    
+
     - reactions
     - parameters
     - initial values
@@ -652,13 +644,25 @@ class Model(ModelObject):
 
     Attributes
     ----------
-    attr1 : str
-        Description of `attr1`.
-    attr2 : list of str
-        Description of `attr2`.
-    attr3 : int
-        Description of `attr3`.
-
+    reactions : _Collection_Accessor
+        The processes in the model.
+    transformations : _Collection_Accessor
+        The transformations in the model.
+    parameters : _Parameters_Accessor
+        The parameters in the model.
+    varnames : list of str
+        The names of the variables defined in the model. This list should be
+        treated as read-only and is internally refreshed everytime a reaction
+        is added or changed.
+    extvariables : list of str
+        The names of the external variables defined in the model. This list
+        should be treated as read-only and is internally refreshed everytime a
+        reaction or parameter is added or changed.
+    init : _init_Accessor
+        The initial state of the model.
+    with_bounds : _With_Bounds_Accessor
+        Iterates through the parameters in the model for which Bounds were
+        assigned.
     """
 
     def __init__(self, title=""):
@@ -890,7 +894,11 @@ class Model(ModelObject):
         for u in self.with_bounds:
             res += u.name + ' = ? (' + str(u.bounds.lower) + ', ' + str(u.bounds.upper) + ')\n'
         for k in self.metadata:
-            res += "%s: %s\n" % (str(k), str(self.metadata[k]))
+            o = self.metadata[k]
+            # skip title and empty container metadata
+            if k == 'title' or (hasattr(o, '__len__') and len(o)==0):
+                continue
+            res += "%s: %s\n" % (str(k), str(o))
         return res
 
     def copy(self, new_title=None):
