@@ -1,4 +1,8 @@
 from stimator import read_model
+from stimator.versions import version_info
+
+print ('Version information')
+print (version_info())
 
 mdl = """# Example file for S-timator
 title Example 2
