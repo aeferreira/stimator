@@ -1,10 +1,4 @@
-#!/usr/bin/env python
 # -*- coding:utf8 -*-
-
-"""S-timator : Time-course parameter estimation using Differential Evolution.
-
-Copyright 2005-2013 António Ferreira
-S-timator uses Python, SciPy, NumPy, matplotlib."""
 
 import de
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan
@@ -99,6 +93,83 @@ class OptimumData(object):
             if show:
                 pl.show()
 
+    def plot_generations(self, generations = None,
+                         pars = None,
+                         figure=None, show=False):
+        if not self.generations_exist:
+            raise IOError('file generations.txt was not generated')
+
+        if figure is None:
+            figure = pl.figure()
+        figure.clear()
+
+        if generations is None:
+            all_gens = range(self.optimization_generations +1)
+            dump_generations = all_gens
+
+        n_gens = len(dump_generations)
+        
+        if pars is None:
+            first2 = self.parameters[:2]
+            pars = [p[0] for p in first2]
+        
+        pnames = [p[0] for p in self.parameters]
+        
+        colp0 = pnames.index(pars[0])
+        colp1 = pnames.index(pars[1])
+        
+        scores_col = len(self.parameters)
+        
+        ax1 = pl.subplot(1,2,1)
+        ax2 = pl.subplot(1,2,2)
+        # parse generations
+        gen = -1
+        f = open('generations.txt')
+        solx = []
+        soly = []
+        objx = []
+        objy = []
+        reading = False
+        cindex = -1
+        for line in f:
+            line = line.strip()
+            if line == '' and reading:
+                if len(solx) > 0:
+                    cindex += 1
+                    c = cm.jet(cindex/float(n_gens), 1)
+                    ax1.plot(solx, soly, color=c, marker='o', ls='None', label = gen)
+                    ax2.plot(objx, objy, color=c, marker='o', ls='None', label = gen)
+                    solx = []
+                    soly = []
+                    objx = []
+                    objy = []
+                    reading = False
+            elif line.startswith('generation'):
+                gen = line.split()[1]
+                igen = int(gen)
+                if igen in dump_generations:
+                    reading = True
+                    # print 'generation', gen
+            elif reading:
+                line = [float(x) for x in line.split()]
+                solx.append(line[colp0])
+                soly.append(line[colp1])
+                objx.append(igen)
+                objy.append(line[scores_col])
+            else:
+                continue
+        f.close()
+        ax1.legend(loc=0)
+        ax1.grid()
+        ax1.set_title('population')
+        ax1.set_xlabel(pars[0])
+        ax1.set_ylabel(pars[1])
+        ax2.grid()
+        ax2.set_title('scores')
+        ax2.set_yscale('log')
+        ax2.set_xlabel('generation')
+        if show:
+            pl.show()
 
 class DeODEOptimizer(de.DESolver):
     """Overides energy function and report functions.
@@ -345,6 +416,11 @@ class DeODEOptimizer(de.DESolver):
 
         best.optimum_dense_tcs = sols
 
+        if self.dump_generations is not None:
+            best.generations_exist = True
+        else:
+            best.generations_exist = False
+
         self.optimum = best
         # self.generate_fitted_sols()
 
@@ -416,11 +492,14 @@ timecourse TSH2b.txt
 
     # print m1
 
-    optimum = s_timate(m1, tc_dir='examples', names=['SDLTSH', 'HTA'])
+    optimum = s_timate(m1, tc_dir='examples', names=['SDLTSH', 'HTA'],
+    dump_generations=True) 
+    # maxGenerations_noimprovement=40)
     # ... intvarsorder=(0,2,1) ...
 
     optimum.print_info()
     optimum.plot()
+    optimum.plot_generations(pars=['V2', 'Km1'])
 
     # --- an example with unknown initial values --------------------
 
