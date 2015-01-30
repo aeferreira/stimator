@@ -991,7 +991,7 @@ nothing really usefull here
     sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
     sols.plot(suptitlegend="with force_dense=True", force_dense=True)
 
-    sol.load_from('examples/TSH2b.txt')
+    sol.load_from('examples/timecourses/TSH2b.txt')
     print ('\n!! using load_from() ----------------')
     print ('\nnames:')
     print (sol.names)
@@ -1047,7 +1047,7 @@ nothing really usefull here
     print (sol2.last, '\n')
 
     print ("-Reading tcs, using readTCs() -----------")
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples', verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples/timecourses', verbose=True)
     print ('\nResulting type:', type(tcs))
     print ('\nElements:')
     for i, tc in enumerate(tcs):
@@ -1062,7 +1062,7 @@ nothing really usefull here
     
     print ("-Providing default names HTA SDLTSH ------------------------")
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
-                   'examples',
+                   'examples/timecourses',
                    names="SDLTSH HTA".split(),
                    verbose=True)
     print ('\nResulting type:', type(tcs))
@@ -1121,7 +1121,7 @@ nothing really usefull here
         print ('shortname:', tc.shortname, '\n')
 
     print ("!! Reading tcs using info declared in a model def -")
-    tcs = readTCs(m, 'examples', verbose=True)
+    tcs = readTCs(m, 'examples/timecourses', verbose=True)
     print ('\nResulting type:', type(tcs))
     print ('\nElements:')
     for i, tc in enumerate(tcs):
@@ -1137,8 +1137,8 @@ nothing really usefull here
     m = read_model("""
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
-    timecourse ../stimator/examples/TSH2b.txt
-    timecourse ../stimator/examples/TSH2a.txt
+    timecourse ../stimator/examples/timecourses/TSH2b.txt
+    timecourse ../stimator/examples/timecourses/TSH2a.txt
     variables SDLTSH HTA
     """)
 

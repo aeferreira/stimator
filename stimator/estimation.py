@@ -492,8 +492,9 @@ timecourse TSH2b.txt
 
     # print m1
 
-    optimum = s_timate(m1, tc_dir='examples', names=['SDLTSH', 'HTA'],
-    dump_generations=True) 
+    optimum = s_timate(m1, tc_dir='examples/timecourses', 
+                       names=['SDLTSH', 'HTA'],
+                       dump_generations=True) 
     # maxGenerations_noimprovement=40)
     # ... intvarsorder=(0,2,1) ...
 
@@ -515,7 +516,8 @@ timecourse TSH2b.txt
     # only one time course can be used:
     # cannot fit one initial value using several timecourses!!!
 
-    optimum = s_timate(m2, timecourses=['TSH2a.txt'], tc_dir='examples',
+    optimum = s_timate(m2, timecourses=['TSH2a.txt'], 
+                       tc_dir='examples/timecourses',
                        opt_settings={'pop_size': 60},
                        names=['SDLTSH', 'HTA'])
 

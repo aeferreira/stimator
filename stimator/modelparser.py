@@ -716,7 +716,7 @@ tf: 10
 
     #~ modelText = '\n'.join(textlines)
     
-    filename = "examples/ca.txt"
+    filename = "examples/model_files/ca.txt"
     try2read_model(filename)
 
 if __name__ == "__main__":
