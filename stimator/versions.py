@@ -26,13 +26,6 @@ except ImportError:
     versions['matplotlib'] = None
 
 try:
-    import seaborn
-    versions['seaborn'] = seaborn.__version__
-    seaborn.reset_orig()
-except ImportError:
-    versions['seaborn'] = None
-
-try:
     import pandas
     versions['pandas'] = pandas.__version__
 except ImportError:
@@ -61,10 +54,10 @@ def version_info(plist=None):
     fmtstring = '%-16s : %s\n'
     if plist is None or plist == 'all':
         plist = ['platform', 'python', 'numpy',
-                 'scipy', 'matplotlib', 'pandas', 'seaborn',
+                 'scipy', 'matplotlib', 'pandas',
                  'IPython', 'S-timator']
     elif plist in ['packages', 'modules']:
-        plist = ['numpy', 'scipy', 'matplotlib', 'pandas', 'seaborn',
+        plist = ['numpy', 'scipy', 'matplotlib', 'pandas',
                  'IPython', 'S-timator']
     elif plist in ['platform', 'python']:
         plist = ['platform', 'python']

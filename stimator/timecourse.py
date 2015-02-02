@@ -9,6 +9,10 @@ from matplotlib import pyplot as pl
 import matplotlib.cm as cm
 import matplotlib as mpl
 
+#new mandatory requirement: seaborn. pandas became also a requirement.
+
+import seaborn as sns
+
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
@@ -425,19 +429,27 @@ class Solutions(object):
              group=False,
              suptitlegend=None,
              legend=True,
-             grid=False,
              force_dense=False,
+             context=None, 
+             style=None, 
+             palette="deep",
+             font="sans-serif", 
+             font_scale=1,
              save2file=None, **kwargs):
 
         """Generate a graph of the time course using matplotlib."""
 
-        mpl.rcParams['legend.numpoints'] = 1
-        original_figsize = mpl.rcParams['figure.figsize']
-        # print ('original_figsize', original_figsize)
-        if fig_size is not None:
-            mpl.rcParams['figure.figsize'] = fig_size
-            # print ('figure size set to ',  mpl.rcParams['figure.figsize'])
-
+        curr_axes_style = sns.axes_style()
+        curr_plotting_context = sns.plotting_context()
+        curr_color_palette = sns.color_palette()
+        
+        if context is not None:
+            sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
+        if style is not None:
+            sns.set_style(style, rc={"font.family": font})
+        if palette is not None:
+            sns.set_palette(palette)
+        
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
@@ -495,27 +507,17 @@ class Solutions(object):
                 ls, marker = 'None', 'o'
             else:
                 ls, marker = '-', 'None'
-            
-            if nlines <= 1:
-                delta = 1.0
-            else:
-                delta = 1.0/float(nlines-1)
-            cindex = 0.0
-            
+
             for lname, ltc, li in p['lines']:
-                c = cm.rainbow(cindex, 1)
                 y = self[ltc] [li]
                 data_loc = logical_not(isnan(y))
                 x = self[ltc].t[data_loc]
                 y = y[data_loc]
-                curraxis.plot(x, y, 
-                              color=c, ls=ls, marker=marker, label=lname)
-                cindex += delta
+                curraxis.plot(x, y, ls=ls, marker=marker, label=lname)
+
             if yrange is not None:
                 curraxis.set_ylim(yrange)
             curraxis.set_title(p['name'])
-            if grid:
-                curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
@@ -540,9 +542,13 @@ class Solutions(object):
             if save2file is not None:
                 if hasattr(save2file,'read'):
                     save2file.close()
-            mpl.rcParams['figure.figsize'] = original_figsize
             pl.show()
-        mpl.rcParams['figure.figsize'] = original_figsize
+
+        # restore seaborn styles
+        sns.set_context(curr_plotting_context)
+        sns.set_style(curr_axes_style)
+        sns.set_palette(curr_color_palette)
+
 
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
     tcs = Solutions()
