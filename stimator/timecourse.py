@@ -5,13 +5,11 @@ import os.path
 import StringIO
 import re
 from numpy import *
-from matplotlib import pyplot as pl
-#import matplotlib.cm as cm
 import matplotlib as mpl
+from matplotlib import pyplot as pl
 
-#new mandatory requirement: seaborn. pandas became also a requirement.
-
-import seaborn as sns
+## import seaborn as sns
+import smallseaborn as sns
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"

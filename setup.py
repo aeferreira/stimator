@@ -29,7 +29,8 @@ packages = [
     'stimator.gui',
     'stimator.tests',
     'stimator.examples',
-    'stimator.moo'
+    'stimator.moo',
+    'stimator.smallseaborn'
 ]
 
 requires = ['sympy']
