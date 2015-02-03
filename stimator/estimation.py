@@ -7,13 +7,18 @@ from scipy import integrate
 from dynamics import getdXdt, init2array
 import fim
 import timecourse
+import matplotlib as mpl
 from matplotlib import pylab as pl
-import matplotlib.cm as cm
 
 # ----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
 # ----------------------------------------------------------------------------
 
+def _repeatitems(sequence, repetitions):
+    newlist = []
+    for x in sequence:
+        newlist.extend([x] * repetitions)
+    return newlist
 
 class OptimumData(object):
     """Object that holds optimum solution data."""
@@ -49,6 +54,9 @@ class OptimumData(object):
         if figure is None:
             figure = pl.figure()
         figure.clear()
+        original_cycle = mpl.rcParams["axes.color_cycle"]
+        curr_cycle = _repeatitems(original_cycle, 2)
+        mpl.rcParams["axes.color_cycle"] = curr_cycle
         tcsubplots = []
         bestsols = self.optimum_dense_tcs
         expsols = self.optimizer.tc
@@ -66,12 +74,6 @@ class OptimumData(object):
             expsol = expsols[i]
             symsol = bestsols[i]
 
-            nlines = len(expsol)
-            if nlines <= 1:
-                delta = 1.0
-            else:
-                delta = 1.0/float(nlines-1)
-            cindex = 0.0
             for line in range(len(expsol)):
                 # count NaN and do not plot if they are most of the timecourse
                 yexp = expsol[line]
@@ -81,17 +83,15 @@ class OptimumData(object):
                 # otherwise plot lines
                 xname = expsol.names[line]
                 ysim = symsol[symsol.names.index(xname)]
-                c = cm.rainbow(cindex, 1)
                 lsexp, mexp = 'None', 'o'
                 lssim, msim = '-', 'None'
-                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, color=c)
-                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c,
+                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp)
+                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim,
                              label='%s' % xname)
-                cindex += delta
-            subplot.grid()
             subplot.legend(loc='best')
-            if show:
-                pl.show()
+        mpl.rcParams["axes.color_cycle"] = original_cycle
+        if show:
+            pl.show()
 
     def plot_generations(self, generations = None,
                          pars = None,
@@ -130,15 +130,12 @@ class OptimumData(object):
         objx = []
         objy = []
         reading = False
-        cindex = -1
         for line in f:
             line = line.strip()
             if line == '' and reading:
                 if len(solx) > 0:
-                    cindex += 1
-                    c = cm.jet(cindex/float(n_gens), 1)
-                    ax1.plot(solx, soly, color=c, marker='o', ls='None', label = gen)
-                    ax2.plot(objx, objy, color=c, marker='o', ls='None', label = gen)
+                    ax1.plot(solx, soly, marker='o', ls='None', label=gen)
+                    ax2.plot(objx, objy, marker='o', ls='None', label=gen)
                     solx = []
                     soly = []
                     objx = []
@@ -160,11 +157,9 @@ class OptimumData(object):
                 continue
         f.close()
         ax1.legend(loc=0)
-        ax1.grid()
         ax1.set_title('population')
         ax1.set_xlabel(pars[0])
         ax1.set_ylabel(pars[1])
-        ax2.grid()
         ax2.set_title('scores')
         ax2.set_yscale('log')
         ax2.set_xlabel('generation')

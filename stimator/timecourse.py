@@ -6,7 +6,7 @@ import StringIO
 import re
 from numpy import *
 from matplotlib import pyplot as pl
-import matplotlib.cm as cm
+#import matplotlib.cm as cm
 import matplotlib as mpl
 
 #new mandatory requirement: seaborn. pandas became also a requirement.
@@ -432,7 +432,7 @@ class Solutions(object):
              force_dense=False,
              context=None, 
              style=None, 
-             palette="deep",
+             palette=None,
              font="sans-serif", 
              font_scale=1,
              save2file=None, **kwargs):
@@ -442,7 +442,8 @@ class Solutions(object):
         curr_axes_style = sns.axes_style()
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
-        
+        original_figsize = mpl.rcParams['figure.figsize']
+
         if context is not None:
             sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
         if style is not None:
@@ -450,6 +451,9 @@ class Solutions(object):
         if palette is not None:
             sns.set_palette(palette)
         
+        if fig_size is not None:
+            mpl.rcParams['figure.figsize'] = fig_size
+
         if figure is None:
             figure = pl.figure()
         ntc = len(self)
@@ -542,12 +546,14 @@ class Solutions(object):
             if save2file is not None:
                 if hasattr(save2file,'read'):
                     save2file.close()
+            mpl.rcParams['figure.figsize'] = original_figsize
             pl.show()
 
         # restore seaborn styles
         sns.set_context(curr_plotting_context)
         sns.set_style(curr_axes_style)
         sns.set_palette(curr_color_palette)
+        mpl.rcParams['figure.figsize'] = original_figsize
 
 
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
@@ -768,6 +774,7 @@ def getCriteriumFunction(weights, model, tc):
 
 if __name__ == "__main__":
     from modelparser import read_model
+    sns.set(style='white')
 
     print ('\n===Parsing in-code timecourse ========================')
 
