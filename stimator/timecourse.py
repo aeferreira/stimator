@@ -8,8 +8,10 @@ from numpy import *
 import matplotlib as mpl
 from matplotlib import pyplot as pl
 
-## import seaborn as sns
-import smallseaborn as sns
+try:
+    import seaborn as sns
+except ImportError:
+    import smallseaborn as sns
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
@@ -281,9 +283,13 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[array(newindexes, dtype=int)]
 
-    def plot(self, **kwargs):
+    def plot(self, axes=None, **kwargs):
+        if axes is not None:
+            axis_set = [axes]
+        else:
+            axis_set = None
         ss = Solutions([self])
-        ss.plot(**kwargs)
+        ss.plot(axis_set=axis_set, **kwargs)
 
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -340,10 +346,6 @@ class Solutions(object):
         return self.__iadd__(other)
 
     def loadTimeCourses(self, filedir=None, names=None, verbose=False):
-##         print ('------DEBUG----')
-##         print ('self.filenames')
-##         print (self.filenames)
-##         print ('----------#####--------')
         if len(self.filenames) == 0:
             error_msg = "No time courses to load!"
             error_msg += "Please indicate time courses with 'timecourse <filename>'"
@@ -420,6 +422,7 @@ class Solutions(object):
 
     def plot(self, show=False,
              figure=None,
+             axis_set=None,
              fig_size=None,
              titles=None,
              ynormalize=False,
@@ -452,8 +455,10 @@ class Solutions(object):
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
 
-        if figure is None:
-            figure = pl.figure()
+        if axis_set is None:
+            if figure is None:
+                figure = pl.figure()
+
         ntc = len(self)
         pnames = ['time course %d' % (i+1) for i in range(ntc)]
         for i in range(ntc):
@@ -472,7 +477,8 @@ class Solutions(object):
         ncols = int(math.ceil(math.sqrt(nplots)))
         nrows = int(math.ceil(float(nplots)/ncols))
 
-        axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
+        if axis_set is None:
+            axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
 
         plots_desc = []
         if not group:
@@ -525,10 +531,12 @@ class Solutions(object):
                 curraxis.legend(h, l, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
+        # suptitle needs a figure object
+        fig_obj = pl.gcf()
         if suptitlegend is not None:
-            figure.suptitle(suptitlegend)
+            fig_obj.suptitle(suptitlegend)
         elif hasattr(self, 'title'):
-            figure.suptitle(self.title)
+            fig_obj.suptitle(self.title)
 
         if ynormalize and not yrange:
             rs = [a.get_ylim() for a in axis_set]
@@ -1001,7 +1009,24 @@ nothing really usefull here
     sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
     sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
     sols.plot(suptitlegend="with force_dense=True", force_dense=True)
+    
+    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
+    
+    sols.plot(suptitlegend="with given axis_set", force_dense=True,
+              axis_set=[ax1, ax2])
+    ax1.set_ylabel('variables')
+    ax2.set_ylabel('variables')
+    ax2.set_xlabel('time')
+    
+    sol.load_from('examples/timecourses/TSH2b.txt')
+    
+    sol.plot(suptitlegend="plotting only one time course")
 
+    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
+    sol.plot(suptitlegend="plotting on a given axes", axes=ax2)
+    ax2.set_ylabel('concentrations')
+    ax2.set_xlabel('time')
+    
     sol.load_from('examples/timecourses/TSH2b.txt')
     print ('\n!! using load_from() ----------------')
     print ('\nnames:')

@@ -51,12 +51,23 @@ class OptimumData(object):
         print (self.info())
 
     def plot(self, figure=None, show=False):
+        
         if figure is None:
             figure = pl.figure()
         figure.clear()
         original_cycle = mpl.rcParams["axes.color_cycle"]
         curr_cycle = _repeatitems(original_cycle, 2)
         mpl.rcParams["axes.color_cycle"] = curr_cycle
+        
+##         s = timecourse.Solutions()
+##         
+##         for sol in self.optimum_dense_tcs:
+##             s += sol
+##         
+##         s.plot(figure=figure, show=show, force_dense=True)
+##         mpl.rcParams["axes.color_cycle"] = original_cycle
+##         return
+            
         tcsubplots = []
         bestsols = self.optimum_dense_tcs
         expsols = self.optimizer.tc
