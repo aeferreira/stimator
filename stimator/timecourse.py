@@ -80,9 +80,9 @@ class SolutionTimeCourse(object):
         return self.data.__getitem__(key)
 
     def state_at(self, t):
-        """Retrieves a State object with values at a time point.
+        """Retrieves a dict with values at a time point.
 
-           May have to interpolate."""
+           Interpolation may be necessary."""
         if t > self.t[-1] or t < self.t[0]:
             raise ValueError("No data for time '%s' in timecourse" % str(t))
         # Interpolate:
@@ -120,10 +120,14 @@ class SolutionTimeCourse(object):
 
     def __getLastState(self):
         """Retrieves state_at last timepoint"""
-        y = self.data[:, -1]
-        return dict([(x, value) for (x, value) in zip(self.names, y)])
+        return self.state_at(self.t[-1])
     last = property(__getLastState)  # use as 'sol.last'
 
+    def __getInitState(self):
+        """Retrieves state_at first timepoint"""
+        return self.state_at(self.t[0])
+    init = property(__getInitState)  # use as 'sol.init'
+    
     def apply_transf(self, f, newnames=None):
         """Applies a transformation to time series.
 
@@ -545,7 +549,6 @@ class Solutions(object):
             if save2file is not None:
                 if hasattr(save2file,'read'):
                     save2file.close()
-            mpl.rcParams['figure.figsize'] = original_figsize
             pl.show()
 
         # restore seaborn styles
@@ -912,17 +915,6 @@ nothing really usefull here
     print ('\ndata')
     print (sol.data, '\n')
 
-    #~ aTC.seek(0)
-    #~ sol.load_from(aTC, atindexes=(0,3,1,2))
-    #~ print '\n!! using load_from() atindexes (0,3,1,2)'
-    #~ print '\nnames:'
-    #~ print sol.names
-    #~ print '\nt'
-    #~ print sol.t
-    #~ print '\ndata'
-    #~ print sol.data
-    #~ print
-
     print ('==Using SolutionTimeCourse interface ====================')
     aTC.seek(0)
     sol.load_from(aTC)
@@ -965,6 +957,11 @@ nothing really usefull here
         print (type(sol.last))
         print ('sol.last["x"]')
         print (sol.last['x'])
+        print ('sol.init (Initial point the easy way)')
+        print (sol.init)
+        print (type(sol.init))
+        print ('sol.init["x"]')
+        print (sol.init['x'])
         print ('for i in range(len(sol)): print sol[i]')
         for i in range(len(sol)):
             print (sol[i])
