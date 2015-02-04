@@ -23,15 +23,15 @@ def run_normal():
     print mdl
     m = read_model(mdl)
 
-    npoints = 1000
+    title = "CICR model: Effect of stimulus ($\\beta$) on citosolic calcium"
 
-    title = "CICR model: Effect of stimulus on citosolic calcium"
-    print (title)
-    bvalues = {'B': (0.0, 0.1, 0.3, 0.5, 0.8, 1.0)}
+    Bvalues = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
 
-    s = m.scan(bvalues, tf=10, npoints=npoints)
-    s.plot(ynormalize = True, fig_size=(16,8), suptitlegend=title, show=True)
-    #plot(s, superimpose=True)
+    s = m.scan({'B': Bvalues}, tf=10, npoints=1000)
+
+    s.plot(ynormalize=True, fig_size=(16,8),
+           titles=['$\\beta$ = %g' % b for b in Bvalues],
+           suptitlegend=title, show=True)
 
 if __name__ == "__main__":
     run_normal()

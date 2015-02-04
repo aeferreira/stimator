@@ -498,13 +498,6 @@ class Solutions(object):
                 pdesc['lines'] = plines
                 plots_desc.append(pdesc)
 
-##         print 'layout of plots ======>>>>', plots_desc
-##         for i,c in enumerate(plots_desc):
-##             print 'plot', i, c['name']
-##             for lname, ltc, li in c['lines']:
-##                 print '\t', 'tc', ltc, 'line', li, '(',lname,')'
-##         print '======>>>>'
-
         for i,p in enumerate(plots_desc):
             curraxis = axis_set[i]
             nlines = len(p['lines'])
