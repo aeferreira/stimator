@@ -33,7 +33,7 @@ packages = [
     'stimator.smallseaborn'
 ]
 
-requires = ['sympy']
+requires = ['sympy', 'pandas', 'seaborn']
 
 classifs=[
         'Development Status :: 3 - Alpha',

@@ -7,11 +7,12 @@ import re
 from numpy import *
 import matplotlib as mpl
 from matplotlib import pyplot as pl
+import seaborn as sns
 
-try:
-    import seaborn as sns
-except ImportError:
-    import smallseaborn as sns
+## try:
+##     import seaborn as sns
+## except ImportError:
+##     import smallseaborn as sns
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"

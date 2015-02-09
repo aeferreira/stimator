@@ -9,10 +9,11 @@ import fim
 import timecourse
 import matplotlib as mpl
 from matplotlib import pylab as pl
-try:
-    import seaborn as sns
-except ImportError:
-    import smallseaborn as sns
+import seaborn as sns
+## try:
+##     import seaborn as sns
+## except ImportError:
+##     import smallseaborn as sns
 
 # ----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
