@@ -5,9 +5,14 @@ import os.path
 import StringIO
 import re
 from numpy import *
-from matplotlib import pyplot as pl
-import matplotlib.cm as cm
 import matplotlib as mpl
+from matplotlib import pyplot as pl
+import seaborn as sns
+
+## try:
+##     import seaborn as sns
+## except ImportError:
+##     import smallseaborn as sns
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
@@ -76,9 +81,9 @@ class SolutionTimeCourse(object):
         return self.data.__getitem__(key)
 
     def state_at(self, t):
-        """Retrieves a State object with values at a time point.
+        """Retrieves a dict with values at a time point.
 
-           May have to interpolate."""
+           Interpolation may be necessary."""
         if t > self.t[-1] or t < self.t[0]:
             raise ValueError("No data for time '%s' in timecourse" % str(t))
         # Interpolate:
@@ -116,10 +121,14 @@ class SolutionTimeCourse(object):
 
     def __getLastState(self):
         """Retrieves state_at last timepoint"""
-        y = self.data[:, -1]
-        return dict([(x, value) for (x, value) in zip(self.names, y)])
+        return self.state_at(self.t[-1])
     last = property(__getLastState)  # use as 'sol.last'
 
+    def __getInitState(self):
+        """Retrieves state_at first timepoint"""
+        return self.state_at(self.t[0])
+    init = property(__getInitState)  # use as 'sol.init'
+    
     def apply_transf(self, f, newnames=None):
         """Applies a transformation to time series.
 
@@ -279,9 +288,13 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[array(newindexes, dtype=int)]
 
-    def plot(self, **kwargs):
+    def plot(self, axes=None, **kwargs):
+        if axes is not None:
+            axis_set = [axes]
+        else:
+            axis_set = None
         ss = Solutions([self])
-        ss.plot(**kwargs)
+        ss.plot(axis_set=axis_set, **kwargs)
 
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR TIMECOURSES
@@ -338,10 +351,6 @@ class Solutions(object):
         return self.__iadd__(other)
 
     def loadTimeCourses(self, filedir=None, names=None, verbose=False):
-##         print ('------DEBUG----')
-##         print ('self.filenames')
-##         print (self.filenames)
-##         print ('----------#####--------')
         if len(self.filenames) == 0:
             error_msg = "No time courses to load!"
             error_msg += "Please indicate time courses with 'timecourse <filename>'"
@@ -418,6 +427,7 @@ class Solutions(object):
 
     def plot(self, show=False,
              figure=None,
+             axis_set=None,
              fig_size=None,
              titles=None,
              ynormalize=False,
@@ -425,21 +435,35 @@ class Solutions(object):
              group=False,
              suptitlegend=None,
              legend=True,
-             grid=False,
              force_dense=False,
+             context=None, 
+             style=None, 
+             palette=None,
+             font="sans-serif", 
+             font_scale=1,
              save2file=None, **kwargs):
 
         """Generate a graph of the time course using matplotlib."""
 
-        mpl.rcParams['legend.numpoints'] = 1
+        curr_axes_style = sns.axes_style()
+        curr_plotting_context = sns.plotting_context()
+        curr_color_palette = sns.color_palette()
         original_figsize = mpl.rcParams['figure.figsize']
-        # print ('original_figsize', original_figsize)
+
+        if context is not None:
+            sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
+        if style is not None:
+            sns.set_style(style, rc={"font.family": font})
+        if palette is not None:
+            sns.set_palette(palette)
+        
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
-            # print ('figure size set to ',  mpl.rcParams['figure.figsize'])
 
-        if figure is None:
-            figure = pl.figure()
+        if axis_set is None:
+            if figure is None:
+                figure = pl.figure()
+
         ntc = len(self)
         pnames = ['time course %d' % (i+1) for i in range(ntc)]
         for i in range(ntc):
@@ -458,7 +482,8 @@ class Solutions(object):
         ncols = int(math.ceil(math.sqrt(nplots)))
         nrows = int(math.ceil(float(nplots)/ncols))
 
-        axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
+        if axis_set is None:
+            axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
 
         plots_desc = []
         if not group:
@@ -478,13 +503,6 @@ class Solutions(object):
                 pdesc['lines'] = plines
                 plots_desc.append(pdesc)
 
-##         print 'layout of plots ======>>>>', plots_desc
-##         for i,c in enumerate(plots_desc):
-##             print 'plot', i, c['name']
-##             for lname, ltc, li in c['lines']:
-##                 print '\t', 'tc', ltc, 'line', li, '(',lname,')'
-##         print '======>>>>'
-
         for i,p in enumerate(plots_desc):
             curraxis = axis_set[i]
             nlines = len(p['lines'])
@@ -495,36 +513,28 @@ class Solutions(object):
                 ls, marker = 'None', 'o'
             else:
                 ls, marker = '-', 'None'
-            
-            if nlines <= 1:
-                delta = 1.0
-            else:
-                delta = 1.0/float(nlines-1)
-            cindex = 0.0
-            
+
             for lname, ltc, li in p['lines']:
-                c = cm.rainbow(cindex, 1)
                 y = self[ltc] [li]
                 data_loc = logical_not(isnan(y))
                 x = self[ltc].t[data_loc]
                 y = y[data_loc]
-                curraxis.plot(x, y, 
-                              color=c, ls=ls, marker=marker, label=lname)
-                cindex += delta
+                curraxis.plot(x, y, ls=ls, marker=marker, label=lname)
+
             if yrange is not None:
                 curraxis.set_ylim(yrange)
             curraxis.set_title(p['name'])
-            if grid:
-                curraxis.grid()
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
+        # suptitle needs a figure object
+        fig_obj = pl.gcf()
         if suptitlegend is not None:
-            figure.suptitle(suptitlegend)
+            fig_obj.suptitle(suptitlegend)
         elif hasattr(self, 'title'):
-            figure.suptitle(self.title)
+            fig_obj.suptitle(self.title)
 
         if ynormalize and not yrange:
             rs = [a.get_ylim() for a in axis_set]
@@ -540,9 +550,14 @@ class Solutions(object):
             if save2file is not None:
                 if hasattr(save2file,'read'):
                     save2file.close()
-            mpl.rcParams['figure.figsize'] = original_figsize
             pl.show()
+
+        # restore seaborn styles
+        sns.set_context(curr_plotting_context)
+        sns.set_style(curr_axes_style)
+        sns.set_palette(curr_color_palette)
         mpl.rcParams['figure.figsize'] = original_figsize
+
 
 def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
     tcs = Solutions()
@@ -762,6 +777,7 @@ def getCriteriumFunction(weights, model, tc):
 
 if __name__ == "__main__":
     from modelparser import read_model
+    sns.set(style='white')
 
     print ('\n===Parsing in-code timecourse ========================')
 
@@ -900,17 +916,6 @@ nothing really usefull here
     print ('\ndata')
     print (sol.data, '\n')
 
-    #~ aTC.seek(0)
-    #~ sol.load_from(aTC, atindexes=(0,3,1,2))
-    #~ print '\n!! using load_from() atindexes (0,3,1,2)'
-    #~ print '\nnames:'
-    #~ print sol.names
-    #~ print '\nt'
-    #~ print sol.t
-    #~ print '\ndata'
-    #~ print sol.data
-    #~ print
-
     print ('==Using SolutionTimeCourse interface ====================')
     aTC.seek(0)
     sol.load_from(aTC)
@@ -953,6 +958,11 @@ nothing really usefull here
         print (type(sol.last))
         print ('sol.last["x"]')
         print (sol.last['x'])
+        print ('sol.init (Initial point the easy way)')
+        print (sol.init)
+        print (type(sol.init))
+        print ('sol.init["x"]')
+        print (sol.init['x'])
         print ('for i in range(len(sol)): print sol[i]')
         for i in range(len(sol)):
             print (sol[i])
@@ -990,7 +1000,24 @@ nothing really usefull here
     sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
     sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
     sols.plot(suptitlegend="with force_dense=True", force_dense=True)
+    
+    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
+    
+    sols.plot(suptitlegend="with given axis_set", force_dense=True,
+              axis_set=[ax1, ax2])
+    ax1.set_ylabel('variables')
+    ax2.set_ylabel('variables')
+    ax2.set_xlabel('time')
+    
+    sol.load_from('examples/timecourses/TSH2b.txt')
+    
+    sol.plot(suptitlegend="plotting only one time course")
 
+    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
+    sol.plot(suptitlegend="plotting on a given axes", axes=ax2)
+    ax2.set_ylabel('concentrations')
+    ax2.set_xlabel('time')
+    
     sol.load_from('examples/timecourses/TSH2b.txt')
     print ('\n!! using load_from() ----------------')
     print ('\nnames:')

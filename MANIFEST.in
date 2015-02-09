@@ -1,7 +1,7 @@
 include *.rst LICENSE
-recursive-include stimator/examples *.py
-recursive-include stimator/examples *.ipynb
-recursive-include stimator/examples *.mdl
-recursive-include stimator/examples *.txt
+recursive-include examples *.py
+recursive-include examples *.ipynb
+recursive-include examples *.mdl
+recursive-include examples *.txt
 recursive-include stimator/tests *.py
 prune stimator/examples/.ipynb_checkpoints

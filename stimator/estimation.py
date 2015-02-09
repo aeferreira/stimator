@@ -7,13 +7,23 @@ from scipy import integrate
 from dynamics import getdXdt, init2array
 import fim
 import timecourse
+import matplotlib as mpl
 from matplotlib import pylab as pl
-import matplotlib.cm as cm
+import seaborn as sns
+## try:
+##     import seaborn as sns
+## except ImportError:
+##     import smallseaborn as sns
 
 # ----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
 # ----------------------------------------------------------------------------
 
+def _repeatitems(sequence, repetitions):
+    newlist = []
+    for x in sequence:
+        newlist.extend([x] * repetitions)
+    return newlist
 
 class OptimumData(object):
     """Object that holds optimum solution data."""
@@ -45,33 +55,67 @@ class OptimumData(object):
     def print_info(self):
         print (self.info())
 
-    def plot(self, figure=None, show=False):
-        if figure is None:
-            figure = pl.figure()
-        figure.clear()
-        tcsubplots = []
+    def plot(self, figure=None, 
+             axis_set=None,
+             fig_size=None,
+             context=None, 
+             style=None, 
+             palette=None,
+             font="sans-serif", 
+             font_scale=1,
+             save2file=None,
+             show=False):
+
+        curr_axes_style = sns.axes_style()
+        curr_plotting_context = sns.plotting_context()
+        curr_color_palette = sns.color_palette()
+        original_figsize = mpl.rcParams['figure.figsize']
+
+        if context is not None:
+            sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
+        if style is not None:
+            sns.set_style(style, rc={"font.family": font})
+        if palette is not None:
+            sns.set_palette(palette)
+        
+        if fig_size is not None:
+            mpl.rcParams['figure.figsize'] = fig_size
+
+        if axis_set is None:
+            if figure is None:
+                figure = pl.figure()
+
+        original_cycle = mpl.rcParams["axes.color_cycle"]
+        curr_cycle = _repeatitems(original_cycle, 2)
+        mpl.rcParams["axes.color_cycle"] = curr_cycle
+        
+##         s = timecourse.Solutions()
+##         
+##         for sol in self.optimum_dense_tcs:
+##             s += sol
+##         
+##         s.plot(figure=figure, show=show, force_dense=True)
+##         mpl.rcParams["axes.color_cycle"] = original_cycle
+##         return
+
         bestsols = self.optimum_dense_tcs
         expsols = self.optimizer.tc
         tcstats = self.tcdata
         ntc = len(bestsols)
         ncols = int(math.ceil(math.sqrt(ntc)))
         nrows = int(math.ceil(float(ntc)/ncols))
+        if axis_set is None:
+            axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(ntc)]
+        else:
+            axis_set = axis_set
+        
         for i in range(ntc):
-            tcsubplots.append(figure.add_subplot(nrows, ncols, i+1))
-
-        for i in range(ntc):
-            subplot = tcsubplots[i]
+            subplot = axis_set[i]
             # subplot.set_xlabel("time")
             subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
             expsol = expsols[i]
             symsol = bestsols[i]
 
-            nlines = len(expsol)
-            if nlines <= 1:
-                delta = 1.0
-            else:
-                delta = 1.0/float(nlines-1)
-            cindex = 0.0
             for line in range(len(expsol)):
                 # count NaN and do not plot if they are most of the timecourse
                 yexp = expsol[line]
@@ -81,17 +125,27 @@ class OptimumData(object):
                 # otherwise plot lines
                 xname = expsol.names[line]
                 ysim = symsol[symsol.names.index(xname)]
-                c = cm.rainbow(cindex, 1)
                 lsexp, mexp = 'None', 'o'
                 lssim, msim = '-', 'None'
-                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, color=c)
-                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim, color=c,
+                subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp)
+                subplot.plot(symsol.t, ysim, marker=msim, ls=lssim,
                              label='%s' % xname)
-                cindex += delta
-            subplot.grid()
             subplot.legend(loc='best')
-            if show:
-                pl.show()
+
+        if save2file is not None:
+            figure.savefig(save2file)
+        if show:
+            if save2file is not None:
+                if hasattr(save2file,'read'):
+                    save2file.close()
+            pl.show()
+
+        # restore seaborn styles
+        sns.set_context(curr_plotting_context)
+        sns.set_style(curr_axes_style)
+        sns.set_palette(curr_color_palette)
+        mpl.rcParams['figure.figsize'] = original_figsize
+        mpl.rcParams["axes.color_cycle"] = original_cycle
 
     def plot_generations(self, generations = None,
                          pars = None,
@@ -130,15 +184,12 @@ class OptimumData(object):
         objx = []
         objy = []
         reading = False
-        cindex = -1
         for line in f:
             line = line.strip()
             if line == '' and reading:
                 if len(solx) > 0:
-                    cindex += 1
-                    c = cm.jet(cindex/float(n_gens), 1)
-                    ax1.plot(solx, soly, color=c, marker='o', ls='None', label = gen)
-                    ax2.plot(objx, objy, color=c, marker='o', ls='None', label = gen)
+                    ax1.plot(solx, soly, marker='o', ls='None', label=gen)
+                    ax2.plot(objx, objy, marker='o', ls='None', label=gen)
                     solx = []
                     soly = []
                     objx = []
@@ -160,11 +211,9 @@ class OptimumData(object):
                 continue
         f.close()
         ax1.legend(loc=0)
-        ax1.grid()
         ax1.set_title('population')
         ax1.set_xlabel(pars[0])
         ax1.set_ylabel(pars[1])
-        ax2.grid()
         ax2.set_title('scores')
         ax2.set_yscale('log')
         ax2.set_xlabel('generation')
