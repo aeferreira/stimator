@@ -130,11 +130,10 @@ class SolutionTimeCourse(object):
     init = property(__getInitState)  # use as 'sol.init'
     
     def apply_transf(self, f, newnames=None):
-        """Applies a transformation to time series.
+        """Apply a transformation to time series in place.
 
            f is the transformation function, with signature
            f(variables,t). variables is an array, list or tuple, t is a scalar.
-           This function must return an array with the same size as 'variables'
            newnames is a list of names of the transformed variables.
            results are kept 'in place': data is substituted."""
 
@@ -145,6 +144,17 @@ class SolutionTimeCourse(object):
             self.names = newnames
         self.data = trf
         return self
+
+    def transform(self, f, newnames=None):
+        """Apply a transformation to time series.
+
+           f is the transformation function, with signature
+           f(variables,t). variables is an array, list or tuple, t is a scalar.
+           newnames is a list of names of the transformed variables."""
+
+        tc = self.clone()
+        tc.apply_transf(f, newnames)
+        return tc
 
     def load_from_str(self, s, names=None):
         aTC = StringIO.StringIO(s)
@@ -621,8 +631,9 @@ def KLdivergence(modelTCs, deltaT, indexes):
 ##     return result
 
 
-def kremling(modelTCs, deltaT, indexes):
-    #A type of weighted L2 distance.
+def L2_midpoint_weights(modelTCs, deltaT, indexes):
+    """L2-norm for time courses, weighted by midpoints"""
+
     result = []
     for i in range(len(modelTCs) - 1):
         for j in range(i + 1, len(modelTCs)):
@@ -635,7 +646,7 @@ def kremling(modelTCs, deltaT, indexes):
 
 
 def L2(modelTCs, deltaT, indexes):
-    #Maximizes this function is the same as maximizing the L2 distance.
+    """L2-norm for time courses"""
     result = []
     for i in range(len(modelTCs) - 1):
         for j in range(i + 1, len(modelTCs)):
@@ -1017,6 +1028,35 @@ nothing really usefull here
     sol.plot(suptitlegend="plotting on a given axes", axes=ax2)
     ax2.set_ylabel('concentrations')
     ax2.set_xlabel('time')
+
+    print ('\n!! testing transformations ----------------')
+    
+    aTC.seek(0)
+    aTC2.seek(0)
+    sols = Solutions(title='all time courses')
+    
+    s = SolutionTimeCourse().load_from(aTC2)
+    sols += s
+    print ('--- before transformation')
+    print ('- names')
+    print (s.names)
+    print ('- data')
+    print (s.data)
+    
+    def average(x, t):
+        print ('applying transformation')
+        return array([t/2.0, (x[0]+x[-1])/2])
+    
+    s = s.transform(average, newnames=['t/2', 'mid point'])
+    print ('--- after transformation')
+    print ('- names')
+    print (s.names)
+    print ('- data')
+    print (s.data)
+    sols += s 
+    
+    sols.plot(suptitlegend="plotting the two time courses")
+    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
     
     sol.load_from('examples/timecourses/TSH2b.txt')
     print ('\n!! using load_from() ----------------')

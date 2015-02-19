@@ -28,6 +28,11 @@ def _is_string(a):
     return (isinstance(a, str) or
             isinstance(a, unicode))
 
+def _is_sequence(arg):
+    return (not hasattr(arg, "strip") and
+            hasattr(arg, "__getitem__") or
+            hasattr(arg, "__iter__"))
+
 def init2array(model):
     """Transforms a state object into a numpy.array object.
        
@@ -325,7 +330,7 @@ def compile_rates(m, collection, with_uncertain = False):
     ratebytecode = [compile(v, '<string>','eval') for v in ratestrs]
     return ratebytecode
     
-def rates_func(m, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
+def rates_func(m, with_uncertain=False, transf=False, scale=1.0, t0=0.0):
     """Generate function to compute rate vector for this model.
     
        Function has signature f(variables, t)"""
@@ -361,78 +366,8 @@ def rates_func(m, with_uncertain = False, transf = False, scale = 1.0, t0=0.0):
     else:
         return f
 
-def genTransformationFunction(m, f):
-    if not callable(f):
-        if isinstance(f,list) or isinstance(f, tuple):
-            for a in f:
-                if not _is_string(a):
-                    raise TypeError(str(a) + ' must be a list of strings')
-            argnames = f[:]
-            names = argnames
-        else:
-            if not _is_string(f):
-                raise TypeError('argument must be a string, list or callable.')
-            argnames = f.split()
-            names = argnames
-        nargs = len(argnames)
-    else:
-        cc = f.func_code
-        nargs = cc.co_argcount
-        argnames = cc.co_varnames[:nargs]
-        names = list(argnames[:])
-        if hasattr(f, 'names'):
-            names[:len(f.names)] = f.names
-    data = []
-    symbmap = _gen_calc_symbmap(m, with_uncertain = False)
-    for a in argnames:
-        o, collection = m._findComponent(a)
-        if collection == 'parameters':
-            data.append(('p', m.getp(a)))
-        elif collection == 'variables':
-            data.append(('v', o))
-        elif collection == 'transf':
-            vstr = rateCalcString(o(fully_qualified = True), symbmap)
-            data.append(('t', compile(vstr, '<string>','eval')))
-        elif collection == 'reactions':
-            vstr = rateCalcString(o(fully_qualified = True), symbmap)
-            data.append(('r', compile(vstr, '<string>','eval')))
-        else:
-            raise AttributeError(a + ' is not a component in this model')
-    args = [0.0]*nargs
-    en = [(i,c,d) for (i, (c,d)) in enumerate(data)]
-    for i,c,d in en:
-        if c == 'p':
-            args[i] =d
 
-    def retf(variables, t):
-        for i,c,d in en:
-            if c == 'p':
-                continue
-            elif c == 'v':
-                args[i] = variables[d]
-            else:
-                args[i] = eval(d)
-        return f(*args)
-    def retargs(variables, t):
-        for i,c,d in en:
-            if c == 'p':
-                continue
-            elif c == 'v':
-                args[i] = variables[d]
-            else:
-                args[i] = eval(d)
-        return args
-            
-    if callable(f):
-        result = retf
-        result.names = names
-        return result
-    else:
-        result = retargs
-        result.names = names
-        return result
-
-def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
+def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     
        Function has signature f(variables, t)
@@ -442,7 +377,7 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
     if not check:
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = compile_rates(m, m.reactions, with_uncertain = with_uncertain)
+    ratebytecode = compile_rates(m, m.reactions, with_uncertain=with_uncertain)
 
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
@@ -462,7 +397,10 @@ def getdXdt(m, with_uncertain = False, scale = 1.0, t0=0.0):
         return x
     return f2
 
-def getdXdt_exposing_rbc(m, expose_enum, with_uncertain = False, scale = 1.0, t0=0.0, changing_pars = None):
+def getdXdt_exposing_rbc(m, expose_enum, with_uncertain=False,
+                         scale=1.0,
+                         t0=0.0,
+                         changing_pars=None):
     """Generate function to compute rhs of SODE for this model.
     
        Function has signature f(variables, t)
@@ -472,7 +410,7 @@ def getdXdt_exposing_rbc(m, expose_enum, with_uncertain = False, scale = 1.0, t0
     if not check:
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = compile_rates(m, m.reactions, with_uncertain = with_uncertain)
+    ratebytecode = compile_rates(m, m.reactions, with_uncertain=with_uncertain)
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
     N *= scale
@@ -493,7 +431,7 @@ def getdXdt_exposing_rbc(m, expose_enum, with_uncertain = False, scale = 1.0, t0
     return f2
 
 
-def dXdt_with(m, uncertainparameters, scale = 1.0, t0=0.0):
+def dXdt_with(m, uncertainparameters, scale=1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     
        Function has signature f(variables, t)
@@ -503,7 +441,7 @@ def dXdt_with(m, uncertainparameters, scale = 1.0, t0=0.0):
     if not check:
         raise BadRateError(msg)
     #compile rate laws
-    ratebytecode = compile_rates(m, m.reactions, with_uncertain = True)
+    ratebytecode = compile_rates(m, m.reactions, with_uncertain=True)
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
     N *= scale
@@ -520,7 +458,7 @@ def dXdt_with(m, uncertainparameters, scale = 1.0, t0=0.0):
         return dot(v,NT)
     return f
 
-def getJacobian(m, with_uncertain = False, scale = 1.0, t0=0.0):
+def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute the jacobian for this model.
     
        Function has signature J(variables, t)
@@ -555,20 +493,109 @@ def getJacobian(m, with_uncertain = False, scale = 1.0, t0=0.0):
     else:
         return J
 
+def genTransformationFunction_decl(m, ignore_replist=False):
+    decl = m.metadata.get('!!', None)
+    
+    if decl is not None and ignore_replist == False:
+        names = decl.strip().split()
+        if len(names) == 1 and names[0] in ('~','>>', '->', '>'):
+            names = names[0]
+        return genTransformationFunction(m, names)
+    else:
+        return None
+
+def genTransformationFunction(m, f):
+    if f == '~':
+        f = rates_func(m, transf=True)
+        f.names = [x.name for x in m.transformations]
+        return f
+    if f in ('>>', '->', '>'):
+        f = rates_func(m)
+        f.names = [x.name for x in m.reactions]
+        return f
+    if not callable(f):
+        if _is_sequence(f):
+            for a in f:
+                if not _is_string(a):
+                    raise TypeError(str(a) + ' must be a string')
+            argnames = f[:]
+            names = argnames
+        else:
+            raise TypeError('outputs must be a sequence or callable.')
+        nargs = len(argnames)
+    else:
+        cc = f.func_code
+        nargs = cc.co_argcount
+        argnames = cc.co_varnames[:nargs]
+        names = list(argnames[:])
+        if hasattr(f, 'names'):
+            names[:len(f.names)] = f.names
+    data = []
+    symbmap = _gen_calc_symbmap(m, with_uncertain=False)
+    for a in argnames:
+        o, collection = m._findComponent(a)
+        if collection == 'parameters':
+            data.append(('p', m.getp(a)))
+        elif collection == 'variables':
+            data.append(('v', o))
+        elif collection == 'transf':
+            vstr = rateCalcString(o(fully_qualified=True), symbmap)
+            data.append(('t', compile(vstr, '<string>','eval')))
+        elif collection == 'reactions':
+            vstr = rateCalcString(o(fully_qualified=True), symbmap)
+            data.append(('r', compile(vstr, '<string>','eval')))
+        else:
+            raise AttributeError(a + ' is not a component in this model')
+    args = [0.0]*nargs
+    en = [(i, c, d) for (i, (c, d)) in enumerate(data)]
+    for i, c, d in en:
+        if c == 'p':
+            args[i] = d
+
+    def retf(variables, t):
+        for i,c,d in en:
+            if c == 'p':
+                continue
+            elif c == 'v':
+                args[i] = variables[d]
+            else:
+                args[i] = eval(d)
+        return f(*args)
+    
+    def retargs(variables, t):
+        for i,c,d in en:
+            if c == 'p':
+                continue
+            elif c == 'v':
+                args[i] = variables[d]
+            else:
+                args[i] = eval(d)
+        return args
+            
+    if callable(f):
+        result = retf
+        result.names = names
+        return result
+    else:
+        result = retargs
+        result.names = names
+        return result
+
+
 def solve(model, 
-          tf = None, 
-          npoints = 500, 
-          t0 = 0.0, 
-          initial = 'init', 
-          times = None, 
-          outputs=False, 
-          title = None,
-          ignore_replist = False):
+          tf=None, 
+          npoints=500, 
+          t0=0.0, 
+          initial='init', 
+          times=None, 
+          outputs=None, 
+          title=None,
+          ignore_replist=False):
     
     salg=integrate._odepack.odeint
     names = [x for x in model.varnames]
 
-    #get initial values, possibly from a state in the model
+    #get initial values
     if initial == 'init':
         y0 = init2array(model)
     else:
@@ -581,11 +608,8 @@ def solve(model,
         if tf is None:
             tf = 1.0
     if times is None:
-        times = linspace(t0, tf, npoints)
-##     elif 
-##         if isinstance(times, list):
-            
-    
+        times = linspace(t0, tf, npoints)            
+
     # scale times to maximum time in data
     t0 = times[0]
     scale = float(times[-1] - t0)
@@ -603,36 +627,33 @@ def solve(model,
 
     sol = SolutionTimeCourse (times, Y, names, title, dense = True)
     
-    #get outputs
-    if outputs is False: # variables are output
-        pass
-    elif outputs is True: #transformations are output
-        #compute model transformations
-        f     = model.transf_func()
-        names = [x.name for x in model.transf]
-        sol.apply_transf(f,names)
-    else:
-        #a filter string or transformation function
+    # get outputs
+    f = genTransformationFunction_decl(model, ignore_replist)
+    # overide if outputs argument is not None
+    if outputs is not None:
         f = genTransformationFunction(model, outputs)
+    if f is not None:
         sol.apply_transf(f, f.names)
-    if model.metadata.get('!!', None) is not None and ignore_replist == False:
-        names = model.metadata['!!'].split()
-        sol = sol.copy(names=names)
+##     if model.metadata.get('!!', None) is not None and ignore_replist == False:
+##         names = model.metadata['!!'].split()
+##         names = [n for n in names if (n in sol.names)]
+##         if len(names) > 0:
+##             sol = sol.copy(names=names)
     
     return sol
 
 class ModelSolver(object):
     def __init__(self,
           model, 
-          tf = 1.0, 
-          npoints = 500, 
-          t0 = 0.0, 
-          initial = 'init', 
-          times = None, 
-          outputs=False, 
-          title = None,
-          ignore_replist = False,
-          changing_pars = None):
+          tf=1.0, 
+          npoints=500, 
+          t0=0.0, 
+          initial='init', 
+          times=None, 
+          outputs=None, 
+          title=None,
+          ignore_replist=False,
+          changing_pars=None):
         self.model = model.copy()
         self.salg=integrate._odepack.odeint
         self.names = [x for x in self.model.varnames]
@@ -680,20 +701,16 @@ class ModelSolver(object):
             self.title = self.model.metadata.get('title', '')
         self.tranf_f = None
         self.tranf_names = None
-        #get outputs
-        if outputs is False: # variables are output
-            pass
-        elif outputs is True: #transformations are output
-            #compute model transformations
-            self.tranf_f     = self.model.transf_func()
-            self.tranf_names = [x.name for x in self.model.transf]
-        elif _is_string(outputs) or callable(outputs): 
-            #a filter string or transformation function
-            self.tranf_f = genTransformationFunction(self.model, outputs)
-            self.tranf_names = self.tranf_f.names
-        else:
-            raise TypeError("'outputs' parameter is of the wrong type")
-    
+        
+        # get outputs
+        f = genTransformationFunction_decl(self.model, ignore_replist)
+        # overide if outputs argument is not None
+        if outputs is not None:
+            f = genTransformationFunction(self.model, outputs)
+        if f is not None:
+            self.tranf_f = f
+            self.tranf_names = f.names
+
     def solve(self, title = None, par_values = None):
         y0 = copy(self.y0)
         if par_values is not None:
@@ -718,20 +735,16 @@ class ModelSolver(object):
         # a filter string or transformation function
         if self.tranf_f is not None:
             sol.apply_transf(self.tranf_f, self.tranf_names)
-        if self.model.metadata.get('!!', None) is not None and self.ignore_replist == False:
-            names = self.model.metadata['!!'].split()
-            sol = sol.copy(names=names)
         return sol
-
 
 def scan(model, plan,
         tf = 1.0, 
         npoints = 500, 
         t0 = 0.0, 
         initial = 'init', 
-        times = None, 
-        outputs=False, 
-        titles = None,
+        times=None, 
+        outputs=None, 
+        titles=None,
         changing_pars = None):
         
         """Wrapper around ModelSolver."""
@@ -936,26 +949,29 @@ def test():
     print 'Snames = \n', Snames
     print m2
     print '---------------- EXAMPLE 1 ------------------'
-    m1 = read_model(models.glyoxalases.text)
+    mtext = """
+    title a simple 2 enzyme system
+    v1 : A -> B, rate = V*A/(Km + A), V = 0.1, Km = 1
+    v2 : B -> C, rate = V*B/(Km + B), V = sqrt(4.0), Km = 20
 
-    print m1
+    init : A = 1
+    ~ sum = A+B+C
+    !! A C sum
+    """
+    print mtext
 
-    solution1 = solve(m1)
+    m1 = read_model(mtext)
+
+    solution1 = solve(m1, tf=50) # respect !! declaration
+    solution1a = solve(m1, tf=50, outputs='A B C sum'.split())
+    solution1v = solve(m1, tf=50, outputs='>>')
 
     print '--- Last time point ----'
     print 'At t =', solution1.t[-1]
     #print solution1.last
     for x in solution1.last:
         print "%-8s= %f" % (x, solution1.last[x])
-
-    #print '---------------- EXAMPLE 2 ------------------'
-    m2 = read_model(models.branched.text)
-
-    #print m2
-    times = append(linspace(0.0,5.0,500),linspace(5.0,10.0, 500))
-
-    solution2 = solve(m2, tf = 10.0, times=times)
-
+    
     print '---------------- EXAMPLE 3 ------------------'
     m3 = read_model(models.ca.text)
 
@@ -970,7 +986,8 @@ def test():
 
     print m4
 
-    solution4 = solve(m4, tf = 100.0, npoints = 2000, outputs="x1 x2 x3")
+    solution4 = solve(m4, tf = 100.0, npoints = 2000, outputs="x1 x2 x3".split())
+    solution4b = solve(m4, tf = 100.0, npoints = 2000, outputs="~")
     
     def transformation(vars,t):
         if t > 40.0:
@@ -982,7 +999,9 @@ def test():
     
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
-    sols = Solutions([solution1, solution2, solution3, solution4])
+    sols = Solutions([solution1, solution1a, solution1v,
+                      solution3, 
+                      solution4, solution4b])
     sols.plot(superimpose=False, save2file=savingfile)
     
     import os
@@ -993,15 +1012,11 @@ def test():
 
     print '---------------- scanning example ------------------'
     m3 = read_model(models.ca.text)
-##     scans = {'B' : [0.1, 0.1, 0.3, 0.3, 0.8, 0.8],
-##              'k1' : [7.3, 5.0, 7.3, 5.0, 7.3, 5.0]}
-    scans = {'B' : [0.0, 0.1, 0.3, 0.5, 0.8, 1.0]}
-    #scans = [('B' , [0.0, 0.1, 0.3, 0.5, 0.8, 1.0])]
+    scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
     
-    sols2 = scan(m3, scans, tf=10.0)
-    sols2.plot(superimpose=False, legend=False, ynormalize=True, 
+    sols2 = scan(m3, {'B': scans}, tf=10.0)
+    sols2.plot(legend=True, ynormalize=True,  group=['Ca'],
                fig_size=(16,9), show=True)
-
 
 if __name__ == "__main__":
     test()

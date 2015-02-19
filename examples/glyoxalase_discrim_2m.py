@@ -89,6 +89,6 @@ init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
     
 if __name__ == "__main__":
     obj_funcs = ['extKL']
-    #obj_funcs = ['extKL', 'KL', 'L2', 'kremling']
+    #obj_funcs = ['extKL', 'KL', 'L2', 'L2_midpoint_weights']
     for obj in obj_funcs:
         compute(obj)

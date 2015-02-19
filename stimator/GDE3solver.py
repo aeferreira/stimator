@@ -187,13 +187,13 @@ class GDE3Solver(DESolver):
         self.fullnondominated = 0
 
         str2distance = {'extKL'   :timecourse.extendedKLdivergence,
-                        'kremling':timecourse.kremling,
+                        'L2_midpoint_weights':timecourse.L2_midpoint_weights,
                         'KL'      :timecourse.KLdivergence,
                         'L2'      :timecourse.L2}
         if self.objFunc not in str2distance.keys():
             raise ("%s is not an implemented divergence function"%self.objFunc)
 
-        if self.objFunc in ('kremling','L2'):  #symetric measures
+        if self.objFunc in ('L2_midpoint_weights','L2'):  #symetric measures
             self.trueMetric = True
         else:
             self.trueMetric = False
