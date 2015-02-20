@@ -15,6 +15,7 @@ from timecourse import TimeCourses
 #         Regular expressions for grammar elements and dispatchers
 #----------------------------------------------------------------------------
 identifierpattern = r"[_a-z]\w*"
+reppattern        = r"([_a-z]\w*|>{1,2}|~|->|\.{1,3})"
 multdotidspattern = r"[_a-z]\w*(\.[_a-z]\w*)*"
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
@@ -28,7 +29,7 @@ tcdefpattern      = r"^\s*timecourse\s+?(?P<filename>[^#]+)(?:#.*)?$"
 atdefpattern      = r"^\s*@\s*(?P<timevalue>[^#]*)\s+(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 titlepattern      = r"^\s*title\s*(?::\s*)?(?P<title>[^#]+)(?:#.*)?$"
 tfpattern         = r"^\s*tf\s*(?::\s*)?(?P<tf>[^#]+)(?:#.*)?$"
-replistpattern    = r"^\s*!!\s*(?::\s*)?(?P<names>("+identifierpattern+r"\s*)+)(?:#.*)?$"
+replistpattern    = r"^\s*!!\s*(?::\s*)?(?P<names>("+reppattern+r"\s*)+)(?:#.*)?$"
 statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state[^#]*)(?:\s*#.*)?$"
 initpattern       = r"^\s*(?P<name>init)\s*:\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
@@ -639,7 +640,7 @@ timecourse my file.txt  # this is a timecourse filename
 timecourse anotherfile.txt
 #timecourse stillanotherfile.txt
 tf: 10
-!! SDLTSH TSH2
+!! SDLTSH > TSH2 -> ~ ..
 
 """
     #~ f = StringIO.StringIO(modelText)

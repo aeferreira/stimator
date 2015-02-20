@@ -129,7 +129,7 @@ class SolutionTimeCourse(object):
         return self.state_at(self.t[0])
     init = property(__getInitState)  # use as 'sol.init'
     
-    def apply_transf(self, f, newnames=None):
+    def apply_transf(self, f, newnames=None, new_title=None):
         """Apply a transformation to time series in place.
 
            f is the transformation function, with signature
@@ -142,19 +142,19 @@ class SolutionTimeCourse(object):
         trf = apply_along_axis(newf, 0, vstack((self.t, self.data)), f)
         if newnames is not None:
             self.names = newnames
+        if new_title is not None:
+            self.title = new_title
         self.data = trf
         return self
 
-    def transform(self, f, newnames=None):
+    def transform(self, f, newnames=None, new_title=None):
         """Apply a transformation to time series.
 
            f is the transformation function, with signature
            f(variables,t). variables is an array, list or tuple, t is a scalar.
            newnames is a list of names of the transformed variables."""
 
-        tc = self.clone()
-        tc.apply_transf(f, newnames)
-        return tc
+        return self.clone().apply_transf(f, newnames, new_title)
 
     def load_from_str(self, s, names=None):
         aTC = StringIO.StringIO(s)
@@ -253,12 +253,14 @@ class SolutionTimeCourse(object):
         if isname:
             f.close()
 
-    def clone(self):
+    def clone(self, new_title=None):
         """Clones the entire solution."""
         tc = SolutionTimeCourse(self.t.copy(),
                                 self.data.copy(),
                                 self.names[:],
                                 self.title, self.dense)
+        if new_title is not None:
+            tc.title = new_title
         tc.filename = self.filename
         tc.shortname = self.shortname
         return tc
@@ -458,7 +460,7 @@ class Solutions(object):
         curr_axes_style = sns.axes_style()
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
-        original_figsize = mpl.rcParams['figure.figsize']
+        original_figsize = tuple(mpl.rcParams['figure.figsize'])
 
         if context is not None:
             sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
@@ -1035,7 +1037,7 @@ nothing really usefull here
     aTC2.seek(0)
     sols = Solutions(title='all time courses')
     
-    s = SolutionTimeCourse().load_from(aTC2)
+    s = SolutionTimeCourse(title='original time course').load_from(aTC2)
     sols += s
     print ('--- before transformation')
     print ('- names')
@@ -1044,10 +1046,12 @@ nothing really usefull here
     print (s.data)
     
     def average(x, t):
-        print ('applying transformation')
+        # print ('applying transformation')
         return array([t/2.0, (x[0]+x[-1])/2])
     
-    s = s.transform(average, newnames=['t/2', 'mid point'])
+    s = s.transform(average,
+                    newnames=['t/2', 'mid point'], 
+                    new_title='after transformation')
     print ('--- after transformation')
     print ('- names')
     print (s.names)

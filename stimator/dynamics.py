@@ -498,27 +498,28 @@ def genTransformationFunction_decl(m, ignore_replist=False):
     
     if decl is not None and ignore_replist == False:
         names = decl.strip().split()
-        if len(names) == 1 and names[0] in ('~','>>', '->', '>'):
-            names = names[0]
         return genTransformationFunction(m, names)
     else:
         return None
 
 def genTransformationFunction(m, f):
-    if f == '~':
-        f = rates_func(m, transf=True)
-        f.names = [x.name for x in m.transformations]
-        return f
-    if f in ('>>', '->', '>'):
-        f = rates_func(m)
-        f.names = [x.name for x in m.reactions]
-        return f
+    special_transf = ['~']
+    special_rates = ['>', '>>', '->']
+    all_special = special_transf + special_rates
+    if f in all_special:
+        f = [f.strip()]
     if not callable(f):
         if _is_sequence(f):
+            argnames = []
             for a in f:
                 if not _is_string(a):
                     raise TypeError(str(a) + ' must be a string')
-            argnames = f[:]
+                if a in special_transf:
+                    argnames.extend([x.name for x in m.transformations])
+                elif a in special_rates:
+                    argnames.extend([x.name for x in m.reactions])
+                else:
+                    argnames.append(a)
             names = argnames
         else:
             raise TypeError('outputs must be a sequence or callable.')
@@ -956,15 +957,18 @@ def test():
 
     init : A = 1
     ~ sum = A+B+C
-    !! A C sum
+    ~ sumAB = A + B
+    !! A C ~
     """
     print mtext
 
     m1 = read_model(mtext)
 
-    solution1 = solve(m1, tf=50) # respect !! declaration
-    solution1a = solve(m1, tf=50, outputs='A B C sum'.split())
-    solution1v = solve(m1, tf=50, outputs='>>')
+    solution1 = solve(m1, tf=50, title='two enzymes, use !! A C ~')
+    solution1a = solve(m1, tf=50, outputs='A B C sum'.split(),
+                       title='explicit outputs=[A B C sum]')
+    solution1v = solve(m1, tf=100, outputs='>>',
+                       title='outputs=">>"')
 
     print '--- Last time point ----'
     print 'At t =', solution1.t[-1]
@@ -986,8 +990,10 @@ def test():
 
     print m4
 
-    solution4 = solve(m4, tf = 100.0, npoints = 2000, outputs="x1 x2 x3".split())
-    solution4b = solve(m4, tf = 100.0, npoints = 2000, outputs="~")
+    solution4 = solve(m4, tf = 100.0, npoints = 2000, 
+                      outputs="x1 x2 x3".split())
+    solution4b = solve(m4, tf = 100.0, npoints = 2000, outputs="~",
+                      title='Rossler, outputs="~"')
     
     def transformation(vars,t):
         if t > 40.0:
@@ -995,13 +1001,14 @@ def test():
         else:
             return (-5.0, vars[1], vars[2])
 
-    solution4.apply_transf(transformation)
+    solution4.apply_transf(transformation,
+                           new_title='Rossler, after a transformation')
     
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
     sols = Solutions([solution1, solution1a, solution1v,
                       solution3, 
-                      solution4, solution4b])
+                      solution4b, solution4])
     sols.plot(superimpose=False, save2file=savingfile)
     
     import os
