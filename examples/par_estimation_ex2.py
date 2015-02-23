@@ -17,6 +17,8 @@ find k1 in [0, 2]
 find k2 in [0, 2]
 find k3 in [0, 2]
 
+!! x2
+
 timecourse ex2data.txt
 popsize = 60     # population size in GA
 """
@@ -32,4 +34,4 @@ m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.update(bestpars)
 
-m2.solve(tf=20.0, outputs='x2').plot(show=True)
+m2.solve(tf=20.0).plot(show=True)

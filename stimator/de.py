@@ -92,9 +92,14 @@ class DESolver(object):
         return "%-4d: %f" % (self.generation, self.bestEnergy)
 
     def reportFinalString(self):
-        res = "\nDONE!\n%s in %d generations.\nbest energy = %f\nbest solution: %s" \
-        % (DESolver.exitCodeStrings[self.exitCode], self.generation, self.bestEnergy, self.bestSolution)
-        res += "\nOptimization took %g s (%s)" % (self.elapsed, utils.s2HMS(self.elapsed))
+        code = DESolver.exitCodeStrings[self.exitCode]
+        res = ['Done!',
+               '%s in %d generations.' % (code, self.generation),
+               'best score = %f' % self.bestEnergy,
+               'best solution: %s' % self.bestSolution]
+        res = '\n' + '\n'.join(res)
+        res += "\nOptimization took %g s (%s)" % (self.elapsed, 
+                                                  utils.s2HMS(self.elapsed))
         return res
 
     def reportInitial(self):

@@ -260,6 +260,10 @@ class _HasOwnParameters(ModelObject):
 
     def __iter__(self):
         return iter(self._ownparameters.itervalues())
+        
+    @property
+    def parameters(self):
+        return [(p.name, p) for p in list(self._ownparameters.values())]
 
     def _copy_pars(self):
         ret = {}
@@ -370,14 +374,42 @@ class Reaction(_HasRate):
         self._irreversible = irreversible
 
     def __str__(self):
-        res = "%s:\n  reagents: %s\n  products: %s\n  stoichiometry: %s\n  rate    = %s\n" % (self.name, str(self._reagents), str(self._products), self.stoichiometry_string(), str(self()))
+        res = ['%s:' % self.name,
+               '  reagents: %s' % str(self._reagents),
+               '  products: %s' % str(self._products),
+               '  stoichiometry: %s' % self.stoichiometry_string,
+               '  rate = %s' % str(self())]
+        res = '\n'.join(res) + '\n'
+        
         if len(self._ownparameters) > 0:
-            res += "  Parameters:\n"
+            resp = ["  Parameters:"]
             for k, v in self._ownparameters.items():
-                res += "    %s = %g\n" % (k, v)
+                resp.append("    %s = %g" % (k, v))
+            res = res + '\n'.join(resp) + '\n'
         return res
 
-    def stoichiometry_string(self):
+    @property
+    def reagents(self):
+        """The reagents of the reaction."""
+        return self._reagents
+    
+    @property
+    def products(self):
+        """The products of the reaction."""
+        return self._products
+    
+    @property
+    def stoichiometry(self):
+        """The stoichiometry of the reaction.
+           
+           This is just a list of (coefficient, name) pairs with
+           reagents with negative coefficients"""
+        res = [(v, -c) for (v, c) in self._reagents]
+        res.extend([(v, c) for (v, c) in self._products])
+        return res
+    
+    def _stoichiometry_string(self):
+        """Generate a canonical string representation of stoichiometry"""
         left = []
         for (v, c) in self._reagents:
             if c == 1:
@@ -403,6 +435,9 @@ class Reaction(_HasRate):
         else:
             irrsign = "<=>"
         return ('%s %s %s' % (left, irrsign, right)).strip()
+    
+    stoichiometry_string = property(_stoichiometry_string)
+
 
     def __eq__(self, other):
         if not _HasRate.__eq__(self, other):
@@ -904,7 +939,7 @@ class Model(ModelObject):
     def copy(self, new_title=None):
         m = Model(self.metadata['title'])
         for r in self.__reactions:
-            m.set_reaction(r.name, r.stoichiometry_string(), r(), r._ownparameters)
+            m.set_reaction(r.name, r.stoichiometry_string, r(), r._ownparameters)
         for p in self._ownparameters.values():
             m.setp(p.name, p)
         for t in self.__transf:
@@ -1168,10 +1203,10 @@ def test():
     print '!!! there are %d reactions in model' % len(m.reactions)
     print '---- iterating m.reactions'
     for v in m.reactions:
-        print v.name, ':', v(), '|', v.stoichiometry_string()
+        print v.name, ':', v(), '|', v.stoichiometry_string
     print '\n---- iterating m.reactions with fully qualified rates'
     for v in m.reactions:
-        print v.name, ':', v(fully_qualified=True), '|', v.stoichiometry_string()
+        print v.name, ':', v(fully_qualified=True), '|', v.stoichiometry_string
     print
     print '!!! there are %d transformations in model' % len(m.transformations)
     print '---- iterating m.transformations'
@@ -1293,8 +1328,17 @@ def test():
     print m.reactions.v3()
     print '--- m.reactions.v3.name'
     print m.reactions.v3.name
-    print '--- m.reactions.v3.stoichiometry_string()'
-    print m.reactions.v3.stoichiometry_string()
+    print '--- m.reactions.v3.stoichiometry_string'
+    print m.reactions.v3.stoichiometry_string
+    print '--- m.reactions.v3.stoichiometry'
+    print m.reactions.v3.stoichiometry
+    print '--- m.reactions.v3.reagents'
+    print m.reactions.v3.reagents
+    print '--- m.reactions.v3.products'
+    print m.reactions.v3.products
+    print '--- m.reactions.v3.parameters'
+    print m.reactions.v3.parameters
+    print
     print '--- "v3" in m.reactions'
     print "v3" in m.reactions
     print '--- "v10" in m.reactions'
