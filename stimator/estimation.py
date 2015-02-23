@@ -69,7 +69,7 @@ class OptimumData(object):
         curr_axes_style = sns.axes_style()
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
-        original_figsize = mpl.rcParams['figure.figsize']
+        original_figsize = tuple(mpl.rcParams['figure.figsize'])
 
         if context is not None:
             sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
