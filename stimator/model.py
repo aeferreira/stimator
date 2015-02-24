@@ -19,7 +19,12 @@ for k, v in globals().items():
     if hasattr(v, "is_rate"):
         __haskinetics[k] = v
 __globs.update(__haskinetics)
-__globs.update(vars(math))
+
+v = vars(math)
+for k in v:
+    if isinstance(v[k], float) or callable(v[k]):
+        __globs[k] = v[k]
+#__globs.update(vars(math))
 
 
 def register_kin_func(f):
@@ -437,7 +442,6 @@ class Reaction(_HasRate):
         return ('%s %s %s' % (left, irrsign, right)).strip()
     
     stoichiometry_string = property(_stoichiometry_string)
-
 
     def __eq__(self, other):
         if not _HasRate.__eq__(self, other):
@@ -916,25 +920,33 @@ class Model(ModelObject):
             check, msg = self.checkRates()
             if not check:
                 raise BadRateError(msg)
-        res = "%s\n" % self.metadata['title']
-        res += "\nVariables: %s\n" % " ".join(self.__variables)
+        
+        res = [self.metadata['title']]
+        res.append("\nVariables: %s\n" % " ".join(self.__variables))
         if len(self.__extvariables) > 0:
-            res += "External variables: %s\n" % " ".join(self.__extvariables)
+            res.append("External variables: %s\n" % " ".join(self.__extvariables))
         for collection in (self.__reactions, self.__transf):
             for i in collection:
-                res += str(i)
-        res += 'init: ' + str(self._init) + '\n'
-        for p in self.parameters:
-            res += p.name + ' = ' + str(p) + '\n'
-        for u in self.with_bounds:
-            res += u.name + ' = ? (' + str(u.bounds.lower) + ', ' + str(u.bounds.upper) + ')\n'
+                res.append(str(i))
+        res.append('init: %s\n' % str(self._init))
+
+        for p in self._ownparameters.values():
+            res.append('%s = %g' % (p.name, p))
+
+        if len(self.with_bounds) > 0:
+            res.append("\nWith bounds:")
+
+            for u in self.with_bounds:
+                res.append('%s = ?(%g, %g)' % (u.name,
+                                               u.bounds.lower,
+                                               u.bounds.upper))
         for k in self.metadata:
             o = self.metadata[k]
             # skip title and empty container metadata
             if k == 'title' or (hasattr(o, '__len__') and len(o)==0):
                 continue
-            res += "%s: %s\n" % (str(k), str(o))
-        return res
+            res.append("\n%s: %s" % (str(k), str(o)))
+        return '\n'.join(res)
 
     def copy(self, new_title=None):
         m = Model(self.metadata['title'])
@@ -1054,10 +1066,17 @@ def _test_with_everything(valueexpr, model, obj):
 ##     print "\nvalueexpr:", valueexpr
 ##     print "---locs"
 ##     for k in locs:
-##         if isinstance(locs[k], _HasRate):
-##             print k, '-->', type(locs[k])
+##         if isinstance(locs[k], _Has_Parameters_Accessor):
+##             print k, 'has parameters and rate'
 ##         else:
-##             print k, '-->', locs[k]
+##             print k, '=', locs[k]
+##     print "---__globs"
+##     for k in __globs:
+##         hasattr(v, "is_rate")
+##         if hasattr(__globs[k], "is_rate"):
+##             print k, ' is rate'
+##         else:
+##             print k, '-->', type(__globs[k])
 
     # part 1: nonpermissive, except for NameError
     try:
@@ -1127,7 +1146,7 @@ def test():
     m.setp('v3.Km', 4.4)
 
     m.set_reaction('v4', "B   ->  ", rate="2*4*step(t,at,top)")
-    m.set_reaction('v5', "C ->",  "4.5*C*step(t,at,top)")
+    m.set_reaction('v5', "C ->",  "sqrt(4)*C*step(t,at,top)")
 
     m.set_transformation('t1', "A*Vt + C", dict(Vt=4))
     m.set_transformation('t2', "sqrt(2*A)")
