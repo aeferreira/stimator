@@ -455,8 +455,9 @@ class Solutions(object):
              font_scale=1,
              save2file=None, **kwargs):
 
-        """Generate a graph of the time course using matplotlib."""
+        """Generate a graph of the time course using matplotlib and seaborn."""
 
+        # save seaborn data and figure size
         curr_axes_style = sns.axes_style()
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
@@ -472,10 +473,7 @@ class Solutions(object):
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
 
-        if axis_set is None:
-            if figure is None:
-                figure = pl.figure()
-
+        # handle names and titles
         ntc = len(self)
         pnames = ['time course %d' % (i+1) for i in range(ntc)]
         for i in range(ntc):
@@ -491,12 +489,19 @@ class Solutions(object):
         else:
             nplots = ntc
 
+        # compute rows and columns in grid of plots
         ncols = int(math.ceil(math.sqrt(nplots)))
         nrows = int(math.ceil(float(nplots)/ncols))
+
+        # handle axes
+        if axis_set is None:
+            if figure is None:
+                figure = pl.figure()
 
         if axis_set is None:
             axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
 
+        # create "plot description" records
         plots_desc = []
         if not group:
             for k, solution in enumerate(self):
@@ -515,16 +520,15 @@ class Solutions(object):
                 pdesc['lines'] = plines
                 plots_desc.append(pdesc)
 
+        # draw plots
         for i,p in enumerate(plots_desc):
             curraxis = axis_set[i]
             nlines = len(p['lines'])
             use_dots = not self[0].dense
             if force_dense:
                 use_dots = False
-            if use_dots:
-                ls, marker = 'None', 'o'
-            else:
-                ls, marker = '-', 'None'
+            
+            ls, marker = ('None', 'o') if use_dots else ('-', 'None')
 
             for lname, ltc, li in p['lines']:
                 y = self[ltc] [li]
@@ -541,7 +545,8 @@ class Solutions(object):
                 curraxis.legend(h, l, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
-        # suptitle needs a figure object
+        
+        # draw suptitle (needs a figure object)
         fig_obj = pl.gcf()
         if suptitlegend is not None:
             fig_obj.suptitle(suptitlegend)
