@@ -19,6 +19,16 @@ realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 realnumber = re.compile(realnumberpattern, re.IGNORECASE)
 
+def _is_string(a):
+    return (isinstance(a, str) or
+            isinstance(a, unicode))
+
+
+def _is_sequence(arg):
+    return (not hasattr(arg, "strip") and
+            hasattr(arg, "__getitem__") or
+            hasattr(arg, "__iter__"))
+
 
 class StimatorTCError(Exception):
 
@@ -188,7 +198,6 @@ class SolutionTimeCourse(object):
                 continue    # empty lines are skipped
             if line.startswith('#'):
                 continue    # comment lines are skipped
-            # print line
             items = line.split()
 
             if identifier.match(items[0]):
@@ -455,8 +464,9 @@ class Solutions(object):
              font_scale=1,
              save2file=None, **kwargs):
 
-        """Generate a graph of the time course using matplotlib."""
+        """Generate a graph of the time course using matplotlib and seaborn."""
 
+        # save seaborn data and figure size
         curr_axes_style = sns.axes_style()
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
@@ -472,10 +482,7 @@ class Solutions(object):
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
 
-        if axis_set is None:
-            if figure is None:
-                figure = pl.figure()
-
+        # handle names and titles
         ntc = len(self)
         pnames = ['time course %d' % (i+1) for i in range(ntc)]
         for i in range(ntc):
@@ -491,40 +498,64 @@ class Solutions(object):
         else:
             nplots = ntc
 
+        # compute rows and columns in grid of plots
         ncols = int(math.ceil(math.sqrt(nplots)))
         nrows = int(math.ceil(float(nplots)/ncols))
 
+        # handle axes
         if axis_set is None:
-            axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplots)]
+            if figure is None:
+                figure = pl.figure()
+            axis_set = [figure.add_subplot(nrows, ncols, i+1) for i in range(nplots)]
 
+        # create "plot description" records
         plots_desc = []
         if not group:
             for k, solution in enumerate(self):
                 rsol = range(len(solution))
-                pdesc = dict(name=pnames[k],
+                pdesc = dict(title=pnames[k],
                              lines=[(solution.names[i], k, i) for i in rsol])
                 plots_desc.append(pdesc)
         else:
-            for vname in group:
-                pdesc = dict(name=vname)
-                plines = []
-                for k, solution in enumerate(self):
-                    if vname in solution.names:
-                        indx = solution.names.index(vname)
-                        plines.append((pnames[k], k, indx))
-                pdesc['lines'] = plines
+            for g in group:
+                if _is_string(g):
+                    pdesc = dict(title=g)
+                    plines = []
+                    for k, solution in enumerate(self):
+                        if g in solution.names:
+                            indx = solution.names.index(g)
+                            plines.append((pnames[k], k, indx))
+                    pdesc['lines'] = plines
+                else:
+                    if _is_sequence(g):
+                        pdesc = dict(title=' '.join(g))
+                        plines = []
+                        for vvv in g:
+                            for k, solution in enumerate(self):
+                                if vvv in solution.names:
+                                    indx = solution.names.index(vvv)
+                                    plines.append(("%s, %s" % (vvv, pnames[k]),
+                                                  k,
+                                                  indx))
+                        pdesc['lines'] = plines
+                    else:
+                        raise StimatorTCError('%s is not a str or seq' % str(g))
                 plots_desc.append(pdesc)
+        
+##         print ('---- plot descriptions |', suptitlegend)
+##         for p in plots_desc:
+##             print (p)
+##         print ('---- end plot descriptions')
 
+        # draw plots
         for i,p in enumerate(plots_desc):
             curraxis = axis_set[i]
             nlines = len(p['lines'])
             use_dots = not self[0].dense
             if force_dense:
                 use_dots = False
-            if use_dots:
-                ls, marker = 'None', 'o'
-            else:
-                ls, marker = '-', 'None'
+            
+            ls, marker = ('None', 'o') if use_dots else ('-', 'None')
 
             for lname, ltc, li in p['lines']:
                 y = self[ltc] [li]
@@ -535,13 +566,14 @@ class Solutions(object):
 
             if yrange is not None:
                 curraxis.set_ylim(yrange)
-            curraxis.set_title(p['name'])
+            curraxis.set_title(p['title'])
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
-        # suptitle needs a figure object
+        
+        # draw suptitle (needs a figure object)
         fig_obj = pl.gcf()
         if suptitlegend is not None:
             fig_obj.suptitle(suptitlegend)
@@ -553,9 +585,9 @@ class Solutions(object):
             common_range = min([l for l,h in rs]), max([h for l,h in rs])
             for a in axis_set:
                 a.set_ylim(common_range)
-        
+
         #pl.tight_layout()
-        
+
         if save2file is not None:
             figure.savefig(save2file)
         if show:
@@ -1010,6 +1042,7 @@ nothing really usefull here
     sols.plot(suptitlegend="plotting the two time courses")
     sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
     sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
+    sols.plot(group=['z', ('x','y')], suptitlegend="with group=['z', ('x','y')]")
     sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
     sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
     sols.plot(suptitlegend="with force_dense=True", force_dense=True)
@@ -1021,6 +1054,11 @@ nothing really usefull here
     ax1.set_ylabel('variables')
     ax2.set_ylabel('variables')
     ax2.set_xlabel('time')
+
+    aTC.seek(0)
+    sol.load_from(aTC)
+    sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
+    sol.plot(group=['z', ('x','y')], suptitlegend="1tc with group=['z', ('x','y')]")
     
     sol.load_from('examples/timecourses/TSH2b.txt')
     
@@ -1209,7 +1247,7 @@ nothing really usefull here
     v1:        -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> HTA,    rate = 2 ..
     timecourse ../stimator/examples/timecourses/TSH2b.txt
-    timecourse ../stimator/examples/timecourses/TSH2a.txt
+    # timecourse ../stimator/examples/timecourses/TSH2a.txt
     variables SDLTSH HTA
     """)
 
@@ -1227,6 +1265,9 @@ nothing really usefull here
         print ('last', tc.last)
         print ('filename:', tc.filename)
         print ('shortname:', tc.shortname, '\n')
+
+    tcs.plot(group=['SDLTSH', 'HTA'],
+             suptitlegend="read from 1 file with group=['SDLTSH', 'HTA']")
     
     pl.show()
 
