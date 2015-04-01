@@ -121,10 +121,9 @@ html_theme = 'bootstrap'
 #html_theme_options = {}
 html_theme_options = {
     'source_link_position': "footer",
-    'bootswatch_theme': "flatly",
+    'bootswatch_theme': "myflatly",
     'navbar_sidebarrel': False,
     'bootstrap_version': "3"
-
     }
 
 ##     'navbar_links': [("Tutorial", "tutorial"),
