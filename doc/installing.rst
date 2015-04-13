@@ -1,12 +1,12 @@
 .. _installing:
 
-Python and "Scientific" Python
-------------------------------
+Installation: Python and "Scientific" Python
+--------------------------------------------
 
 *S-timator* is a (pure) Python package that is installable
 from the `Python Package Index <https://pypi.python.org/pypi>`_.
 
-However, Python relies heavily on the "Scientific Python ecossystem", a set of
+However, *S-timator* relies heavily on the "Scientific Python ecossystem", a set of
 Python libraries that brings high-performance scientific computing to the Python
 programming language.
 
@@ -57,7 +57,7 @@ all S-timator requirements, except wxPython, which has to be installed after
 installing Python.
 
 From the same company, the `Miniconda <http://conda.pydata.org/miniconda.html>`_ "slim" distribution
-is also an alternative, for those that worry about disk sapce. In this case,
+is also an alternative, for those that worry about disk space. In this case,
 the necessary ``conda install``'s must be run for the dependencies, after installing Python.
 
 Installation of S-timator
