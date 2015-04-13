@@ -14,7 +14,7 @@ import wx.aui
 import wx.lib.newevent
 import resultsframe
 import stimator.modelparser
-import stimator.deode
+import stimator.estimation
 import stimator.dynamics
 from stimator import __version__
 import images
@@ -121,7 +121,7 @@ class MyFrame(wx.Frame):
         except:
             mydir = os.path.dirname(os.path.abspath(sys.argv[0]))
         os.chdir(mydir)
-        os.chdir('../examples')
+        os.chdir('../examples/model_files')
         self.exampledir = os.getcwd()
         print 'Working folder:',self.exampledir
         self.cwd = os.getcwd()
@@ -928,7 +928,7 @@ class MyFrame(wx.Frame):
         
         self.oldout = sys.stdout
         sys.stdout = MyWriter(self)
-        solver = stimator.deode.DeODEOptimizer(self.model,
+        solver = stimator.estimation.DeODEOptimizer(self.model,
                                                self.optSettings, 
                                                self.tc, None, None, 
                                                self.finalTick)

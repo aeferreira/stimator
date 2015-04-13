@@ -30,7 +30,6 @@ packages = [
     'stimator.tests',
     'stimator.examples',
     'stimator.moo',
-    'stimator.smallseaborn'
 ]
 
 requires = ['sympy', 'pandas', 'seaborn']
@@ -58,7 +57,7 @@ setup(name = "stimator",
     description = "Analysis of ODE models with focus on model selection and parameter estimation.",
     author = "António Ferreira",
     author_email = "aeferreira@fc.ul.pt",
-    url = "http://enzymology.fc.ul.pt/software.htm",
+    url = "http://webpages.fc.ul.pt/~aeferreira/stimator",
     include_package_data=True,
     packages = packages,
     entry_points = {
