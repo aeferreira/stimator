@@ -18,7 +18,7 @@ is installed through a "scientific distribution".
 One of the following "scientific python" distributions is recommended,
 **as they all provide an easy installation of all requirements**:
 
-- `Anaconda <https://store.continuum.io/cshop/anaconda/>`_(or `Miniconda <http://conda.pydata.org/miniconda.html>`_ followed by the necessary ``conda install``'s)
+- `Anaconda <https://store.continuum.io/cshop/anaconda/>`_ (or `Miniconda <http://conda.pydata.org/miniconda.html>`_ followed by the necessary ``conda install``'s)
 - `Python (x,y) <https://code.google.com/p/pythonxy/>`_
 - `Enthought Canopy <https://www.enthought.com/products/canopy/>`_
 
@@ -37,6 +37,8 @@ requirements for *S-timator* are the following libraries:
 - ``scipy``
 - ``matplotlib``
 - ``pip``
+- ``pandas``
+- ``seaborn``
 
 
 The installation of these Python libraries is optional, but strongly recommended:
@@ -63,7 +65,7 @@ Installation of S-timator
 
 *S-timator* is on the Python Package Index (pypi), so , after installing the
 required libraries, (``Python``, ``numpy``, ``scipy``,
-``matplotlib`` and ``pip``) the easiest way to install *S-timator* is
+``matplotlib``, ``pandas``, ``seaborn`` and ``pip``) the easiest way to install *S-timator* is
 with ``pip``::
 
     $ pip install stimator

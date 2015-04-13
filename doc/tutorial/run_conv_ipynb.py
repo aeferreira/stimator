@@ -3,7 +3,10 @@ import subprocess
 import shutil
 import os
 
-nbfiles = [{'nb':'basic_features.ipynb', 'name':'basic_features'}]
+nbfiles = [{'nb':'basic_features.ipynb', 'name':'basic_features'},
+           {'nb':'models.ipynb', 'name':'models'},
+           {'nb':'solving.ipynb', 'name':'solving'},
+           {'nb':'par_estimation.ipynb', 'name':'par_estimation'}]
 
 def process_list(nbfiles):
     for nbf in nbfiles:

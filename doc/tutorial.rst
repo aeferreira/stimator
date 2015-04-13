@@ -7,6 +7,6 @@ S-timator tutorial
    :maxdepth: 2
 
    tutorial/basic_features
-   tutorial/basic_dynamics
-   tutorial/parameter_scanning
-   tutorial/parameter_estimation
+   tutorial/models
+   tutorial/solving
+   tutorial/par_estimation

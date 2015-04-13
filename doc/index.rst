@@ -27,7 +27,7 @@ For a brief introduction to the package, you can read the :ref:`Basic use <intro
 
 Much more detail can be found in the :ref:`tutorial <tutorial>`.
 
-You can also browse the :ref:`example gallery <example_gallery>` or :ref:`API reference <api_ref>` to see the kind of tools that are available.
+You can also browse the :ref:`API reference <api_ref>` to see the kind of tools that are available.
 
    
 Contents:
@@ -38,7 +38,6 @@ Contents:
 
    introduction
    installing
-   examples/index
    api
 
 Tutorial:
@@ -48,9 +47,9 @@ Tutorial:
    :maxdepth: 2
 
    tutorial/basic_features
-   tutorial/basic_dynamics
-   tutorial/parameter_scanning
-   tutorial/parameter_estimation
+   tutorial/models
+   tutorial/solving
+   tutorial/par_estimation
 
 Indices and tables
 ==================
