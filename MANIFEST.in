@@ -5,3 +5,4 @@ recursive-include examples *.mdl
 recursive-include examples *.txt
 recursive-include stimator/tests *.py
 prune examples/.ipynb_checkpoints
+prune examples/controls
