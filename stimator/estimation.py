@@ -10,6 +10,10 @@ import timecourse
 import matplotlib as mpl
 from matplotlib import pylab as pl
 import seaborn as sns
+sns.set(style='whitegrid')
+mpl.rcParams['lines.markersize']=6
+mpl.rcParams['lines.markeredgewidth']=0.1
+
 ## try:
 ##     import seaborn as sns
 ## except ImportError:
@@ -70,16 +74,22 @@ class OptimumData(object):
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
         original_figsize = tuple(mpl.rcParams['figure.figsize'])
-
-        if context is not None:
-            sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
-        if style is not None:
-            sns.set_style(style, rc={"font.family": font})
-        if palette is not None:
-            sns.set_palette(palette)
+        if context is None:
+            context = curr_plotting_context
+        sns.set_context(context, font_scale=font_scale)
+        if style is None:
+            style = curr_axes_style
+        sns.set_style(style, rc={"font.family": font})
+        if palette is None:
+            palette = curr_color_palette
+        sns.set_palette(palette)
+        mpl.rcParams['lines.markersize']=6
+        mpl.rcParams['lines.markeredgewidth']=0.1
         
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
+        else:
+            mpl.rcParams['figure.figsize'] = (8, 5.5)
 
         if axis_set is None:
             if figure is None:
@@ -149,9 +159,15 @@ class OptimumData(object):
 
     def plot_generations(self, generations = None,
                          pars = None,
-                         figure=None, show=False):
+                         figure=None, show=False, fig_size=None):
         if not self.generations_exist:
             raise IOError('file generations.txt was not generated')
+        
+        if fig_size is not None:
+            mpl.rcParams['figure.figsize'] = fig_size
+        else:
+            mpl.rcParams['figure.figsize'] = (8, 5.5)
+
 
         if figure is None:
             figure = pl.figure()

@@ -8,6 +8,7 @@ from numpy import *
 import matplotlib as mpl
 from matplotlib import pyplot as pl
 import seaborn as sns
+sns.set(style='whitegrid')
 
 ## try:
 ##     import seaborn as sns
@@ -240,6 +241,9 @@ class SolutionTimeCourse(object):
         aTC.seek(0)
         self.write_to(aTC)
         return aTC.getvalue()
+    
+    def __str__(self):
+        return self.save_to_str()
 
     def write_to(self, filename):
         """Writes a time course to a file or file-like object.
@@ -461,7 +465,7 @@ class Solutions(object):
              style=None, 
              palette=None,
              font="sans-serif", 
-             font_scale=1,
+             font_scale=1.0,
              save2file=None, **kwargs):
 
         """Generate a graph of the time course using matplotlib and seaborn."""
@@ -471,16 +475,22 @@ class Solutions(object):
         curr_plotting_context = sns.plotting_context()
         curr_color_palette = sns.color_palette()
         original_figsize = tuple(mpl.rcParams['figure.figsize'])
-
-        if context is not None:
-            sns.set_context(context, font_scale, rc={"figure.figsize": fig_size})
-        if style is not None:
-            sns.set_style(style, rc={"font.family": font})
-        if palette is not None:
-            sns.set_palette(palette)
+        if context is None:
+            context = curr_plotting_context
+        sns.set_context(context, font_scale=font_scale)
+        if style is None:
+            style = curr_axes_style
+        sns.set_style(style, rc={"font.family": font})
+        if palette is None:
+            palette = curr_color_palette
+        sns.set_palette(palette)
+        mpl.rcParams['lines.markersize']=6
+        mpl.rcParams['lines.markeredgewidth']=0.1
         
         if fig_size is not None:
             mpl.rcParams['figure.figsize'] = fig_size
+        else:
+            mpl.rcParams['figure.figsize'] = (8, 5.5)
 
         # handle names and titles
         ntc = len(self)
@@ -822,7 +832,7 @@ def getCriteriumFunction(weights, model, tc):
 
 if __name__ == "__main__":
     from modelparser import read_model
-    sns.set(style='white')
+    sns.set(style='whitegrid')
 
     print ('\n===Parsing in-code timecourse ========================')
 
@@ -888,6 +898,10 @@ nothing really usefull here
     print (sol.t)
     print ('\ndata')
     print (sol.data, '\n')
+    
+    print('\n!! printing a solution ----------------')
+    print (sol)
+    print('----------------------------------------')
 
     sol.load_from_str(demodata)
     sol.orderByNames("z y".split())
@@ -1039,7 +1053,7 @@ nothing really usefull here
     sols += SolutionTimeCourse(title='the first tc').load_from(aTC)
     sols += SolutionTimeCourse().load_from(aTC2)
     
-    sols.plot(suptitlegend="plotting the two time courses")
+    sols.plot(suptitlegend="plotting the two time courses", font_scale=1.5)
     sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
     sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
     sols.plot(group=['z', ('x','y')], suptitlegend="with group=['z', ('x','y')]")
