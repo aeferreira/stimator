@@ -544,9 +544,12 @@ class Solutions(object):
                             for k, solution in enumerate(self):
                                 if vvv in solution.names:
                                     indx = solution.names.index(vvv)
-                                    plines.append(("%s, %s" % (vvv, pnames[k]),
-                                                  k,
-                                                  indx))
+                                    if len(self) > 1:
+                                        plines.append(("%s, %s" % (vvv, pnames[k]),
+                                                      k,
+                                                      indx))
+                                    else:
+                                        plines.append(("%s" % (vvv), k, indx))
                         pdesc['lines'] = plines
                     else:
                         raise StimatorTCError('%s is not a str or seq' % str(g))
