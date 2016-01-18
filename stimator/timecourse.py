@@ -4,31 +4,13 @@ from __future__ import print_function
 import os.path
 import StringIO
 import re
-from numpy import *
-import matplotlib as mpl
-from matplotlib import pyplot as pl
-import seaborn as sns
-sns.set(style='whitegrid')
-
-## try:
-##     import seaborn as sns
-## except ImportError:
-##     import smallseaborn as sns
+import numpy as np
+import plots
 
 fracnumberpattern = r"[-]?\d*[.]?\d+"
 realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 realnumber = re.compile(realnumberpattern, re.IGNORECASE)
-
-def _is_string(a):
-    return (isinstance(a, str) or
-            isinstance(a, unicode))
-
-
-def _is_sequence(arg):
-    return (not hasattr(arg, "strip") and
-            hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))
 
 
 class StimatorTCError(Exception):
@@ -49,10 +31,10 @@ class SolutionTimeCourse(object):
 
     def __init__(self, t=None, data=None, names=None, title="", dense=False):
         if t is None:
-            t = array([])
+            t = np.array([])
         self.t = t          # values of time points
         if data is None:
-            data = array([])
+            data = np.array([])
         self.data = data    # table of points: series in rows, times in cols
         if names is None:
             names = []
@@ -139,7 +121,7 @@ class SolutionTimeCourse(object):
         """Retrieves state_at first timepoint"""
         return self.state_at(self.t[0])
     init = property(__getInitState)  # use as 'sol.init'
-    
+
     def apply_transf(self, f, newnames=None, new_title=None):
         """Apply a transformation to time series in place.
 
@@ -150,7 +132,7 @@ class SolutionTimeCourse(object):
 
         def newf(newdata, f):
             return f(newdata[1:], newdata[0])
-        trf = apply_along_axis(newf, 0, vstack((self.t, self.data)), f)
+        trf = np.apply_along_axis(newf, 0, np.vstack((self.t, self.data)), f)
         if newnames is not None:
             self.names = newnames
         if new_title is not None:
@@ -170,7 +152,7 @@ class SolutionTimeCourse(object):
     def load_from_str(self, s, names=None):
         aTC = StringIO.StringIO(s)
         aTC.seek(0)
-        self.load_from(aTC, names)
+        return self.load_from(aTC, names)
 
     def load_from(self, filename, names=None):
         """Reads a time course from file.
@@ -213,7 +195,7 @@ class SolutionTimeCourse(object):
                 if not t0found:
                     nvars = len(items)
                     t0found = True
-                temprow = [nan] * nvars
+                temprow = [np.nan] * nvars
                 for (i, num) in enumerate(items):
                     if realnumber.match(num):
                         temprow[i] = float(num)
@@ -230,7 +212,7 @@ class SolutionTimeCourse(object):
                 smallindx = min(len(header) - 1, len(names))
                 for i in range(smallindx):
                     header[i + 1] = names[i]
-        data = array(rows)
+        data = np.array(rows)
         self.names = header[1:]
         self.t = data[:, 0].T
         self.data = data[:, 1:].T
@@ -241,7 +223,7 @@ class SolutionTimeCourse(object):
         aTC.seek(0)
         self.write_to(aTC)
         return aTC.getvalue()
-    
+
     def __str__(self):
         return self.save_to_str()
 
@@ -311,7 +293,7 @@ class SolutionTimeCourse(object):
                 oldindexes.remove(indx)
         newindexes.extend(oldindexes)
         self.names = [self.names[i] for i in newindexes]
-        self.data = self.data[array(newindexes, dtype=int)]
+        self.data = self.data[np.array(newindexes, dtype=int)]
 
     def plot(self, axes=None, **kwargs):
         if axes is not None:
@@ -322,7 +304,7 @@ class SolutionTimeCourse(object):
         ss.plot(axis_set=axis_set, **kwargs)
 
 # ----------------------------------------------------------------------------
-#         A CONTAINER FOR TIMECOURSES
+#         A CONTAINER FOR SEVERAL TIMECOURSES
 # ----------------------------------------------------------------------------
 
 
@@ -366,7 +348,7 @@ class Solutions(object):
         elif isinstance(other, SolutionTimeCourse):
             self.solutions.append(other)
         else:
-            raise TypeError("Must add a solutions or a set of solutions")
+            raise TypeError("Must add a solution or a set of solutions")
         return self
 
     def __iter__(self):
@@ -377,9 +359,9 @@ class Solutions(object):
 
     def loadTimeCourses(self, filedir=None, names=None, verbose=False):
         if len(self.filenames) == 0:
-            error_msg = "No time courses to load!"
-            error_msg += "Please indicate time courses with 'timecourse <filename>'"
-            raise StimatorTCError(error_msg)
+            msg = "No time courses to load!"
+            msg += "Please indicate time courses with 'timecourse <filename>'"
+            raise StimatorTCError(msg)
 
         # check and load timecourses
         cwd = os.getcwdu()
@@ -407,7 +389,8 @@ class Solutions(object):
             else:
                 if verbose:
                     print("file %s:" % (filename))
-                    print("%d time points, %d variables" % (sol.ntimes, len(sol)))
+                    print("%d time points, %d variables" % (sol.ntimes,
+                                                            len(sol)))
                 self.append(sol)
                 nTCsOK += 1
         self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
@@ -450,177 +433,19 @@ class Solutions(object):
         self.orderByNames(vnames)
         return self
 
-    def plot(self, show=False,
-             figure=None,
-             axis_set=None,
-             fig_size=None,
-             titles=None,
-             ynormalize=False,
-             yrange=None,
-             group=False,
-             suptitlegend=None,
-             legend=True,
-             force_dense=False,
-             context=None, 
-             style=None, 
-             palette=None,
-             font="sans-serif", 
-             font_scale=1.0,
-             save2file=None, **kwargs):
-
-        """Generate a graph of the time course using matplotlib and seaborn."""
-
-        # save seaborn data and figure size
-        curr_axes_style = sns.axes_style()
-        curr_plotting_context = sns.plotting_context()
-        curr_color_palette = sns.color_palette()
-        original_figsize = tuple(mpl.rcParams['figure.figsize'])
-        if context is None:
-            context = curr_plotting_context
-        sns.set_context(context, font_scale=font_scale)
-        if style is None:
-            style = curr_axes_style
-        sns.set_style(style, rc={"font.family": font})
-        if palette is None:
-            palette = curr_color_palette
-        sns.set_palette(palette)
-        mpl.rcParams['lines.markersize']=6
-        mpl.rcParams['lines.markeredgewidth']=0.1
-        
-        if fig_size is not None:
-            mpl.rcParams['figure.figsize'] = fig_size
-        else:
-            mpl.rcParams['figure.figsize'] = (8, 5.5)
-
-        # handle names and titles
-        ntc = len(self)
-        pnames = ['time course %d' % (i+1) for i in range(ntc)]
-        for i in range(ntc):
-            if titles:
-                pnames[i] = titles[i]
-            else:
-                if self[i].title:
-                    pnames[i] = self[i].title
-
-        # find how many plots
-        if group:
-            nplots = len(group)
-        else:
-            nplots = ntc
-
-        # compute rows and columns in grid of plots
-        ncols = int(math.ceil(math.sqrt(nplots)))
-        nrows = int(math.ceil(float(nplots)/ncols))
-
-        # handle axes
-        if axis_set is None:
-            if figure is None:
-                figure = pl.figure()
-            axis_set = [figure.add_subplot(nrows, ncols, i+1) for i in range(nplots)]
-
-        # create "plot description" records
-        plots_desc = []
-        if not group:
-            for k, solution in enumerate(self):
-                rsol = range(len(solution))
-                pdesc = dict(title=pnames[k],
-                             lines=[(solution.names[i], k, i) for i in rsol])
-                plots_desc.append(pdesc)
-        else:
-            for g in group:
-                if _is_string(g):
-                    pdesc = dict(title=g)
-                    plines = []
-                    for k, solution in enumerate(self):
-                        if g in solution.names:
-                            indx = solution.names.index(g)
-                            plines.append((pnames[k], k, indx))
-                    pdesc['lines'] = plines
-                else:
-                    if _is_sequence(g):
-                        pdesc = dict(title=' '.join(g))
-                        plines = []
-                        for vvv in g:
-                            for k, solution in enumerate(self):
-                                if vvv in solution.names:
-                                    indx = solution.names.index(vvv)
-                                    if len(self) > 1:
-                                        plines.append(("%s, %s" % (vvv, pnames[k]),
-                                                      k,
-                                                      indx))
-                                    else:
-                                        plines.append(("%s" % (vvv), k, indx))
-                        pdesc['lines'] = plines
-                    else:
-                        raise StimatorTCError('%s is not a str or seq' % str(g))
-                plots_desc.append(pdesc)
-        
-##         print ('---- plot descriptions |', suptitlegend)
-##         for p in plots_desc:
-##             print (p)
-##         print ('---- end plot descriptions')
-
-        # draw plots
-        for i,p in enumerate(plots_desc):
-            curraxis = axis_set[i]
-            nlines = len(p['lines'])
-            use_dots = not self[0].dense
-            if force_dense:
-                use_dots = False
-            
-            ls, marker = ('None', 'o') if use_dots else ('-', 'None')
-
-            for lname, ltc, li in p['lines']:
-                y = self[ltc] [li]
-                data_loc = logical_not(isnan(y))
-                x = self[ltc].t[data_loc]
-                y = y[data_loc]
-                curraxis.plot(x, y, ls=ls, marker=marker, label=lname)
-
-            if yrange is not None:
-                curraxis.set_ylim(yrange)
-            curraxis.set_title(p['title'])
-            if legend:
-                h, l = curraxis.get_legend_handles_labels()
-                curraxis.legend(h, l, loc='best')
-            curraxis.set_xlabel('')
-            curraxis.set_ylabel('')
-        
-        # draw suptitle (needs a figure object)
-        fig_obj = pl.gcf()
-        if suptitlegend is not None:
-            fig_obj.suptitle(suptitlegend)
-        elif hasattr(self, 'title'):
-            fig_obj.suptitle(self.title)
-
-        if ynormalize and not yrange:
-            rs = [a.get_ylim() for a in axis_set]
-            common_range = min([l for l,h in rs]), max([h for l,h in rs])
-            for a in axis_set:
-                a.set_ylim(common_range)
-
-        #pl.tight_layout()
-
-        if save2file is not None:
-            figure.savefig(save2file)
-        if show:
-            if save2file is not None:
-                if hasattr(save2file,'read'):
-                    save2file.close()
-            pl.show()
-
-        # restore seaborn styles
-        sns.set_context(curr_plotting_context)
-        sns.set_style(curr_axes_style)
-        sns.set_palette(curr_color_palette)
-        mpl.rcParams['figure.figsize'] = original_figsize
+    def plot(self, **kwargs):
+        return plots.plotTCs(self, **kwargs)
 
 
-def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
+def readTCs(source,
+            filedir=None,
+            intvarsorder=None,
+            names=None,
+            verbose=False):
     tcs = Solutions()
     tcsnames = None
     if hasattr(source, 'metadata'):
-        #retrieve info from model declaration
+        # retrieve info from model declaration
         stcs = source.metadata['timecourses']
         tcs.filenames = stcs.filenames
         tcsnames = stcs.defaultnames
@@ -635,9 +460,9 @@ def readTCs(source, filedir=None, intvarsorder=None, names=None, verbose=False):
 TimeCourses = Solutions
 Solution = SolutionTimeCourse
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Time course divergence metrics
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 
 def extendedKLdivergence(modelTCs, deltaT, indexes):
@@ -662,20 +487,6 @@ def KLdivergence(modelTCs, deltaT, indexes):
         dif = -deltaT * nansum(float64(m * log(m / n)))
         result.append(dif)
     return result
-
-## def KLs(modelTCs, deltaT):
-##     plusKLlist = []
-##     minusKLlist = []
-##     for i in range(len(modelTCs)-1):
-##         for j in range(i+1, len(modelTCs)):
-##             m = modelTCs[i].data
-##             n = modelTCs[j].data
-##             plusKL = -deltaT * nansum(float64(m*log(m/n)))
-##             minusKL = -deltaT * nansum(float64(n*log(n/m)))
-##             plusKLlist.append(plusKL)
-##             minusKLlist.append(minusKL)
-##     result = plusKLlist + minusKLlist
-##     return result
 
 
 def L2_midpoint_weights(modelTCs, deltaT, indexes):
@@ -732,19 +543,19 @@ def propError_func(vect):
 
 
 def getFullTCvarIndexes(model, tcs):
-    #mask series with NaN values.
+    # mask series with NaN values.
     allmodelvarindexes, alltcvarindexes = [], []
-##     allvarindexes = []
     for data in tcs:
         nt = data.ntimes
         varindexes = []
         modelvarindexes = []
 
         for ivar in range(len(data.data)):
-            #count NaN
+            # count NaN
             yexp = data[ivar]
             nnan = len(yexp[isnan(yexp)])
-            if nnan >= nt - 1: continue
+            if nnan >= nt - 1:
+                continue
             varindexes.append(ivar)
             vname = data.names[ivar]
             indx = model.varnames.index(vname)
@@ -763,7 +574,7 @@ def getCommonFullVars(tcs):
         nt = tc.ntimes
         tcnames = tc.names
         for i, line in enumerate(tc.data):
-            #count NaN
+            # count NaN
             yexp = line
             xname = tcnames[i]
             nnan = len(yexp[isnan(yexp)])
@@ -783,8 +594,6 @@ def getRangeVars(tcs, varnames):
             yexp = tc[x]
             tpe = (max(yexp) - min(yexp))
             ranges[ix] = max(ranges[ix], tpe)
-##             if tpe > ranges[ix]:
-##                 ranges[ix] = tpe
     return ranges
 
 
@@ -803,8 +612,8 @@ def getCriteriumFunction(weights, model, tc):
 
     weights can be:
 
-    None         : no weighting (simple least squares, S = sum((Ypred-Yexp)**2))
-    all others are weighted least squares, S = (Ypred-Yexp).T * W * (Ypred-Yexp)
+    None         : no weighting (simple LSquares, S = sum((Ypred-Yexp)**2))
+    all others are weighted LSquares, S = (Ypred-Yexp).T * W * (Ypred-Yexp)
     'demo'       : demo weighting  W = 1/j with j = 1,...,nvars
     """
 
@@ -820,22 +629,22 @@ def getCriteriumFunction(weights, model, tc):
         W = []
         for i in range(len(tc)):
             W.append(array([1.0 / (1 + j) for j in range(alltcvarindexes[i])]))
-        #print W
+
+        # print W
         def criterium(Y, i):
             d = (Y.T[allmodelvarindexes[i]] - tc.data[i][alltcvarindexes[i]])
             return sum(d * W[i] * d)
         return criterium
 
-    ###TODO: weights not implemented
+    # TODO: weights not implemented
     return None
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         TESTING CODE
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 if __name__ == "__main__":
     from modelparser import read_model
-    sns.set(style='whitegrid')
 
     print ('\n===Parsing in-code timecourse ========================')
 
@@ -892,8 +701,7 @@ nothing really usefull here
     aTCnh = StringIO.StringIO(demodata_noheader)
     aTC2 = StringIO.StringIO(demodata2)
 
-    sol = SolutionTimeCourse()
-    sol.load_from(aTC)
+    sol = SolutionTimeCourse().load_from(aTC)
     print ('\n!! using load_from() ----------------')
     print ('\nnames:')
     print (sol.names)
@@ -901,12 +709,12 @@ nothing really usefull here
     print (sol.t)
     print ('\ndata')
     print (sol.data, '\n')
-    
+
     print('\n!! printing a solution ----------------')
     print (sol)
     print('----------------------------------------')
 
-    sol.load_from_str(demodata)
+    sol = SolutionTimeCourse().load_from_str(demodata)
     sol.orderByNames("z y".split())
     print ('\n!! using load_from() with name order z y')
     print ('\nnames:')
@@ -967,7 +775,7 @@ nothing really usefull here
     print (sol.t)
     print ('\ndata')
     print (sol.data, '\n')
-        
+
     aTCnh.seek(0)
     sol.load_from(aTCnh, names=['v1', 'v2'])
     print ('\n!! using load_from() with names v1, v2')
@@ -1047,51 +855,13 @@ nothing really usefull here
     print (sol.t)
     print ('\ndata')
     print (sol.data, '\n')
-    
-    print ('\n!! testing plot() ----------------')
-    
-    aTC.seek(0)
-    aTC2.seek(0)
-    sols = Solutions(title='all time courses')
-    sols += SolutionTimeCourse(title='the first tc').load_from(aTC)
-    sols += SolutionTimeCourse().load_from(aTC2)
-    
-    sols.plot(suptitlegend="plotting the two time courses", font_scale=1.5)
-    sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
-    sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
-    sols.plot(group=['z', ('x','y')], suptitlegend="with group=['z', ('x','y')]")
-    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
-    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
-    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
-    
-    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
-    
-    sols.plot(suptitlegend="with given axis_set", force_dense=True,
-              axis_set=[ax1, ax2])
-    ax1.set_ylabel('variables')
-    ax2.set_ylabel('variables')
-    ax2.set_xlabel('time')
-
-    aTC.seek(0)
-    sol.load_from(aTC)
-    sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
-    sol.plot(group=['z', ('x','y')], suptitlegend="1tc with group=['z', ('x','y')]")
-    
-    sol.load_from('examples/timecourses/TSH2b.txt')
-    
-    sol.plot(suptitlegend="plotting only one time course")
-
-    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
-    sol.plot(suptitlegend="plotting on a given axes", axes=ax2)
-    ax2.set_ylabel('concentrations')
-    ax2.set_xlabel('time')
 
     print ('\n!! testing transformations ----------------')
-    
+
     aTC.seek(0)
     aTC2.seek(0)
     sols = Solutions(title='all time courses')
-    
+
     s = SolutionTimeCourse(title='original time course').load_from(aTC2)
     sols += s
     print ('--- before transformation')
@@ -1099,24 +869,21 @@ nothing really usefull here
     print (s.names)
     print ('- data')
     print (s.data)
-    
+
     def average(x, t):
         # print ('applying transformation')
-        return array([t/2.0, (x[0]+x[-1])/2])
-    
+        return np.array([t/2.0, (x[0]+x[-1])/2])
+
     s = s.transform(average,
-                    newnames=['t/2', 'mid point'], 
+                    newnames=['t/2', 'mid point'],
                     new_title='after transformation')
     print ('--- after transformation')
     print ('- names')
     print (s.names)
     print ('- data')
     print (s.data)
-    sols += s 
-    
-    sols.plot(suptitlegend="plotting the two time courses")
-    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
-    
+    sols += s
+
     sol.load_from('examples/timecourses/TSH2b.txt')
     print ('\n!! using load_from() ----------------')
     print ('\nnames:')
@@ -1173,39 +940,36 @@ nothing really usefull here
     print (sol2.last, '\n')
 
     print ("-Reading tcs, using readTCs() -----------")
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples/timecourses', verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], 'examples/timecourses',
+                  verbose=True)
     print ('\nResulting type:', type(tcs))
     print ('\nElements:')
     for i, tc in enumerate(tcs):
         print (i, '---->>>')
         print ('type:', type(tc))
         print ('shape', tc.shape)
-        print ('names:',tc.names)
-        print ('state at 0.0', tc.state_at(0.0))
-        print ('last', tc.last)
-        print ('filename:', tc.filename)
-        print ('shortname:', tc.shortname, '\n')
-    
-    print ("-Providing default names HTA SDLTSH ------------------------")
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
-                   'examples/timecourses',
-                   names="SDLTSH HTA".split(),
-                   verbose=True)
-    print ('\nResulting type:', type(tcs))
-    print ('\nElements:')
-    for i, tc in enumerate(tcs):
-        print (i, '---->>>')
-        print ('type:', type(tc))
-        print ('shape', tc.shape)
-        print ('names:',tc.names)
+        print ('names:', tc.names)
         print ('state at 0.0', tc.state_at(0.0))
         print ('last', tc.last)
         print ('filename:', tc.filename)
         print ('shortname:', tc.shortname, '\n')
 
-    tcs.plot(suptitlegend="read from file")
-    tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
-    tcs.plot(force_dense=True, suptitlegend="read from file with force_dense=True")
+    print ("-Providing default names HTA SDLTSH ------------------------")
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
+                  'examples/timecourses',
+                  names="SDLTSH HTA".split(),
+                  verbose=True)
+    print ('\nResulting type:', type(tcs))
+    print ('\nElements:')
+    for i, tc in enumerate(tcs):
+        print (i, '---->>>')
+        print ('type:', type(tc))
+        print ('shape', tc.shape)
+        print ('names:', tc.names)
+        print ('state at 0.0', tc.state_at(0.0))
+        print ('last', tc.last)
+        print ('filename:', tc.filename)
+        print ('shortname:', tc.shortname, '\n')
 
     print ("After changing order to HTA SDLTSH ------------------------")
 
@@ -1214,15 +978,15 @@ nothing really usefull here
         print (i, '---->>>')
         print ('type:', type(tc))
         print ('shape', tc.shape)
-        print ('names:',tc.names)
+        print ('names:', tc.names)
         print ('data[:,0] ->', tc.data[:, 0])
         print ('last', tc.last)
         print ('shortname:', tc.shortname, '\n')
 
     print ("saving to different files")
     tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'],
-                           'examples',
-                           verbose=True)
+                          'examples',
+                          verbose=True)
 
     m = read_model("""
     v1:        -> SDLTSH, rate = 1 ..
@@ -1231,7 +995,7 @@ nothing really usefull here
     timecourse TSH2a.txt
     variables SDLTSH HTA
     """)
-    #print m
+    # print m
 
     print ('\n\n')
     print ("After changing order according to model variables ------")
@@ -1241,7 +1005,7 @@ nothing really usefull here
         print (i, '---->>>')
         print ('type:', type(tc))
         print ('shape', tc.shape)
-        print ('names:',tc.names)
+        print ('names:', tc.names)
         print ('data[:,0] ->', tc.data[:, 0])
         print ('last', tc.last)
         print ('shortname:', tc.shortname, '\n')
@@ -1254,7 +1018,7 @@ nothing really usefull here
         print (i, '---->>>')
         print ('type:', type(tc))
         print ('shape', tc.shape)
-        print ('names:',tc.names)
+        print ('names:', tc.names)
         print ('state at 0.0', tc.state_at(0.0))
         print ('last', tc.last)
         print ('filename:', tc.filename)
@@ -1277,14 +1041,8 @@ nothing really usefull here
         print (i, '---->>>')
         print ('type:', type(tc))
         print ('shape', tc.shape)
-        print ('names:',tc.names)
+        print ('names:', tc.names)
         print ('state at 0.0', tc.state_at(0.0))
         print ('last', tc.last)
         print ('filename:', tc.filename)
         print ('shortname:', tc.shortname, '\n')
-
-    tcs.plot(group=['SDLTSH', 'HTA'],
-             suptitlegend="read from 1 file with group=['SDLTSH', 'HTA']")
-    
-    pl.show()
-

@@ -4,9 +4,11 @@ import de
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan
 import math
 from scipy import integrate
+
 from dynamics import getdXdt, init2array
 import fim
 import timecourse
+
 import matplotlib as mpl
 from matplotlib import pylab as pl
 import seaborn as sns
