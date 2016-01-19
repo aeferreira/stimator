@@ -470,9 +470,9 @@ def extendedKLdivergence(modelTCs, deltaT, indexes):
     for (i, j) in indexes:
         m = modelTCs[i].data
         n = modelTCs[j].data
-        m = where(m <= 0.0, NaN, m)
-        n = where(n <= 0.0, NaN, n)
-        dif = -deltaT * nansum(float64(m * (log(m / n) + n / m - 1)))
+        m = np.where(m <= 0.0, np.NaN, m)
+        n = np.where(n <= 0.0, np.NaN, n)
+        dif = -deltaT * np.nansum(np.float64(m * (np.log(m / n) + n / m - 1)))
         result.append(dif)
     return result
 
@@ -482,9 +482,9 @@ def KLdivergence(modelTCs, deltaT, indexes):
     for (i, j) in indexes:
         m = modelTCs[i].data
         n = modelTCs[j].data
-        m = where(m <= 0.0, NaN, m)
-        n = where(n <= 0.0, NaN, n)
-        dif = -deltaT * nansum(float64(m * log(m / n)))
+        m = np.where(m <= 0.0, np.NaN, m)
+        n = np.where(n <= 0.0, np.NaN, n)
+        dif = -deltaT * np.nansum(np.float64(m * np.log(m / n)))
         result.append(dif)
     return result
 
@@ -497,8 +497,8 @@ def L2_midpoint_weights(modelTCs, deltaT, indexes):
         for j in range(i + 1, len(modelTCs)):
             numResult = 0.0
             for tc1, tc2 in zip(modelTCs[i], modelTCs[j]):
-                tempTC = float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2)**2)) * deltaT)
-                numResult -= nansum(tempTC)
+                tempTC = np.float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2)**2)) * deltaT)
+                numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result
 
@@ -510,8 +510,8 @@ def L2(modelTCs, deltaT, indexes):
         for j in range(i + 1, len(modelTCs)):
             numResult = 0.0
             for tc1, tc2 in zip(modelTCs[i], modelTCs[j]):
-                tempTC = float64(((tc1 - tc2) ** 2)) * deltaT
-                numResult -= nansum(tempTC)
+                tempTC = np.float64(((tc1 - tc2) ** 2)) * deltaT
+                numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result
 
@@ -520,7 +520,7 @@ def _transform2array(vect):
     if isinstance(vect, float) or isinstance(vect, int):
         res = array((vect), dtype=float)
     elif isinstance(vect, list) or isinstance(vect, tuple):
-        res = diag(array(vect, dtype=float))
+        res = np.diag(np.array(vect, dtype=float))
     else:
         res = vect  # is already an array (must be 2D)
     return res
@@ -553,15 +553,15 @@ def getFullTCvarIndexes(model, tcs):
         for ivar in range(len(data.data)):
             # count NaN
             yexp = data[ivar]
-            nnan = len(yexp[isnan(yexp)])
+            nnan = len(yexp[np.isnan(yexp)])
             if nnan >= nt - 1:
                 continue
             varindexes.append(ivar)
             vname = data.names[ivar]
             indx = model.varnames.index(vname)
             modelvarindexes.append(indx)
-        alltcvarindexes.append(array(varindexes, int))
-        allmodelvarindexes.append(array(modelvarindexes, int))
+        alltcvarindexes.append(np.array(varindexes, int))
+        allmodelvarindexes.append(np.array(modelvarindexes, int))
     return allmodelvarindexes, alltcvarindexes
 
 
@@ -577,7 +577,7 @@ def getCommonFullVars(tcs):
             # count NaN
             yexp = line
             xname = tcnames[i]
-            nnan = len(yexp[isnan(yexp)])
+            nnan = len(yexp[np.isnan(yexp)])
             if nnan >= nt - 1:
                 if xname in common_names:
                     common_names.remove(xname)
@@ -622,18 +622,18 @@ def getCriteriumFunction(weights, model, tc):
     if weights is None:
         def criterium(Y, i):
             d = (Y.T[allmodelvarindexes[i]] - tc[i].data[alltcvarindexes[i]])
-            return sum(d * d)
+            return np.sum(d * d)
         return criterium
 
     if weights == 'demo':
         W = []
         for i in range(len(tc)):
-            W.append(array([1.0 / (1 + j) for j in range(alltcvarindexes[i])]))
+            W.append(np.array([1.0 / (1 + j) for j in range(alltcvarindexes[i])]))
 
         # print W
         def criterium(Y, i):
             d = (Y.T[allmodelvarindexes[i]] - tc.data[i][alltcvarindexes[i]])
-            return sum(d * W[i] * d)
+            return np.sum(d * W[i] * d)
         return criterium
 
     # TODO: weights not implemented
