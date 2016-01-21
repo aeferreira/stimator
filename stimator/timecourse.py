@@ -7,11 +7,10 @@ import re
 import numpy as np
 import plots
 
-fracnumberpattern = r"[-]?\d*[.]?\d+"
-realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
-identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
-realnumber = re.compile(realnumberpattern, re.IGNORECASE)
-
+FRAC_PATTERN = r"[-]?\d*[.]?\d+"
+REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
+ID_RE = re.compile(r"[_a-z]\w*", re.IGNORECASE)
+REAL_RE = re.compile(REAL_PATTERN, re.IGNORECASE)
 
 class StimatorTCError(Exception):
 
@@ -20,7 +19,6 @@ class StimatorTCError(Exception):
 
     def __str__(self):
         return self.msg
-
 
 # ----------------------------------------------------------------------------
 #         THE BASIC TIMECOURSE CLASS
@@ -52,7 +50,7 @@ class SolutionTimeCourse(object):
         return self.data.shape[0]
 
     def __nonzero__(self):
-        return len(t) > 0
+        return len(self.t) > 0
 
     def __getNumberOfTimes(self):
         """Retrieves the number of time points"""
@@ -183,13 +181,13 @@ class SolutionTimeCourse(object):
                 continue    # comment lines are skipped
             items = line.split()
 
-            if identifier.match(items[0]):
+            if ID_RE.match(items[0]):
                 if not headerFound and not t0found:
-                    header = filter(identifier.match, items)
+                    header = filter(ID_RE.match, items)
                     headerFound = True
                 else:
                     continue
-            elif not realnumber.match(items[0]):
+            elif not REAL_RE.match(items[0]):
                 continue
             else:
                 if not t0found:
@@ -197,7 +195,7 @@ class SolutionTimeCourse(object):
                     t0found = True
                 temprow = [np.nan] * nvars
                 for (i, num) in enumerate(items):
-                    if realnumber.match(num):
+                    if REAL_RE.match(num):
                         temprow[i] = float(num)
                 rows.append(temprow)
         if isname:
@@ -464,7 +462,6 @@ Solution = SolutionTimeCourse
 #         Time course divergence metrics
 # ----------------------------------------------------------------------------
 
-
 def extendedKLdivergence(modelTCs, deltaT, indexes):
     result = []
     for (i, j) in indexes:
@@ -645,7 +642,6 @@ def getCriteriumFunction(weights, model, tc):
 
 if __name__ == "__main__":
     from modelparser import read_model
-
     print ('\n===Parsing in-code timecourse ========================')
 
     demodata = """
@@ -709,7 +705,6 @@ nothing really usefull here
     print (sol.t)
     print ('\ndata')
     print (sol.data, '\n')
-
     print('\n!! printing a solution ----------------')
     print (sol)
     print('----------------------------------------')
@@ -721,7 +716,6 @@ nothing really usefull here
     print (sol.names)
     print ('\ndata')
     print (sol.data, '\n')
-
     sol.load_from_str(demodata)
     sol.orderByNames("z".split())
     print ('\n!! using load_from() with name order z')
@@ -898,7 +892,7 @@ nothing really usefull here
     print (sol.last, '\n')
 
     sol2 = sol.clone()
-    del(sol)
+    del sol
     print ('\n!! using a cloned solution ----------')
     print ('\nnames:')
     print (sol2.names)
@@ -912,7 +906,7 @@ nothing really usefull here
     print (sol2.last, '\n')
 
     sol = sol2.copy()
-    del(sol2)
+    del sol2
     print ('\n!! a cloned with copy() solution -----')
     print ('\nnames:')
     print (sol.names)
@@ -926,7 +920,7 @@ nothing really usefull here
     print (sol.last, '\n')
 
     sol2 = sol.copy('HTA')
-    del(sol)
+    del sol
     print ("\n!! a cloned with copy('HTA') solution --")
     print ('\nnames:')
     print (sol2.names)

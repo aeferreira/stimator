@@ -4,6 +4,8 @@ import matplotlib as mpl
 from matplotlib import pyplot as pl
 import seaborn as sns
 sns.set(style='whitegrid')
+# mpl.rcParams['lines.markersize']=6
+# mpl.rcParams['lines.markeredgewidth']=0.1
 
 def _is_string(a):
     return (isinstance(a, str) or
@@ -14,6 +16,13 @@ def _is_sequence(arg):
     return (not hasattr(arg, "strip") and
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
+
+
+def _repeatitems(sequence, repetitions):
+    newlist = []
+    for x in sequence:
+        newlist.extend([x] * repetitions)
+    return newlist
 
 ## try:
 ##     import seaborn as sns
@@ -189,10 +198,188 @@ def plotTCs(TCs,
     sns.set_style(curr_axes_style)
     sns.set_palette(curr_color_palette)
     mpl.rcParams['figure.figsize'] = original_figsize
+# --------------------------------------------------------------------------
 
-#----------------------------------------------------------------------------
+def plot_estim_optimum(opt, figure=None, 
+                       axis_set=None,
+                       fig_size=None,
+                       context=None, 
+                       style=None, 
+                       palette=None,
+                       font="sans-serif", 
+                       font_scale=1,
+                       save2file=None,
+                       show=False):
+
+    curr_axes_style = sns.axes_style()
+    curr_plotting_context = sns.plotting_context()
+    curr_color_palette = sns.color_palette()
+    original_figsize = tuple(mpl.rcParams['figure.figsize'])
+    if context is None:
+        context = curr_plotting_context
+    sns.set_context(context, font_scale=font_scale)
+    if style is None:
+        style = curr_axes_style
+    sns.set_style(style, rc={"font.family": font})
+    if palette is None:
+        palette = curr_color_palette
+    sns.set_palette(palette)
+    mpl.rcParams['lines.markersize']=6
+    mpl.rcParams['lines.markeredgewidth']=0.1
+    
+    if fig_size is not None:
+        mpl.rcParams['figure.figsize'] = fig_size
+    else:
+        mpl.rcParams['figure.figsize'] = (8, 5.5)
+
+    if axis_set is None:
+        if figure is None:
+            figure = pl.figure()
+
+    original_cycle = mpl.rcParams["axes.color_cycle"]
+    curr_cycle = _repeatitems(original_cycle, 2)
+    mpl.rcParams["axes.color_cycle"] = curr_cycle
+    
+##         s = timecourse.Solutions()
+##         
+##         for sol in opt.optimum_dense_tcs:
+##             s += sol
+##         
+##         s.plot(figure=figure, show=show, force_dense=True)
+##         mpl.rcParams["axes.color_cycle"] = original_cycle
+##         return
+
+    bestsols = opt.optimum_dense_tcs
+    expsols = opt.optimizer.tc
+    tcstats = opt.tcdata
+    ntc = len(bestsols)
+    ncols = int(math.ceil(math.sqrt(ntc)))
+    nrows = int(math.ceil(float(ntc)/ncols))
+    if axis_set is None:
+        axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(ntc)]
+    else:
+        axis_set = axis_set
+    
+    for i in range(ntc):
+        subplot = axis_set[i]
+        # subplot.set_xlabel("time")
+        subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
+        expsol = expsols[i]
+        symsol = bestsols[i]
+
+        for line in range(len(expsol)):
+            # count NaN and do not plot if they are most of the timecourse
+            yexp = expsol[line]
+            nnan = len(yexp[np.isnan(yexp)])
+            if nnan >= expsol.ntimes-1:
+                continue
+            # otherwise plot lines
+            xname = expsol.names[line]
+            ysim = symsol[symsol.names.index(xname)]
+            lsexp, mexp = 'None', 'o'
+            lssim, msim = '-', 'None'
+            subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp)
+            subplot.plot(symsol.t, ysim, marker=msim, ls=lssim,
+                         label='%s' % xname)
+        subplot.legend(loc='best')
+
+    if save2file is not None:
+        figure.savefig(save2file)
+    if show:
+        if save2file is not None:
+            if hasattr(save2file,'read'):
+                save2file.close()
+        pl.show()
+
+    # restore seaborn styles
+    sns.set_context(curr_plotting_context)
+    sns.set_style(curr_axes_style)
+    sns.set_palette(curr_color_palette)
+    mpl.rcParams['figure.figsize'] = original_figsize
+    mpl.rcParams["axes.color_cycle"] = original_cycle
+
+def plot_generations(opt, generations = None,
+                     pars = None,
+                     figure=None, show=False, fig_size=None):
+    if not opt.generations_exist:
+        raise IOError('file generations.txt was not generated')
+    
+    if fig_size is not None:
+        mpl.rcParams['figure.figsize'] = fig_size
+    else:
+        mpl.rcParams['figure.figsize'] = (8, 5.5)
+
+
+    if figure is None:
+        figure = pl.figure()
+    figure.clear()
+
+    if generations is None:
+        all_gens = range(opt.optimization_generations +1)
+        dump_generations = all_gens
+
+    n_gens = len(dump_generations)
+    
+    if pars is None:
+        first2 = opt.parameters[:2]
+        pars = [p[0] for p in first2]
+    
+    pnames = [p[0] for p in opt.parameters]
+    
+    colp0 = pnames.index(pars[0])
+    colp1 = pnames.index(pars[1])
+    
+    scores_col = len(opt.parameters)
+    
+    ax1 = pl.subplot(1,2,1)
+    ax2 = pl.subplot(1,2,2)
+    # parse generations
+    gen = -1
+    f = open('generations.txt')
+    solx = []
+    soly = []
+    objx = []
+    objy = []
+    reading = False
+    for line in f:
+        line = line.strip()
+        if line == '' and reading:
+            if len(solx) > 0:
+                ax1.plot(solx, soly, marker='o', ls='None', label=gen)
+                ax2.plot(objx, objy, marker='o', ls='None', label=gen)
+                solx = []
+                soly = []
+                objx = []
+                objy = []
+                reading = False
+        elif line.startswith('generation'):
+            gen = line.split()[1]
+            igen = int(gen)
+            if igen in dump_generations:
+                reading = True
+                # print 'generation', gen
+        elif reading:
+            line = [float(x) for x in line.split()]
+            solx.append(line[colp0])
+            soly.append(line[colp1])
+            objx.append(igen)
+            objy.append(line[scores_col])
+        else:
+            continue
+    f.close()
+    ax1.legend(loc=0)
+    ax1.set_title('population')
+    ax1.set_xlabel(pars[0])
+    ax1.set_ylabel(pars[1])
+    ax2.set_title('scores')
+    ax2.set_yscale('log')
+    ax2.set_xlabel('generation')
+    if show:
+        pl.show()
+
+# ----------------------------------------------------------------------------
 #         TESTING CODE
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 if __name__ == "__main__":
     from modelparser import read_model
