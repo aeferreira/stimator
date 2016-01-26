@@ -1,4 +1,3 @@
-# -*- coding:utf8 -*-
 from __future__ import print_function
 
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan

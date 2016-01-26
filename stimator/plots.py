@@ -97,9 +97,9 @@ def plotTCs(solutions,
                                          palette, font, font_scale, fig_size)
     
     # handle names and titles
-    ntc = len(solutions)
-    pnames = ['time course %d' % (i+1) for i in range(ntc)]
-    for i in range(ntc):
+    nsolutions = len(solutions)
+    pnames = ['time course %d' % (i+1) for i in range(nsolutions)]
+    for i in range(nsolutions):
         if titles:
             pnames[i] = titles[i]
         else:
@@ -110,7 +110,7 @@ def plotTCs(solutions,
     if group:
         nplts = len(group)
     else:
-        nplts = ntc
+        nplts = nsolutions
 
     # compute rows and columns in grid of plots
     ncols = int(math.ceil(math.sqrt(nplts)))
@@ -238,15 +238,15 @@ def plot_estim_optimum(opt, figure=None,
     bestsols = opt.optimum_dense_tcs
     expsols = opt.optimizer.tc
     tcstats = opt.tcdata
-    ntc = len(bestsols)
-    ncols = int(math.ceil(math.sqrt(ntc)))
-    nrows = int(math.ceil(float(ntc)/ncols))
+    nplts = len(bestsols)
+    ncols = int(math.ceil(math.sqrt(nplts)))
+    nrows = int(math.ceil(float(nplts)/ncols))
     if axis_set is None:
-        axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(ntc)]
+        axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplts)]
     else:
         axis_set = axis_set
     
-    for i in range(ntc):
+    for i in range(nplts):
         subplot = axis_set[i]
         # subplot.set_xlabel("time")
         subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
@@ -421,12 +421,13 @@ nothing really usefull here
     sols.plot(suptitlegend="with style=dark", style='dark')
     sols.plot(suptitlegend="with no_mpl_changes=True", no_mpl_changes=True)
     sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
+    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
+    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
+    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
     
     sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
     sols.plot(group=['z', ('x','y')], suptitlegend="with group=['z', ('x','y')]")
-    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
-    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
-    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
+    sols.plot(group=['z', ('x','z')], suptitlegend="with group=['z', ('x','z')]")
     
     seaborn_set(style='darkgrid')
     f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
@@ -443,6 +444,8 @@ nothing really usefull here
     sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
     sol.plot(group=['z', ('x','y')], 
              suptitlegend="1tc with group=['z', ('x','y')]")
+    sol.plot(group=['z', ('x','z')], 
+             suptitlegend="1tc with group=['z', ('x','z')]")
 
     sol.load_from('examples/timecourses/TSH2b.txt')
     
@@ -455,9 +458,7 @@ nothing really usefull here
     ax2.set_xlabel('time')
 
     print ('\n!! testing transformations ----------------')
-    
-    sols = timecourse.Solutions(title='all time courses')
-    
+       
     sols = timecourse.Solutions(title='all time courses')
     s = timecourse.SolutionTimeCourse(title='original time course').load_from_str(demodata2)
     sols += s
@@ -471,8 +472,7 @@ nothing really usefull here
                     new_title='after transformation')
     sols += s 
     
-    sols.plot(suptitlegend="plotting the two time courses")
-    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
+    sols.plot(suptitlegend="plotting original and transf", force_dense=True)
     
     tcs = timecourse.readTCs(['TSH2b.txt', 'TSH2a.txt'],
                                'examples/timecourses',
@@ -480,6 +480,5 @@ nothing really usefull here
                                verbose=True)
     tcs.plot(suptitlegend="read from file")
     tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
-    tcs.plot(force_dense=True, suptitlegend="read from file with force_dense=True")
 
     pl.show()
