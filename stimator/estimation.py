@@ -379,7 +379,7 @@ timecourse TSH2b.txt
 
     optimum.print_info()
     optimum.plot()
-    optimum.plot_generations(pars=['V2', 'Km1'])
+    optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(12,7))
 
     # --- an example with unknown initial values --------------------
 
