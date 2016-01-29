@@ -289,8 +289,7 @@ def plot_generations(opt, generations = None,
                      style='whitegrid', 
                      palette='deep',
                      font="sans-serif", 
-                     font_scale=1.0,
-                     ):
+                     font_scale=1.0):
     
     if not opt.generations_exist:
         raise IOError('file generations.txt was not generated')
@@ -375,7 +374,7 @@ def plot_generations(opt, generations = None,
 if __name__ == "__main__":
     from modelparser import read_model
     from matplotlib import pyplot as pl
-    import timecourse
+    from timecourse import Solution, Solutions, readTCs
 
     demodata = """
 #this is demo data with a header
@@ -412,9 +411,9 @@ nothing really usefull here
 0.6  - 0.4 - -
 """
 
-    sols = timecourse.Solutions(title='all time courses')
-    sols += timecourse.Solution(title='the first tc').load_from_str(demodata)
-    sols += timecourse.SolutionTimeCourse().load_from_str(demodata2)
+    sols = Solutions([Solution(title='the first tc').read_str(demodata),
+                      Solution().read_str(demodata2)],
+                     title='all time courses') 
     
     sols.plot(suptitlegend="plotting the two time courses")
     sols.plot(suptitlegend="with font_scale=1.3", font_scale=1.3)
@@ -440,14 +439,14 @@ nothing really usefull here
     ax2.set_ylabel('variables')
     ax2.set_xlabel('time')
 
-    sol=timecourse.Solution().load_from_str(demodata)
+    sol=Solution().read_str(demodata)
     sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
     sol.plot(group=['z', ('x','y')], 
              suptitlegend="1tc with group=['z', ('x','y')]")
     sol.plot(group=['z', ('x','z')], 
              suptitlegend="1tc with group=['z', ('x','z')]")
 
-    sol.load_from('examples/timecourses/TSH2b.txt')
+    sol.read_from('examples/timecourses/TSH2b.txt')
     
     sol.plot(suptitlegend="plotting only one time course")
 
@@ -459,8 +458,8 @@ nothing really usefull here
 
     print ('\n!! testing transformations ----------------')
        
-    sols = timecourse.Solutions(title='all time courses')
-    s = timecourse.SolutionTimeCourse(title='original time course').load_from_str(demodata2)
+    sols = Solutions(title='all time courses')
+    s = Solution(title='original time course').read_str(demodata2)
     sols += s
     
     def average(x, t):
@@ -474,10 +473,10 @@ nothing really usefull here
     
     sols.plot(suptitlegend="plotting original and transf", force_dense=True)
     
-    tcs = timecourse.readTCs(['TSH2b.txt', 'TSH2a.txt'],
-                               'examples/timecourses',
-                               names="SDLTSH HTA".split(),
-                               verbose=True)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
+                  'examples/timecourses',
+                  names="SDLTSH HTA".split(),
+                  verbose=False)
     tcs.plot(suptitlegend="read from file")
     tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
 

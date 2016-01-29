@@ -145,12 +145,12 @@ class SolutionTimeCourse(object):
 
         return self.clone().apply_transf(f, newnames, new_title)
 
-    def load_from_str(self, s, names=None):
+    def read_str(self, s, names=None):
         aTC = StringIO.StringIO(s)
         aTC.seek(0)
-        return self.load_from(aTC, names)
+        return self.read_from(aTC, names)
 
-    def load_from(self, filename, names=None):
+    def read_from(self, filename, names=None):
         """Reads a time course from file.
 
         Fills self.names from a header with variable names
@@ -214,14 +214,14 @@ class SolutionTimeCourse(object):
         self.data = data[:, 1:].T
         return self
 
-    def save_to_str(self):
+    def _write_to_str(self):
         aTC = StringIO.StringIO()
         aTC.seek(0)
         self.write_to(aTC)
         return aTC.getvalue()
 
     def __str__(self):
-        return self.save_to_str()
+        return self._write_to_str()
 
     def write_to(self, filename):
         """Writes a time course to a file or file-like object.
@@ -377,7 +377,7 @@ class Solutions(object):
                 os.chdir(cwd)
                 raise StimatorTCError("File \n%s\ndoes not exist" % filename)
             sol = SolutionTimeCourse()
-            sol.load_from(filename, names=names)
+            sol.read_from(filename, names=names)
             if sol.shape == (0, 0):
                 os.chdir(cwd)
                 error_msg = "File\n%s\ndoes not contain valid data" % filename
@@ -431,7 +431,7 @@ class Solutions(object):
 
     def plot(self, **kwargs):
         return plots.plotTCs(self, **kwargs)
-
+    
 
 def readTCs(source,
             filedir=None,
@@ -695,8 +695,8 @@ nothing really usefull here
     aTCnh = StringIO.StringIO(demodata_noheader)
     aTC2 = StringIO.StringIO(demodata2)
 
-    sol = SolutionTimeCourse().load_from(aTC)
-    print ('\n!! using load_from() ----------------')
+    sol = SolutionTimeCourse().read_from(aTC)
+    print ('\n!! using read_from() ----------------')
     print ('\nnames:')
     print (sol.names)
     print ('\nt')
@@ -707,24 +707,24 @@ nothing really usefull here
     print (sol)
     print('----------------------------------------')
 
-    sol = SolutionTimeCourse().load_from_str(demodata)
+    sol = SolutionTimeCourse().read_str(demodata)
     sol.orderByNames("z y".split())
-    print ('\n!! using load_from() with name order z y')
+    print ('\n!! using read_str() with name order z y')
     print ('\nnames:')
     print (sol.names)
     print ('\ndata')
     print (sol.data, '\n')
-    sol.load_from_str(demodata)
+    sol.read_str(demodata)
     sol.orderByNames("z".split())
-    print ('\n!! using load_from() with name order z')
+    print ('\n!! using read_str() with name order z')
     print ('\nnames:')
     print (sol.names)
     print ('\ndata')
     print (sol.data, '\n')
 
     try:
-        sol.load_from_str(demodata)
-        print ('\n!! using load_from() with name order x bof z')
+        sol.read_str(demodata)
+        print ('\n!! using read_str() with name order x bof z')
         sol.orderByNames("x bof z".split())
         print ('\nnames:')
         print (sol.names)
@@ -733,8 +733,8 @@ nothing really usefull here
     except StimatorTCError, msg:
         print (msg, '\n')
 
-    sol.load_from_str(demodata)
-    print ('\n!! using load_from() ----------------')
+    sol.read_str(demodata)
+    print ('\n!! using read() ----------------')
     print ('\nnames:')
     print (sol.names)
     print ('\nt')
@@ -742,15 +742,15 @@ nothing really usefull here
     print ('\ndata')
     print (sol.data, '\n')
 
-    print ('\n!! now dumping, using save_to_str() ----------------')
-    stc = sol.save_to_str()
-    print (stc)
+    print ('\n!! displaying with print() ----------------')
+    # stc = str(sol)
+    print (sol)
     print ('-----------------------------------------------------')
 
     print ('===Reading data without a header=========================')
     aTCnh.seek(0)
-    sol.load_from(aTCnh)
-    print ('\n!! using load_from(), names not provided')
+    sol.read_from(aTCnh)
+    print ('\n!! using read_from(), names not provided')
     print ('\nnames:')
     print (sol.names)
     print ('\nt')
@@ -759,8 +759,8 @@ nothing really usefull here
     print (sol.data, '\n')
 
     aTCnh.seek(0)
-    sol.load_from(aTCnh, names=['v1', 'v2', 'v3', 'v4', 'v5'])
-    print ('\n!! using load_from() with names v1, v2 ,v3, v4, v5')
+    sol.read_from(aTCnh, names=['v1', 'v2', 'v3', 'v4', 'v5'])
+    print ('\n!! using read_from() with names v1, v2 ,v3, v4, v5')
     print ('\nnames:')
     print (sol.names)
     print ('\nt')
@@ -769,8 +769,8 @@ nothing really usefull here
     print (sol.data, '\n')
 
     aTCnh.seek(0)
-    sol.load_from(aTCnh, names=['v1', 'v2'])
-    print ('\n!! using load_from() with names v1, v2')
+    sol.read_from(aTCnh, names=['v1', 'v2'])
+    print ('\n!! using read_from() with names v1, v2')
     print ('\nnames:')
     print (sol.names)
     print ('\nt')
@@ -780,7 +780,7 @@ nothing really usefull here
 
     print ('==Using SolutionTimeCourse interface ====================')
     aTC.seek(0)
-    sol.load_from(aTC)
+    sol.read_from(aTC)
     print ('retrieving components...')
     try:
         print ('\nnames:')
@@ -840,7 +840,7 @@ nothing really usefull here
     print ('\n!! testing write_to() ----------------')
     sol.write_to('examples/exp.txt')
     print ('\n!! reading back from file ------------')
-    sol.load_from('examples/exp.txt')
+    sol.read_from('examples/exp.txt')
     print ('\nnames:')
     print (sol.names)
     print ('\nt')
@@ -854,7 +854,7 @@ nothing really usefull here
     aTC2.seek(0)
     sols = Solutions(title='all time courses')
 
-    s = SolutionTimeCourse(title='original time course').load_from(aTC2)
+    s = SolutionTimeCourse(title='original time course').read_from(aTC2)
     sols += s
     print ('--- before transformation')
     print ('- names')
@@ -876,8 +876,8 @@ nothing really usefull here
     print (s.data)
     sols += s
 
-    sol.load_from('examples/timecourses/TSH2b.txt')
-    print ('\n!! using load_from() ----------------')
+    sol.read_from('examples/timecourses/TSH2b.txt')
+    print ('\n!! using read() ----------------')
     print ('\nnames:')
     print (sol.names)
     print ('\nnumber of times')
