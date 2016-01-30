@@ -1,8 +1,9 @@
 """S-timator : DEMO of  parameter scanning."""
+from __future__ import print_function
 from stimator import read_model
 
 def run_normal():
-    print __doc__
+    print(__doc__)
 
     mdl = """
     title Calcium Spikes
@@ -20,7 +21,7 @@ def run_normal():
     init       : (Ca = 0.1, CaComp = 0.63655)
     """
 
-    print mdl
+    print(mdl)
     m = read_model(mdl)
 
     title = "CICR model: Effect of stimulus ($\\beta$) on citosolic calcium"

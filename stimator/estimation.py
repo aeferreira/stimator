@@ -42,6 +42,9 @@ class OptimumData(object):
 
     def print_info(self):
         print (self.info())
+    
+    def __str__(self):
+        return self.info()
 
     def plot(self, **kwargs):
         return plots.plot_estim_optimum(self, **kwargs)
@@ -376,7 +379,7 @@ timecourse TSH2b.txt
     # maxGenerations_noimprovement=40)
     # ... intvarsorder=(0,2,1) ...
 
-    optimum.print_info()
+    print(optimum)
     optimum.plot()
     optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(12,7))
 
@@ -399,7 +402,7 @@ timecourse TSH2b.txt
                        opt_settings={'pop_size': 60},
                        names=['SDLTSH', 'HTA'])
 
-    optimum.print_info()
+    print(optimum)
     optimum.plot(show=True)
 
 if __name__ == "__main__":

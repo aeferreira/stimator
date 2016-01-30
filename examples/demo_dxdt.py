@@ -1,16 +1,16 @@
 """S-timator : DEMO of dX/dt solution."""
+from __future__ import print_function
 from stimator import read_model, Solutions
 from stimator.dynamics import getdXdt
 
-print __doc__
-print
-print """Vectors of dX/dt are computed by transformation:
+print(__doc__, '\n')
+print ("""Vectors of dX/dt are computed by transformation:
 
 transformation = m.getdXdt()
 sdxdt.apply_transf(transformation)
 
 -----------------------------------------------------------
-"""
+""")
 
 m = read_model("""
 title Calcium Spikes

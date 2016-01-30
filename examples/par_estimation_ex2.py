@@ -1,3 +1,4 @@
+from __future__ import print_function
 from stimator import read_model
 from stimator.versions import version_info
 
@@ -23,11 +24,11 @@ timecourse ex2data.txt
 popsize = 60     # population size in GA
 """
 m1 = read_model(mdl)
-print mdl
+print(mdl)
 
 best = m1.estimate()
 
-print best.info()
+print(best)
 best.plot()
 
 m2 = m1.copy()

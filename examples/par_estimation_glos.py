@@ -1,3 +1,4 @@
+from __future__ import print_function
 from stimator import read_model
 
 mdl = """
@@ -15,23 +16,23 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 m1 = read_model(mdl)
 
-print '================================================='
-print 'Parameter estimation: glyoxalase system example'
-print mdl
-print '-------- an example with two time courses --------------'
+print ('=================================================')
+print ('Parameter estimation: glyoxalase system example')
+print (mdl)
+print ('-------- an example with two time courses --------------')
 
 
 optimum = m1.estimate(['TSH2a.txt', 'TSH2b.txt'], names=['SDLTSH', 'HTA'])
 #  ... dump_generations=True, maxGenerations_noimprovement = 50)
 
-print optimum.info()
+print(optimum)
 optimum.plot()
 # save predicted timecourses to files
 # redsols = optimum.optimum_tcs
 # redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
 
 
-print '-------- an example with unknown initial values --------------'
+print ('-------- an example with unknown initial values --------------')
 
 m2 = m1.copy()
 
@@ -53,5 +54,5 @@ opt_settings = {'pop_size':60}
 optimum = m2.estimate(timecourses=['TSH2a.txt'], opt_settings=opt_settings,
                       names=['SDLTSH', 'HTA'])
 
-optimum.print_info()
+print(optimum)
 optimum.plot(show=True)

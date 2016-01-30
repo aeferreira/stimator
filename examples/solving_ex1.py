@@ -1,3 +1,4 @@
+from __future__ import print_function
 from stimator import read_model
 
 mdl = """# Example file for S-timator
@@ -19,8 +20,8 @@ init: (x1=0, x2=0)
 
 m = read_model(mdl)
 
-print '========= model ========================================'
-print mdl
-print '--------------------------------------------------------'
+print ('========= model ========================================')
+print (mdl)
+print ('--------------------------------------------------------')
 
 m.solve(tf=5.0).plot(show=True, fig_size=(6.5, 6))
