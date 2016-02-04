@@ -10,6 +10,10 @@ REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
 ID_RE = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 REAL_RE = re.compile(REAL_PATTERN, re.IGNORECASE)
 
+def _is_string(a):
+    return (isinstance(a, str) or
+            isinstance(a, unicode))
+
 class StimatorTCError(Exception):
 
     def __init__(self, msg):
@@ -321,7 +325,8 @@ class Solutions(object):
                 self.append(s)
 
     def __str__(self):
-        return str(self.filenames)
+        output = (str(s) for s in self.solutions)
+        return '\n'.join(output)
 
     def __getitem__(self, key):
         """retrieves a series by index"""
@@ -445,6 +450,8 @@ def readTCs(source,
         stcs = source.metadata['timecourses']
         tcs.filenames = stcs.filenames
         tcsnames = stcs.defaultnames
+    elif _is_string(source):
+        tcs.filenames = [source]
     else:
         tcs.filenames = source
     if names is None:
@@ -453,6 +460,7 @@ def readTCs(source,
     tcs.loadTimeCourses(filedir, names=names, verbose=verbose)
     return tcs
 
+read_tc = readTCs
 TimeCourses = Solutions
 Solution = SolutionTimeCourse
 
@@ -847,6 +855,19 @@ nothing really usefull here
     print (sol.t)
     print ('\ndata')
     print (sol.data, '\n')
+
+    print ('== Using Solutions interface ====================')
+
+    aTC.seek(0)
+    aTC2.seek(0)
+    sols = Solutions(title='all time courses')
+
+    s = SolutionTimeCourse(title='the first time course').read_from(aTC)
+    sols += s
+    s = SolutionTimeCourse(title='the second time course').read_from(aTC2)
+    sols += s
+    
+    print(sols)
 
     print ('\n!! testing transformations ----------------')
 

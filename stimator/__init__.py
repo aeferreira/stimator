@@ -2,7 +2,7 @@
 
 from model import Model, register_kin_func
 from dynamics import solve
-from timecourse import readTCs, Solutions, TimeCourses
+from timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
 from modelparser import read_model
 import examples
 
