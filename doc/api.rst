@@ -12,7 +12,7 @@ Model representation
     :toctree: generated/
     
     read_model
-    model.Model
+    Model
 
 Dynamics
 --------
@@ -20,8 +20,8 @@ Dynamics
 .. autosummary::
     :toctree: generated/
     
-    dynamics.solve
-    dynamics.scan
+    Model.solve
+    Model.scan
 
 Parameter estimation
 --------------------
@@ -29,4 +29,4 @@ Parameter estimation
 .. autosummary::
     :toctree: generated/
     
-    estimation.s_timate
+    Model.estimate

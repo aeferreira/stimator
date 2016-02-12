@@ -58,7 +58,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'S-timator'
-copyright = u'2006-2015, António Ferreira'
+copyright = u'2006-2016, António Ferreira'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
