@@ -30,4 +30,3 @@ Parameter estimation
     :toctree: generated/
     
     estimation.s_timate
-    estimation.DeODEOptimizer

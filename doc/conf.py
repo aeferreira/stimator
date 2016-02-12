@@ -41,7 +41,7 @@ extensions = [
     'numpydoc']
 
 # Generate the API documentation when building
-#autosummary_generate = True
+autosummary_generate = True
 numpydoc_show_class_members = True
 
 # Add any paths that contain templates here, relative to this directory.
