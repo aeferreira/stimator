@@ -40,6 +40,8 @@ Contents:
    installing
    api
 
+.. _tutorial:
+
 Tutorial:
 ---------
 

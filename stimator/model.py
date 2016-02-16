@@ -683,28 +683,37 @@ class Model(ModelObject):
 
     Attributes
     ----------
-    reactions : _Collection_Accessor
-        The processes in the model.
-    transformations : _Collection_Accessor
+    reactions : Accessor
+        The processes ("reactions") in the model.
+    transformations : Accessor to collection
         The transformations in the model.
-    parameters : _Parameters_Accessor
+    parameters : Accessor
         The parameters in the model.
-    varnames : list of str
+    varnames : list[str]
         The names of the variables defined in the model. This list should be
         treated as read-only and is internally refreshed everytime a reaction
         is added or changed.
-    extvariables : list of str
+    extvariables : list[str]
         The names of the external variables defined in the model. This list
         should be treated as read-only and is internally refreshed everytime a
         reaction or parameter is added or changed.
-    init : _init_Accessor
+    init : Accessor
         The initial state of the model.
-    with_bounds : _With_Bounds_Accessor
+    with_bounds : Accessor
         Iterates through the parameters in the model for which Bounds were
         assigned.
     """
 
     def __init__(self, title=""):
+        """Construct an empty model object.
+
+
+        Parameters
+        ----------
+        title : str
+            The title of the model.
+        """
+        
         self.__dict__['_Model__reactions']         = QueriableList()
         self.__dict__['_Model__variables']         = []
         self.__dict__['_Model__extvariables']      = []
@@ -745,7 +754,6 @@ class Model(ModelObject):
             a mass-action rate will be assumed.
         pars : dict of iterable of (name, value) pairs
             The 'local' parameters of the reaction.
-
         """
         r, p, i = processStoich(stoichiometry)
         if _is_number(rate):
@@ -757,6 +765,21 @@ class Model(ModelObject):
         self._refreshVars()
 
     def set_transformation(self, name, rate=0.0, pars=None):
+        """Insert or modify a transformation in the model.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the transformation.
+        rate : str or int or float.
+            The rate of the transformation. If it is a number,
+            a constant rate will be assumed.
+        pars : dict of iterable of (name, value) pairs
+            The 'local' parameters of the transformation.
+
+        """
+
         if _is_number(rate):
             rate = str(float(rate))
 
@@ -765,6 +788,20 @@ class Model(ModelObject):
         self._refreshVars()
 
     def set_variable_dXdt(self, name, rate=0.0, pars=None):
+        """Insert or modify a dx/dt equation in the model.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the transformation.
+        rate : str or int or float.
+            The rhs of the equation. If it is a number,
+            a constant rate will be assumed.
+        pars : dict of iterable of (name, value) pairs
+            The 'local' parameters of the equation.
+
+        """
         if _is_number(rate):
             rate = str(float(rate))
 
@@ -774,6 +811,17 @@ class Model(ModelObject):
         self.set_reaction(name, stoich, rate, pars)
 
     def setp(self, name, value):
+        """Insert or modify a parameter of the model.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter. "Dot" access to parameters of reactions
+            or transformations, for example ``model.setp('v1.k', 2)`` is allowed.
+        value : number or str that can be transformed to a float.
+            The value of the parameter.
+        """
         if '.' in name:
             alist = name.split('.')
             vn, name = alist[:2]
@@ -784,6 +832,34 @@ class Model(ModelObject):
             o = self
         _setPar(o, name, value)
         self._refreshVars()
+
+
+    def getp(self, name):
+        """Retrieve a parameter of the model.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter. "Dot" access to parameters of reactions
+            or transformations, for example ``model.setp('v1.k', 2)`` is allowed.
+        Returns
+        -------
+        float
+            The value of the parameter
+
+        """
+        if '.' in name:
+            alist = name.split('.')
+            vname, name = alist[:2]
+            o = self._get_reaction_or_transf(vname)
+            return o.getp(name)
+        else:
+            if name in self._ownparameters:
+                return self._ownparameters[name]
+            else:
+                raise AttributeError(name + ' is not a parameter of ' + self.name)
+
 
     def _get_reaction_or_transf(self, name):
         o = self.__reactions.get(name)
@@ -840,18 +916,6 @@ class Model(ModelObject):
         else:
             if name in self._ownparameters:
                 self._ownparameters[name].bounds = None
-            else:
-                raise AttributeError(name + ' is not a parameter of ' + self.name)
-
-    def getp(self, name):
-        if '.' in name:
-            alist = name.split('.')
-            vname, name = alist[:2]
-            o = self._get_reaction_or_transf(vname)
-            return o.getp(name)
-        else:
-            if name in self._ownparameters:
-                return self._ownparameters[name]
             else:
                 raise AttributeError(name + ' is not a parameter of ' + self.name)
 
@@ -915,6 +979,22 @@ class Model(ModelObject):
         return self.info()
 
     def info(self, no_check=False):
+        """Generate a string with a description of the model.
+        
+        Used when a string describing a model is needed,
+        for example in `print(model)`.
+
+
+        Parameters
+        ----------
+        no_check : boolean
+            Whether a check of the validity of reaction rates is performed.
+        Returns
+        -------
+        str
+            A string with a description of the model.
+
+        """
         self._refreshVars()
         if not no_check:
             check, msg = self.checkRates()
@@ -949,6 +1029,18 @@ class Model(ModelObject):
         return '\n'.join(res)
 
     def copy(self, new_title=None):
+        """Retrieves a deep copy of a model.
+        
+        Parameters
+        ----------
+        new_title : str
+            A new title can be provided.
+        Returns
+        -------
+        Model
+            A deep copy of a model.
+
+        """
         m = Model(self.metadata['title'])
         for r in self.__reactions:
             m.set_reaction(r.name, r.stoichiometry_string, r(), r._ownparameters)
@@ -1117,15 +1209,15 @@ class QueriableList(list):
 
 
 class BadStoichError(Exception):
-    """Used to flag a wrong stoichiometry expression"""
+    """Flags a wrong stoichiometry expression"""
 
 
 class BadRateError(Exception):
-    """Used to flag a wrong rate expression"""
+    """Flags a wrong rate expression"""
 
 
 class BadTypeComponent(Exception):
-    """Used to flag an assignement of a model component to a wrong type object"""
+    """Flags an assignement of a model component to a wrong type object"""
 
 
 def test():

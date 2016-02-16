@@ -41,7 +41,7 @@ def process_list(nbfiles):
             alltext = f.read()
 
         alltext = alltext.replace('_files%5C', '_files/')
-        alltext = alltext.replace("    %matplotlib inline\n", '')
+        alltext = alltext.replace(".. code:: python\n\n    %matplotlib inline\n", '')
 
         print ('writing %s' % rst_name)
         with open (rst_name, 'w') as f:

@@ -5,14 +5,13 @@ API reference
 
 .. currentmodule:: stimator
 
-Model representation
---------------------
+Models
+------
 
-.. autosummary::
-    :toctree: generated/
+.. toctree::
     
-    read_model
-    Model
+    api/read_model
+    api/model
 
 Dynamics
 --------

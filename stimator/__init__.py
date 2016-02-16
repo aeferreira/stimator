@@ -11,6 +11,6 @@ class VersionObj(object):
 
 __version__ = VersionObj()
 
-__version__.version = '0.9.98'
+__version__.version = '0.9.99'
 __version__.fullversion = __version__.version
-__version__.date = "Apr 2015"
+__version__.date = "Mar 2016"
