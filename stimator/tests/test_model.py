@@ -14,21 +14,30 @@ def test_Model_init_2():
     assert m.name == "My first model"
 
 def test_set_reaction1():
-    """test Model.set_reaction(string, int or float)"""
+    """test Model.set_reaction(string, string, int or float)"""
     m = Model("My first model")
     m.set_reaction('v1',"A->B", 4)
     m.set_reaction('v2',"B->C", 2.0)
+    m.set_reaction('v3',"2C->D", 2.0)
+    m.set_reaction('v4',"0C+2D->E", 2.0)
     assert isinstance(m.reactions.v1, model.Reaction)
     assert isinstance(m.reactions.v2, model.Reaction)
+    assert isinstance(m.reactions.v3, model.Reaction)
+    assert isinstance(m.reactions.v4, model.Reaction)
     assert m.reactions.v1.name == 'v1'
     assert m.reactions.v2.name == 'v2'
-    assert m.reactions.v1()== str(float(4))+ "*A"
-    assert m.reactions.v2()== str(float(2.0))+"*B"
+    assert m.reactions.v3.name == 'v3'
+    assert m.reactions.v4.name == 'v4'
+    cd = {'A': 3.14, 'B': 2*3.14, 'C': 3.0*3.14, 'D': 4*3.14}
+    assert_almost_equal(eval('4.0*A', cd), eval(m.reactions.v1(), cd))
+    assert_almost_equal(eval('2.0*B', cd), eval(m.reactions.v2(), cd))
+    assert_almost_equal(eval('2.0*C**2.0', cd), eval(m.reactions.v3(), cd))
+    assert_almost_equal(eval('2.0*D**2', cd), eval(m.reactions.v4(), cd))
     check, msg = m.checkRates()
     assert check 
 
 def test_set_reaction2():
-    """test Model.react(string, string)"""
+    """test Model.set_reaction(string, string, string)"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 4*A/(p1+A)-B ")
     m.setp('p1', 2)
@@ -63,6 +72,12 @@ def test_set_reaction2c():
 @raises(model.BadStoichError)
 def test_set_reaction3():
     """test Bad stoichiometry"""
+    m = Model("My first model")
+    m.set_reaction('v1', "A ## B", " 4*A/(p1+A)-B ")
+
+@raises(model.BadStoichError)
+def test_set_reaction3b():
+    """test Bad stoichiometry again"""
     m = Model("My first model")
     m.set_reaction('v1', "A->##B", " 4*A/(p1+A)-B ")
 
@@ -131,14 +146,21 @@ def test_par_in_rates1():
 def test_par_from_rates1():
     """test rate expressions with parameters 'local' to reactions"""
     m = Model("My first model")
-    m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars=(('p1', 4.0), ('p2',2)))
     m.set_reaction('v2', "B->C", "2*v1.p1*B")
     m.setp('p2', 3.0)
     assert (m.reactions.v2.name) == 'v2'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v2()== "2*v1.p1*B"
     check, msg = m.checkRates()
-    assert check 
+    assert check
+    assert len(m.parameters.v1) == 2
+    assert 'p1' in m.parameters.v1
+    assert 'q2' not in m.parameters.v1
+    pars_v1 = m.reactions.v1.parameters
+    assert len(pars_v1) == 2
+    pars_v1_iter = [par for par in m.reactions.v1]
+    assert len(pars_v1_iter) == 2
     assert isinstance(m.parameters.v1.p1, model.ConstValue)
     assert (m.parameters.v1.p1.name) == "p1"
     assert isinstance(m.parameters.p2, model.ConstValue)
@@ -152,7 +174,7 @@ def test_par2():
     m.parameters.p1 = 4
     m.parameters.p2 = 3.0
     m.parameters.p1.set_bounds((1,10)) #tuple or list
-    m.parameters.p2.set_bounds([1, 9.5])
+    m.set_bounds('p2', [1, 9.5])
     m.parameters.p3 = 5
     m.parameters.p4 = 6
     m.set_bounds('p4',(1, 8.5)) # or uncertainty function
@@ -183,9 +205,10 @@ def test_par2():
 def test_par_in_rates2():
     """test assignment of 'local' parameters with bounds"""
     m = Model("My first model")
-    m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.set_reaction('v1', "A->B", " p1*A/(q1+A)-B ", pars={'p1':4, 'q1':5})
     m.setp('p2', 3.0)
     m.parameters.v1.p1.set_bounds((1,10)) #tuple or list
+    m.set_bounds('v1.q1', [2, 5]) #tuple or list
     m.parameters.p2.set_bounds([1, 9.5])
     m.parameters.p3 = 5
     assert m.parameters.v1.p1 == 4.0
@@ -193,8 +216,11 @@ def test_par_in_rates2():
     assert m.parameters.p3 == 5.0
     assert m.parameters.p3.bounds is None
     assert isinstance(m.parameters.v1.p1.bounds, model.Bounds)
+    assert isinstance(m.parameters.v1.q1.bounds, model.Bounds)
     assert m.parameters.v1.p1.bounds.lower == 1.0
     assert m.parameters.v1.p1.bounds.upper == 10.0
+    assert m.parameters.v1.q1.bounds.lower == 2.0
+    assert m.parameters.v1.q1.bounds.upper == 5.0
     assert isinstance(m.parameters.p2.bounds, model.Bounds)
     assert m.parameters.p2.bounds.lower == 1.0
     assert m.parameters.p2.bounds.upper == 9.5
@@ -235,7 +261,7 @@ def test_printmodel():
     m = Model('My first model')
     m.set_reaction('v1', "A+B -> C"  , 3)
     m.set_reaction('v2', "    -> A"  , rate = math.sqrt(4.0)/2)
-    m.set_reaction('v3', "C   ->  "  , "V3 * C / (Km3 + C)")
+    m.set_reaction('v3', "C   ->  "  , "V3 * C / (Km3 + C)", {'Km3':4})
     m.set_reaction('v4', "B   ->  "  , "2*B")
     m.set_transformation('t1', "A*4 + C")
     m.set_transformation('t2', "sqrt(2*A)")
@@ -244,7 +270,6 @@ def test_printmodel():
     m.parameters.myconstant = 2 * m.parameters.B / 1.1 # should be 4.0
     m.parameters.V3 = 0.5
     m.parameters.V3.set_bounds([0.1, 1.0])
-    m.parameters.Km3 = 4
     m.set_init(A = 1.0, C = 1, D = 1)
     m.init.C.set_bounds((1,3))
     #print should not raise an Exception
@@ -271,6 +296,41 @@ def test_clonemodel():
     m2 = m.copy()
     assert m2 == m
 
+def test_model__eq__():
+    """test model.__eq__"""
+    import math
+    m = Model('My first model')
+    m.set_reaction('v1', "A+B -> C"  , 3)
+    m.set_reaction('v2', "    -> A"  , rate = math.sqrt(4.0)/2)
+    m.set_reaction('v3', "C   ->  "  , "V3 * C / (Km3 + C)", {'Km3': 4})
+    m.set_reaction('v4', "B   ->  "  , "2*B")
+    m.set_transformation('t1', "A*4 + C")
+    m.set_transformation('t2', "sqrt(2*A)")
+    m.set_variable_dXdt('D',"-2 * D")
+    m.parameters.B  = 2.2
+    m.parameters.myconstant = 2 * m.parameters.B / 1.1 # should be 4.0
+    m.parameters.V3 = 0.5
+    m.parameters.V3.set_bounds([0.1, 1.0])
+    m.set_init(A = 1.0, C = 1, D = 1)
+    m.init.C.set_bounds((1,3))
+    m2 = m.copy(new_title='A different title')
+    assert m2 != m
+    m3 = m.copy()
+    m3.set_transformation('t3', "sqrt(2*A**2)")
+    assert m3 != m
+    m4 = m.copy()
+    m4.parameters.V3 = 0.6
+    assert m4 != m
+    m5 = m.copy()
+    m5.parameters.V3.reset_bounds()
+    assert m5 != m
+    m6 = m.copy()
+    m6.parameters.v3.Km3 = 5
+    assert m6 != m
+    m7 = m.copy()
+    m7.reactions.v1.setp('newKm3', 5)
+    assert m7 != m
+
 def test_set_init1():
     """test set_init()"""
     m = Model("My first model")
@@ -279,6 +339,9 @@ def test_set_init1():
     m.set_init(x = 1, y = 2.0)
     assert m.init.x == 1.0
     assert m.init.y == 2.0
+    m.reset_init()
+    assert m.init.x == 0.0
+    assert m.init.y == 0.0
 
 def test_getinit1():
     """test get_init() with None or sequence"""

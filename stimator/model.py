@@ -128,12 +128,10 @@ def processStoich(expr):
     return reagents, products, irreversible
 
 
-def massActionStr(k=1.0, reagents=[]):
+def _massActionStr(k=1.0, reagents=[]):
     res = str(float(k))
     factors = []
     for var, coef in reagents:
-        if coef == 0.0:
-            factor = ''
         if coef == 1.0:
             factor = '%s' % var
         else:
@@ -288,32 +286,32 @@ class _HasOwnParameters(ModelObject):
 
 
 class _Has_Parameters_Accessor(object):
-    def __init__(self, collection):
-        self.__dict__['_collection'] = collection
+    def __init__(self, haspar_obj):
+        self.__dict__['_haspar_obj'] = haspar_obj
 
     def __len__(self):
-        return len(self._collection._ownparameters)
+        return len(self._haspar_obj._ownparameters)
 
     def __getattr__(self, name):
         if name in self.__dict__:
             return self.__dict__[name]
-        r = self._collection.getp(name)
+        r = self._haspar_obj.getp(name)
         if r is not None:
             return r
-        raise AttributeError(name + ' is not in %s' % collection.name)
+        raise AttributeError(name + ' is not in %s' % self._haspar_obj.name)
 
     def __setattr__(self, name, value):
         if not name.startswith('_'):
-            self._collection.setp(name, value)
+            self._haspar_obj.setp(name, value)
         else:
             object.__setattr__(self, name, value)
 
-    def __contains__(self, item):
-        r = self._collection.getp(name)
-        if r is not None:
-            return True
-        else:
-            return None
+    def __contains__(self, name):
+        try:
+            r = self._haspar_obj.getp(name)
+        except AttributeError:
+            return False
+        return True
 
 
 class StateArray(_HasOwnParameters):
@@ -755,11 +753,11 @@ class Model(ModelObject):
         pars : dict of iterable of (name, value) pairs
             The 'local' parameters of the reaction.
         """
-        r, p, i = processStoich(stoichiometry)
+        reagents, products, irrv = processStoich(stoichiometry)
         if _is_number(rate):
-            rate = massActionStr(rate, r)
+            rate = _massActionStr(rate, reagents)
 
-        newobj = Reaction(name, r, p, rate, pars, i)
+        newobj = Reaction(name, reagents, products, rate, pars, irrv)
 
         self._set_in_collection(name, self.__reactions, newobj)
         self._refreshVars()
