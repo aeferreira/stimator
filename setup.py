@@ -26,7 +26,6 @@ with open('README.rst') as f:
 
 packages = [
     'stimator', 
-    'stimator.gui',
     'stimator.tests',
     'stimator.examples',
     'stimator.moo',
@@ -60,11 +59,6 @@ setup(name = "stimator",
     url = "http://webpages.fc.ul.pt/~aeferreira/stimator",
     include_package_data=True,
     packages = packages,
-    entry_points = {
-        'gui_scripts': [
-            'start_stimator_wx = stimator.gui:run_wxgui',
-        ]
-    },
     keywords = "ODE-models estimation dynamics",
     classifiers=classifs,
     long_description = readme,

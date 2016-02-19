@@ -1,20 +1,19 @@
 from stimator import *
-#from stimator.model import isPairOfNums
-from nose.tools import *
+from nose.tools import raises, assert_almost_equal
 
-def test_M1():
+def test_Model_init_1():
     """test Model __init__ empty ()"""
     m = Model()
     assert isinstance(m, Model)
 
-def test_M2():
+def test_Model_init_2():
     """test Model __init__ with title"""
     m = Model("My first model")
     assert isinstance(m, Model)
     assert m.metadata['title'] == "My first model"
     assert m.name == "My first model"
 
-def test_react1():
+def test_set_reaction1():
     """test Model.set_reaction(string, int or float)"""
     m = Model("My first model")
     m.set_reaction('v1',"A->B", 4)
@@ -28,7 +27,7 @@ def test_react1():
     check, msg = m.checkRates()
     assert check 
 
-def test_react2():
+def test_set_reaction2():
     """test Model.react(string, string)"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 4*A/(p1+A)-B ")
@@ -39,7 +38,7 @@ def test_react2():
     check, msg = m.checkRates()
     assert check 
 
-def test_react2b():
+def test_set_reaction2b():
     """test Model.react(string, string) with math functions"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 4*sqrt(A)/(p1+sin(A))-B ")
@@ -50,7 +49,7 @@ def test_react2b():
     check, msg = m.checkRates()
     assert check 
 
-def test_react2c():
+def test_set_reaction2c():
     """test Model.react(string, string) with kinetics functions"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 4*A*step(t,1.0)")
@@ -62,12 +61,12 @@ def test_react2c():
     assert check 
 
 @raises(model.BadStoichError)
-def test_react3():
+def test_set_reaction3():
     """test Bad stoichiometry"""
     m = Model("My first model")
     m.set_reaction('v1', "A->##B", " 4*A/(p1+A)-B ")
 
-def test_react4():
+def test_set_reaction4():
     """test Bad rate law (unknown ID)"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 4*A/(p2+A)-B ")
@@ -78,7 +77,7 @@ def test_react4():
     check, msg = m.checkRates()
     assert not check 
 
-def test_react5():
+def test_set_reaction5():
     """test Bad rate law (malformed expression)"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 4*A/(p1+A-B ")
@@ -89,7 +88,7 @@ def test_react5():
     check, msg = m.checkRates()
     assert not check 
 
-def test_react6():
+def test_set_reaction6():
     """test Bad rate law (fp overflow)"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " 1e100**10000 * 4*A/(p1+A)-B ")
@@ -272,14 +271,54 @@ def test_clonemodel():
     m2 = m.copy()
     assert m2 == m
 
-def test_init1():
-    """test assignment of Model.init"""
+def test_set_init1():
+    """test set_init()"""
     m = Model("My first model")
     m.parameters.p1 = 4
     m.parameters.p2 = 3.0
     m.set_init(x = 1, y = 2.0)
     assert m.init.x == 1.0
     assert m.init.y == 2.0
+
+def test_getinit1():
+    """test get_init() with None or sequence"""
+    m = Model("My first model")
+    m.parameters.p1 = 4
+    m.parameters.p2 = 3.0
+    m.set_init(x = 1, y = 2.0)
+    result = m.get_init()
+    assert result['x'] == 1.0
+    assert result['y'] == 2.0
+    result = m.get_init(list('xyz'))
+    assert result['x'] == 1.0
+    assert result['y'] == 2.0
+    assert result['z'] == 0.0
+
+def test_getinit2():
+    """test get_init() with names"""
+    m = Model("My first model")
+    m.parameters.p1 = 4
+    m.parameters.p2 = 3.0
+    m.set_init(x = 1, y = 2.0)
+    x = m.get_init('x')
+    y = m.get_init('y')
+    assert x == 1.0
+    assert y == 2.0
+    z = m.get_init('z')
+    assert z == 0.0
+
+def test_getinit3():
+    """test get_init(), retrieving attributes"""
+    m = Model("My first model")
+    m.parameters.p1 = 4
+    m.parameters.p2 = 3.0
+    m.set_init(x = 1, y = 2.0)
+    m.set_bounds('init.x', (0.8, 1.0))
+    name_x = m.get_init('x').name
+    bounds_x = m.get_init('x').bounds
+    assert name_x == 'x'
+    assert bounds_x.lower == 0.8
+    assert bounds_x.upper == 1.0
 
 def test_iter_reactions():
     """test iteration of reactions using reactions()"""
@@ -465,41 +504,6 @@ def test_reassignment3():
     check, msg = m.checkRates()
     assert check 
 
-## @raises(model.BadTypeComponent)
-## def test_reassignment4():
-##     """test illegal type reassignment (reactions)"""
-##     m = Model("My first model")
-##     m.set_reaction('v1', "A -> B"  , 4)
-##     m.set_reaction('v2', "B -> C"  , 2.0)
-##     assert len(m.varnames) == 3
-##     assert m.varnames == ['A', 'B', 'C']
-##     check, msg = m.checkRates()
-##     assert check 
-##     m.setp('v2', 3.14)
-##     xx = m.varnames
-##     assert len(xx) == 3
-##     assert xx == ['A', 'B', 'C']
-##     check, msg = m.checkRates()
-##     assert check 
-
-## @raises(model.BadTypeComponent)
-## def test_reassignment5():
-##     """test illegal type reassignment (parameters)"""
-##     m = Model("My first model")
-##     m.set_reaction('v1', "A -> B"  , 4)
-##     m.set_reaction('v2', "B -> C"  , 2.0)
-##     m.setp('Km', 4)
-##     assert len(m.varnames) == 3
-##     assert m.varnames == ['A', 'B', 'C']
-##     check, msg = m.checkRates()
-##     assert check 
-##     m.set_reaction('Km', "A -> B"  , 4)
-##     xx = m.varnames
-##     assert len(xx) == 3
-##     assert xx == ['A', 'B', 'C']
-##     check, msg = m.checkRates()
-##     assert check 
-
 @raises(model.BadTypeComponent)
 def test_illegal_type1():
     """test illegal type assignment"""
@@ -507,8 +511,6 @@ def test_illegal_type1():
     m.set_reaction('v1', "A->B", 4)
     m.set_reaction('v2', "B->C", 2.0)
     m.parameters.Km = [9,10,13,45]
-    check, msg = m.checkRates()
-    assert check 
 
 def test_meta1():
     """test Model metadata"""
