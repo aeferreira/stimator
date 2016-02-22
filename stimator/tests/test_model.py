@@ -36,6 +36,21 @@ def test_set_reaction1():
     check, msg = m.checkRates()
     assert check 
 
+def test_set_reaction1b():
+    """test Model.set_reaction() and Reaction properties"""
+    m = Model("My first model")
+    m.set_reaction('v1',"2 A + B -> C + 4 D", 4)
+    m.set_reaction('v2',"B->C", 2.0)
+    m.set_reaction('v3',"2C->D", 2.0)
+    m.set_reaction('v4',"0C+2D->E", 2.0)
+    name = m.reactions.v1.name
+    reagents = m.reactions.v1.reagents
+    products = m.reactions.v1.products
+    stoichiometry = m.reactions.v1.stoichiometry
+    stoichiometry_string = m.reactions.v1.stoichiometry_string
+    check, msg = m.checkRates()
+    assert check 
+
 def test_set_reaction2():
     """test Model.set_reaction(string, string, string)"""
     m = Model("My first model")
@@ -263,7 +278,7 @@ def test_printmodel():
     m.set_reaction('v2', "    -> A"  , rate = math.sqrt(4.0)/2)
     m.set_reaction('v3', "C   ->  "  , "V3 * C / (Km3 + C)", {'Km3':4})
     m.set_reaction('v4', "B   ->  "  , "2*B")
-    m.set_transformation('t1', "A*4 + C")
+    m.set_transformation('t1', "k1*A*4 + C", {'k1':3.14})
     m.set_transformation('t2', "sqrt(2*A)")
     m.set_variable_dXdt('D',"-2 * D")
     m.parameters.B  = 2.2

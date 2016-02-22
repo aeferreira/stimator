@@ -285,35 +285,6 @@ class _HasOwnParameters(ModelObject):
         return True
 
 
-class _Has_Parameters_Accessor(object):
-    def __init__(self, haspar_obj):
-        self.__dict__['_haspar_obj'] = haspar_obj
-
-    def __len__(self):
-        return len(self._haspar_obj._ownparameters)
-
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        r = self._haspar_obj.getp(name)
-        if r is not None:
-            return r
-        raise AttributeError(name + ' is not in %s' % self._haspar_obj.name)
-
-    def __setattr__(self, name, value):
-        if not name.startswith('_'):
-            self._haspar_obj.setp(name, value)
-        else:
-            object.__setattr__(self, name, value)
-
-    def __contains__(self, name):
-        try:
-            r = self._haspar_obj.getp(name)
-        except AttributeError:
-            return False
-        return True
-
-
 class StateArray(_HasOwnParameters):
     def __init__(self, name, varvalues):
         _HasOwnParameters.__init__(self, name, varvalues)
@@ -361,6 +332,35 @@ class _HasRate(_HasOwnParameters):
         if not _HasOwnParameters.__eq__(self, other):
             return False
         if self.__rate != other.__rate:
+            return False
+        return True
+
+
+class _Has_Parameters_Accessor(object):
+    def __init__(self, haspar_obj):
+        self.__dict__['_haspar_obj'] = haspar_obj
+
+    def __len__(self):
+        return len(self._haspar_obj._ownparameters)
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        r = self._haspar_obj.getp(name)
+        if r is not None:
+            return r
+        raise AttributeError(name + ' is not in %s' % self._haspar_obj.name)
+
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            self._haspar_obj.setp(name, value)
+        else:
+            object.__setattr__(self, name, value)
+
+    def __contains__(self, name):
+        try:
+            r = self._haspar_obj.getp(name)
+        except AttributeError:
             return False
         return True
 
