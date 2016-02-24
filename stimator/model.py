@@ -6,31 +6,34 @@ of a kinetic model.
 """
 import re
 import math
-from kinetics import *
+import kinetics
 import dynamics
 import estimation
 
 # ----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
 # ----------------------------------------------------------------------------
-__globs = {}
-__haskinetics = {}
-for k, v in globals().items():
-    if hasattr(v, "is_rate"):
-        __haskinetics[k] = v
-__globs.update(__haskinetics)
 
-v = vars(math)
-for k in v:
-    if isinstance(v[k], float) or callable(v[k]):
-        __globs[k] = v[k]
-#__globs.update(vars(math))
-
-
-def register_kin_func(f):
-    f.is_rate = True
-    __globs[f.__name__] = f
-    globals()[f.__name__] = f
+def get_allowed_f():
+    fdict = {}
+    
+    # from module kinetics
+    v = vars(kinetics)
+    haskinetics = {}
+    for k in v:
+        if hasattr(v[k], "is_rate"):
+            haskinetics[k] = v[k]
+    fdict.update(haskinetics)
+    
+    # from module math
+    v = vars(math)
+    math_f = {}
+    for k in v:
+        if isinstance(v[k], float) or callable(v[k]):
+            math_f[k] = v[k]
+    fdict.update(math_f)
+    return fdict
+    
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for stoichiometry patterns
@@ -741,6 +744,7 @@ class Model(ModelObject):
         self.init = _init_Accessor(self)
         self.parameters = _Parameters_Accessor(self)
         self.with_bounds = _With_Bounds_Accessor(self)
+        self._usable_functions = get_allowed_f()
 
     def _set_in_collection(self, name, col, newobj):
         for c, elem in enumerate(col):
@@ -1155,6 +1159,11 @@ class Model(ModelObject):
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
 
+    def register_kin_func(self, f):
+        f.is_rate = True
+        self._usable_functions[f.__name__] = f
+        #globals()[f.__name__] = f
+
     def _refreshVars(self):
         # can't use self.__variables=[] Triggers __setattr__
         del(self.__variables[:])
@@ -1227,17 +1236,10 @@ def _test_with_everything(valueexpr, model, obj):
             print (pf.format(k, ttt))
         else:
             print k, '=', locs[k]
-##     print "---__globs"
-##     for k in __globs:
-##         hasattr(v, "is_rate")
-##         if hasattr(__globs[k], "is_rate"):
-##             print k, ' is rate'
-##         else:
-##             print k, '-->', type(__globs[k])
 
     # part 1: nonpermissive, except for NameError
     try:
-        value = float(eval(valueexpr, __globs, locs))
+        value = float(eval(valueexpr, model._usable_functions, locs))
     except NameError:
         pass
     except Exception, e:
@@ -1251,7 +1253,7 @@ def _test_with_everything(valueexpr, model, obj):
     vardict['t'] = 1.0
     locs.update(vardict)
     try:
-        value = float(eval(valueexpr, __globs, locs))
+        value = float(eval(valueexpr, model._usable_functions, locs))
     except (ArithmeticError, ValueError):
         pass  # might fail but we don't know the values of vars
     except Exception, e:
@@ -1290,11 +1292,12 @@ if __name__ == '__main__':
     
     def conservation(total, A):
         return total - A
-    register_kin_func(conservation)
 
     m2 = Model('My test model')
+    m2.register_kin_func(conservation)
     m2.set_reaction('v1', "A+2B <=> C", rate=3)
     m2.set_reaction('vdep', "B->", rate='input2 + 3')
+    m2.set_reaction('vconserv', "B->", rate='conservation(B, A)')
     m2.set_reaction('v2', "   -> 4.5 A", rate=math.sqrt(4.0)/2)
 
     v3pars = (('V3', 0.5), ('Km', 4))
