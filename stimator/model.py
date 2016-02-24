@@ -170,7 +170,7 @@ class ModelObject(object):
 def toConstOrBounds(name, value, is_bounds=False):
     if not is_bounds:
         vv = float(value)  # can raise ValueError
-        return constValue(value, name=name)
+        return create_const_value(value, name=name)
 
     # seeking proper bounds pair
     lv = len(value)  # can raise TypeError
@@ -184,7 +184,7 @@ def toConstOrBounds(name, value, is_bounds=False):
     return Bounds(name, vv0, vv1)
 
 
-def constValue(value=None, name='?'):
+def create_const_value(value=None, name='?'):
     if _is_number(value):
         v = float(value)
         res = ConstValue(v)
@@ -209,14 +209,15 @@ def _setPar(obj, name, value, is_bounds=False):
         if isinstance(vv, ConstValue):
             newvalue = vv
         else:  # Bounds object
-            newvalue = constValue((float(vv.lower)+float(vv.upper))/2.0, name=name)
+            nvalue = (float(vv.lower)+float(vv.upper))/2.0
+            newvalue = create_const_value(nvalue, name=name)
             newvalue.bounds = vv
     else:  # aready exists
         if isinstance(vv, ConstValue):
             newvalue = vv
             newvalue.bounds = c[name].bounds
         else:  # Bounds object
-            newvalue = constValue(c[name], name=name)
+            newvalue = create_const_value(c[name], name=name)
             newvalue.bounds = vv
     c[name] = newvalue
 
@@ -230,7 +231,7 @@ class _HasOwnParameters(ModelObject):
         if not isinstance(parvalues, dict):
             parvalues = dict(parvalues)
         for k, v in parvalues.items():
-            self._ownparameters[k] = constValue(value=v, name=k)
+            self._ownparameters[k] = create_const_value(value=v, name=k)
 
     def _get_parameter(self, name):
         if name in self._ownparameters:
@@ -271,7 +272,7 @@ class _HasOwnParameters(ModelObject):
     def _copy_pars(self):
         ret = {}
         for k, v in self._ownparameters.items():
-            ret[k] = constValue(value=v, name=k)
+            ret[k] = create_const_value(value=v, name=k)
         return ret
 
     def __eq__(self, other):
@@ -311,6 +312,7 @@ class _HasRate(_HasOwnParameters):
     def __init__(self, name='?', rate='0.0', parvalues=None):
         _HasOwnParameters.__init__(self, name=name, parvalues=parvalues)
         self.__rate = rate.strip()
+        self._value = None
 
     def __str__(self):
         res = "%s:\n  rate = %s\n" % (self.name, str(self()))
@@ -453,6 +455,10 @@ class Transformation(_HasRate):
     def __init__(self, name, rate, parvalues=None):
         _HasRate.__init__(self, name, rate, parvalues=parvalues)
 
+class Input_Variable(_HasRate):
+    def __init__(self, name, rate, parvalues=None):
+        _HasRate.__init__(self, name, rate, parvalues=parvalues)
+
 
 class ConstValue(float, ModelObject):
 
@@ -470,7 +476,7 @@ class ConstValue(float, ModelObject):
         return res
 
     def copy(self, new_name=None):
-        r = constValue(self, self.name)
+        r = create_const_value(self, self.name)
         if new_name is not None:
             r.name = new_name
         if self.bounds:
@@ -601,11 +607,12 @@ class _Parameters_Accessor(object):
         self._model = model
         self._reactions = model._Model__reactions
         self._transf = model._Model__transf
+        self._invars = model._Model__invars
 
     def _get_iparameters(self):
         for p in self._model._ownparameters.values():
             yield p
-        collections = [self._reactions, self._transf]
+        collections = [self._reactions, self._transf, self._invars]
         for c in collections:
             for v in c:
                 for iname, value in v._ownparameters.items():
@@ -624,6 +631,9 @@ class _Parameters_Accessor(object):
         if o:
             return _Has_Parameters_Accessor(o)
         o = self._transf.get(name)
+        if o:
+            return _Has_Parameters_Accessor(o)
+        o = self._invars.get(name)
         if o:
             return _Has_Parameters_Accessor(o)
         if name in self._model._ownparameters:
@@ -657,7 +667,7 @@ class _With_Bounds_Accessor(_Parameters_Accessor):
         for iname, x in self._model._init._ownparameters.items():
             if x.bounds is not None:
                 yield x.copy(new_name='init.' + iname)
-        collections = [self._reactions, self._transf]
+        collections = [self._reactions, self._transf, self._invars]
         for c in collections:
             for v in c:
                 for iname, x in v._ownparameters.items():
@@ -717,6 +727,7 @@ class Model(ModelObject):
         self.__dict__['_Model__extvariables']      = []
         self.__dict__['_ownparameters']            = {}
         self.__dict__['_Model__transf']            = QueriableList()
+        self.__dict__['_Model__invars']            = QueriableList()
         self._init = StateArray('init', dict())
         ModelObject.__init__(self, name=title)
         self.__dict__['_Model__m_Parameters']      = None
@@ -724,6 +735,7 @@ class Model(ModelObject):
 
         self.reactions = _Collection_Accessor(self, self.__reactions)
         self.transformations = _Collection_Accessor(self, self.__transf)
+        self.input_variables = _Collection_Accessor(self, self.__invars)
         self.varnames = self.__variables
         self.extvariables = self.__extvariables
         self.init = _init_Accessor(self)
@@ -783,6 +795,29 @@ class Model(ModelObject):
 
         newobj = Transformation(name, rate, pars)
         self._set_in_collection(name, self.__transf, newobj)
+        self._refreshVars()
+
+    def set_input_var(self, name, rate=0.0, pars=None):
+        """Insert or modify an input variable in the model.
+
+
+        Parameters
+        ----------
+        name : str
+            The name of the input variable.
+        rate : str or int or float.
+            The rate of the input variable. If it is a number,
+            a constant rate will be assumed.
+        pars : dict of iterable of (name, value) pairs
+            The 'local' parameters of the input variable.
+
+        """
+
+        if _is_number(rate):
+            rate = str(float(rate))
+
+        newobj = Input_Variable(name, rate, pars)
+        self._set_in_collection(name, self.__invars, newobj)
         self._refreshVars()
 
     def set_variable_dXdt(self, name, rate=0.0, pars=None):
@@ -864,6 +899,8 @@ class Model(ModelObject):
         if o is None:
             o = self.__transf.get(name)
         if o is None:
+            o = self.__invars.get(name)
+        if o is None:
             raise AttributeError('%s is not a component of this model' % name)
         return o
 
@@ -881,6 +918,9 @@ class Model(ModelObject):
         o = self.__transf.get(name)
         if o is not None:
             return o, 'transf'
+        o = self.__invars.get(name)
+        if o is not None:
+            return o, 'invar'
         raise AttributeError('%s is not a component in this model' % name)
 
     def set_bounds(self, name, value):
@@ -964,15 +1004,6 @@ class Model(ModelObject):
             r[n] = p
         return r
 
-    def checkRates(self):
-        self._refreshVars()
-        for collection in (self.__reactions, self.__transf):
-            for v in collection:
-                resstring, value = _test_with_everything(v(), self, v)
-                if resstring != "":
-                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v())
-        return True, 'OK'
-
     def __str__(self):
         return self.info()
 
@@ -1003,7 +1034,7 @@ class Model(ModelObject):
         res.append("\nVariables: %s\n" % " ".join(self.__variables))
         if len(self.__extvariables) > 0:
             res.append("External variables: %s\n" % " ".join(self.__extvariables))
-        for collection in (self.__reactions, self.__transf):
+        for collection in (self.__reactions, self.__transf, self.__invars):
             for i in collection:
                 res.append(str(i))
         res.append('init: %s\n' % str(self._init))
@@ -1046,6 +1077,8 @@ class Model(ModelObject):
             m.setp(p.name, p)
         for t in self.__transf:
             m.set_transformation(t.name, t(), t._ownparameters)
+        for i in self.__invars:
+            m.set_input_var(i.name, i(), i._ownparameters)
         m._init = self._init.copy()
         # handle uncertainties
         for u in self.with_bounds:
@@ -1066,12 +1099,14 @@ class Model(ModelObject):
         cnames = ('reactions', 'transf', 'init', 'pars', 'vars', 'extvars')
         collections1 = [self.__reactions,
                         self.__transf,
+                        self.__invars,
                         self._init._ownparameters,
                         self._ownparameters,
                         self.__variables,
                         self.__extvariables]
         collections2 = [other.__reactions,
                         other.__transf,
+                        other.__invars,
                         other._init._ownparameters,
                         other._ownparameters,
                         other.__variables,
@@ -1120,18 +1155,6 @@ class Model(ModelObject):
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
 
-    def _genlocs4rate(self, obj=None):
-        for p in self._ownparameters.items():
-            yield p
-        collections = [self.__reactions, self.__transf]
-        for c in collections:
-            for v in c:
-                yield (v.name, _Has_Parameters_Accessor(v))
-
-        if (obj is not None) and (len(obj._ownparameters) > 0):
-            for p in obj._ownparameters.items():
-                yield p
-
     def _refreshVars(self):
         # can't use self.__variables=[] Triggers __setattr__
         del(self.__variables[:])
@@ -1148,18 +1171,62 @@ class Model(ModelObject):
                         else:
                             self.__variables.append(vname)
 
+    def checkRates(self):
+        self._refreshVars()
+        # Reset input variables
+        for v in self.__invars:
+            v._value = None
+        for collection in (self.__invars, self.__reactions, self.__transf):
+            for v in collection:
+                print
+                print 'Checking', v.name, 'rate = ', v()
+                resstring, value = _test_with_everything(v(), self, v)
+                if resstring != "":
+                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v())
+                else:
+                    v._value = value
+        return True, 'OK'
+
+    def _genlocs4rate(self, obj=None):
+        # global model parameters
+        for p in self._ownparameters.items():
+            yield p
+        
+        # values of input variables
+        for v in self.__invars:
+            yield (v.name, v._value)
+        
+        # parameters own by reactions or transformations
+        collections = [self.__reactions, self.__transf]
+        for c in collections:
+            for v in c:
+                yield (v.name, _Has_Parameters_Accessor(v))
+
+        # own parameters of obj
+        # this may overide (correctely) other parameters with the same name
+        if (obj is not None) and (len(obj._ownparameters) > 0):
+            for p in obj._ownparameters.items():
+                yield p
+
 
 def _test_with_everything(valueexpr, model, obj):
-    locs = {}
-    for (name, value) in model._genlocs4rate(obj):
-        locs[name] = value
-##     print "\nvalueexpr:", valueexpr
-##     print "---locs"
-##     for k in locs:
-##         if isinstance(locs[k], _Has_Parameters_Accessor):
-##             print k, 'has parameters and rate'
-##         else:
-##             print k, '=', locs[k]
+    locs = dict(model._genlocs4rate(obj))
+    
+    print "---locs"
+    for k in locs:
+        if isinstance(locs[k], _Has_Parameters_Accessor):
+            pf = '{} is a {}'
+            if k in model.reactions:
+                ttt = 'Reaction'
+            elif k in model.transformations:
+                ttt = 'Transformation'
+            elif k in model.input_variables:
+                ttt = 'Input Variable'
+            else:
+                ttt = 'Something with parameters'
+            print (pf.format(k, ttt))
+        else:
+            print k, '=', locs[k]
 ##     print "---__globs"
 ##     for k in __globs:
 ##         hasattr(v, "is_rate")
@@ -1174,8 +1241,9 @@ def _test_with_everything(valueexpr, model, obj):
     except NameError:
         pass
     except Exception, e:
-##        print 'returned on first pass'
+        print 'returned on first pass'
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+    print 'FINISHED first pass'
     # part 2: permissive, with dummy values (1.0) for vars
     vardict = {}
     for i in model._Model__variables:
@@ -1187,8 +1255,9 @@ def _test_with_everything(valueexpr, model, obj):
     except (ArithmeticError, ValueError):
         pass  # might fail but we don't know the values of vars
     except Exception, e:
-##        print 'returned on second pass'
+        print 'returned on second pass'
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+    print 'RETURNED', value
     return "", value
 
 
@@ -1216,3 +1285,45 @@ class BadRateError(Exception):
 
 class BadTypeComponent(Exception):
     """Flags an assignement of a model component to a wrong type object"""
+
+if __name__ == '__main__':
+    
+    def conservation(total, A):
+        return total - A
+    register_kin_func(conservation)
+
+    m2 = Model('My test model')
+    m2.set_reaction('v1', "A+2B <=> C", rate=3)
+    m2.set_reaction('vdep', "B->", rate='input2 + 3')
+    m2.set_reaction('v2', "   -> 4.5 A", rate=math.sqrt(4.0)/2)
+
+    v3pars = (('V3', 0.5), ('Km', 4))
+    m2.set_reaction('v3', "C   ->  ", "V3 * C / (Km + C)", pars=v3pars)
+
+    m2.setp('B', 2.2)
+    m2.setp('V3', 0.6)
+    m2.setp('v3.Km', 4.4)
+
+    m2.set_reaction('v4', "B   ->  ", rate="4 * v3.V3 * step(t,at,top)")
+    m2.setp('Km3', 4)
+
+    m2.set_init((('A', 1.0), ('C', 1), ('D', 2)))
+    d = {'A': 1.0, 'C': 1, 'Z': 2}
+    m2.set_init(d)
+
+    m2.setp('at', 1.0)
+    m2.setp('top', 2.0)
+
+    m2.set_input_var('input1', "A + B")
+    m2.set_input_var('input2', "input1 * 3")
+
+    print 'initial values'
+    print m2.get_init()
+    
+    check, msg = m2.checkRates()
+    if not check:
+        print ('RATE is WRONG')
+        print (msg)
+    
+    print (m2)
+
