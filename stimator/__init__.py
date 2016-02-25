@@ -1,6 +1,6 @@
 """S-timator package"""
 
-from model import Model, register_kin_func
+from model import Model
 from dynamics import solve
 from timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
 from modelparser import read_model

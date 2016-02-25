@@ -521,7 +521,7 @@ def L2(modelTCs, deltaT, indexes):
 
 def _transform2array(vect):
     if isinstance(vect, float) or isinstance(vect, int):
-        res = array((vect), dtype=float)
+        res = np.array((vect), dtype=float)
     elif isinstance(vect, list) or isinstance(vect, tuple):
         res = np.diag(np.array(vect, dtype=float))
     else:

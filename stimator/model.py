@@ -559,24 +559,6 @@ class _Collection_Accessor(object):
             return None
 
 
-class _Simple_Collection_Accessor(object):
-    def __init__(self, model, collection):
-        self.__dict__['model'] = model
-        self.__dict__['collection'] = collection
-
-    def __iter__(self):
-        return iter(self.collection)
-
-    def __len__(self):
-        return len(self.collection)
-
-    def __contains__(self, item):
-        if item in self.collection:
-            return True
-        else:
-            return None
-
-
 class _init_Accessor(object):
     def __init__(self, model):
         self._model = model
@@ -1088,8 +1070,11 @@ class Model(ModelObject):
         for u in self.with_bounds:
             m.set_bounds(u.name, (u.bounds.lower, u.bounds.upper))
         m.metadata.update(self.metadata)
+        m._usable_functions.update(self._usable_functions)
+        
         if new_title is not None:
             m.metadata['title'] = new_title
+        
         self._refreshVars()
         return m
 
@@ -1187,11 +1172,9 @@ class Model(ModelObject):
             v._value = None
         for collection in (self.__invars, self.__reactions, self.__transf):
             for v in collection:
-                print
-                print 'Checking', v.name, 'rate = ', v()
-                resstring, value = _test_with_everything(v(), self, v)
-                if resstring != "":
-                    return False, '%s\nin rate of %s: %s' % (resstring, v.name, v())
+                msg, value = self._test_with_everything(v(), v)
+                if msg != "":
+                    return False, '%s\nin rate of %s: %s' % (msg, v.name, v())
                 else:
                     v._value = value
         return True, 'OK'
@@ -1218,49 +1201,53 @@ class Model(ModelObject):
                 yield p
 
 
-def _test_with_everything(valueexpr, model, obj):
-    locs = dict(model._genlocs4rate(obj))
-    
-    print "---locs"
-    for k in locs:
-        if isinstance(locs[k], _Has_Parameters_Accessor):
-            pf = '{} is a {}'
-            if k in model.reactions:
-                ttt = 'Reaction'
-            elif k in model.transformations:
-                ttt = 'Transformation'
-            elif k in model.input_variables:
-                ttt = 'Input Variable'
-            else:
-                ttt = 'Something with parameters'
-            print (pf.format(k, ttt))
-        else:
-            print k, '=', locs[k]
+    def _test_with_everything(self, expr, obj):
+        locs = dict(self._genlocs4rate(obj))
+        
+##         print '\nChecking {}, expr = {}'.format(obj.name, expr)
+##         print "---locs"
+##         for k in locs:
+##             if k in self.input_variables:
+##                 pf = '{} is a {}, value = {}'
+##                 print (pf.format(k, 'Input var', locs[k]))
+##             elif isinstance(locs[k], _Has_Parameters_Accessor):
+##                 pf = '{} is a {}'
+##                 if k in self.reactions:
+##                     ttt = 'Reaction'
+##                 elif k in self.transformations:
+##                     ttt = 'Transformation'
+##                 else:
+##                     ttt = 'Something with parameters'
+##                 print (pf.format(k, ttt))
+##             else:
+##                 print k, '=', locs[k]
 
-    # part 1: nonpermissive, except for NameError
-    try:
-        value = float(eval(valueexpr, model._usable_functions, locs))
-    except NameError:
-        pass
-    except Exception, e:
-        print 'returned on first pass'
-        return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-    print 'FINISHED first pass'
-    # part 2: permissive, with dummy values (1.0) for vars
-    vardict = {}
-    for i in model._Model__variables:
-        vardict[i] = 1.0
-    vardict['t'] = 1.0
-    locs.update(vardict)
-    try:
-        value = float(eval(valueexpr, model._usable_functions, locs))
-    except (ArithmeticError, ValueError):
-        pass  # might fail but we don't know the values of vars
-    except Exception, e:
-        print 'returned on second pass'
-        return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-    print 'RETURNED', value
-    return "", value
+##         print '\nfirst pass...'
+
+        # part 1: nonpermissive, except for NameError
+        try:
+            value = float(eval(expr, self._usable_functions, locs))
+        except NameError:
+            pass
+        except Exception, e:
+##             print 'failed on first pass'
+            return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+##         print 'second pass...'
+        # part 2: permissive, with dummy values (1.0) for vars
+        vardict = {}
+        for i in self._Model__variables:
+            vardict[i] = 1.0
+        vardict['t'] = 1.0
+        locs.update(vardict)
+        try:
+            value = float(eval(expr, self._usable_functions, locs))
+        except (ArithmeticError, ValueError):
+            pass  # might fail but we don't know the values of vars
+        except Exception, e:
+##             print 'failed on second pass...'
+            return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+##         print 'VALUE = ', value
+        return "", value
 
 
 class QueriableList(list):
@@ -1268,12 +1255,6 @@ class QueriableList(list):
         for o in self:
             if o.name == aname:
                 return o
-        return None
-
-    def get_i(self, aname):
-        for i, o in enumerate(self):
-            if o.name == aname:
-                return i
         return None
 
 

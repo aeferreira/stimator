@@ -10,7 +10,6 @@
 import re
 import math
 import itertools
-from kinetics import *
 from numpy import *
 from scipy import integrate
 from timecourse import SolutionTimeCourse, Solutions
@@ -317,8 +316,12 @@ def _gen_calc_symbmap(m, with_uncertain = False):
     for p in m.parameters:
         if p.bounds and with_uncertain:
             continue
-        symbname = "%g"% p
-        symbmap[p.name] = symbname
+        valuestr = "%g"% p
+        symbmap[p.name] = valuestr
+##     for i, x in enumerate(m._usable_functions):
+##         symbname = "l_functions[%d]"%i
+##         symbmap[x] = symbname
+        
     return symbmap
 
 def rateCalcString(rateString, symbmap):
@@ -342,23 +345,26 @@ def rates_func(m, with_uncertain=False, transf=False, scale=1.0, t0=0.0):
         collection = m.transformations
     else:
         collection = m.reactions
-
+    
     #compile rate laws
     ratebytecode = compile_rates(m, collection, with_uncertain = with_uncertain)
     # create array to hold v's
     v = empty(len(collection))
     en = list(enumerate(ratebytecode))
-        
+
     def f(variables, t):
+##         print 'LOCALS :'
+##         print locals()    
+##         print '--------------'
         t = t*scale + t0
         for i,r in en:
-            v[i] = eval(r)
+            v[i] = eval(r, m._usable_functions, locals())
         return v
     def f2(variables, t):
         m_Parameters = m._Model__m_Parameters
         t = t*scale + t0
         for i,r in en:
-            v[i] = eval(r)
+            v[i] = eval(r, m._usable_functions, locals())
         return v
 
     if with_uncertain:
@@ -392,7 +398,7 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
         m_Parameters = m._Model__m_Parameters
         t = t*scale + t0
         for i,r in en:
-            v[i] = eval(r)
+            v[i] = eval(r, m._usable_functions, locals())
         dot(v,NT,x)
         return x
     return f2
@@ -425,7 +431,7 @@ def getdXdt_exposing_rbc(m, expose_enum, with_uncertain=False,
         m_Parameters = m._Model__m_Parameters
         t = t*scale + t0
         for i,r in expose_enum:
-            v[i] = eval(r)
+            v[i] = eval(r, m._usable_functions, locals())
         dot(v,NT,x)
         return x
     return f2
@@ -454,7 +460,7 @@ def dXdt_with(m, uncertainparameters, scale=1.0, t0=0.0):
         m_Parameters = uncertainparameters
         t = t*scale + t0
         for i,r in en:
-            v[i] = eval(r)
+            v[i] = eval(r, m._usable_functions, locals())
         return dot(v,NT)
     return f
 
@@ -478,7 +484,7 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
         t = t*scale + t0
         for i in range(nvars):
             for j in range(nvars):
-                Jarray[i,j] = eval(ratebytecode[i][j])
+                Jarray[i,j] = eval(ratebytecode[i][j], m._usable_functions, locals())
         return Jarray
     def J2(variables, t):
         m_Parameters = m._Model__m_Parameters
@@ -486,7 +492,7 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
         t = t*scale + t0
         for i in range(nvars):
             for j in range(nvars):
-                Jarray[i,j] = eval(ratebytecode[i][j])
+                Jarray[i,j] = eval(ratebytecode[i][j], m._usable_functions, locals())
         return Jarray
     if with_uncertain:
         return J2
@@ -800,6 +806,7 @@ def test():
     init = state(B = 0.4, A = 1)
     ~ t1 = A+B
     ~ t2 = v1.V * A * step(t, 1.0)
+    # ~ t3 = v1.V * A * max(t, 1.0)
     """)
     print m
 

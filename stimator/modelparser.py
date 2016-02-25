@@ -34,6 +34,7 @@ statepattern      = r"^\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>state
 initpattern       = r"^\s*(?P<name>init)\s*:\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 dxdtpattern       = r"^\s*(?P<name>"+identifierpattern+r")\s*'\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 transfpattern     = r"^\s*(transf|~)\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
+inputvarpattern   = r"^\s*(input|in|->)\s*(?P<name>"+identifierpattern+r")\s*=\s*(?P<value>[^#]*)(?:\s*#.*)?$"
 
 stoichpattern = r"^\s*(?P<coef>\d*)\s*(?P<variable>[_a-z]\w*)\s*$"
 
@@ -59,6 +60,7 @@ tfdef     = re.compile(tfpattern)
 replistdef= re.compile(replistpattern,     re.IGNORECASE)
 dxdtdef   = re.compile(dxdtpattern,        re.IGNORECASE)
 transfdef = re.compile(transfpattern,      re.IGNORECASE)
+invardef  = re.compile(inputvarpattern,    re.IGNORECASE)
 
 stoichmatch = re.compile(stoichpattern, re.IGNORECASE)
 
@@ -76,6 +78,7 @@ dispatchers = [(emptyline, "emptyLineParse"),
                (initdef,   "initDefParse"),
                (dxdtdef,   "dxdtDefParse"),
                (transfdef, "transfDefParse"),
+               (invardef,  "invarDefParse"),
                (constdef,  "constDefParse"),
                (titledef,  "titleDefParse"),
                (tfdef,     "tfDefParse"),
@@ -467,14 +470,33 @@ class StimatorParser:
         expr = match.group('value').strip()
         rate_loc = LogicalLoc(loc.nline, 
                               match.start('value'), 
-                              match.start('value')+len(expr), 
+                              match.start('value') + len(expr), 
                               loc.linestart, 
                               loc.lineend)
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
-        #setattr(self.model, name, model.transf(expr, pars=pardict))
         self.model.set_transformation(name, expr, pars=pardict)
+        loc.start = match.start('value')
+        loc.end   = match.end('value')
+        self.rateloc.append(loc)
+        self.vname.append(name)
+
+    def invarDefParse(self, line, loc, match):
+        name = match.group('name')
+        if name in self.model.input_variables: #repeated declaration
+            self.setError("Repeated declaration", loc)
+            return
+        expr = match.group('value').strip()
+        rate_loc = LogicalLoc(loc.nline, 
+                              match.start('value'), 
+                              match.start('value') + len(expr), 
+                              loc.linestart, 
+                              loc.lineend)
+        expr, pardict = self._process_consts_in_rate(expr, rate_loc)
+        if expr is None:
+            return
+        self.model.set_input_var(name, expr, pars=pardict)
         loc.start = match.start('value')
         loc.end   = match.end('value')
         self.rateloc.append(loc)
@@ -611,6 +633,10 @@ reaction Glx2 : SDLTSH ->  2  Lac,  \\
 kout_global = 3.14
 export: Lac ->, kout * Lac, kout = sqrt(4.0)/2.0 * kout_global
 
+in i1 = 20 - TSH2
+-> i2 = i1 * 15
+input i3 = i1 + i2
+
 ~ totTSH = TSH2 + SDLTSH
 ~ Lacmult = mult * Lac,      mult = (kout_global/export.kout) * 2
 pi   = 3.1416
@@ -643,14 +669,6 @@ tf: 10
 !! SDLTSH > TSH2 -> ~ ..
 
 """
-    #~ f = StringIO.StringIO(modelText)
-
-    #~ for l,n, st, nd in logicalLines(f):
-        #~ print '%d (%d,%d):'%(n,st,nd)
-        #~ print "%s|"%l
-        #~ print modelText[st:nd]
-        #~ print len(l), len(modelText[st:nd])
-    #~ print '#####################################################################'
 
     print '------------- test model -----------------------'
     print modelText

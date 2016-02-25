@@ -1,6 +1,9 @@
 from stimator import *
 from nose.tools import raises, assert_almost_equal
 
+def conservation(total, A):
+    return total - A
+
 def test_Model_init_1():
     """test Model __init__ empty ()"""
     m = Model()
@@ -12,6 +15,15 @@ def test_Model_init_2():
     assert isinstance(m, Model)
     assert m.metadata['title'] == "My first model"
     assert m.name == "My first model"
+
+def test_Model_register_kin_func():
+    """test Model register_kin_func()"""
+    m = Model("My first model")
+    assert isinstance(m, Model)
+    before = len(m._usable_functions)
+    m.register_kin_func(conservation)
+    assert len(m._usable_functions) == before + 1
+    assert callable(m._usable_functions['conservation'])
 
 def test_set_reaction1():
     """test Model.set_reaction(string, string, int or float)"""
@@ -39,15 +51,19 @@ def test_set_reaction1():
 def test_set_reaction1b():
     """test Model.set_reaction() and Reaction properties"""
     m = Model("My first model")
-    m.set_reaction('v1',"2 A + B -> C + 4 D", 4)
+    m.set_reaction('v1',"2 A + 3.2 B -> C + 4 D + 0.5 E", 4)
     m.set_reaction('v2',"B->C", 2.0)
-    m.set_reaction('v3',"2C->D", 2.0)
+    m.set_reaction('v3',"2C<=>D", 2.0)
     m.set_reaction('v4',"0C+2D->E", 2.0)
     name = m.reactions.v1.name
     reagents = m.reactions.v1.reagents
     products = m.reactions.v1.products
     stoichiometry = m.reactions.v1.stoichiometry
     stoichiometry_string = m.reactions.v1.stoichiometry_string
+    stoichiometry = m.reactions.v3.stoichiometry
+    stoichiometry_string = m.reactions.v3.stoichiometry_string
+    stoichiometry = m.reactions.v4.stoichiometry
+    stoichiometry_string = m.reactions.v4.stoichiometry_string
     check, msg = m.checkRates()
     assert check 
 
@@ -269,6 +285,18 @@ def test_transf2():
     assert isinstance(m.parameters.t1.p2, model.ConstValue)
     assert (m.parameters.t1.p2.name) == "p2"
     assert m.parameters.t1.p2 == 3.0
+
+def test_set_input_var():
+    """test Model.set_input_var()"""
+    m = Model("My first model")
+    m.set_reaction('v1', "A->B", " 4*A/(p1+A)-B ")
+    m.set_input_var('p1', '3*A')
+    assert (m.input_variables.p1.name) == 'p1'
+    assert isinstance(m.input_variables.p1, model.Input_Variable)
+    assert m.reactions.v1()== "4*A/(p1+A)-B"
+    assert m.input_variables.p1()== "3*A"
+    check, msg = m.checkRates()
+    assert check
 
 def test_printmodel():
     """test print(model)"""
@@ -492,21 +520,22 @@ def test_iter_parameters():
     m = Model('My first model')
     m.set_reaction('v1', "A+B -> C"  , 3)
     m.set_reaction('v2', "    -> A"  , rate = math.sqrt(4.0)/2)
-    m.set_reaction('v3', "C   ->  "  , "V3 * C / (Km3 + C)")
+    localp = {'V3': 4, 'Km3': 0.5}
+    m.set_reaction('v3', "C   ->  "  , "V3 * C / (Km3 + C)", localp)
     m.set_reaction('v4', "B   ->  "  , "2*B")
     m.set_transformation('t1', "A*4 + C")
     m.set_transformation('t2', "sqrt(2*A)")
     m.set_variable_dXdt('D',"-2 * D")
     m.parameters.B  = 2.2
     m.parameters.myconstant = 2 * m.parameters.B / 1.1 # should be 4.0
-    m.parameters.V3 = 0.5
-    m.parameters.V3.set_bounds([0.1, 1.0])
-    m.parameters.Km3 = 4
+    m.parameters.v3.V3 = 0.5
+    m.parameters.v3.V3.set_bounds([0.1, 1.0])
+    m.parameters.v3.Km3 = 4
     m.set_init(A = 1.0, C = 1, D = 1)
     pp = m.parameters
     assert len(pp) == 4
     names = [x.name for x in m.parameters]
-    assert names.sort() == ['B', 'myconstant','Km3', 'V3'].sort()
+    assert names.sort() == ['B', 'myconstant','v3.Km3', 'v3.V3'].sort()
     values = [x for x in m.parameters]
     values.sort()
     should_values = [2.2, 4.0, 0.5, 4.0]
