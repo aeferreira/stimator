@@ -174,7 +174,7 @@ def plotTCs(solutions,
             data_loc = np.logical_not(np.isnan(y))
             x = solutions[ltc].t[data_loc]
             y = y[data_loc]
-            curraxis.plot(x, y, ls=ls, marker=marker, label=lname)
+            curraxis.plot(x, y, ls=ls, marker=marker, label=lname, clip_on = False)
 
         if yrange is not None:
             curraxis.set_ylim(yrange)
@@ -264,9 +264,9 @@ def plot_estim_optimum(opt, figure=None,
             ysim = symsol[symsol.names.index(xname)]
             lsexp, mexp = 'None', 'o'
             lssim, msim = '-', 'None'
-            subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp)
+            subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, clip_on = False)
             subplot.plot(symsol.t, ysim, marker=msim, ls=lssim,
-                         label='%s' % xname)
+                         label='%s' % xname, clip_on = False)
         subplot.legend(loc='best')
 
     if save2file is not None:

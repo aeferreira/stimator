@@ -331,7 +331,7 @@ def compile_rates(m, collection, with_uncertain=False):
     ratebytecode = [compile(v, '<string>','eval') for v in ratestrs]
     return ratebytecode
 
-def _get_compiled_arrays(m, with_uncertain):
+def _get_rates_function(m, with_uncertain):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
@@ -376,7 +376,7 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     
        Function has signature f(variables, t)"""
     
-    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
     
     def fout(variables, t):
         t = t*scale + t0
@@ -390,7 +390,7 @@ def rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     
        Function has signature f(variables, t)"""
     
-    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
     
     def fout(variables, t):
         t = t*scale + t0
@@ -404,7 +404,7 @@ def transf_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     
        Function has signature f(variables, t)"""
 
-    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
     
     def fout(variables, t):
         t = t*scale + t0
@@ -419,7 +419,7 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
        Function has signature f(variables, t)
        This is compatible with scipy.integrate.odeint"""
 
-    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
 
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
@@ -470,7 +470,8 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
     else:
         return J
 
-def genTransformationFunction_decl(m, ignore_replist=False):
+
+def _gen_outputs_decl(m, ignore_replist=False):
     decl = m.metadata.get('!!', None)
     
     if decl is not None and not ignore_replist:
@@ -483,81 +484,75 @@ def genTransformationFunction(m, f):
     special_transf = ['~']
     special_rates = ['>', '>>', '->']
     all_special = special_transf + special_rates
+    
     if f in all_special:
         f = [f.strip()]
-    if not callable(f):
-        if _is_sequence(f):
-            argnames = []
-            for a in f:
-                if not _is_string(a):
-                    raise TypeError(str(a) + ' must be a string')
-                if a in special_transf:
-                    argnames.extend([x.name for x in m.transformations])
-                elif a in special_rates:
-                    argnames.extend([x.name for x in m.reactions])
-                else:
-                    argnames.append(a)
-            names = argnames
-        else:
-            raise TypeError('outputs must be a sequence or callable.')
-        nargs = len(argnames)
+    
+    if _is_sequence(f):
+        names = []
+        for a in f:
+            if not _is_string(a):
+                raise TypeError(str(a) + ' must be a string')
+            if a in special_transf:
+                names.extend([x.name for x in m.transformations])
+            elif a in special_rates:
+                names.extend([x.name for x in m.reactions])
+            else:
+                names.append(a)
     else:
-        cc = f.func_code
-        nargs = cc.co_argcount
-        argnames = cc.co_varnames[:nargs]
-        names = list(argnames[:])
-        if hasattr(f, 'names'):
-            names[:len(f.names)] = f.names
+        raise TypeError('outputs must be a sequence of names.')
+    
+    nargs = len(names)
+    
+    get_rates = _get_rates_function(m, with_uncertain=False)
+
     data = []
-    symbmap = _gen_calc_symbmap(m, with_uncertain=False)
-    for a in argnames:
-        o, collection = m._findComponent(a)
-        if collection == 'parameters':
-            data.append(('p', m.getp(a)))
-        elif collection == 'variables':
-            data.append(('v', o))
-        elif collection == 'transf':
-            vstr = rateCalcString(o(fully_qualified=True), symbmap)
-            data.append(('t', compile(vstr, '<string>','eval')))
-        elif collection == 'reactions':
-            vstr = rateCalcString(o(fully_qualified=True), symbmap)
-            data.append(('r', compile(vstr, '<string>','eval')))
+
+    for name in names:
+        i, kind = m._find_indexof_component(name)
+        if kind == 'parameters':
+            data.append(('p', m.getp(name)))
+        elif kind == 'variables':
+            data.append(('v', i))
+        elif kind == 'transf':
+            data.append(('t', i))
+        elif kind == 'reactions':
+            data.append(('r', i))
+        elif kind == 'invar':
+            data.append(('i', i))
+        elif kind == 'uncertain':
+            data.append(('u', i))
         else:
-            raise AttributeError(a + ' is not a component in this model')
-    args = [0.0]*nargs
-    en = [(i, c, d) for (i, (c, d)) in enumerate(data)]
-    for i, c, d in en:
-        if c == 'p':
+            raise AttributeError(name + ' is not a component in this model')
+    
+    args = [0.0] * nargs
+    for (i, (kind, d)) in enumerate(data):
+        if kind == 'p':
             args[i] = d
 
-    def retf(variables, t):
-        for i,c,d in en:
-            if c == 'p':
+    def fout(variables, t):
+        input_variables, v, t_values = get_rates(variables, t)
+        
+        for (i, (kind, d)) in enumerate(data):
+            if kind == 'p':
                 continue
-            elif c == 'v':
+            elif kind == 'v':
                 args[i] = variables[d]
+            elif kind == 'r':
+                args[i] = v[d]
+            elif kind == 'i':
+                args[i] = input_variables[d]
+            elif kind == 't':
+                args[i] = t_values[d]
+            elif kind == 'u':
+                args[i] = m._Model__m_Parameters[d]
             else:
-                args[i] = eval(d)
-        return f(*args)
-    
-    def retargs(variables, t):
-        for i,c,d in en:
-            if c == 'p':
                 continue
-            elif c == 'v':
-                args[i] = variables[d]
-            else:
-                args[i] = eval(d)
         return args
             
-    if callable(f):
-        result = retf
-        result.names = names
-        return result
-    else:
-        result = retargs
-        result.names = names
-        return result
+    result = fout
+    result.names = names
+    return result
 
 
 def solve(model, 
@@ -608,7 +603,7 @@ def solve(model,
     sol = SolutionTimeCourse (times, Y, names, title, dense = True)
     
     # get outputs
-    f = genTransformationFunction_decl(model, ignore_replist)
+    f = _gen_outputs_decl(model, ignore_replist)
     # overide if outputs argument is not None
     if outputs is not None:
         f = genTransformationFunction(model, outputs)
@@ -681,7 +676,7 @@ class ModelSolver(object):
         self.tranf_names = None
         
         # get outputs
-        f = genTransformationFunction_decl(self.model, ignore_replist)
+        f = _gen_outputs_decl(self.model, ignore_replist)
         # overide if outputs argument is not None
         if outputs is not None:
             f = genTransformationFunction(self.model, outputs)
@@ -951,10 +946,10 @@ def test():
     v2 : B -> C, rate = V*B/(Km + B), V = sqrt(4.0), Km = 20
 
     init : A = 1
-    ~ sum = A+B+C
+    ~ sum = A + B + C
     ~ sumAB = A + B
-    in Vin = 0.1 * step(t, 10)
-    !! A C ~
+    -> Vin = 0.1 * step(t, 10)
+    !! A B C ~
     """
     print mtext
 
@@ -963,8 +958,8 @@ def test():
     solution1 = solve(m1, tf=50, title='two enzymes, use !! A C ~')
     solution1a = solve(m1, tf=50, outputs='A B C sum'.split(),
                        title='explicit outputs=[A B C sum]')
-##     solution1v = solve(m1, tf=100, outputs='>>',
-##                        title='outputs=">>"')
+    solution1v = solve(m1, tf=100, outputs='>>',
+                       title='outputs=">>"')
 
     print '--- Last time point ----'
     print 'At t =', solution1.t[-1]
@@ -1003,7 +998,7 @@ def test():
     
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
-    sols = Solutions([solution1, solution1a, #solution1v,
+    sols = Solutions([solution1, solution1a, solution1v,
                       solution3, 
                       solution4b, solution4])
     sols.plot(superimpose=False, save2file=savingfile)

@@ -728,6 +728,29 @@ class Model(ModelObject):
         self.with_bounds = _With_Bounds_Accessor(self)
         self._usable_functions = get_allowed_f()
 
+    def _find_indexof_component(self, name):
+        for i, o in enumerate(self.with_bounds):
+            if o.name == name:
+                return i, 'uncertain'
+        if name in self._ownparameters:
+            return -1, 'parameters'
+        i = self.__reactions.iget(name)
+        if i is not None:
+            return i, 'reactions'
+        try:
+            i = self.__variables.index(name)
+            return i, 'variables'
+        except:
+            pass
+        i = self.__transf.iget(name)
+        if i is not None:
+            return i, 'transf'
+        i = self.__invars.iget(name)
+        if i is not None:
+            return i, 'invar'
+        raise AttributeError('%s is not a component in this model' % name)
+
+
     def _set_in_collection(self, name, col, newobj):
         for c, elem in enumerate(col):
             if elem.name == name:
@@ -889,25 +912,6 @@ class Model(ModelObject):
         if o is None:
             raise AttributeError('%s is not a component of this model' % name)
         return o
-
-    def _findComponent(self, name):
-        if name in self._ownparameters:
-            return -1, 'parameters'
-        o = self.__reactions.get(name)
-        if o is not None:
-            return o, 'reactions'
-        try:
-            c = self.__variables.index(name)
-            return c, 'variables'
-        except:
-            pass
-        o = self.__transf.get(name)
-        if o is not None:
-            return o, 'transf'
-        o = self.__invars.get(name)
-        if o is not None:
-            return o, 'invar'
-        raise AttributeError('%s is not a component in this model' % name)
 
     def set_bounds(self, name, value):
         if '.' in name:
@@ -1255,6 +1259,12 @@ class QueriableList(list):
         for o in self:
             if o.name == aname:
                 return o
+        return None
+    
+    def iget(self, aname):
+        for i, o in enumerate(self):
+            if o.name == aname:
+                return i
         return None
 
 
