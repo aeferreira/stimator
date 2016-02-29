@@ -371,6 +371,19 @@ def _get_compiled_arrays(m, with_uncertain):
         
     return f
     
+def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
+    """Generate function to compute rate vector for this model.
+    
+       Function has signature f(variables, t)"""
+    
+    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    
+    def fout(variables, t):
+        t = t*scale + t0
+        return get_rates(variables, t)
+
+    return fout
+
     
 def rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rate vector for this model.
@@ -421,38 +434,6 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
         return x
     return fout
 
-def getdXdt_exposing_rbc(m, expose_enum, with_uncertain=False,
-                         scale=1.0,
-                         t0=0.0):
-    """Generate function to compute rhs of SODE for this model.
-    
-       Function has signature f(variables, t)
-       This is compatible with scipy.integrate.odeint"""
-
-    check, msg = m.checkRates()
-    if not check:
-        raise BadRateError(msg)
-    #compile rate laws
-    ratebytecode = compile_rates(m, m.reactions, with_uncertain=with_uncertain)
-    # compute stoichiometry matrix, scale and transpose
-    N  = genStoichiometryMatrix(m)
-    N *= scale
-    NT = N.transpose()
-    # create array to hold v's
-    v = empty(len(m.reactions))
-    x = empty(len(m.varnames))
-    for i in range(len(m.reactions)):
-        expose_enum[i] = (i,ratebytecode[i])
-    
-    def f(variables, t):
-        m_Parameters = m._Model__m_Parameters
-        t = t*scale + t0
-        for i,r in expose_enum:
-            v[i] = eval(r, m._usable_functions, locals())
-        dot(v,NT,x)
-        return x
-    return f
-
 
 def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute the jacobian for this model.
@@ -492,7 +473,7 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
 def genTransformationFunction_decl(m, ignore_replist=False):
     decl = m.metadata.get('!!', None)
     
-    if decl is not None and ignore_replist == False:
+    if decl is not None and not ignore_replist:
         names = decl.strip().split()
         return genTransformationFunction(m, names)
     else:
@@ -589,7 +570,7 @@ def solve(model,
           title=None,
           ignore_replist=False):
     
-    salg=integrate._odepack.odeint
+    solver=integrate._odepack.odeint
     names = [x for x in model.varnames]
 
     #get initial values
@@ -614,10 +595,12 @@ def solve(model,
     
     f = getdXdt(model, scale=scale, t0=t0)
     t = copy((times-t0)/scale)  # this scales time points
-    output = salg(f, y0, t, (), None, 0, -1, -1, 0, None, 
+    
+    output = solver(f, y0, t, (), None, 0, -1, -1, 0, None, 
                     None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
     if output[-1] < 0: return None
     Y = output[0]
+    
     if title is None:
         title = model.metadata.get('title', '')        
     Y = copy(Y.T)
@@ -631,11 +614,6 @@ def solve(model,
         f = genTransformationFunction(model, outputs)
     if f is not None:
         sol.apply_transf(f, f.names)
-##     if model.metadata.get('!!', None) is not None and ignore_replist == False:
-##         names = model.metadata['!!'].split()
-##         names = [n for n in names if (n in sol.names)]
-##         if len(names) > 0:
-##             sol = sol.copy(names=names)
     
     return sol
 
@@ -651,51 +629,54 @@ class ModelSolver(object):
           title=None,
           ignore_replist=False,
           changing_pars=None):
+        
         self.model = model.copy()
-        self.salg=integrate._odepack.odeint
+        # reset all bounds
+        bnames = [p.name for p in self.model.with_bounds]
+        for name in bnames:
+            self.model.reset_bounds(name)
+        
         self.names = [x for x in self.model.varnames]
-        self.changing_pars = changing_pars
-        if self.changing_pars is None:
-            self.changing_pars = []
-        if _is_string(self.changing_pars):
-            self.changing_pars = self.changing_pars.split()
-        self.par_enumeration = []
-
-        # find initial values in changing parameters
-        mapinit2pars = []
-        for ipar, parname in enumerate(self.changing_pars):
-            if parname.startswith('init'):
-                varname = parname.split('.')[-1]
-                ix = self.model.varnames.index(varname)
-                mapinit2pars.append((ix,ipar))
-            else:
-                self.par_enumeration.append((ipar,parname))
-                
-        self.pars_initindexes = array([j for (i,j) in mapinit2pars], dtype=int)
-        self.vars_initindexes = array([i for (i,j) in mapinit2pars], dtype=int)
-
-        #get initial values, possibly from a state in the model
+        self.title = title
+        if self.title is None:
+            self.title = self.model.metadata.get('title', '')
+        
+        #get initial values
         if initial == 'init':
             self.y0 = copy(init2array(self.model))
         else:
             self.y0 = copy(initial)
+        
         self.times = times
         if self.times is None:
             self.times = linspace (t0, tf, npoints)
         
         # scale times to maximum time in data
         t0 = self.times[0]
-        self.t0 = t0
         scale = float(self.times[-1] - t0)
-        self.scale = scale
-        #scale = 1.0
-        self.expose_enum = [0.0 for i in range(len(self.model.reactions))]
-        self.f = getdXdt_exposing_rbc(self.model, self.expose_enum, scale=scale, t0=t0)
         self.t  = (self.times-t0)/scale  # this scales time points
-        self.ignore_replist = ignore_replist
-        self.title = title
-        if self.title is None:
-            self.title = self.model.metadata.get('title', '')
+
+        # store names of changing parameters
+        if changing_pars is None:
+            changing_pars = []
+        if _is_string(changing_pars):
+            changing_pars = changing_pars.strip().split()
+        self.changing_pars = changing_pars
+        
+        # find initial values in changing parameters
+        mapinit2pars = []
+        for i, parname in enumerate(self.changing_pars):
+            if parname.startswith('init'):
+                varname = parname.split('.')[-1]
+                ix = self.model.varnames.index(varname)
+                mapinit2pars.append((ix,i))
+            self.model.set_bounds(parname, (0,1)) # bogus bounds
+                
+        self.pars_initindexes = array([j for (i,j) in mapinit2pars], dtype=int)
+        self.vars_initindexes = array([i for (i,j) in mapinit2pars], dtype=int)
+
+        self.f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0)
+        
         self.tranf_f = None
         self.tranf_names = None
         
@@ -709,16 +690,18 @@ class ModelSolver(object):
             self.tranf_names = f.names
 
     def solve(self, title = None, par_values = None):
+        
+        # set initial values
         y0 = copy(self.y0)
+        
+        # set varying parameters (may be initial values)
         if par_values is not None:
             par_values = array(par_values)
-            for (ip, pname) in self.par_enumeration:
-                self.model.setp(pname, par_values[ip])
+            self.model.set_uncertain(par_values)
+            # fill uncertain initial values
             y0[self.vars_initindexes] = par_values[self.pars_initindexes]
-        vs = self.model.reactions
-        ratebytecode = compile_rates(self.model, vs, with_uncertain = False)
-        for i, rbc in enumerate(ratebytecode):
-            self.expose_enum[i] = (i,rbc)
+                
+        
         output = integrate._odepack.odeint(self.f, y0, self.t, (), 
                                            None, 0, -1, -1, 0, None,
                                            None, None, 0.0, 0.0, 0.0, 
@@ -948,7 +931,7 @@ def test():
     for x,r in zip(m2.varnames, dXdt):
         print "d%s/dt = %s" % (x, r)
     print '\n********** Testing add_dSdt_to_model functions ***************'
-    print '\n********** Using back model m ********************************'
+    print '\n--- Using back model m ---'
     print
     m2 = m.copy()
     print m2
@@ -960,6 +943,7 @@ def test():
     Snames = add_dSdt_to_model(m2, pars)
     print 'Snames = \n', Snames
     print m2
+    
     print '---------------- EXAMPLE 1 ------------------'
     mtext = """
     title a simple 2 enzyme system
@@ -992,6 +976,7 @@ def test():
     m3 = read_model(models.ca.text)
 
     print models.ca.text
+    m3.set_bounds('k1', (0,10))
 
     ms = ModelSolver(m3, tf = 8.0, npoints = 2000)
     solution3 = ms.solve()
