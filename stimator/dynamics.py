@@ -1,12 +1,5 @@
 # -*- coding: utf-8 -*-
 
-#----------------------------------------------------------------------------
-#         PROJECT S-TIMATOR
-#
-# S-timator dynamical systems related functions
-# Copyright António Ferreira 2006-2015
-#----------------------------------------------------------------------------
-
 import re
 import math
 import itertools
@@ -59,7 +52,7 @@ def genStoichiometryMatrix(m):
                     continue # there are no rows for extvariables in stoich. matrix
     return N
 
-def rates_strings(m, fully_qualified = True):
+def rates_strings(m, fully_qualified=True):
     """Generate a tuple of tuples of
        (name, rate) where
        'name' is the name of a reaction
@@ -68,7 +61,7 @@ def rates_strings(m, fully_qualified = True):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
-    return tuple([(v.name, v(fully_qualified = fully_qualified)) for v in m.reactions])
+    return tuple([(v.name, v(fully_qualified=fully_qualified)) for v in m.reactions])
 
 def dXdt_strings(m):
     """Generate a tuple of tuples of
@@ -99,7 +92,7 @@ def dXdt_strings(m):
     return tuple(res)
 
 
-def Jacobian_strings(m, _scale = 1.0):
+def Jacobian_strings(m, _scale=1.0):
     """Generate a matrix (list of lists) of strings
        to compute the jacobian for this model.
     
@@ -141,7 +134,7 @@ def Jacobian_strings(m, _scale = 1.0):
             jfuncs[i][j] = _replace_canonical2exprs(jfuncs[i][j], symbmap)
     return jfuncs
         
-def dfdp_strings(m, parnames, _scale = 1.0):
+def dfdp_strings(m, parnames, _scale=1.0):
     """Generate a matrix (list of lists) of strings
        to compute the partial derivatives of rhs of SODE
        with respect to a list of parameters.
@@ -332,9 +325,9 @@ def _gen_calc_symbmap(m, with_uncertain = False):
 def rateCalcString(rateString, symbmap):
     return _replace_exprs2canonical(rateString, symbmap)
 
-def compile_rates(m, collection, with_uncertain = False):
-    symbmap = _gen_calc_symbmap(m, with_uncertain = with_uncertain)
-    ratestrs = [rateCalcString(v(fully_qualified = True), symbmap) for v in collection]
+def compile_rates(m, collection, with_uncertain=False):
+    symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
+    ratestrs = [rateCalcString(v(fully_qualified=True), symbmap) for v in collection]
     ratebytecode = [compile(v, '<string>','eval') for v in ratestrs]
     return ratebytecode
 
@@ -343,25 +336,40 @@ def _get_compiled_arrays(m, with_uncertain):
     if not check:
         raise BadRateError(msg)
     
+    # get sizes
+    n_inputs = len(m.input_variables)
+    n_v = len(m.reactions)
+    n_transf = len(m.transformations)
+    
     # compile input variables
-    invarbytecode = compile_rates(m, m.input_variables, with_uncertain = with_uncertain)
+    invarbytecode = compile_rates(m, m.input_variables, with_uncertain=with_uncertain)
     # create array to hold input-variable values's
-    input_variables = empty(len(m.input_variables))
+    input_variables = empty(n_inputs)
     eniv = list(enumerate(invarbytecode))
 
     # compile reaction rates
-    ratebytecode = compile_rates(m, m.reactions, with_uncertain = with_uncertain)
+    ratebytecode = compile_rates(m, m.reactions, with_uncertain=with_uncertain)
     # create array to hold reaction rate values
-    v = empty(len(m.reactions))
+    _v_rates = empty(n_v)
     enre = list(enumerate(ratebytecode))
     
     # compile transformations
-    tratebytecode = compile_rates(m, m.transformations, with_uncertain = with_uncertain)
+    tratebytecode = compile_rates(m, m.transformations, with_uncertain=with_uncertain)
     # create array to hold ttransformation values
-    t = empty(len(m.transformations))
+    _t_rates = empty(n_transf)
     entr = list(enumerate(tratebytecode))
     
-    return v, enre, input_variables, eniv, t, entr
+    def f(variables, t):
+        m_Parameters = m._Model__m_Parameters
+        for i, r in eniv:
+            input_variables[i] = eval(r, m._usable_functions, locals())
+        for i, r in enre:
+            _v_rates[i] = eval(r, m._usable_functions, locals())
+        for i, r in entr:
+            _t_rates[i] = eval(r, m._usable_functions, locals())
+        return input_variables, _v_rates, _t_rates
+        
+    return f
     
     
 def rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
@@ -369,36 +377,27 @@ def rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     
        Function has signature f(variables, t)"""
     
-    v, en, input_variables, eniv, _, _ = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
     
-    def f(variables, t):
-        m_Parameters = m._Model__m_Parameters
+    def fout(variables, t):
         t = t*scale + t0
-        for i, r in eniv:
-            input_variables[i] = eval(r, m._usable_functions, locals())
-        for i,r in en:
-            v[i] = eval(r, m._usable_functions, locals())
+        _, v, _ = get_rates(variables, t)
         return v
 
-    return f
+    return fout
 
 def transf_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rate vector for this model.
     
        Function has signature f(variables, t)"""
 
-    _, _, input_variables, eniv, v, en = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
     
-    def f(variables, t):
-        m_Parameters = m._Model__m_Parameters
+    def fout(variables, t):
         t = t*scale + t0
-        for i, r in eniv:
-            input_variables[i] = eval(r, m._usable_functions, locals())
-        for i,r in en:
-            v[i] = eval(r, m._usable_functions, locals())
-        return v
-
-    return f
+        _, _, tvalues = get_rates(variables, t)
+        return tvalues
+    return fout
 
 
 def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
@@ -407,7 +406,7 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
        Function has signature f(variables, t)
        This is compatible with scipy.integrate.odeint"""
 
-    v, en, input_variables, eniv, t, entr = _get_compiled_arrays(m, with_uncertain=with_uncertain)
+    get_rates = _get_compiled_arrays(m, with_uncertain=with_uncertain)
 
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
@@ -415,21 +414,16 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
     NT = N.transpose()
     x = empty(len(m.varnames))
     
-    def f(variables, t):
-        m_Parameters = m._Model__m_Parameters
+    def fout(variables, t):
         t = t*scale + t0
-        for i, r in eniv:
-            input_variables[i] = eval(r, m._usable_functions, locals())
-        for i, r in en:
-            v[i] = eval(r, m._usable_functions, locals())
+        input_variables, v, t_values = get_rates(variables, t)
         dot(v,NT,x)
         return x
-    return f
+    return fout
 
 def getdXdt_exposing_rbc(m, expose_enum, with_uncertain=False,
                          scale=1.0,
-                         t0=0.0,
-                         changing_pars=None):
+                         t0=0.0):
     """Generate function to compute rhs of SODE for this model.
     
        Function has signature f(variables, t)
@@ -905,7 +899,7 @@ def test():
 
     print '--------- NEW MODEL, with input variables -------------'
     
-    m = read_model("""
+    m2 = read_model("""
     title a simple 2 enzyme system
     v1 = A -> B, rate = vin*A/(Km1 + A), V = 1, Km = 1
     v2 = B ->  , rate = V*B/(Km2 + B)
@@ -918,48 +912,43 @@ def test():
     -> vin = v1.V * step(t, 1.0) + 1
     """)
     
-    print (m)
+    print (m2)
 
     print '---- dXdt using getdXdt(m) -------------------'
-    f = getdXdt(m)
+    f = getdXdt(m2)
     dXdt = f(varvalues,t)
-    for x,r in zip(m.varnames,  dXdt):
+    for x,r in zip(m2.varnames,  dXdt):
         print "d%s/dt = %s" % (x,r)
 
     print '---- dXdt using getdXdt(m) setting uncertain parameters ---'
     print 'f = getdXdt(m, with_uncertain = True)'
-    f = getdXdt(m, with_uncertain = True)
-    print 'setting uncertain as', dict((v.name, value) for v,value in zip(m.with_bounds, pars))
+    f = getdXdt(m2, with_uncertain = True)
+    print 'setting uncertain as', dict((v.name, value) for v,value in zip(m2.with_bounds, pars))
     print 'm.set_uncertain(pars)'
-    m.set_uncertain(pars)
+    m2.set_uncertain(pars)
     dXdt = f(varvalues,t)
-    for x,r in zip(m.varnames, dXdt):
+    for x,r in zip(m2.varnames, dXdt):
         print "d%s/dt = %s" % (x, r)
-
-    print '---- dXdt using dXdt_with(m, pars) ------------------------'
-    print 'f = dXdt_with(m, pars)'
-    f = dXdt_with(m, pars)
-    dXdt   = f(varvalues,t)
-    for x,s,r in zip(m.varnames, dxdtstrs, dXdt):
-        print "d%s/dt = %s = %s" % (x, s,r)
 
     print '---- dXdt using getdXdt(m) with a state argument (m.init) --'
-    print 'm.init:', m.get_init()
+    print 'm.init:', m2.get_init()
     print 'f = getdXdt(m)'
-    f = getdXdt(m)
+    f = getdXdt(m2)
     print 'dXdt = f(init2array(m),t)'
-    dXdt = f(init2array(m),t)
-    for x,r in zip(m.varnames, dXdt):
+    dXdt = f(init2array(m2),t)
+    for x,r in zip(m2.varnames, dXdt):
         print "d%s/dt = %s" % (x, r)
+    
     print '---- same, changing state argument ---------------------------'
-    m.init.A = 2.0
-    print 'after m.init.A = 2.0'
-    print 'm.init:', m.get_init()
-    print 'dXdt = f(init2array(m),t)'
-    dXdt = f(init2array(m),t)
-    for x,r in zip(m.varnames, dXdt):
+    m2.init.A = 2.0
+    print 'after m2.init.A = 2.0'
+    print 'm2.init:', m2.get_init()
+    print 'dXdt = f(init2array(m2),t)'
+    dXdt = f(init2array(m2),t)
+    for x,r in zip(m2.varnames, dXdt):
         print "d%s/dt = %s" % (x, r)
     print '\n********** Testing add_dSdt_to_model functions ***************'
+    print '\n********** Using back model m ********************************'
     print
     m2 = m.copy()
     print m2
@@ -980,7 +969,7 @@ def test():
     init : A = 1
     ~ sum = A+B+C
     ~ sumAB = A + B
-    in Vin = 0.1 * step(t, 5)
+    in Vin = 0.1 * step(t, 10)
     !! A C ~
     """
     print mtext
@@ -990,8 +979,8 @@ def test():
     solution1 = solve(m1, tf=50, title='two enzymes, use !! A C ~')
     solution1a = solve(m1, tf=50, outputs='A B C sum'.split(),
                        title='explicit outputs=[A B C sum]')
-    solution1v = solve(m1, tf=100, outputs='>>',
-                       title='outputs=">>"')
+##     solution1v = solve(m1, tf=100, outputs='>>',
+##                        title='outputs=">>"')
 
     print '--- Last time point ----'
     print 'At t =', solution1.t[-1]
@@ -1029,7 +1018,7 @@ def test():
     
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
-    sols = Solutions([solution1, solution1a, solution1v,
+    sols = Solutions([solution1, solution1a, #solution1v,
                       solution3, 
                       solution4b, solution4])
     sols.plot(superimpose=False, save2file=savingfile)
