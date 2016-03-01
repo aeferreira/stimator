@@ -1015,7 +1015,28 @@ def test():
     
     sols2 = scan(m3, {'B': scans}, tf=10.0)
     sols2.plot(legend=True, ynormalize=True,  group=['Ca'],
-               fig_size=(16,9), show=True)
+               fig_size=(16,9))
+
+    print '---------------- stairway example ------------------'
+    mtext = """
+    title a simple 2 enzyme system
+    v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
+    v2 : B -> C, rate = V*B/(Km + B), V = 10, Km = 20
+    v3 : C ->, rate = kout * C, kout = 1
+    A = 1
+
+    init : B = 0, C = 0
+
+    -> Vin = stairway(t, [50, 100, 150, 200, 250], [1, 2, 3, 4, 5])
+    !! Vin B C
+    """
+    print mtext
+
+    mstair = read_model(mtext)
+
+    solstairs = solve(mstair, tf=300, title='stairway')
+    solstairs.plot(fig_size=(16,9), show=True)
+
 
 if __name__ == "__main__":
     test()
