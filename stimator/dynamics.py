@@ -40,16 +40,15 @@ def genStoichiometryMatrix(m):
         raise BadRateError(msg)
 
     vnames = m.varnames
-    N = zeros((len(vnames),len(m.reactions)), dtype=float)
-    for j,v in enumerate(m.reactions):
-        for rORp, signedunit in [(v._reagents,-1.0),(v._products,1.0)]:
-            for c in rORp:
-                coef, var = (c[1]*signedunit, c[0])
+    N = zeros((len(vnames), len(m.reactions)), dtype=float)
+    for j, v in enumerate(m.reactions):
+        for rORp, sign_one in [(v._reagents, -1.0),(v._products, 1.0)]:
+            for var, coef in rORp:
                 if var in vnames:
-                    ivariable = vnames.index(var) # error handling here
-                    N[ivariable, j] = coef
+                    ivar = vnames.index(var)
+                    N[ivar, j] = coef * sign_one
                 else:
-                    continue # there are no rows for extvariables in stoich. matrix
+                    continue # no rows for extvariables.
     return N
 
 def rates_strings(m, fully_qualified=True):
@@ -762,6 +761,7 @@ def scan(model, plan,
     
 
 def test():
+    #import time
     from modelparser import read_model     
     m = read_model("""
     title a simple 2 enzyme system
@@ -939,6 +939,9 @@ def test():
     print 'Snames = \n', Snames
     print m2
     
+    # print 'BEGIN EXAMPLES'
+    # t0 = time.time()
+    
     print '---------------- EXAMPLE 1 ------------------'
     mtext = """
     title a simple 2 enzyme system
@@ -967,15 +970,22 @@ def test():
     for x in solution1.last:
         print "%-8s= %f" % (x, solution1.last[x])
     
+    # print 'END of EXAMPLES 1'
+    # t1 = time.time()
+    # print 'took', t1 - t0
+    
     print '---------------- EXAMPLE 3 ------------------'
     m3 = read_model(models.ca.text)
 
     print models.ca.text
-    m3.set_bounds('k1', (0,10))
-
     ms = ModelSolver(m3, tf = 8.0, npoints = 2000)
     solution3 = ms.solve()
 ##     solution3 = solve(m3, tf = 8.0, npoints = 2000)
+
+    # print 'END of EXAMPLES 3'
+    # t3 = time.time()
+    # print 'took', t3 - t1
+
 
     print '---------------- EXAMPLE 4 ------------------'
     m4 = read_model(models.rossler.text)
@@ -995,27 +1005,40 @@ def test():
 
     solution4.apply_transf(transformation,
                            new_title='Rossler, after a transformation')
+
+    # print 'END of EXAMPLES 4'
+    # t4 = time.time()
+    # print 'took', t4 - t3
     
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
     sols = Solutions([solution1, solution1a, solution1v,
                       solution3, 
                       solution4b, solution4])
-    sols.plot(superimpose=False, save2file=savingfile)
+    sols.plot() #save2file=savingfile)
     
-    import os
-    import os.path
-    if os.path.exists(savingfile):
-        print 'removing temp figure file'
-        os.remove(savingfile)
+    # print 'END of plotting first 4 examples'
+    # tplot = time.time()
+    # print 'took', tplot - t4
+
 
     print '---------------- scanning example ------------------'
     m3 = read_model(models.ca.text)
     scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
     
     sols2 = scan(m3, {'B': scans}, tf=10.0)
+    # print 'END of SCANNING EXAMPLE'
+    # tscancomp = time.time()
+    # print 'took', tscancomp - tplot
+
     sols2.plot(legend=True, ynormalize=True,  group=['Ca'],
                fig_size=(16,9))
+
+    # print 'END of PLOTTING SCANNING EXAMPLE'
+    # tscan = time.time()
+    # print 'took', tscan - tscancomp
+
+
 
     print '---------------- stairway example ------------------'
     mtext = """
@@ -1035,7 +1058,15 @@ def test():
     mstair = read_model(mtext)
 
     solstairs = solve(mstair, tf=300, title='stairway')
+    # print 'END of STAIRWAY EXAMPLE'
+    # tstairway = time.time()
+    # print 'took', tstairway - tscan
+
     solstairs.plot(fig_size=(16,9), show=True)
+
+    # print 'END of STAIRWAY PLOTTING'
+    # tstairwayplot = time.time()
+    # print 'took', tstairwayplot - tstairway
 
 
 if __name__ == "__main__":
