@@ -1,4 +1,6 @@
 import math
+import itertools
+
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as pl
@@ -20,13 +22,6 @@ def _is_sequence(arg):
     return (not hasattr(arg, "strip") and
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
-
-
-def _repeatitems(sequence, repetitions):
-    newlist = []
-    for x in sequence:
-        newlist.extend([x] * repetitions)
-    return newlist
 
 # -----------------------------------------------
 # plot functions
@@ -231,9 +226,9 @@ def plot_estim_optimum(opt, figure=None,
         if figure is None:
             figure = pl.figure()
 
-    original_cycle = mpl.rcParams["axes.color_cycle"]
-    curr_cycle = _repeatitems(original_cycle, 2)
-    mpl.rcParams["axes.color_cycle"] = curr_cycle
+##     original_cycle = mpl.rcParams["axes.color_cycle"]
+##     curr_cycle = _repeatitems(original_cycle, 2)
+##     mpl.rcParams["axes.color_cycle"] = curr_cycle
     
     bestsols = opt.optimum_dense_tcs
     expsols = opt.optimizer.tc
@@ -252,6 +247,9 @@ def plot_estim_optimum(opt, figure=None,
         subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
         expsol = expsols[i]
         symsol = bestsols[i]
+        
+        curr_palette = sns.color_palette()
+        cyclingcolors = itertools.cycle(curr_palette)
 
         for line in range(len(expsol)):
             # count NaN and do not plot if they are most of the timecourse
@@ -264,8 +262,13 @@ def plot_estim_optimum(opt, figure=None,
             ysim = symsol[symsol.names.index(xname)]
             lsexp, mexp = 'None', 'o'
             lssim, msim = '-', 'None'
-            subplot.plot(expsol.t, yexp, marker=mexp, ls=lsexp, clip_on = False)
-            subplot.plot(symsol.t, ysim, marker=msim, ls=lssim,
+            
+            color = next(cyclingcolors)
+            
+            subplot.plot(expsol.t, yexp, 
+                         marker=mexp, ls=lsexp, color=color, clip_on = False)
+            subplot.plot(symsol.t, ysim, 
+                         marker=msim, ls=lssim, color= color,
                          label='%s' % xname, clip_on = False)
         subplot.legend(loc='best')
 
