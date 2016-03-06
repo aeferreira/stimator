@@ -1233,6 +1233,8 @@ class Model(ModelObject):
             value = float(eval(expr, self._usable_functions, locs))
         except NameError:
             pass
+        except TypeError, e:
+            return ("Invalid use of a rate in expression", 0.0)
         except Exception, e:
 ##             print 'failed on first pass'
             return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
@@ -1277,7 +1279,7 @@ class BadRateError(Exception):
 
 
 class BadTypeComponent(Exception):
-    """Flags an assignement of a model component to a wrong type object"""
+    """Flags an assignment of a model component to a wrong type object"""
 
 if __name__ == '__main__':
     
@@ -1310,6 +1312,8 @@ if __name__ == '__main__':
 
     m2.set_input_var('input1', "A + B")
     m2.set_input_var('input2', "input1 * 3")
+    m2.set_transformation('t1', 'input1 + A')
+    m2.set_transformation('t2', 'input1 + B')
 
     print 'initial values'
     print m2.get_init()
