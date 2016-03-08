@@ -171,6 +171,9 @@ class ModelObject(object):
 
 
 def toConstOrBounds(name, value, is_bounds=False):
+    if value is None:
+        # just return None to caller
+        return None
     if not is_bounds:
         vv = float(value)  # can raise ValueError
         return create_const_value(value, name=name)
@@ -202,13 +205,16 @@ def _setPar(obj, name, value, is_bounds=False):
         vv = toConstOrBounds(name, value, is_bounds)
     except (TypeError, ValueError):
         if is_bounds:
-            raise BadTypeComponent("Can not assign"+str(value)+"to %s.%s bounds" % (obj.name, name))
+            raise BadTypeComponent("Can not assign " + str(value) + " to %s.%s bounds" % (obj.name, name))
         else:
-            raise BadTypeComponent("Can not assign"+str(value)+"to %s.%s" % (obj.name, name))
+            raise BadTypeComponent("Can not assign " + str(value) + " to %s.%s" % (obj.name, name))
 
     c = obj.__dict__['_ownparameters']
     already_exists = name in c
+    
     if not already_exists:
+        if vv is None:
+            raise BadTypeComponent("Can not create parameter %s with None" % name)            
         if isinstance(vv, ConstValue):
             newvalue = vv
         else:  # Bounds object
@@ -216,6 +222,9 @@ def _setPar(obj, name, value, is_bounds=False):
             newvalue = create_const_value(nvalue, name=name)
             newvalue.bounds = vv
     else:  # aready exists
+        if vv is None:
+            del (c[name])
+            return
         if isinstance(vv, ConstValue):
             newvalue = vv
             newvalue.bounds = c[name].bounds
@@ -827,6 +836,8 @@ class Model(ModelObject):
 
         newobj = Input_Variable(name, rate, pars)
         self._set_in_collection(name, self.__invars, newobj)
+        if name in self.parameters:
+            self.setp(name, None)
         self._refreshVars()
 
     def set_variable_dXdt(self, name, rate=0.0, pars=None):
@@ -869,9 +880,12 @@ class Model(ModelObject):
             vn, name = alist[:2]
             # find if the model has an existing  object with that name
             # start with strict types
-            o = self._get_reaction_or_transf(vn)
+            o = self._get_obj_withpars(vn)
         else:
             o = self
+            if value is not None and name in self.input_variables:
+                # delete name in collection self.input_variables
+                self.__invars.delete(name)
         _setPar(o, name, value)
         self._refreshVars()
 
@@ -894,7 +908,7 @@ class Model(ModelObject):
         if '.' in name:
             alist = name.split('.')
             vname, name = alist[:2]
-            o = self._get_reaction_or_transf(vname)
+            o = self._get_obj_withpars(vname)
             return o.getp(name)
         else:
             if name in self._ownparameters:
@@ -903,7 +917,7 @@ class Model(ModelObject):
                 raise AttributeError(name + ' is not a parameter of ' + self.name)
 
 
-    def _get_reaction_or_transf(self, name):
+    def _get_obj_withpars(self, name):
         o = self.__reactions.get(name)
         if o is None:
             o = self.__transf.get(name)
@@ -922,7 +936,7 @@ class Model(ModelObject):
             if vn == 'init':
                 o = self._init
             else:
-                o = self._get_reaction_or_transf(vn)
+                o = self._get_obj_withpars(vn)
         else:
             o = self
         if value is None:
@@ -939,7 +953,7 @@ class Model(ModelObject):
             if vname == 'init':
                 o = self._init
             else:
-                o = self._get_reaction_or_transf(vname)
+                o = self._get_obj_withpars(vname)
             o.reset_bounds(name)
         else:
             if name in self._ownparameters:
@@ -956,7 +970,7 @@ class Model(ModelObject):
             if vname == 'init':
                 o = self._init
             else:
-                o = self._get_reaction_or_transf(vname)
+                o = self._get_obj_withpars(vname)
             return o.get_bounds(name)
         else:
             if name in self._ownparameters:
@@ -1163,7 +1177,7 @@ class Model(ModelObject):
                     if vname in self.__variables:
                         continue
                     else:
-                        if vname in self._ownparameters:
+                        if vname in self.input_variables or vname in self._ownparameters:
                             if vname not in self.__extvariables:
                                 self.__extvariables.append(vname)
                         else:
@@ -1268,6 +1282,12 @@ class QueriableList(list):
             if o.name == aname:
                 return i
         return None
+    
+    def delete(self, aname):
+        for i, o in enumerate(self):
+            if o.name == aname:
+                del (self[i])
+                break
 
 
 class BadStoichError(Exception):
@@ -1288,7 +1308,7 @@ if __name__ == '__main__':
 
     m2 = Model('My test model')
     m2.register_kin_func(conservation)
-    m2.set_reaction('v1', "A+2B <=> C", rate=3)
+    m2.set_reaction('v1', "A + 2B <=> C", rate=3)
     m2.set_reaction('vdep', "B->", rate='input2 + 3')
     m2.set_reaction('vconserv', "B->", rate='conservation(B, A)')
     m2.set_reaction('v2', "   -> 4.5 A", rate=math.sqrt(4.0)/2)
@@ -1306,18 +1326,29 @@ if __name__ == '__main__':
     m2.set_init((('A', 1.0), ('C', 1), ('D', 2)))
     d = {'A': 1.0, 'C': 1, 'Z': 2}
     m2.set_init(d)
+    m2.init.Z = 2.2
+    m2.init.Z = None
 
     m2.setp('at', 1.0)
     m2.setp('top', 2.0)
 
-    m2.set_input_var('input1', "A + B")
-    m2.set_input_var('input2', "input1 * 3")
-    m2.set_transformation('t1', 'input1 + A')
-    m2.set_transformation('t2', 'input1 + B')
+    m2.setp('A', 2)
+    m2.set_input_var('A', "B * 2")
+    # m2.setp('A', 2)
+    # m2.setp('A', None)
+    m2.set_input_var('input2', "A * 3")
+    m2.set_transformation('t1', '2 * A')
+    m2.set_transformation('t2', 'A + B')
 
     print 'initial values'
     print m2.get_init()
     
+    print 'variables'
+    print m2.varnames
+
+    print 'external variables'
+    print m2.extvariables
+
     check, msg = m2.checkRates()
     if not check:
         print ('RATE is WRONG')
