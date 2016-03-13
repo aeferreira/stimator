@@ -222,7 +222,7 @@ def try2read_model(text):
                 print "the default names to use in timecourses are", tc.defaultnames
         print
         return
-    except StimatorParserError, expt:
+    except StimatorParserError as expt:
         print
         print "*****************************************"
         
@@ -322,7 +322,7 @@ class StimatorParser:
                 if vn.startswith('d_') and vn.endswith('_dt'):
                     msg = msg.replace('in rate of', 'in the definition of')
                 
-                tt = self.model._get_reaction_or_transf(vn)
+                tt = self.model._get_obj_withpars(vn)
                 if isinstance(tt, model.Transformation):
                     msg = msg.replace('in rate of', 'in the definition of')
                     
@@ -357,7 +357,7 @@ class StimatorParser:
 ##         print '|||||||||||||||'
         try :
            value = float(eval(valueexpr, vars(math), locs))
-        except Exception, e:
+        except Exception as e:
            excpt_type = str(e.__class__.__name__) 
            excpt_msg = str(e)
            if excpt_type == "SyntaxError":

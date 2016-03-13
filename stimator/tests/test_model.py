@@ -5,12 +5,9 @@ def conservation(total, A):
     return total - A
 
 def test_Model_init_1():
-    """test Model __init__ empty ()"""
+    """test Model __init__()"""
     m = Model()
     assert isinstance(m, Model)
-
-def test_Model_init_2():
-    """test Model __init__ with title"""
     m = Model("My first model")
     assert isinstance(m, Model)
     assert m.metadata['title'] == "My first model"
@@ -150,12 +147,19 @@ def test_par1():
     m = Model("My first model")
     m.setp('p1', 4)
     m.parameters.p2 = 3.0
+    m.parameters.p3 = 3.0
+    m.setp({'p10': 0, 'p11':1})
+    m.setp([('p12', 2), ('p13', 3)])
     assert isinstance(m.parameters.p1, model.ConstValue)
     assert (m.parameters.p1.name) == "p1"
     assert isinstance(m.parameters.p2, model.ConstValue)
     assert (m.parameters.p2.name) == "p2"
     assert m.parameters.p1 == 4.0
     assert m.parameters.p2 == 3.0
+    assert m.parameters.p10 == 0.0
+    assert m.parameters.p11 == 1.0
+    assert m.parameters.p12 == 2.0
+    assert m.parameters.p13 == 3.0
 
 def test_par_in_rates1():
     """test assignment of parameters 'local' to reactions"""
@@ -315,7 +319,7 @@ def test_printmodel():
     m.parameters.V3.set_bounds([0.1, 1.0])
     m.set_init(A = 1.0, C = 1, D = 1)
     m.init.C.set_bounds((1,3))
-    #print should not raise an Exception
+    # print should not raise an Exception
     print (m)
 
 def test_clonemodel():
@@ -380,8 +384,16 @@ def test_set_init1():
     m.parameters.p1 = 4
     m.parameters.p2 = 3.0
     m.set_init(x = 1, y = 2.0)
-    assert m.init.x == 1.0
+    m.set_init('z', 3.0)
+    m.set_init({'a': 0, 'b':1})
+    m.set_init([('c', 2), ('d', 3)])
+    assert m.init.x == 1.0 
     assert m.init.y == 2.0
+    assert m.init.z == 3.0
+    assert m.init.a == 0.0 
+    assert m.init.b == 1.0
+    assert m.init.c == 2.0
+    assert m.init.d == 3.0
     m.reset_init()
     assert m.init.x == 0.0
     assert m.init.y == 0.0

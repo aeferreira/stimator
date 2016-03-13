@@ -738,7 +738,7 @@ nothing really usefull here
         print (sol.names)
         print ('\ndata')
         print (sol.data, '\n')
-    except StimatorTCError, msg:
+    except StimatorTCError as msg:
         print (msg, '\n')
 
     sol.read_str(demodata)
@@ -842,7 +842,7 @@ nothing really usefull here
 
         print ("sol['k']")
         print (sol['k'])
-    except ValueError, msg:
+    except ValueError as msg:
         print (msg)
     print ('\n')
     print ('\n!! testing write_to() ----------------')

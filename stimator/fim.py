@@ -12,7 +12,7 @@ from timecourse import Solutions, constError_func
 sympy_installed = True
 try:
     import sympy
-except:
+except ImportError:
     print 'ERROR: sympy module must be installed to generate sensitivity strings'
     sympy_installed = False
 

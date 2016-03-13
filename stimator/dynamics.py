@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import re
 import math
 import itertools
@@ -102,8 +103,8 @@ def Jacobian_strings(m, _scale=1.0):
         raise BadRateError(msg)
     try:
         import sympy
-    except:
-        print 'ERROR: sympy module must be installed to generate Jacobian strings'
+    except ImportError:
+        print ('ERROR: sympy module must be installed to generate Jacobian strings')
         raise
     dxdtstrings = [d[1] for d in dXdt_strings(m)]
     nvars = len(dxdtstrings)
@@ -146,8 +147,8 @@ def dfdp_strings(m, parnames, _scale=1.0):
         raise BadRateError(msg)
     try:
         import sympy
-    except:
-        print 'ERROR: sympy module must be installed to generate Jacobian strings'
+    except ImportError:
+        print ('ERROR: sympy module must be installed to generate Jacobian strings')
         raise
     dxdtstrings = [d[1] for d in dXdt_strings(m)]
     nvars = len(dxdtstrings)
@@ -184,8 +185,8 @@ def dfdp_strings(m, parnames, _scale=1.0):
 def _gen_canonical_symbmap(m):
     try:
         import sympy
-    except:
-        print 'ERROR: sympy module must be installed to generate Jacobian strings'
+    except ImportError:
+        print ('ERROR: sympy module must be installed to generate Jacobian strings')
         raise
     symbmap = {}
     sympysymbs = {}
@@ -233,8 +234,8 @@ def add_dSdt_to_model(m, pars):
         raise BadRateError(msg)
     try:
         import sympy
-    except:
-        print 'ERROR: sympy module must be installed to generate Jacobian strings'
+    except ImportError:
+        print ('ERROR: sympy module must be installed to generate Jacobian strings')
         raise
     #Find pars that are initial values
     init_of = []
@@ -777,61 +778,59 @@ def test():
     ~ t2 = v1.V * A * step(t, 1.0)
     # ~ t3 = v1.V * A * max(t, 1.0)
     """)
-    print m
+    print (m)
 
-    print '********** Testing stoichiometry matrix ********************'
-    print 'Stoichiometry matrix:'
+    print ('********** Testing stoichiometry matrix ********************')
+    print ('Stoichiometry matrix:')
     N = genStoichiometryMatrix(m)
-    print '  ', '  '.join([v.name for v in m.reactions])
+    print ('  ', '  '.join([v.name for v in m.reactions]))
     for i,x in enumerate(m.varnames):
-        print x, N[i, :]
-    print
-    print '********** Testing state2array()****************************'
-    print 'state2array(m):'
+        print (x, N[i, :])
+    print()
+    print ('********** Testing state2array()****************************')
+    print ('state2array(m):')
     v = init2array(m)
-    print v, 'of type', type(v)
-    print
-    print '********** Testing rate and dXdt strings *******************'
-    print 'rates_strings(fully_qualified = False): ---'
+    print (v, 'of type', type(v))
+    print()
+    print ('********** Testing rate and dXdt strings *******************')
+    print ('rates_strings(fully_qualified = False): ---')
     for v in rates_strings(m, fully_qualified = False):
-        print v
-    print '\nrates_strings(): -------------------------'
+        print (v)
+    print ('\nrates_strings(): -------------------------')
     for v in rates_strings(m):
-        print v
-    print '\ndXdt_strings(): --------------------------'
+        print (v)
+    print ('\ndXdt_strings(): --------------------------')
     for xname,dxdt in dXdt_strings(m):
-        print '(d%s/dt) ='%(xname),dxdt
-    print
-    print 'Jacobian_strings(): -------------------------'
+        print ('(d%s/dt) ='%(xname),dxdt)
+    print()
+    print ('Jacobian_strings(): -------------------------')
     vnames = m.varnames
     for i,vec in enumerate(Jacobian_strings(m)):
         for j, dxdx in enumerate(vec):
-            print '(d d%s/dt / d %s) ='%(vnames[i],vnames[j]), dxdx
-    print
-    print 'dfdp_strings(m, parnames): ------------------'
+            print ('(d d%s/dt / d %s) ='%(vnames[i],vnames[j]), dxdx)
+    print()
+    print ('dfdp_strings(m, parnames): ------------------')
     parnames = "Km2 v1.V".split()
-    print 'parnames = ["Km2", "v1.V"]\n'
+    print ('parnames = ["Km2", "v1.V"]\n')
     vnames = m.varnames
     for i,vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
-            print '(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx
-    print
-    print 'dfdp_strings(m, parnames): (with unknown pars)'
+            print ('(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx)
+    print()
+    print ('dfdp_strings(m, parnames): (with unknown pars)')
     parnames = "Km3 v1.V".split()
-    print 'parnames = ["Km3", "v1.V"]\n'
+    print ('parnames = ["Km3", "v1.V"]\n')
     vnames = m.varnames
     for i,vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
-            print '(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx
-    print
-    print '********** Testing _gen_calc_symbmap(m) *******************'
-    print '_gen_calc_symbmap(m, with_uncertain = False):'
-    print _gen_calc_symbmap(m)
-    print '\n_gen_calc_symbmap(m, with_uncertain = True):'
-    print _gen_calc_symbmap(m, with_uncertain = True)
+            print ('(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx)
+    print ('\n********** Testing _gen_calc_symbmap(m) *******************')
+    print ('_gen_calc_symbmap(m, with_uncertain = False):')
+    print (_gen_calc_symbmap(m))
+    print ('\n_gen_calc_symbmap(m, with_uncertain = True):')
+    print (_gen_calc_symbmap(m, with_uncertain = True))
     
-    print
-    print '********** Testing rateCalcString **************************'
+    print ('\n********** Testing rateCalcString **************************')
     symbmap = _gen_calc_symbmap(m, with_uncertain = False)
     symbmap2 = _gen_calc_symbmap(m, with_uncertain = True)
     for v in (m.reactions.v1, 
@@ -840,42 +839,41 @@ def test():
               m.transformations.t2,
               m.input_variables.vin):
         vstr = v(fully_qualified = True)
-        print 'calcstring for %s = %s\n\t'% (v.name, vstr), rateCalcString(vstr, symbmap)
-    print 'calcstring for v2 with uncertain parameters:\n\t', rateCalcString(m.reactions.v2(fully_qualified = True), symbmap2)
+        print ('calcstring for %s = %s\n\t'% (v.name, vstr), rateCalcString(vstr, symbmap))
+    print ('calcstring for v2 with uncertain parameters:\n\t', rateCalcString(m.reactions.v2(fully_qualified = True), symbmap2))
 
-    print
-    print '********** Testing rate and dXdt generating functions ******'
-    print 'Operating point --------------------------------'
+    print ('\n********** Testing rate and dXdt generating functions ******')
+    print ('Operating point --------------------------------')
     varvalues = [1.0, 0.4]
     pars      = [0.4]
     t         = 0.0
     
     dxdtstrs = [b for (a,b) in dXdt_strings(m)]
 
-    print "t =", t
-    print 'variables:'
+    print ("t =", t)
+    print ('variables:')
     print (dict((n, value) for n,value in zip(m.varnames, varvalues)))
-    print 'parameters:'
+    print ('parameters:')
     print (dict((p.name, p) for p in m.parameters))
  
-    print '\n---- rates using rates_func(m) -------------------------'
+    print ('\n---- rates using rates_func(m) -------------------------')
     vratesfunc = rates_func(m)
     vrates = vratesfunc(varvalues,t)
     frmtstr = "%s = %-25s = %s"
     for v,r in zip(m.reactions, vrates):
-        print frmtstr % (v.name, v(fully_qualified = True), r)
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
 
-    print '---- transformations using transf_func(m) ----------------'
+    print ('---- transformations using transf_func(m) ----------------')
     tratesfunc = transf_func(m)
     trates = tratesfunc(varvalues,t)
     for v,r in zip(m.transformations, trates):
-        print frmtstr % (v.name, v(fully_qualified = True), r)
-    print '---- same, at t = 2.0 --'
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
+    print ('---- same, at t = 2.0 --')
     trates = tratesfunc(varvalues,2.0)
     for v,r in zip(m.transformations, trates):
-        print frmtstr % (v.name, v(fully_qualified = True), r)
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
 
-    print '--------- NEW MODEL, with input variables -------------'
+    print ('--------- NEW MODEL, with input variables -------------')
     
     m2 = read_model("""
     title a simple 2 enzyme system
@@ -892,57 +890,55 @@ def test():
     
     print (m2)
 
-    print '---- dXdt using getdXdt(m) -------------------'
+    print ('---- dXdt using getdXdt(m) -------------------')
     f = getdXdt(m2)
     dXdt = f(varvalues,t)
     for x,r in zip(m2.varnames,  dXdt):
-        print "d%s/dt = %s" % (x,r)
+        print ("d%s/dt = %s" % (x,r))
 
-    print '---- dXdt using getdXdt(m) setting uncertain parameters ---'
-    print 'f = getdXdt(m, with_uncertain = True)'
+    print ('---- dXdt using getdXdt(m) setting uncertain parameters ---')
+    print ('f = getdXdt(m, with_uncertain = True)')
     f = getdXdt(m2, with_uncertain = True)
-    print 'setting uncertain as', dict((v.name, value) for v,value in zip(m2.with_bounds, pars))
-    print 'm.set_uncertain(pars)'
+    print ('setting uncertain as', dict((v.name, value) for v,value in zip(m2.with_bounds, pars)))
+    print ('m.set_uncertain(pars)')
     m2.set_uncertain(pars)
     dXdt = f(varvalues,t)
     for x,r in zip(m2.varnames, dXdt):
-        print "d%s/dt = %s" % (x, r)
+        print ("d%s/dt = %s" % (x, r))
 
-    print '---- dXdt using getdXdt(m) with a state argument (m.init) --'
-    print 'm.init:', m2.get_init()
-    print 'f = getdXdt(m)'
+    print ('---- dXdt using getdXdt(m) with a state argument (m.init) --')
+    print ('m.init:', m2.get_init())
+    print ('f = getdXdt(m)')
     f = getdXdt(m2)
-    print 'dXdt = f(init2array(m),t)'
+    print ('dXdt = f(init2array(m),t)')
     dXdt = f(init2array(m2),t)
     for x,r in zip(m2.varnames, dXdt):
-        print "d%s/dt = %s" % (x, r)
+        print ("d%s/dt = %s" % (x, r))
     
-    print '---- same, changing state argument ---------------------------'
+    print ('---- same, changing state argument ---------------------------')
     m2.init.A = 2.0
-    print 'after m2.init.A = 2.0'
-    print 'm2.init:', m2.get_init()
-    print 'dXdt = f(init2array(m2),t)'
+    print ('after m2.init.A = 2.0')
+    print ('m2.init:', m2.get_init())
+    print ('dXdt = f(init2array(m2),t)')
     dXdt = f(init2array(m2),t)
     for x,r in zip(m2.varnames, dXdt):
-        print "d%s/dt = %s" % (x, r)
-    print '\n********** Testing add_dSdt_to_model functions ***************'
-    print '\n--- Using back model m ---'
-    print
+        print ("d%s/dt = %s" % (x, r))
+    print ('\n********** Testing add_dSdt_to_model functions ***************')
+    print ('\n--- Using back model m ---\n')
     m2 = m.copy()
-    print m2
-    print '----------------------------------------------------'
+    print (m2)
+    print ('----------------------------------------------------')
     pars = "Km2 v1.V".split()
-    print 'pars =', pars
-    print
-    print "!!! applying function add_dSdt_to_model(m, pars) !!!"
+    print ('pars =', pars)
+    print ("\n!!! applying function add_dSdt_to_model(m, pars) !!!")
     Snames = add_dSdt_to_model(m2, pars)
-    print 'Snames = \n', Snames
-    print m2
+    print ('Snames = \n', Snames)
+    print (m2)
     
     # print 'BEGIN EXAMPLES'
     # t0 = time.time()
     
-    print '---------------- EXAMPLE 1 ------------------'
+    print ('---------------- EXAMPLE 1 ------------------')
     mtext = """
     title a simple 2 enzyme system
     v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
@@ -954,7 +950,7 @@ def test():
     -> Vin = 0.1 * step(t, 10)
     !! A B C ~
     """
-    print mtext
+    print (mtext)
 
     m1 = read_model(mtext)
 
@@ -964,20 +960,20 @@ def test():
     solution1v = solve(m1, tf=100, outputs='>>',
                        title='outputs=">>"')
 
-    print '--- Last time point ----'
-    print 'At t =', solution1.t[-1]
+    print ('--- Last time point ----')
+    print ('At t =', solution1.t[-1])
     #print solution1.last
     for x in solution1.last:
-        print "%-8s= %f" % (x, solution1.last[x])
+        print ("%-8s= %f" % (x, solution1.last[x]))
     
     # print 'END of EXAMPLES 1'
     # t1 = time.time()
     # print 'took', t1 - t0
     
-    print '---------------- EXAMPLE 3 ------------------'
+    print ('---------------- EXAMPLE 3 ------------------')
     m3 = read_model(models.ca.text)
 
-    print models.ca.text
+    print (models.ca.text)
     ms = ModelSolver(m3, tf = 8.0, npoints = 2000)
     solution3 = ms.solve()
 ##     solution3 = solve(m3, tf = 8.0, npoints = 2000)
@@ -987,10 +983,10 @@ def test():
     # print 'took', t3 - t1
 
 
-    print '---------------- EXAMPLE 4 ------------------'
+    print ('---------------- EXAMPLE 4 ------------------')
     m4 = read_model(models.rossler.text)
 
-    print m4
+    print (m4)
 
     solution4 = solve(m4, tf = 100.0, npoints = 2000, 
                       outputs="x1 x2 x3".split())
@@ -1022,7 +1018,7 @@ def test():
     # print 'took', tplot - t4
 
 
-    print '---------------- scanning example ------------------'
+    print ('---------------- scanning example ------------------')
     m3 = read_model(models.ca.text)
     scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
     
@@ -1040,7 +1036,7 @@ def test():
 
 
 
-    print '---------------- stairway example ------------------'
+    print ('---------------- stairway example ------------------')
     mtext = """
     title a simple 2 enzyme system
     v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
@@ -1053,7 +1049,7 @@ def test():
     -> Vin = stairway(t, [50, 100, 150, 200, 250], [1, 2, 3, 4, 5])
     !! Vin B C
     """
-    print mtext
+    print (mtext)
 
     mstair = read_model(mtext)
 

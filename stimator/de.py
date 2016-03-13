@@ -17,6 +17,7 @@
 Copyright 2005-2015 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib."""
 
+from __future__ import print_function
 import utils
 import random
 import time
@@ -103,13 +104,13 @@ class DESolver(object):
         return res
 
     def reportInitial(self):
-        print self.reportInitialString()
+        print(self.reportInitialString())
 
     def reportGeneration(self):
-        print self.reportGenerationString()
+        print(self.reportGenerationString())
 
     def reportFinal(self):
-        print self.reportFinalString()
+        print(self.reportFinalString())
 
     def GetRandIntInPars(self):
         return random.randint(0, self.parameterCount-1)
@@ -126,10 +127,8 @@ class DESolver(object):
     def EnergyFunction(self, trial):
         try:
             energy = self.externalEnergyFunction(trial)
-        except ArithmeticError:
+        except (ArithmeticError, FloatingPointError):
             energy = 1.0E300 # high energies for arithmetic exceptions
-        except FloatingPointError:
-            energy = 1.0E300 # high energies for floating point exceptions
 
         # we will be "done" if the energy is less than or equal to the cutoff energy
         if energy <= self.cutoffEnergy:
@@ -213,7 +212,7 @@ class DESolver(object):
         if self.exitCode == 0:
             self.exitCode = -1
         if self.exitCode > 0:
-            print 'refining last solution ...'
+            print ('refining last solution ...')
             self.bestSolution = scipy.optimize.fmin(self.externalEnergyFunction, self.bestSolution, disp = 0) # don't print warning messages to stdout
             self.bestEnergy, self.atSolution = self.EnergyFunction(self.bestSolution)
         self.elapsed = time.clock() - self.elapsed
@@ -266,7 +265,7 @@ class DESolver(object):
                 break
             indx[n]=1
             n = (n + 1) % self.parameterCount
-        print indx
+        print (indx)
         return indx
         
 

@@ -4,6 +4,7 @@ This module defines the Model class, used to hold the structure and metadata
 of a kinetic model.
 
 """
+from __future__ import print_function
 import re
 import math
 import kinetics
@@ -64,6 +65,13 @@ def _is_number(a):
     return (isinstance(a, float) or
             isinstance(a, int) or
             isinstance(a, long))
+
+def _args_2_dict(*p, **pdict):
+    """Transform arguments to a dict, as in dict() plus f(a,b) -> {a:b}."""
+    if len(p) == 2:
+        p = ({p[0]: p[1]},)
+    dpars = dict(*p, **pdict)
+    return dpars
 
 
 def processStoich(expr):
@@ -863,7 +871,7 @@ class Model(ModelObject):
         name = react_name  # hope this works...
         self.set_reaction(name, stoich, rate, pars)
 
-    def setp(self, name, value):
+    def setp(self, *p, **pdict):
         """Insert or modify a parameter of the model.
 
 
@@ -875,18 +883,21 @@ class Model(ModelObject):
         value : number or str that can be transformed to a float.
             The value of the parameter.
         """
-        if '.' in name:
-            alist = name.split('.')
-            vn, name = alist[:2]
-            # find if the model has an existing  object with that name
-            # start with strict types
-            o = self._get_obj_withpars(vn)
-        else:
-            o = self
-            if value is not None and name in self.input_variables:
-                # delete name in collection self.input_variables
-                self.__invars.delete(name)
-        _setPar(o, name, value)
+        dpars = _args_2_dict(*p, **pdict)
+        
+        for name, value in dpars.items():
+            if '.' in name:
+                alist = name.split('.')
+                vn, name = alist[:2]
+                # find if the model has an existing  object with that name
+                # start with strict types
+                o = self._get_obj_withpars(vn)
+            else:
+                o = self
+                if value is not None and name in self.input_variables:
+                    # delete name in collection self.input_variables
+                    self.__invars.delete(name)
+            _setPar(o, name, value)
         self._refreshVars()
 
 
@@ -982,7 +993,7 @@ class Model(ModelObject):
                 raise AttributeError(name + ' is not a parameter of ' + self.name)
 
     def set_init(self, *p, **pdict):
-        dpars = dict(*p, **pdict)
+        dpars = _args_2_dict(*p, **pdict)
         for k in dpars:
             self._init.setp(k, dpars[k])
         self._refreshVars()
@@ -1120,8 +1131,7 @@ class Model(ModelObject):
                         other.__extvariables]
         for cname, c1, c2 in zip(cnames, collections1, collections2):
             if verbose:
-                print
-                print cname
+                print ('\n', cname)
             if len(c1) != len(c2):
                 return False
             if isinstance(c1, dict):
@@ -1139,10 +1149,10 @@ class Model(ModelObject):
                     ro = c2[ivname]
                 if not ro == r:
                     if verbose:
-                        print vname, 'are not equal'
+                        print (vname, 'are not equal')
                     return False
                 if verbose:
-                    print vname, 'are equal'
+                    print (vname, 'are equal')
         return True
 
     def update(self, *p, **pdict):
@@ -1247,9 +1257,9 @@ class Model(ModelObject):
             value = float(eval(expr, self._usable_functions, locs))
         except NameError:
             pass
-        except TypeError, e:
+        except TypeError as e:
             return ("Invalid use of a rate in expression", 0.0)
-        except Exception, e:
+        except Exception as e:
 ##             print 'failed on first pass'
             return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
 ##         print 'second pass...'
@@ -1263,7 +1273,7 @@ class Model(ModelObject):
             value = float(eval(expr, self._usable_functions, locs))
         except (ArithmeticError, ValueError):
             pass  # might fail but we don't know the values of vars
-        except Exception, e:
+        except Exception as e:
 ##             print 'failed on second pass...'
             return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
 ##         print 'VALUE = ', value
@@ -1334,20 +1344,18 @@ if __name__ == '__main__':
 
     m2.setp('A', 2)
     m2.set_input_var('A', "B * 2")
-    # m2.setp('A', 2)
-    # m2.setp('A', None)
     m2.set_input_var('input2', "A * 3")
     m2.set_transformation('t1', '2 * A')
     m2.set_transformation('t2', 'A + B')
 
-    print 'initial values'
-    print m2.get_init()
+    print ('initial values')
+    print (m2.get_init())
     
-    print 'variables'
-    print m2.varnames
+    print ('variables')
+    print (m2.varnames)
 
-    print 'external variables'
-    print m2.extvariables
+    print ('external variables')
+    print (m2.extvariables)
 
     check, msg = m2.checkRates()
     if not check:
