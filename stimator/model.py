@@ -7,9 +7,9 @@ of a kinetic model.
 from __future__ import print_function
 import re
 import math
-import kinetics
-import dynamics
-import estimation
+import stimator.kinetics as kinetics
+import stimator.dynamics as dynamics
+import stimator.estimation as estimation
 
 # ----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -17,7 +17,7 @@ import estimation
 
 def get_allowed_f():
     fdict = {}
-    
+
     # from module kinetics
     v = vars(kinetics)
     haskinetics = {}
@@ -25,7 +25,7 @@ def get_allowed_f():
         if hasattr(v[k], "is_rate"):
             haskinetics[k] = v[k]
     fdict.update(haskinetics)
-    
+
     # from module math
     v = vars(math)
     math_f = {}
@@ -34,7 +34,7 @@ def get_allowed_f():
             math_f[k] = v[k]
     fdict.update(math_f)
     return fdict
-    
+
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for stoichiometry patterns
@@ -45,9 +45,9 @@ fracnumber = re.compile(fracnumberpattern, re.IGNORECASE)
 realnumber = re.compile(realnumberpattern, re.IGNORECASE)
 
 stoichiompattern = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
-chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+")?)\s*(?P<variable>[_a-z]\w*)\s*$"
+chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+r")?)\s*(?P<variable>[_a-z]\w*)\s*$"
 
-stoichiom = re.compile(stoichiompattern,    re.IGNORECASE)
+stoichiom = re.compile(stoichiompattern, re.IGNORECASE)
 chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
 
 # ----------------------------------------------------------------------------
@@ -139,7 +139,9 @@ def processStoich(expr):
     return reagents, products, irreversible
 
 
-def _massActionStr(k=1.0, reagents=[]):
+def _massActionStr(k=1.0, reagents=None):
+    if reagents is None:
+        reagents = []
     res = str(float(k))
     factors = []
     for var, coef in reagents:
@@ -148,9 +150,9 @@ def _massActionStr(k=1.0, reagents=[]):
         else:
             factor = '%s**%f' % (var, coef)
         factors.append(factor)
-    factors = '*'.join(factors)
-    if factors != '':
-        res = res + '*' + factors
+    strfactors = '*'.join(factors)
+    if strfactors != '':
+        res = res + '*' + strfactors
     return res
 
 # ----------------------------------------------------------------------------
@@ -184,7 +186,7 @@ def toConstOrBounds(name, value, is_bounds=False):
         return None
     if not is_bounds:
         vv = float(value)  # can raise ValueError
-        return create_const_value(value, name=name)
+        return create_const_value(vv, name=name)
 
     # seeking proper bounds pair
     lv = len(value)  # can raise TypeError
@@ -212,17 +214,18 @@ def _setPar(obj, name, value, is_bounds=False):
     try:
         vv = toConstOrBounds(name, value, is_bounds)
     except (TypeError, ValueError):
+        msg = "Can not assign {} to {}.{}"
         if is_bounds:
-            raise BadTypeComponent("Can not assign " + str(value) + " to %s.%s bounds" % (obj.name, name))
+            raise BadTypeComponent(msg.format(value, obj.name, name) + 'bounds')
         else:
-            raise BadTypeComponent("Can not assign " + str(value) + " to %s.%s" % (obj.name, name))
+            raise BadTypeComponent(msg.format(value, obj.name, name))
 
     c = obj.__dict__['_ownparameters']
     already_exists = name in c
-    
+
     if not already_exists:
         if vv is None:
-            raise BadTypeComponent("Can not create parameter %s with None" % name)            
+            raise BadTypeComponent("Can not create parameter %s with None" % name)
         if isinstance(vv, ConstValue):
             newvalue = vv
         else:  # Bounds object
@@ -231,7 +234,7 @@ def _setPar(obj, name, value, is_bounds=False):
             newvalue.bounds = vv
     else:  # aready exists
         if vv is None:
-            del (c[name])
+            del c[name]
             return
         if isinstance(vv, ConstValue):
             newvalue = vv
@@ -280,11 +283,11 @@ class _HasOwnParameters(ModelObject):
 
     def reset_bounds(self, name):
         o = self._get_parameter(name)
-        bb = o.bounds = None
+        o.bounds = None
 
     def __iter__(self):
         return iter(self._ownparameters.itervalues())
-        
+
     @property
     def parameters(self):
         return [(p.name, p) for p in list(self._ownparameters.values())]
@@ -405,7 +408,7 @@ class Reaction(_HasRate):
                '  stoichiometry: %s' % self.stoichiometry_string,
                '  rate = %s' % str(self())]
         res = '\n'.join(res) + '\n'
-        
+
         if len(self._ownparameters) > 0:
             resp = ["  Parameters:"]
             for k, v in self._ownparameters.items():
@@ -417,22 +420,22 @@ class Reaction(_HasRate):
     def reagents(self):
         """The reagents of the reaction."""
         return self._reagents
-    
+
     @property
     def products(self):
         """The products of the reaction."""
         return self._products
-    
+
     @property
     def stoichiometry(self):
         """The stoichiometry of the reaction.
-           
+
            This is just a list of (coefficient, name) pairs with
            reagents with negative coefficients"""
         res = [(v, -c) for (v, c) in self._reagents]
         res.extend([(v, c) for (v, c) in self._products])
         return res
-    
+
     def _stoichiometry_string(self):
         """Generate a canonical string representation of stoichiometry"""
         left = []
@@ -460,13 +463,17 @@ class Reaction(_HasRate):
         else:
             irrsign = "<=>"
         return ('%s %s %s' % (left, irrsign, right)).strip()
-    
+
     stoichiometry_string = property(_stoichiometry_string)
 
     def __eq__(self, other):
         if not _HasRate.__eq__(self, other):
             return False
-        if (self._reagents != other._reagents) or (self._products != other._products) or (self._irreversible != other._irreversible):
+        if self._reagents != other._reagents:
+            return False
+        if self._products != other._products:
+            return False
+        if self._irreversible != other._irreversible:
             return False
         return True
 
@@ -514,7 +521,9 @@ class ConstValue(float, ModelObject):
             if sbounds != obounds:
                 return False
             if self.bounds is not None:
-                if (self.bounds.lower != other.bounds.lower) or (self.bounds.upper != other.bounds.upper):
+                if self.bounds.lower != other.bounds.lower:
+                    return False
+                if self.bounds.upper != other.bounds.upper:
                     return False
         return True
 
@@ -723,16 +732,16 @@ class Model(ModelObject):
         title : str
             The title of the model.
         """
-        
-        self.__dict__['_Model__reactions']         = QueriableList()
-        self.__dict__['_Model__variables']         = []
-        self.__dict__['_Model__extvariables']      = []
-        self.__dict__['_ownparameters']            = {}
-        self.__dict__['_Model__transf']            = QueriableList()
-        self.__dict__['_Model__invars']            = QueriableList()
+
+        self.__reactions = QueriableList()
+        self.__variables = []
+        self.__extvariables = []
+        self._ownparameters = {}
+        self.__transf = QueriableList()
+        self.__invars = QueriableList()
         self._init = StateArray('init', dict())
         ModelObject.__init__(self, name=title)
-        self.__dict__['_Model__m_Parameters']      = None
+        self.__m_Parameters = None
         self.metadata['title'] = title
 
         self.reactions = _Collection_Accessor(self, self.__reactions)
@@ -884,7 +893,7 @@ class Model(ModelObject):
             The value of the parameter.
         """
         dpars = _args_2_dict(*p, **pdict)
-        
+
         for name, value in dpars.items():
             if '.' in name:
                 alist = name.split('.')
@@ -1024,7 +1033,7 @@ class Model(ModelObject):
 
     def info(self, no_check=False):
         """Generate a string with a description of the model.
-        
+
         Used when a string describing a model is needed,
         for example in `print(model)`.
 
@@ -1044,7 +1053,7 @@ class Model(ModelObject):
             check, msg = self.checkRates()
             if not check:
                 raise BadRateError(msg)
-        
+
         res = [self.metadata['title']]
         res.append("\nVariables: %s\n" % " ".join(self.__variables))
         if len(self.__extvariables) > 0:
@@ -1067,14 +1076,14 @@ class Model(ModelObject):
         for k in self.metadata:
             o = self.metadata[k]
             # skip title and empty container metadata
-            if k == 'title' or (hasattr(o, '__len__') and len(o)==0):
+            if k == 'title' or (hasattr(o, '__len__') and len(o) == 0):
                 continue
             res.append("\n%s: %s" % (str(k), str(o)))
         return '\n'.join(res)
 
     def copy(self, new_title=None):
         """Retrieves a deep copy of a model.
-        
+
         Parameters
         ----------
         new_title : str
@@ -1100,10 +1109,10 @@ class Model(ModelObject):
             m.set_bounds(u.name, (u.bounds.lower, u.bounds.upper))
         m.metadata.update(self.metadata)
         m._usable_functions.update(self._usable_functions)
-        
+
         if new_title is not None:
             m.metadata['title'] = new_title
-        
+
         self._refreshVars()
         return m
 
@@ -1179,8 +1188,8 @@ class Model(ModelObject):
 
     def _refreshVars(self):
         # can't use self.__variables=[] Triggers __setattr__
-        del(self.__variables[:])
-        del(self.__extvariables[:])
+        del self.__variables[:]
+        del self.__extvariables[:]
         for v in self.__reactions:
             for rp in (v._reagents, v._products):
                 for (vname, coef) in rp:
@@ -1211,11 +1220,11 @@ class Model(ModelObject):
         # global model parameters
         for p in self._ownparameters.items():
             yield p
-        
+
         # values of input variables
         for v in self.__invars:
             yield (v.name, v._value)
-        
+
         # parameters own by reactions or transformations
         collections = [self.__reactions, self.__transf]
         for c in collections:
@@ -1231,7 +1240,7 @@ class Model(ModelObject):
 
     def _test_with_everything(self, expr, obj):
         locs = dict(self._genlocs4rate(obj))
-        
+
 ##         print '\nChecking {}, expr = {}'.format(obj.name, expr)
 ##         print "---locs"
 ##         for k in locs:
@@ -1286,17 +1295,17 @@ class QueriableList(list):
             if o.name == aname:
                 return o
         return None
-    
+
     def iget(self, aname):
         for i, o in enumerate(self):
             if o.name == aname:
                 return i
         return None
-    
+
     def delete(self, aname):
         for i, o in enumerate(self):
             if o.name == aname:
-                del (self[i])
+                del self[i]
                 break
 
 
@@ -1312,7 +1321,7 @@ class BadTypeComponent(Exception):
     """Flags an assignment of a model component to a wrong type object"""
 
 if __name__ == '__main__':
-    
+
     def conservation(total, A):
         return total - A
 
@@ -1350,7 +1359,7 @@ if __name__ == '__main__':
 
     print ('initial values')
     print (m2.get_init())
-    
+
     print ('variables')
     print (m2.varnames)
 
@@ -1361,6 +1370,6 @@ if __name__ == '__main__':
     if not check:
         print ('RATE is WRONG')
         print (msg)
-    
+
     print (m2)
 
