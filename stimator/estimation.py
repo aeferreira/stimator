@@ -1,13 +1,13 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import, division
 
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan
 from scipy import integrate
 
 import de
-from dynamics import getdXdt, init2array
-import fim
-import timecourse
-import plots
+from stimator.dynamics import getdXdt, init2array
+import stimator.fim as fim
+import stimator.timecourse as timecourse
+import stimator.plots as plots
 
 # ----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
@@ -250,7 +250,7 @@ class DeODEOptimizer(de.DESolver):
 
         # par_names = [self.model.with_bounds[i].name for i in range(len(self.bestSolution))]
         par_names = [p.name for p in self.model.with_bounds]
-        parameters = zip(par_names, [x for x in self.bestSolution])
+        parameters = list(zip(par_names, [x for x in self.bestSolution]))
 
         sols = timecourse.Solutions()
         best.tcdata = []

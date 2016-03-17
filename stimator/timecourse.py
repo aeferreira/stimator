@@ -1,18 +1,15 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import, division
 import os.path
 import StringIO
 import re
 import numpy as np
-import plots
+import stimator.plots as plots
+from stimator.utils import _is_string
 
 FRAC_PATTERN = r"[-]?\d*[.]?\d+"
 REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
 ID_RE = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 REAL_RE = re.compile(REAL_PATTERN, re.IGNORECASE)
-
-def _is_string(a):
-    return (isinstance(a, str) or
-            isinstance(a, unicode))
 
 class StimatorTCError(Exception):
 
@@ -51,8 +48,10 @@ class SolutionTimeCourse(object):
         NOT the len(timepoints)."""
         return self.data.shape[0]
 
-    def __nonzero__(self):
+    def __bool__(self):
         return len(self.t) > 0
+    
+    __nonzero__ = __bool__
 
     def __getNumberOfTimes(self):
         """Retrieves the number of time points"""
@@ -65,7 +64,7 @@ class SolutionTimeCourse(object):
 
     def __getitem__(self, key):
         """retrieves a series by name or index"""
-        if isinstance(key, str) or isinstance(key, unicode):
+        if _is_string(key):
             try:
                 i = self.names.index(key)
             except ValueError:
@@ -284,7 +283,7 @@ class SolutionTimeCourse(object):
         return tc
 
     def orderByNames(self, varnames):
-        oldindexes = range(len(self))
+        oldindexes = list(range(len(self)))
         newindexes = []
         for vname in varnames:
             if vname in self.names:
@@ -335,8 +334,10 @@ class Solutions(object):
     def __len__(self):
         return len(self.solutions)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return len(self.solutions) > 0
+    
+    __nonzero__=__bool__
 
     def __iadd__(self, other):
         if isinstance(other, Solutions):
@@ -475,7 +476,7 @@ def extendedKLdivergence(modelTCs, deltaT, indexes):
         n = modelTCs[j].data
         m = np.where(m <= 0.0, np.NaN, m)
         n = np.where(n <= 0.0, np.NaN, n)
-        dif = -deltaT * np.nansum(np.float64(m * (np.log(m / n) + n / m - 1)))
+        dif = -deltaT * np.nansum(np.float64(m * (np.log(m / n) + n / m - 1.0)))
         result.append(dif)
     return result
 
@@ -500,7 +501,7 @@ def L2_midpoint_weights(modelTCs, deltaT, indexes):
         for j in range(i + 1, len(modelTCs)):
             numResult = 0.0
             for tc1, tc2 in zip(modelTCs[i], modelTCs[j]):
-                tempTC = np.float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2)**2)) * deltaT)
+                tempTC = np.float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2.0)**2)) * deltaT)
                 numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result
@@ -862,10 +863,24 @@ nothing really usefull here
     aTC2.seek(0)
     sols = Solutions(title='all time courses')
 
+    print ('\n!! testing boolean context on Solutions ----------------')
+    
+    if sols:
+        print ('Sols has solutions')
+    else:
+        print ('Sols is empty')
+
     s = SolutionTimeCourse(title='the first time course').read_from(aTC)
     sols += s
     s = SolutionTimeCourse(title='the second time course').read_from(aTC2)
     sols += s
+
+    if sols:
+        print ('Sols has solutions')
+    else:
+        print ('Sols is empty')
+    
+    print ('\n!! printing Solutions ----------------')
     
     print(sols)
 
@@ -885,7 +900,7 @@ nothing really usefull here
 
     def average(x, t):
         # print ('applying transformation')
-        return np.array([t/2.0, (x[0]+x[-1])/2])
+        return np.array([t/2.0, (x[0]+x[-1])/2.0])
 
     s = s.transform(average,
                     newnames=['t/2', 'mid point'],

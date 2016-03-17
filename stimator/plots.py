@@ -1,8 +1,10 @@
+from __future__ import print_function, absolute_import
 import math
 import itertools
 
 import numpy as np
 import matplotlib as mpl
+from stimator.utils import _is_string
 from matplotlib import pyplot as pl
 
 original_setts = dict(mpl.rcParams)
@@ -12,11 +14,6 @@ mpl.rcParams.update(original_setts)
 # -----------------------------------------------
 # utility functions
 # -----------------------------------------------
-
-def _is_string(a):
-    return (isinstance(a, str) or
-            isinstance(a, unicode))
-
 
 def _is_sequence(arg):
     return (not hasattr(arg, "strip") and
@@ -121,7 +118,7 @@ def plotTCs(solutions,
     plots_desc = []
     if not group:
         for k, solution in enumerate(solutions):
-            rsol = range(len(solution))
+            rsol = list(range(len(solution)))
             pdesc = dict(title=pnames[k],
                          lines=[(solution.names[i], k, i) for i in rsol])
             plots_desc.append(pdesc)
@@ -306,7 +303,7 @@ def plot_generations(opt, generations = None,
     figure.clear()
 
     if generations is None:
-        all_gens = range(opt.optimization_generations +1)
+        all_gens = list(range(opt.optimization_generations +1))
         dump_generations = all_gens
 
     n_gens = len(dump_generations)
@@ -375,9 +372,8 @@ def plot_generations(opt, generations = None,
 # ----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    from modelparser import read_model
-    from matplotlib import pyplot as pl
-    from timecourse import Solution, Solutions, readTCs
+    from stimator.modelparser import read_model
+    from stimator.timecourse import Solution, Solutions, readTCs
 
     demodata = """
 #this is demo data with a header

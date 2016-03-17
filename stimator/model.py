@@ -334,7 +334,7 @@ class _HasOwnParameters(ModelObject):
         o.bounds = None
 
     def __iter__(self):
-        return iter(self._ownparameters.itervalues())
+        return iter(self._ownparameters.values())
 
     @property
     def parameters(self):

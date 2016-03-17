@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
+from __future__ import print_function, division, absolute_import
 import re
 import math
 import itertools
 from numpy import *
 from scipy import integrate
-from timecourse import SolutionTimeCourse, Solutions
+from stimator.timecourse import SolutionTimeCourse, Solutions
 
-from examples import models
+from stimator.examples import models
 
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 

@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import
 import pprint
 
 def _args_2_dict(*p, **pdict):
@@ -16,6 +17,9 @@ def _is_sequence(arg):
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
 
+def _is_string(a):
+    return (isinstance(a, str) or
+            isinstance(a, unicode))
 
 def _is_number(a):
     return (isinstance(a, float) or
@@ -26,7 +30,7 @@ def _is_number(a):
 def listify(arguments):
     if isinstance(arguments, list) or isinstance(arguments, tuple):
         return [a.strip() for a in arguments]
-    if isinstance(arguments, str) or isinstance(arguments, unicode):
+    if _is_string(arguments):
         arguments = arguments.split()
         return [a.strip() for a in arguments]
 
