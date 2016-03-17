@@ -161,6 +161,32 @@ def test_par1():
     assert m.parameters.p12 == 2.0
     assert m.parameters.p13 == 3.0
 
+@raises(AttributeError)
+def test_par1b():
+    """test assignment and deletion of parameters"""
+    m = Model("My first model")
+    m.setp('p1', 4)
+    m.parameters.p2 = 3.0
+    m.parameters.p3 = 3.0
+    assert isinstance(m.parameters.p1, model.ConstValue)
+    assert (m.parameters.p1.name) == "p1"
+    assert isinstance(m.parameters.p2, model.ConstValue)
+    assert (m.parameters.p2.name) == "p2"
+    assert m.parameters.p1 == 4.0
+    assert m.parameters.p2 == 3.0
+    m.setp('p1', None)
+    assert m.getp('p1') is None
+
+@raises(model.BadTypeComponent)
+def test_par1c():
+    """test assignment of bad parameter values"""
+    m = Model("My first model")
+    m.setp('p1', 4)
+    assert isinstance(m.parameters.p1, model.ConstValue)
+    assert (m.parameters.p1.name) == "p1"
+    assert m.parameters.p1 == 4.0
+    m.setp('p2', 'bb')
+
 def test_par_in_rates1():
     """test assignment of parameters 'local' to reactions"""
     m = Model("My first model")
@@ -215,6 +241,7 @@ def test_par2():
     m.set_bounds('p4',(1, 8.5)) # or uncertainty function
     m.setp('p5',5)
     m.parameters.p5.bounds = model.Bounds('?',0,10)
+    m.setp('p6',6)
     assert m.parameters.p1 == 4.0
     assert m.parameters.p2 == 3.0
     assert m.parameters.p3 == 5.0
@@ -223,9 +250,10 @@ def test_par2():
     assert isinstance(m.parameters.p1.bounds, model.Bounds)
     assert m.parameters.p1.bounds.lower == 1.0
     assert m.parameters.p1.bounds.upper == 10.0
-    assert isinstance(m.parameters.p2.bounds, model.Bounds)
-    assert m.parameters.p2.bounds.lower == 1.0
-    assert m.parameters.p2.bounds.upper == 9.5
+    bb = m.parameters.p2.get_bounds()
+    assert bb == (1.0, 9.5)
+    bb = m.parameters.p6.get_bounds()
+    assert bb is None
     assert isinstance(m.parameters.p4.bounds, model.Bounds)
     assert m.parameters.p4.bounds.lower == 1.0
     assert m.parameters.p4.bounds.upper == 8.5
@@ -236,6 +264,8 @@ def test_par2():
     assert m.parameters.p5.bounds.upper == 10.0
     m.parameters.p4.reset_bounds()
     assert m.parameters.p4.bounds is None
+    m.parameters.p5.set_bounds(None)
+    assert m.parameters.p5.bounds is None
 
 def test_par_in_rates2():
     """test assignment of 'local' parameters with bounds"""

@@ -1,7 +1,26 @@
 import pprint
 
+def _args_2_dict(*p, **pdict):
+    """Transform arguments to a dict, as in dict() plus f(a,b) -> {a:b}."""
+    if len(p) == 2:
+        p = ({p[0]: p[1]},)
+    dpars = dict(*p, **pdict)
+    return dpars
+
+
 def make_dict_from_args(*args, **kwargs):
     return dict(*args, **kwargs)
+
+def _is_sequence(arg):
+    return (not hasattr(arg, "strip") and
+            hasattr(arg, "__getitem__") or
+            hasattr(arg, "__iter__"))
+
+
+def _is_number(a):
+    return (isinstance(a, float) or
+            isinstance(a, int) or
+            isinstance(a, long))
 
 # helper to transform string arguments in lists:
 def listify(arguments):

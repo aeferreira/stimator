@@ -4,9 +4,10 @@ This module defines the Model class, used to hold the structure and metadata
 of a kinetic model.
 
 """
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 import re
 import math
+from stimator.utils import _args_2_dict, _is_sequence, _is_number
 import stimator.kinetics as kinetics
 import stimator.dynamics as dynamics
 import stimator.estimation as estimation
@@ -53,26 +54,6 @@ chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
 # ----------------------------------------------------------------------------
 #         Utility functions
 # ----------------------------------------------------------------------------
-
-
-def _is_sequence(arg):
-    return (not hasattr(arg, "strip") and
-            hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))
-
-
-def _is_number(a):
-    return (isinstance(a, float) or
-            isinstance(a, int) or
-            isinstance(a, long))
-
-def _args_2_dict(*p, **pdict):
-    """Transform arguments to a dict, as in dict() plus f(a,b) -> {a:b}."""
-    if len(p) == 2:
-        p = ({p[0]: p[1]},)
-    dpars = dict(*p, **pdict)
-    return dpars
-
 
 def processStoich(expr):
     """Split a stoichiometry string into reagents, products and irreversible flag.
@@ -200,10 +181,10 @@ def toConstOrBounds(name, value, is_bounds=False):
     return Bounds(name, vv0, vv1)
 
 
-def create_const_value(value=None, name='?'):
+def create_const_value(value=None, name='?', bounds=None):
     if _is_number(value):
         v = float(value)
-        res = ConstValue(v)
+        res = ConstValue(v, bounds)
         res.initialize(name)
     else:
         raise TypeError(value+' is not a float or int')
@@ -214,11 +195,11 @@ def _setPar(obj, name, value, is_bounds=False):
     try:
         vv = toConstOrBounds(name, value, is_bounds)
     except (TypeError, ValueError):
-        msg = "Can not assign {} to {}.{}"
+        ms = "Can not assign {} to {}.{}"
         if is_bounds:
-            raise BadTypeComponent(msg.format(value, obj.name, name) + 'bounds')
+            raise BadTypeComponent(ms.format(value, obj.name, name) + 'bounds')
         else:
-            raise BadTypeComponent(msg.format(value, obj.name, name))
+            raise BadTypeComponent(ms.format(value, obj.name, name))
 
     c = obj.__dict__['_ownparameters']
     already_exists = name in c
@@ -243,6 +224,73 @@ def _setPar(obj, name, value, is_bounds=False):
             newvalue = create_const_value(c[name], name=name)
             newvalue.bounds = vv
     c[name] = newvalue
+
+
+class ConstValue(float, ModelObject):
+
+    def __new__(cls, value, bounds=None):
+        return float.__new__(cls, value)
+    
+    def __init__(self, value, bounds=None):
+##         print ("********* CONST", value)
+##         print ("********* bounds", bounds)
+        self.bounds = bounds
+
+    def initialize(self, aname='?'):
+        ModelObject.__init__(self, aname)
+        self.bounds = None
+
+    def copy(self, new_name=None):
+        r = create_const_value(self, self.name)
+        if new_name is not None:
+            r.name = new_name
+        if self.bounds:
+            r.bounds = Bounds(self.name, self.bounds.lower, self.bounds.upper)
+            if new_name is not None:
+                r.bounds.name = new_name
+        return r
+
+    def __eq__(self, other):
+        if repr(self) != repr(other):
+            return False
+        if isinstance(other, ConstValue):
+            sbounds = self.bounds is not None
+            obounds = other.bounds is not None
+            if sbounds != obounds:
+                return False
+            if self.bounds is not None:
+                if self.bounds.lower != other.bounds.lower:
+                    return False
+                if self.bounds.upper != other.bounds.upper:
+                    return False
+        return True
+
+    def set_bounds(self, value):
+        if value is None:
+            self.reset_bounds()
+            return
+        try:
+            b = toConstOrBounds(self.name, value, is_bounds=True)
+        except (TypeError, ValueError):
+            msg = "Can not assign %s to %s.bounds" % (str(value), self.name)
+            raise BadTypeComponent(msg)
+        self.bounds = b
+
+    def get_bounds(self):
+        if self.bounds is None:
+            return None
+        else:
+            return (self.bounds.lower, self.bounds.upper)
+
+    def reset_bounds(self):
+        self.bounds = None
+
+
+class Bounds(ModelObject):
+    def __init__(self, aname, lower=0.0, upper=1.0):
+        ModelObject.__init__(self, name=aname)
+        self.lower = lower
+        self.upper = upper
 
 
 class _HasOwnParameters(ModelObject):
@@ -327,7 +375,9 @@ class StateArray(_HasOwnParameters):
         return new_state
 
     def __str__(self):
-        return '(%s)' % ", ".join(['%s = %s' % (x, str(float(value))) for (x, value) in self._ownparameters.items()])
+        tlist = [(k, str(float(v))) for (k, v) in self._ownparameters.items()]
+        elist = ['{} = {}'.format(k, v) for (k, v) in tlist]
+        return '({})'.format(", ".join(elist))
 
 
 class _HasRate(_HasOwnParameters):
@@ -402,12 +452,12 @@ class Reaction(_HasRate):
         self._irreversible = irreversible
 
     def __str__(self):
-        res = ['%s:' % self.name,
+        rel = ['%s:' % self.name,
                '  reagents: %s' % str(self._reagents),
                '  products: %s' % str(self._products),
                '  stoichiometry: %s' % self.stoichiometry_string,
                '  rate = %s' % str(self())]
-        res = '\n'.join(res) + '\n'
+        res = '\n'.join(rel) + '\n'
 
         if len(self._ownparameters) > 0:
             resp = ["  Parameters:"]
@@ -482,80 +532,10 @@ class Transformation(_HasRate):
     def __init__(self, name, rate, parvalues=None):
         _HasRate.__init__(self, name, rate, parvalues=parvalues)
 
+
 class Input_Variable(_HasRate):
     def __init__(self, name, rate, parvalues=None):
         _HasRate.__init__(self, name, rate, parvalues=parvalues)
-
-
-class ConstValue(float, ModelObject):
-
-    def __new__(cls, value):
-        return float.__new__(cls, value)
-
-    def initialize(self, aname='?'):
-        ModelObject.__init__(self, aname)
-        self.bounds = None
-
-    def pprint(self):
-        res = float.__str__(self)
-        if self.bounds:
-            res += " ? (min = %f, max=%f)" % (self.bounds.min, self.bounds.max)
-        return res
-
-    def copy(self, new_name=None):
-        r = create_const_value(self, self.name)
-        if new_name is not None:
-            r.name = new_name
-        if self.bounds:
-            r.bounds = Bounds(self.name, self.bounds.lower, self.bounds.upper)
-            if new_name is not None:
-                r.bounds.name = new_name
-        return r
-
-    def __eq__(self, other):
-        if repr(self) != repr(other):
-            return False
-        if isinstance(other, ConstValue):
-            sbounds = self.bounds is not None
-            obounds = other.bounds is not None
-            if sbounds != obounds:
-                return False
-            if self.bounds is not None:
-                if self.bounds.lower != other.bounds.lower:
-                    return False
-                if self.bounds.upper != other.bounds.upper:
-                    return False
-        return True
-
-    def set_bounds(self, value):
-        if value is None:
-            self.reset_bounds()
-            return
-        try:
-            b = toConstOrBounds(self.name, value, is_bounds=True)
-        except (TypeError, ValueError):
-            msg = "Can not assign %s to %s.bounds" % (str(value), self.name)
-            raise BadTypeComponent(msg)
-        self.bounds = b
-
-    def get_bounds(self):
-        if self.bounds is None:
-            return None
-        else:
-            return (self.bounds.lower, self.bounds.upper)
-
-    def reset_bounds(self):
-        self.bounds = None
-
-
-class Bounds(ModelObject):
-    def __init__(self, aname, lower=0.0, upper=1.0):
-        ModelObject.__init__(self, name=aname)
-        self.lower = lower
-        self.upper = upper
-
-    def __str__(self):
-        return "(lower=%f, upper=%f)" % (self.lower, self.upper)
 
 
 class _Collection_Accessor(object):
@@ -1192,7 +1172,7 @@ class Model(ModelObject):
         del self.__extvariables[:]
         for v in self.__reactions:
             for rp in (v._reagents, v._products):
-                for (vname, coef) in rp:
+                for (vname, _) in rp:
                     if vname in self.__variables:
                         continue
                     else:
@@ -1274,7 +1254,7 @@ class Model(ModelObject):
 ##         print 'second pass...'
         # part 2: permissive, with dummy values (1.0) for vars
         vardict = {}
-        for i in self._Model__variables:
+        for i in self.__variables:
             vardict[i] = 1.0
         vardict['t'] = 1.0
         locs.update(vardict)
@@ -1330,7 +1310,7 @@ if __name__ == '__main__':
     m2.set_reaction('v1', "A + 2B <=> C", rate=3)
     m2.set_reaction('vdep', "B->", rate='input2 + 3')
     m2.set_reaction('vconserv', "B->", rate='conservation(B, A)')
-    m2.set_reaction('v2', "   -> 4.5 A", rate=math.sqrt(4.0)/2)
+    m2.set_reaction('v2', "   -> 4.5 A", rate=math.sqrt(4.0)/2.0)
 
     v3pars = (('V3', 0.5), ('Km', 4))
     m2.set_reaction('v3', "C   ->  ", "V3 * C / (Km + C)", pars=v3pars)
@@ -1366,10 +1346,10 @@ if __name__ == '__main__':
     print ('external variables')
     print (m2.extvariables)
 
-    check, msg = m2.checkRates()
+    check, message = m2.checkRates()
     if not check:
         print ('RATE is WRONG')
-        print (msg)
+        print (message)
 
     print (m2)
 
