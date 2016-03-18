@@ -40,22 +40,22 @@ def get_allowed_f():
 # ----------------------------------------------------------------------------
 #         Regular expressions for stoichiometry patterns
 # ----------------------------------------------------------------------------
-fracnumberpattern = r"[-]?\d*[.]?\d+"
-realnumberpattern = fracnumberpattern + r"(e[-]?\d+)?"
-fracnumber = re.compile(fracnumberpattern, re.IGNORECASE)
-realnumber = re.compile(realnumberpattern, re.IGNORECASE)
+FRAC_NUMBER_P = r"[-]?\d*[.]?\d+"
+REAL_NUMBER_P = FRAC_NUMBER_P + r"(e[-]?\d+)?"
+FRAC_NUMBER = re.compile(FRAC_NUMBER_P, re.IGNORECASE)
+REAL_NUMBER = re.compile(REAL_NUMBER_P, re.IGNORECASE)
 
-stoichiompattern = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
-chemcomplexpattern = r"^\s*(?P<coef>("+realnumberpattern+r")?)\s*(?P<variable>[_a-z]\w*)\s*$"
+STOICHIOM_P = r"^\s*(?P<reagents>.*)\s*(?P<irreversible>->|<=>)\s*(?P<products>.*)\s*$"
+COMPLEX_P = r"^\s*(?P<coef>("+REAL_NUMBER_P+r")?)\s*(?P<variable>[_a-z]\w*)\s*$"
 
-stoichiom = re.compile(stoichiompattern, re.IGNORECASE)
-chemcomplex = re.compile(chemcomplexpattern, re.IGNORECASE)
+STOICHIOM = re.compile(STOICHIOM_P, re.IGNORECASE)
+CHEMCOMPLEX = re.compile(COMPLEX_P, re.IGNORECASE)
 
 # ----------------------------------------------------------------------------
 #         Utility functions
 # ----------------------------------------------------------------------------
 
-def processStoich(expr):
+def process_stoich(expr):
     """Split a stoichiometry string into reagents, products and irreversible flag.
 
     This function accepts a string that conforms to a pattern like
@@ -86,7 +86,7 @@ def processStoich(expr):
 
     """
 
-    match = stoichiom.match(expr)
+    match = STOICHIOM.match(expr)
     if not match:
         raise BadStoichError("Bad stoichiometry definition:\n" + expr)
 
@@ -104,7 +104,7 @@ def processStoich(expr):
             continue
         complexcomps = complexesstring.split("+")
         for c in complexcomps:
-            m = chemcomplex.match(c)
+            m = CHEMCOMPLEX.match(c)
             if m:
                 coef = m.group('coef')
                 var = m.group('variable')
@@ -120,7 +120,7 @@ def processStoich(expr):
     return reagents, products, irreversible
 
 
-def _massActionStr(k=1.0, reagents=None):
+def _mass_action_str(k=1.0, reagents=None):
     if reagents is None:
         reagents = []
     res = str(float(k))
@@ -161,7 +161,7 @@ class ModelObject(object):
         return True
 
 
-def toConstOrBounds(name, value, is_bounds=False):
+def to_const_or_bounds(name, value, is_bounds=False):
     if value is None:
         # just return None to caller
         return None
@@ -191,9 +191,9 @@ def create_const_value(value=None, name='?', bounds=None):
     return res
 
 
-def _setPar(obj, name, value, is_bounds=False):
+def _set_par(obj, name, value, is_bounds=False):
     try:
-        vv = toConstOrBounds(name, value, is_bounds)
+        vv = to_const_or_bounds(name, value, is_bounds)
     except (TypeError, ValueError):
         ms = "Can not assign {} to {}.{}"
         if is_bounds:
@@ -230,7 +230,7 @@ class ConstValue(float, ModelObject):
 
     def __new__(cls, value, bounds=None):
         return float.__new__(cls, value)
-    
+
     def __init__(self, value, bounds=None):
 ##         print ("********* CONST", value)
 ##         print ("********* bounds", bounds)
@@ -270,7 +270,7 @@ class ConstValue(float, ModelObject):
             self.reset_bounds()
             return
         try:
-            b = toConstOrBounds(self.name, value, is_bounds=True)
+            b = to_const_or_bounds(self.name, value, is_bounds=True)
         except (TypeError, ValueError):
             msg = "Can not assign %s to %s.bounds" % (str(value), self.name)
             raise BadTypeComponent(msg)
@@ -315,13 +315,13 @@ class _HasOwnParameters(ModelObject):
         return o
 
     def setp(self, name, value):
-        _setPar(self, name, value)
+        _set_par(self, name, value)
 
     def set_bounds(self, name, value):
         if value is None:
             self.reset_bounds(name)
         else:
-            _setPar(self, name, value, is_bounds=True)
+            _set_par(self, name, value, is_bounds=True)
 
     def get_bounds(self, name):
         o = self._get_parameter(name)
@@ -338,7 +338,7 @@ class _HasOwnParameters(ModelObject):
 
     @property
     def parameters(self):
-        return [(p.name, p) for p in list(self._ownparameters.values())]
+        return {p.name: p for p in self._ownparameters.values()}
 
     def _copy_pars(self):
         ret = {}
@@ -349,11 +349,43 @@ class _HasOwnParameters(ModelObject):
     def __eq__(self, other):
         if not ModelObject.__eq__(self, other):
             return False
-        if len(self._ownparameters) != len(other._ownparameters):
+        these_pars = self.parameters
+        other_pars = other.parameters
+        
+        if len(these_pars) != len(other_pars):
             return False
-        for k in self._ownparameters:
-            if not (self._ownparameters[k]) == (other._ownparameters[k]):
+        for k in these_pars:
+            if not (these_pars[k]) == (other_pars.get(k)):
                 return False
+        return True
+
+
+class _Has_Parameters_Accessor(object):
+    def __init__(self, haspar_obj):
+        self._haspar_obj = haspar_obj
+
+    def __len__(self):
+        return len(self._haspar_obj._ownparameters)
+
+    def __getattr__(self, name):
+##         if name in self.__dict__:
+##             return self.__dict__[name]
+        r = self._haspar_obj.getp(name)
+        if r is not None:
+            return r
+        raise AttributeError(name + ' is not in %s' % self._haspar_obj.name)
+
+    def __setattr__(self, name, value):
+        if not name.startswith('_'):
+            self._haspar_obj.setp(name, value)
+        else:
+            object.__setattr__(self, name, value)
+
+    def __contains__(self, name):
+        try:
+            r = self._haspar_obj.getp(name)
+        except AttributeError:
+            return False
         return True
 
 
@@ -407,35 +439,6 @@ class _HasRate(_HasOwnParameters):
         if not _HasOwnParameters.__eq__(self, other):
             return False
         if self.__rate != other.__rate:
-            return False
-        return True
-
-
-class _Has_Parameters_Accessor(object):
-    def __init__(self, haspar_obj):
-        self.__dict__['_haspar_obj'] = haspar_obj
-
-    def __len__(self):
-        return len(self._haspar_obj._ownparameters)
-
-    def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
-        r = self._haspar_obj.getp(name)
-        if r is not None:
-            return r
-        raise AttributeError(name + ' is not in %s' % self._haspar_obj.name)
-
-    def __setattr__(self, name, value):
-        if not name.startswith('_'):
-            self._haspar_obj.setp(name, value)
-        else:
-            object.__setattr__(self, name, value)
-
-    def __contains__(self, name):
-        try:
-            r = self._haspar_obj.getp(name)
-        except AttributeError:
             return False
         return True
 
@@ -550,8 +553,8 @@ class _Collection_Accessor(object):
         return len(self.collection)
 
     def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
+##         if name in self.__dict__:
+##             return self.__dict__[name]
         r = self.collection.get(name)
         if r is not None:
             return r
@@ -562,7 +565,7 @@ class _Collection_Accessor(object):
         if r is not None:
             return True
         else:
-            return None
+            return False
 
 
 class _init_Accessor(object):
@@ -576,8 +579,8 @@ class _init_Accessor(object):
         return len(self._model._init._ownparameters)
 
     def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
+##         if name in self.__dict__:
+##             return self.__dict__[name]
         return self._model._init.getp(name)
 
     def __setattr__(self, name, value):
@@ -590,7 +593,7 @@ class _init_Accessor(object):
         if item in self._model._init._ownparameters:
             return True
         else:
-            return None
+            return False
 
 
 class _Parameters_Accessor(object):
@@ -616,8 +619,8 @@ class _Parameters_Accessor(object):
         return len(list(self._get_iparameters()))
 
     def __getattr__(self, name):
-        if name in self.__dict__:
-            return self.__dict__[name]
+##         if name in self.__dict__:
+##             return self.__dict__[name]
         o = self._reactions.get(name)
         if o:
             return _Has_Parameters_Accessor(o)
@@ -780,9 +783,9 @@ class Model(ModelObject):
         pars : dict of iterable of (name, value) pairs
             The 'local' parameters of the reaction.
         """
-        reagents, products, irrv = processStoich(stoichiometry)
+        reagents, products, irrv = process_stoich(stoichiometry)
         if _is_number(rate):
-            rate = _massActionStr(rate, reagents)
+            rate = _mass_action_str(rate, reagents)
 
         newobj = Reaction(name, reagents, products, rate, pars, irrv)
 
@@ -886,7 +889,7 @@ class Model(ModelObject):
                 if value is not None and name in self.input_variables:
                     # delete name in collection self.input_variables
                     self.__invars.delete(name)
-            _setPar(o, name, value)
+            _set_par(o, name, value)
         self._refreshVars()
 
 
@@ -942,7 +945,7 @@ class Model(ModelObject):
         if value is None:
             o.reset_bounds(name)
         else:
-            _setPar(o, name, value, is_bounds=True)
+            _set_par(o, name, value, is_bounds=True)
 
     def reset_bounds(self, name):
         if '.' in name:
@@ -1101,9 +1104,13 @@ class Model(ModelObject):
 
     def _is_equal_to(self, other, verbose=False):
         if not ModelObject.__eq__(self, other):
+            if verbose:
+                print ('ModelObjects are not the same')
             return False
         self._refreshVars()
-        cnames = ('reactions', 'transf', 'init', 'pars', 'vars', 'extvars')
+        cnames = ('reactions',
+                  'transf', 'invars', 'init',
+                  'pars', 'vars', 'extvars')
         collections1 = [self.__reactions,
                         self.__transf,
                         self.__invars,
@@ -1122,11 +1129,14 @@ class Model(ModelObject):
             if verbose:
                 print ('\n', cname)
             if len(c1) != len(c2):
+                if verbose:
+                    print (cname, 'lenghts are not equal')
                 return False
             if isinstance(c1, dict):
                 names = c1.keys()
             else:
-                names = [v for v in c1]
+                names = list(c1)
+                # names = [v for v in c1]
             for ivname, vname in enumerate(names):
                 if isinstance(vname, ModelObject):
                     vname = vname.name
@@ -1299,57 +1309,4 @@ class BadRateError(Exception):
 
 class BadTypeComponent(Exception):
     """Flags an assignment of a model component to a wrong type object"""
-
-if __name__ == '__main__':
-
-    def conservation(total, A):
-        return total - A
-
-    m2 = Model('My test model')
-    m2.register_kin_func(conservation)
-    m2.set_reaction('v1', "A + 2B <=> C", rate=3)
-    m2.set_reaction('vdep', "B->", rate='input2 + 3')
-    m2.set_reaction('vconserv', "B->", rate='conservation(B, A)')
-    m2.set_reaction('v2', "   -> 4.5 A", rate=math.sqrt(4.0)/2.0)
-
-    v3pars = (('V3', 0.5), ('Km', 4))
-    m2.set_reaction('v3', "C   ->  ", "V3 * C / (Km + C)", pars=v3pars)
-
-    m2.setp('B', 2.2)
-    m2.setp('V3', 0.6)
-    m2.setp('v3.Km', 4.4)
-
-    m2.set_reaction('v4', "B   ->  ", rate="4 * v3.V3 * step(t,at,top)")
-    m2.setp('Km3', 4)
-
-    m2.set_init((('A', 1.0), ('C', 1), ('D', 2)))
-    d = {'A': 1.0, 'C': 1, 'Z': 2}
-    m2.set_init(d)
-    m2.init.Z = 2.2
-    m2.init.Z = None
-
-    m2.setp('at', 1.0)
-    m2.setp('top', 2.0)
-
-    m2.setp('A', 2)
-    m2.set_input_var('A', "B * 2")
-    m2.set_input_var('input2', "A * 3")
-    m2.set_transformation('t1', '2 * A')
-    m2.set_transformation('t2', 'A + B')
-
-    print ('initial values')
-    print (m2.get_init())
-
-    print ('variables')
-    print (m2.varnames)
-
-    print ('external variables')
-    print (m2.extvariables)
-
-    check, message = m2.checkRates()
-    if not check:
-        print ('RATE is WRONG')
-        print (message)
-
-    print (m2)
 

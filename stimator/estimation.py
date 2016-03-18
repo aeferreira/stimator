@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import, division
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan
 from scipy import integrate
 
-import de
+import stimator.de as de
 from stimator.dynamics import getdXdt, init2array
 import stimator.fim as fim
 import stimator.timecourse as timecourse
