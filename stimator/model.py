@@ -175,7 +175,7 @@ def to_const_or_bounds(name, value, is_bounds=False):
     # value has len...
     # must be exactely two
     if lv != 2:
-        raise TypeError(value + ' is not a pair of numbers')
+        raise TypeError('{} is not a pair of numbers'.format(value))
     vv0 = float(value[0])  # can raise ValueError
     vv1 = float(value[1])  # can raise ValueError
     return Bounds(name, vv0, vv1)
@@ -184,10 +184,9 @@ def to_const_or_bounds(name, value, is_bounds=False):
 def create_const_value(value=None, name='?', bounds=None):
     if _is_number(value):
         v = float(value)
-        res = ConstValue(v, bounds)
-        res.initialize(name)
+        res = ConstValue(v, name, bounds)
     else:
-        raise TypeError(value+' is not a number')
+        raise TypeError('{} is not a number'.format(value))
     return res
 
 
@@ -211,39 +210,33 @@ def _set_par(obj, name, value, is_bounds=False):
             newvalue = vv
         else:  # Bounds object
             nvalue = (float(vv.lower)+float(vv.upper))/2.0
-            newvalue = create_const_value(nvalue, name=name)
-            newvalue.bounds = vv
+            newvalue = create_const_value(nvalue, name=name, bounds=vv)
     else:  # aready exists
         if vv is None:
             del c[name]
             return
         if isinstance(vv, ConstValue):
             newvalue = vv
-            newvalue.bounds = c[name].bounds
+            newvalue.set_bounds(c[name].bounds)
         else:  # Bounds object
-            newvalue = create_const_value(c[name], name=name)
-            newvalue.bounds = vv
+            newvalue = create_const_value(c[name], name=name, bounds=vv)
     c[name] = newvalue
 
 
 class ConstValue(float, ModelObject):
 
-    def __new__(cls, value, bounds=None):
+    def __new__(cls, value, aname='?', bounds=None):
         return float.__new__(cls, value)
 
-    def __init__(self, value, bounds=None):
-##         print ("********* CONST", value)
-##         print ("********* bounds", bounds)
+    def __init__(self, value, aname='?', bounds=None):
+        ModelObject.__init__(self, aname)
         self.bounds = bounds
 
-    def initialize(self, aname='?'):
-        ModelObject.__init__(self, aname)
-        self.bounds = None
-
     def copy(self, new_name=None):
-        r = create_const_value(self, self.name)
+        name = self.name
         if new_name is not None:
-            r.name = new_name
+            name = new_name
+        r = create_const_value(self, name)
         if self.bounds:
             r.bounds = Bounds(self.name, self.bounds.lower, self.bounds.upper)
             if new_name is not None:
@@ -269,11 +262,14 @@ class ConstValue(float, ModelObject):
         if value is None:
             self.reset_bounds()
             return
-        try:
-            b = to_const_or_bounds(self.name, value, is_bounds=True)
-        except (TypeError, ValueError):
-            msg = "Can not assign %s to %s.bounds" % (str(value), self.name)
-            raise BadTypeComponent(msg)
+        if isinstance(value, Bounds):
+            b = value
+        else:
+            try:
+                b = to_const_or_bounds(self.name, value, is_bounds=True)
+            except (TypeError, ValueError):
+                msg = "Can not use %s in %s.bounds" % (str(value), self.name)
+                raise BadTypeComponent(msg)
         self.bounds = b
 
     def get_bounds(self):
@@ -343,7 +339,7 @@ class _HasOwnParameters(ModelObject):
     def _copy_pars(self):
         ret = {}
         for k, v in self._ownparameters.items():
-            ret[k] = create_const_value(value=v, name=k)
+            ret[k] = create_const_value(value=v, name=k, bounds=v.bounds)
         return ret
 
     def __eq__(self, other):
@@ -736,29 +732,6 @@ class Model(ModelObject):
         self.parameters = _Parameters_Accessor(self)
         self.with_bounds = _With_Bounds_Accessor(self)
         self._usable_functions = get_allowed_f()
-
-    def _find_indexof_component(self, name):
-        for i, o in enumerate(self.with_bounds):
-            if o.name == name:
-                return i, 'uncertain'
-        if name in self._ownparameters:
-            return -1, 'parameters'
-        i = self.__reactions.iget(name)
-        if i is not None:
-            return i, 'reactions'
-        try:
-            i = self.__variables.index(name)
-            return i, 'variables'
-        except:
-            pass
-        i = self.__transf.iget(name)
-        if i is not None:
-            return i, 'transf'
-        i = self.__invars.iget(name)
-        if i is not None:
-            return i, 'invar'
-        raise AttributeError('%s is not a component in this model' % name)
-
 
     def _set_in_collection(self, name, col, newobj):
         for c, elem in enumerate(col):

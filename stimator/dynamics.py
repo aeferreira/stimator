@@ -26,6 +26,32 @@ def _is_sequence(arg):
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
 
+
+def _find_indexof_component(model, name):
+    for i, p in enumerate(model.with_bounds):
+        if p.name == name:
+            return i, 'uncertain'
+    for p in model.parameters:
+        if p.name == name:
+            return -1, 'parameters'
+    i = model._Model__reactions.iget(name)
+    if i is not None:
+        return i, 'reactions'
+    try:
+        i = model._Model__variables.index(name)
+        return i, 'variables'
+    except:
+        pass
+    i = model._Model__transf.iget(name)
+    if i is not None:
+        return i, 'transf'
+    i = model._Model__invars.iget(name)
+    if i is not None:
+        return i, 'invar'
+    raise AttributeError('%s is not a component in this model' % name)
+
+
+
 def init2array(model):
     """Transforms a state object into a numpy.array object.
        
@@ -509,7 +535,7 @@ def genTransformationFunction(m, f):
     data = []
 
     for name in names:
-        i, kind = m._find_indexof_component(name)
+        i, kind = _find_indexof_component(m, name)
         if kind == 'parameters':
             data.append(('p', m.getp(name)))
         elif kind == 'variables':

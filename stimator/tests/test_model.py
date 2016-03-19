@@ -173,6 +173,8 @@ def test_par1():
     assert m.parameters.p12 == 2.0
     assert m.parameters.p13 == 3.0
     assert m.getp('p1') == 4.0
+##     m.setp('p4', (0,1))
+##     assert m.getp('p4') == 0.5
 
 @raises(AttributeError)
 def test_par1b():
@@ -200,6 +202,16 @@ def test_par1c():
     assert m.parameters.p1 == 4.0
     m.setp('p2', 'bb')
 
+@raises(model.BadTypeComponent)
+def test_par1c():
+    """test assignment of new parameters to None"""
+    m = Model("My first model")
+    m.setp('p1', 4)
+    assert isinstance(m.parameters.p1, model.ConstValue)
+    assert (m.parameters.p1.name) == "p1"
+    assert m.parameters.p1 == 4.0
+    m.setp('p2', None)
+
 def test_par_in_rates1():
     """test assignment of parameters 'local' to reactions"""
     m = Model("My first model")
@@ -221,6 +233,7 @@ def test_par_in_rates1():
 
 @raises(AttributeError)
 def test_par_in_rates1b():
+    """testing absent parameters 'local' to reactions"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
     m.setp('p2', 3.0)
@@ -257,7 +270,7 @@ def test_par_from_rates1():
     assert m.parameters.v1.p1 == 4.0
     assert m.parameters.p2 == 3.0
 
-def test_par2():
+def test_bounds():
     """test assignment of parameters with bounds"""
     m = Model("My first model")
     m.parameters.p1 = 4
@@ -294,6 +307,15 @@ def test_par2():
     assert m.parameters.p4.bounds is None
     m.parameters.p5.set_bounds(None)
     assert m.parameters.p5.bounds is None
+
+@raises(model.BadTypeComponent)
+def test_bounds2():
+    """test assignment of parameters wrong bounds"""
+    m = Model("My first model")
+    m.parameters.p1 = 4
+    m.parameters.p2 = 3.0
+    m.parameters.p1.set_bounds((1,10,5))
+    assert m.parameters.p1.bounds is None
 
 def test_par_in_rates2():
     """test assignment of 'local' parameters with bounds"""
