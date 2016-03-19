@@ -172,6 +172,7 @@ def test_par1():
     assert m.parameters.p11 == 1.0
     assert m.parameters.p12 == 2.0
     assert m.parameters.p13 == 3.0
+    assert m.getp('p1') == 4.0
 
 @raises(AttributeError)
 def test_par1b():
@@ -216,6 +217,7 @@ def test_par_in_rates1():
     assert (m.parameters.p2.name) == "p2"
     assert m.parameters.v1.p1 == 5.0
     assert m.parameters.p2 == 3.0
+    assert m.getp('v1.p1') == 5.0
 
 @raises(AttributeError)
 def test_par_in_rates1b():

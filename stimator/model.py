@@ -187,7 +187,7 @@ def create_const_value(value=None, name='?', bounds=None):
         res = ConstValue(v, bounds)
         res.initialize(name)
     else:
-        raise TypeError(value+' is not a float or int')
+        raise TypeError(value+' is not a number')
     return res
 
 
@@ -206,7 +206,7 @@ def _set_par(obj, name, value, is_bounds=False):
 
     if not already_exists:
         if vv is None:
-            raise BadTypeComponent("Can not create parameter %s with None" % name)
+            raise BadTypeComponent("Can not set parameter %s to None" % name)
         if isinstance(vv, ConstValue):
             newvalue = vv
         else:  # Bounds object
