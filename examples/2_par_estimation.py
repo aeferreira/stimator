@@ -33,6 +33,6 @@ best.plot()
 
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
-m2.update(bestpars)
+m2.setp(bestpars)
 
 m2.solve(tf=20.0).plot(show=True)

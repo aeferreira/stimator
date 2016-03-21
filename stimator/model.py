@@ -120,9 +120,7 @@ def process_stoich(expr):
     return reagents, products, irreversible
 
 
-def _mass_action_str(k=1.0, reagents=None):
-    if reagents is None:
-        reagents = []
+def _mass_action_str(k, reagents):
     res = str(float(k))
     factors = []
     for var, coef in reagents:
@@ -213,7 +211,10 @@ def _set_par(obj, name, value, is_bounds=False):
             newvalue = create_const_value(nvalue, name=name, bounds=vv)
     else:  # aready exists
         if vv is None:
-            del c[name]
+            if is_bounds:
+                c[name].set_bounds(vv)
+            else:
+                del c[name]
             return
         if isinstance(vv, ConstValue):
             newvalue = vv
@@ -314,10 +315,7 @@ class _HasOwnParameters(ModelObject):
         _set_par(self, name, value)
 
     def set_bounds(self, name, value):
-        if value is None:
-            self.reset_bounds(name)
-        else:
-            _set_par(self, name, value, is_bounds=True)
+        _set_par(self, name, value, is_bounds=True)
 
     def get_bounds(self, name):
         o = self._get_parameter(name)
@@ -347,7 +345,7 @@ class _HasOwnParameters(ModelObject):
             return False
         these_pars = self.parameters
         other_pars = other.parameters
-        
+
         if len(these_pars) != len(other_pars):
             return False
         for k in these_pars:
@@ -364,12 +362,7 @@ class _Has_Parameters_Accessor(object):
         return len(self._haspar_obj._ownparameters)
 
     def __getattr__(self, name):
-##         if name in self.__dict__:
-##             return self.__dict__[name]
-        r = self._haspar_obj.getp(name)
-        if r is not None:
-            return r
-        raise AttributeError(name + ' is not in %s' % self._haspar_obj.name)
+        return self._haspar_obj.getp(name)
 
     def __setattr__(self, name, value):
         if not name.startswith('_'):
@@ -558,10 +551,15 @@ class _Collection_Accessor(object):
 
     def __contains__(self, item):
         r = self.collection.get(item)
-        if r is not None:
-            return True
-        else:
-            return False
+        return r is not None
+
+
+def _set_in_collection(name, col, newobj):
+    for c, elem in enumerate(col):
+        if elem.name == name:
+            col[c] = newobj
+            return
+    col.append(newobj)
 
 
 class _init_Accessor(object):
@@ -586,10 +584,7 @@ class _init_Accessor(object):
             object.__setattr__(self, name, value)
 
     def __contains__(self, item):
-        if item in self._model._init._ownparameters:
-            return True
-        else:
-            return False
+        return item in self._model._init._ownparameters
 
 
 class _Parameters_Accessor(object):
@@ -733,13 +728,6 @@ class Model(ModelObject):
         self.with_bounds = _With_Bounds_Accessor(self)
         self._usable_functions = get_allowed_f()
 
-    def _set_in_collection(self, name, col, newobj):
-        for c, elem in enumerate(col):
-            if elem.name == name:
-                col[c] = newobj
-                return
-        col.append(newobj)
-
     def set_reaction(self, name, stoichiometry, rate=0.0, pars=None):
         """Insert or modify a reaction in the model.
 
@@ -762,7 +750,7 @@ class Model(ModelObject):
 
         newobj = Reaction(name, reagents, products, rate, pars, irrv)
 
-        self._set_in_collection(name, self.__reactions, newobj)
+        _set_in_collection(name, self.__reactions, newobj)
         self._refreshVars()
 
     def set_transformation(self, name, rate=0.0, pars=None):
@@ -785,7 +773,7 @@ class Model(ModelObject):
             rate = str(float(rate))
 
         newobj = Transformation(name, rate, pars)
-        self._set_in_collection(name, self.__transf, newobj)
+        _set_in_collection(name, self.__transf, newobj)
         self._refreshVars()
 
     def set_input_var(self, name, rate=0.0, pars=None):
@@ -808,7 +796,7 @@ class Model(ModelObject):
             rate = str(float(rate))
 
         newobj = Input_Variable(name, rate, pars)
-        self._set_in_collection(name, self.__invars, newobj)
+        _set_in_collection(name, self.__invars, newobj)
         if name in self.parameters:
             self.setp(name, None)
         self._refreshVars()
@@ -915,10 +903,7 @@ class Model(ModelObject):
                 o = self._get_obj_withpars(vn)
         else:
             o = self
-        if value is None:
-            o.reset_bounds(name)
-        else:
-            _set_par(o, name, value, is_bounds=True)
+        _set_par(o, name, value, is_bounds=True)
 
     def reset_bounds(self, name):
         if '.' in name:
@@ -1075,6 +1060,9 @@ class Model(ModelObject):
     def __eq__(self, other):
         return self._is_equal_to(other, verbose=False)
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def _is_equal_to(self, other, verbose=False):
         if not ModelObject.__eq__(self, other):
             if verbose:
@@ -1126,11 +1114,6 @@ class Model(ModelObject):
                 if verbose:
                     print (vname, 'are equal')
         return True
-
-    def update(self, *p, **pdict):
-        dpars = dict(*p, **pdict)
-        for k in dpars:
-            self.setp(k, dpars[k])
 
     def solve(self, **kwargs):
         return dynamics.solve(self, **kwargs)

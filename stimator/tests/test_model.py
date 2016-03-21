@@ -29,19 +29,23 @@ def test_set_reaction1():
     m.set_reaction('v2',"B->C", 2.0)
     m.set_reaction('v3',"2C->D", 2.0)
     m.set_reaction('v4',"0C+2D->E", 2.0)
+    m.set_reaction('v5',"->E", 2.0)
     assert isinstance(m.reactions.v1, model.Reaction)
     assert isinstance(m.reactions.v2, model.Reaction)
     assert isinstance(m.reactions.v3, model.Reaction)
     assert isinstance(m.reactions.v4, model.Reaction)
+    assert isinstance(m.reactions.v5, model.Reaction)
     assert m.reactions.v1.name == 'v1'
     assert m.reactions.v2.name == 'v2'
     assert m.reactions.v3.name == 'v3'
     assert m.reactions.v4.name == 'v4'
+    assert m.reactions.v5.name == 'v5'
     cd = {'A': 3.14, 'B': 2*3.14, 'C': 3.0*3.14, 'D': 4*3.14}
     assert_almost_equal(eval('4.0*A', cd), eval(m.reactions.v1(), cd))
     assert_almost_equal(eval('2.0*B', cd), eval(m.reactions.v2(), cd))
     assert_almost_equal(eval('2.0*C**2.0', cd), eval(m.reactions.v3(), cd))
     assert_almost_equal(eval('2.0*D**2', cd), eval(m.reactions.v4(), cd))
+    assert_almost_equal(eval('2.0', cd), eval(m.reactions.v5(), cd))
     check, msg = m.checkRates()
     assert check
     assert 'v1' in m.reactions
@@ -173,8 +177,8 @@ def test_par1():
     assert m.parameters.p12 == 2.0
     assert m.parameters.p13 == 3.0
     assert m.getp('p1') == 4.0
-##     m.setp('p4', (0,1))
-##     assert m.getp('p4') == 0.5
+    assert 'p1' in m.parameters
+    assert 'p8' not in m.parameters
 
 @raises(AttributeError)
 def test_par1b():
@@ -203,7 +207,7 @@ def test_par1c():
     m.setp('p2', 'bb')
 
 @raises(model.BadTypeComponent)
-def test_par1c():
+def test_par1d():
     """test assignment of new parameters to None"""
     m = Model("My first model")
     m.setp('p1', 4)
@@ -244,6 +248,34 @@ def test_par_in_rates1b():
     assert (m.parameters.p2.name) == "p2"
     assert m.parameters.v1.p1 == 5.0
     assert m.parameters.v1.p2 == 5.0
+
+@raises(AttributeError)
+def test_par_in_rates1c():
+    """testing absent parameters 'local' to reactions with getp()"""
+    m = Model("My first model")
+    m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':4})
+    m.setp('p2', 3.0)
+    m.setp('v1.p1', 5)
+    check, msg = m.checkRates()
+    assert check 
+    assert (m.parameters.v1.p1.name) == "p1"
+    assert (m.parameters.p2.name) == "p2"
+    assert m.parameters.v1.p1 == 5.0
+    assert m.getp('v1.p2') == 5.0
+
+@raises(TypeError)
+def test_par_in_rates1d():
+    """testing bad parameters 'local' to reactions with getp()"""
+    m = Model("My first model")
+    m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':'bb'})
+    m.setp('p2', 3.0)
+    m.setp('v1.p1', 5)
+    check, msg = m.checkRates()
+    assert check 
+    assert (m.parameters.v1.p1.name) == "p1"
+    assert (m.parameters.p2.name) == "p2"
+    assert m.parameters.v1.p1 == 5.0
+    assert m.getp('v1.p2') == 5.0
 
 def test_par_from_rates1():
     """test rate expressions with parameters 'local' to reactions"""
@@ -307,6 +339,16 @@ def test_bounds():
     assert m.parameters.p4.bounds is None
     m.parameters.p5.set_bounds(None)
     assert m.parameters.p5.bounds is None
+    bb = m.get_bounds('p5')
+    assert bb is None
+    m.reset_bounds('p2')
+    bb = m.get_bounds('p2')
+    assert bb is None
+    # this creates a new parameter
+    m.set_bounds('p7', (0,10))
+    assert m.parameters.p7 == 5.0
+    assert m.parameters.p7.bounds.lower == 0.0
+    assert m.parameters.p7.bounds.upper == 10.0
 
 @raises(model.BadTypeComponent)
 def test_bounds2():
@@ -336,9 +378,13 @@ def test_par_in_rates2():
     assert m.parameters.v1.p1.bounds.upper == 10.0
     assert m.parameters.v1.q1.bounds.lower == 2.0
     assert m.parameters.v1.q1.bounds.upper == 5.0
+    bb = m.get_bounds('v1.q1')
+    assert bb == (2,5)
     assert isinstance(m.parameters.p2.bounds, model.Bounds)
     assert m.parameters.p2.bounds.lower == 1.0
     assert m.parameters.p2.bounds.upper == 9.5
+    m.reset_bounds('v1.q1')
+    assert m.parameters.v1.q1.bounds is None
 
 def test_transf1():
     """test transf(int or float)"""
@@ -369,6 +415,9 @@ def test_transf2():
     assert isinstance(m.parameters.t1.p2, model.ConstValue)
     assert (m.parameters.t1.p2.name) == "p2"
     assert m.parameters.t1.p2 == 3.0
+    assert m.getp('t1.p2') == 3.0
+    m.setp('t1.p2', 5.0)
+    assert m.getp('t1.p2') == 5.0
 
 def test_set_input_var():
     """test Model.set_input_var()"""
@@ -379,6 +428,10 @@ def test_set_input_var():
     assert isinstance(m.input_variables.p1, model.Input_Variable)
     assert m.reactions.v1()== "4*A/(p1+A)-B"
     assert m.input_variables.p1()== "3*A"
+    m.set_input_var('p2', 2.0)
+    assert (m.input_variables.p2.name) == 'p2'
+    assert isinstance(m.input_variables.p2, model.Input_Variable)
+    assert m.input_variables.p2()== "2.0"
     check, msg = m.checkRates()
     assert check
 
@@ -444,34 +497,34 @@ def test_model__eq__():
     m1 = m.copy()
     assert m1 == m
     m2 = m.copy(new_title='A different title')
-    assert not m2 == m
+    assert m2 != m
     m3 = m.copy()
     m3.set_transformation('t3', "sqrt(2*A**2)")
-    assert not m3 == m
+    assert m3 != m
     m4 = m.copy()
     m4.parameters.V3 = 0.6
-    assert not m4 == m
+    assert m4 != m
     m5 = m.copy()
     m5.parameters.V3.reset_bounds()
-    assert not m5 == m
+    assert m5 != m
     m6 = m.copy()
     m6.parameters.v3.Km3 = 5
-    assert not m6 == m
+    assert m6 != m
     m7 = m.copy()
     m7.reactions.v1.setp('newKm3', 5)
-    assert not m7 == m
+    assert m7 != m
     m8 = m.copy()
     m8.set_reaction('v1', "A+B -> 2C"  , 3)
-    assert not m8 == m
+    assert m8 != m
     m9 = m.copy()
     m9.set_reaction('v1', "D -> C"  , 3)
-    assert not m9 == m
+    assert m9 != m
     m10 = m.copy()
     m10.set_reaction('v1', "A+B -> C"  , 3.3)
-    assert not m10 == m
+    assert m10 != m
     m11 = m.copy()
     m11.metadata['!!'] = 'B C'
-    assert not m10 == m
+    assert m10 != m
 
 def test_set_init1():
     """test set_init()"""
