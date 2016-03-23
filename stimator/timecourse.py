@@ -184,7 +184,7 @@ class SolutionTimeCourse(object):
 
             if ID_RE.match(items[0]):
                 if not headerFound and not t0found:
-                    header = filter(ID_RE.match, items)
+                    header = [item for item in items if ID_RE.match(item)]
                     headerFound = True
                 else:
                     continue

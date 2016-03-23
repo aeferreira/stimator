@@ -410,7 +410,6 @@ def test_transf2():
     assert (m.transformations.t1.name) == 't1'
     assert m.transformations.t1() == "p2*A/(p1+A)-B"
     check, msg = m.checkRates()
-    print msg
     assert check 
     assert isinstance(m.parameters.t1.p2, model.ConstValue)
     assert (m.parameters.t1.p2.name) == "p2"
@@ -452,7 +451,7 @@ def test_printmodel():
     m.parameters.V3.set_bounds([0.1, 1.0])
     m.set_init(A = 1.0, C = 1, D = 1)
     m.init.C.set_bounds((1,3))
-    # print should not raise an Exception
+    # print() should not raise an Exception
     print (m)
 
 def test_clonemodel():
