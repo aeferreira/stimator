@@ -270,7 +270,7 @@ class DeODEOptimizer(de.DESolver):
 
         best.optimum_tcs = sols
 
-        if not (fim.sympy_installed):
+        if not (fim.SYMPY_INSTALLED):
             best.parameters = [(p, v, 0.0) for (p, v) in parameters]
         else:
             commonvnames = timecourse.getCommonFullVars(self.tc)

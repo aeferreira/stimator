@@ -1,13 +1,14 @@
+from __future__ import print_function, absolute_import
 from time import time
 import numpy
 from scipy import integrate
 
-import timecourse
-import dynamics
-import utils
-from de import DESolver
-from moo.rmc import remove_most_crowded
-from moo.sorting import MOOSorter
+import stimator.timecourse as timecourse
+import stimator.dynamics as dynamics
+import stimator.utils as utils
+from stimator.de import DESolver
+from stimator.moo.rmc import remove_most_crowded
+from stimator.moo.sorting import MOOSorter
 
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
@@ -253,7 +254,7 @@ class GDE3Solver(DESolver):
             ## return
         # generation 0: initialization
         if self.generation == 0:
-            print '------------------------------------\nGeneration 0'
+            print ('------------------------------------\nGeneration 0')
             self.gen_times = []
             self.fullnondominated = 0
             if self.dump_generations is not None:
@@ -287,16 +288,17 @@ class GDE3Solver(DESolver):
 ##             print '------- END CONTROL ------------------------------'
 
             timeElapsed = time() - time0
-            print 'generation took', timeElapsed, 's'
+            print ('generation took {} s'.format(timeElapsed))
             self.gen_times.append(timeElapsed)
             if self.dump_generations is not None:
                 print >> self.dumpfile, self.generation_string('0')
         
         else: # generation >= 1
             time0 = time()
-            print '------------------------------------\nGeneration %d'% self.generation
+            print ('------------------------------------')
+            print ('\nGeneration {}'.format(self.generation))
 
-            print "Generating new candidates...",
+            print ("Generating new candidates...")
             self.new_generation_energies = []
             for p in range(self.populationSize):
                 # generate new solutions.,reject those out-of-bounds or repeated
@@ -358,16 +360,16 @@ class GDE3Solver(DESolver):
                     working_sols.append(numpy.copy(self.new_population[i]))
                     n_keys += 2
             
-            print 'New dominant solutions: %d' %(newBetterSols)
+            print ('New dominant solutions: {}'.format(newBetterSols))
             print
             sortingtime = time()
-            print "Sorting solutions..."
+            print ("Sorting solutions...")
 
             # sort solutions by dominance
-            sorter = MOOSorter(objectives, indexes = range(1,n_keys+1))
+            sorter = MOOSorter(objectives, indexes = list(range(1,n_keys+1)))
             nondominated_waves = sorter.get_non_dominated_fronts()
             flengths = [len(i) for i in nondominated_waves]
-            print 'Front lengths:', flengths
+            print ('Front lengths: {}'.format(flengths))
             
             # rebuild current population to populationSize
             self.population = []
@@ -404,7 +406,7 @@ class GDE3Solver(DESolver):
             timeElapsed2 = time() - sortingtime
 
             flengths = [len(i) for i in fronts]
-            print 'Used front lengths:', flengths, '= %d'%sum(flengths)
+            print ('Used front lengths:', flengths, '= %d'%sum(flengths))
             
 ##             print '------- BEGIN CONTROL ----------------------------'
 ##             numpy.set_printoptions(precision=14)
@@ -413,7 +415,7 @@ class GDE3Solver(DESolver):
 ##             print '------- END CONTROL ------------------------------'
 
             n_nondominated = flengths[0]
-            print '%d non-dominated solutions'%(n_nondominated)
+            print ('%d non-dominated solutions'%(n_nondominated))
             if n_nondominated == len(self.population):
                 self.fullnondominated += 1
             else:
@@ -425,13 +427,13 @@ class GDE3Solver(DESolver):
                 self.generationsWithNoImprovement += 1
             else:
                 self.generationsWithNoImprovement = 0
-            print 'generations with no improvement:', self.generationsWithNoImprovement
+            print ('generations with no improvement:', self.generationsWithNoImprovement)
             
             timeElapsed = time() - time0
             print
-            print "Generation %d finished, took %6.3f s" % (self.generation, timeElapsed)
-            print '%6.3f'% timeElapsed1, 's generating new pop'
-            print '%6.3f'% timeElapsed2, 's in non-dominant sorting'
+            print ("Generation %d finished, took %6.3f s" % (self.generation, timeElapsed))
+            print ('%6.3f'% timeElapsed1, 's generating new pop')
+            print ('%6.3f'% timeElapsed2, 's in non-dominant sorting')
             self.gen_times.append(timeElapsed)
             if self.dump_generations is not None:
                 if self.generation in self.dump_generations:
@@ -462,14 +464,14 @@ class GDE3Solver(DESolver):
         if self.exitCode == 0:
             self.exitCode = -1
         ttime = self.elapsed = time() - self.elapsed
-        print '============================================='
-        print "Finished!"
-        print GDE3Solver.exitCodeStrings[self.exitCode]
-        print
-        print '%d generations'%(self.generation)
-        print "Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime))
-        print
+        print ('=============================================')
+        print ("Finished!")
+        print (GDE3Solver.exitCodeStrings[self.exitCode])
+        print()
+        print ('%d generations'%(self.generation))
+        print ("Total time: %g s (%s)"% (ttime, utils.s2HMS(ttime)))
+        print()
         if self.dump_generations is not None:
             if self.generation-1 not in self.dump_generations:
-                print >> self.dumpfile, self.generation_string(self.generation-1)
+                print(self.generation_string(self.generation-1), file=self.dumpfile)
             self.dumpfile.close()
