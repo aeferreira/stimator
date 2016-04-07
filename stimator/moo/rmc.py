@@ -1,5 +1,5 @@
 import numpy
-import pylab as pl
+from matplotlib import pyplot as pl
 
 def remove_most_crowded(coords, 
                         knumber = 3, remove_n = 1, 
@@ -163,7 +163,7 @@ def pprint(coords, indexes = None, labels=None, showplot=False):
     if indexes is None:
         indexes = range(len(coords))
     if len(indexes) == 0:
-        print 'empty data'
+        print('empty data')
     if labels is None:
         labels = [str(i) for i in indexes]
     for k,p in zip(labels, indexes):

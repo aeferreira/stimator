@@ -1,6 +1,7 @@
 from __future__ import print_function, absolute_import, division
 import os.path
-import StringIO
+from StringIO import StringIO
+#from io import StringIO
 import re
 import numpy as np
 import stimator.plots as plots
@@ -149,9 +150,11 @@ class SolutionTimeCourse(object):
         return self.clone().apply_transf(f, newnames, new_title)
 
     def read_str(self, s, names=None):
-        aTC = StringIO.StringIO(s)
+        aTC = StringIO(s)
         aTC.seek(0)
-        return self.read_from(aTC, names)
+        result = self.read_from(aTC, names)
+        aTC.close()
+        return result
 
     def read_from(self, filename, names=None):
         """Reads a time course from file.
@@ -218,7 +221,7 @@ class SolutionTimeCourse(object):
         return self
 
     def _write_to_str(self):
-        aTC = StringIO.StringIO()
+        aTC = StringIO()
         aTC.seek(0)
         self.write_to(aTC)
         return aTC.getvalue()
@@ -700,9 +703,7 @@ nothing really usefull here
 0.6  - 0.4 - -
 """
 
-    aTC = StringIO.StringIO(demodata)
-    aTCnh = StringIO.StringIO(demodata_noheader)
-    aTC2 = StringIO.StringIO(demodata2)
+    aTC = StringIO(demodata)
 
     sol = SolutionTimeCourse().read_from(aTC)
     print ('\n!! using read_from() ----------------')
@@ -723,6 +724,7 @@ nothing really usefull here
     print (sol.names)
     print ('\ndata')
     print (sol.data, '\n')
+    
     sol.read_str(demodata)
     sol.orderByNames("z".split())
     print ('\n!! using read_str() with name order z')
@@ -757,8 +759,7 @@ nothing really usefull here
     print ('-----------------------------------------------------')
 
     print ('===Reading data without a header=========================')
-    aTCnh.seek(0)
-    sol.read_from(aTCnh)
+    sol.read_str(demodata_noheader)
     print ('\n!! using read_from(), names not provided')
     print ('\nnames:')
     print (sol.names)
@@ -767,8 +768,8 @@ nothing really usefull here
     print ('\ndata')
     print (sol.data, '\n')
 
-    aTCnh.seek(0)
-    sol.read_from(aTCnh, names=['v1', 'v2', 'v3', 'v4', 'v5'])
+    names = ['v1', 'v2', 'v3', 'v4', 'v5']
+    sol.read_str(demodata_noheader, names=names)
     print ('\n!! using read_from() with names v1, v2 ,v3, v4, v5')
     print ('\nnames:')
     print (sol.names)
@@ -777,8 +778,7 @@ nothing really usefull here
     print ('\ndata')
     print (sol.data, '\n')
 
-    aTCnh.seek(0)
-    sol.read_from(aTCnh, names=['v1', 'v2'])
+    sol.read_str(demodata_noheader, names=['v1', 'v2'])
     print ('\n!! using read_from() with names v1, v2')
     print ('\nnames:')
     print (sol.names)
@@ -788,8 +788,7 @@ nothing really usefull here
     print (sol.data, '\n')
 
     print ('==Using SolutionTimeCourse interface ====================')
-    aTC.seek(0)
-    sol.read_from(aTC)
+    sol.read_str(demodata)
     print ('retrieving components...')
     try:
         print ('\nnames:')
@@ -859,8 +858,6 @@ nothing really usefull here
 
     print ('== Using Solutions interface ====================')
 
-    aTC.seek(0)
-    aTC2.seek(0)
     sols = Solutions(title='all time courses')
 
     print ('\n!! testing boolean context on Solutions ----------------')
@@ -870,9 +867,9 @@ nothing really usefull here
     else:
         print ('Sols is empty')
 
-    s = SolutionTimeCourse(title='the first time course').read_from(aTC)
+    s = SolutionTimeCourse(title='the first time course').read_str(demodata)
     sols += s
-    s = SolutionTimeCourse(title='the second time course').read_from(aTC2)
+    s = SolutionTimeCourse(title='the second time course').read_str(demodata2)
     sols += s
 
     if sols:
@@ -886,11 +883,9 @@ nothing really usefull here
 
     print ('\n!! testing transformations ----------------')
 
-    aTC.seek(0)
-    aTC2.seek(0)
     sols = Solutions(title='all time courses')
 
-    s = SolutionTimeCourse(title='original time course').read_from(aTC2)
+    s = SolutionTimeCourse(title='original time course').read_str(demodata2)
     sols += s
     print ('--- before transformation')
     print ('- names')

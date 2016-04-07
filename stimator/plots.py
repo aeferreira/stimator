@@ -1,4 +1,4 @@
-from __future__ import print_function, absolute_import
+from __future__ import print_function, absolute_import, division
 import math
 import itertools
 
@@ -463,7 +463,7 @@ nothing really usefull here
     
     def average(x, t):
         # print ('applying transformation')
-        return np.array([t/2.0, (x[0]+x[-1])/2])
+        return np.array([t/2.0, (x[0]+x[-1])/2.0])
     
     s = s.transform(average,
                     newnames=['t/2', 'mid point'], 

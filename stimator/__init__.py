@@ -1,10 +1,11 @@
 """S-timator package"""
+from __future__ import absolute_import
 
-from model import Model
-from dynamics import solve
-from timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
-from modelparser import read_model
-import examples
+from stimator.model import Model
+from stimator.dynamics import solve
+from stimator.timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
+from stimator.modelparser import read_model
+import stimator.examples as examples
 
 class VersionObj(object):
     pass

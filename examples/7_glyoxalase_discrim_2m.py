@@ -1,4 +1,4 @@
-from stimator import utils
+from __future__ import print_function
 from stimator import Model, read_model
 from stimator.GDE3solver import GDE3Solver
 from time import time
@@ -79,14 +79,10 @@ init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
     for s,o in zip(solver.population, solver.population_energies):
         sstr = ' '.join(["%6.4g"%i for i in s])
         ostr = ' '.join(["%6.4g"%i for i in o])
-        print ('%s ----> %s'%(sstr, ostr))
-        print >> f, '%s %s'%(sstr, ostr)
+        print('%s ----> %s'%(sstr, ostr))
+        print('%s %s'%(sstr, ostr), file=f)
     f.close()
 
-    #write times per generation to file
-    #utils.write2file('glyoxalase_discrim_2m_%s_times.txt'%objectiveFunction, 
-    #                 '\n'.join([str(t) for t in solver.gen_times]))
-    
 if __name__ == "__main__":
     obj_funcs = ['extKL']
     #obj_funcs = ['extKL', 'KL', 'L2', 'L2_midpoint_weights']

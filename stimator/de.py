@@ -17,8 +17,8 @@
 Copyright 2005-2015 António Ferreira
 S-timator uses Python, SciPy, NumPy, matplotlib."""
 
-from __future__ import print_function
-import utils
+from __future__ import print_function, absolute_import, division
+import stimator.utils as utils
 import random
 import time
 import numpy
@@ -99,8 +99,8 @@ class DESolver(object):
                'best score = %f' % self.bestEnergy,
                'best solution: %s' % self.bestSolution]
         res = '\n' + '\n'.join(res)
-        res += "\nOptimization took %g s (%s)" % (self.elapsed, 
-                                                  utils.s2HMS(self.elapsed))
+        took_msg = '\nOptimization took {:.3f} s ({})'.format
+        res += took_msg(self.elapsed, utils.s2HMS(self.elapsed))
         return res
 
     def reportInitial(self):
@@ -216,7 +216,6 @@ class DESolver(object):
             self.bestSolution = scipy.optimize.fmin(self.externalEnergyFunction, self.bestSolution, disp = 0) # don't print warning messages to stdout
             self.bestEnergy, self.atSolution = self.EnergyFunction(self.bestSolution)
         self.elapsed = time.clock() - self.elapsed
-        self.elapsed = round(self.elapsed, 3)
         self.reportFinal()
 
     def run(self):
@@ -391,9 +390,9 @@ class DESolver(object):
     def SelectSamples(self, candidate, n):
         """Select n different members of population which are different from candidate."""
         
-        s = random.sample(xrange(self.populationSize),n)
+        s = random.sample(list(range(self.populationSize)),n)
         while candidate in s:
-            s = random.sample(xrange(self.populationSize),n)
+            s = random.sample(list(range(self.populationSize)),n)
         
 #        universe = range(0,candidate)+range(candidate+1, self.populationSize-1)
 #        s = random.sample(universe, n)

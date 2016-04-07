@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 def step (t, at, top=1.0):
     if t < at:
         return 0.0
