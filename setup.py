@@ -31,7 +31,7 @@ packages = [
     'stimator.moo',
 ]
 
-requires = ['sympy', 'pandas', 'seaborn']
+requires = ['six', 'sympy', 'pandas', 'seaborn']
 
 classifs=[
         'Development Status :: 3 - Alpha',

@@ -1,9 +1,10 @@
 from __future__ import print_function, absolute_import, division
 import os.path
-from StringIO import StringIO
-#from io import StringIO
 import re
 import numpy as np
+
+from six import StringIO
+
 import stimator.plots as plots
 from stimator.utils import _is_string
 
@@ -671,6 +672,7 @@ nothing really usefull here
 0.6  - 0.5 - -
 
 """
+    
     demodata_noheader = """
 #this is demo data without a header
 #t x y z
