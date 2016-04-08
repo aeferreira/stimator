@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import
 import numpy
 from matplotlib import pyplot as pl
 
@@ -5,9 +6,9 @@ def remove_most_crowded(coords,
                         knumber = 3, remove_n = 1, 
                         indexes = None, labels = None, 
                         verbose = False):
-    """Remove points with the smaller crowiding distance from a set.
+    """Remove points with the smaller crowding distance from a set.
 
-    The crowding distance is measured as the sum of the distances 
+    The crowding distance is the sum of the distances 
     of the points to their k-nearest neighbours.
     
     coords -- a list or 2D numpy array of point coordinates
@@ -27,7 +28,7 @@ def remove_most_crowded(coords,
     """
     
     if indexes is None:
-        indexes = range(len(coords))
+        indexes = list(range(len(coords)))
     if labels is None:
         labels = [str(i) for i in indexes]
     n_points = len(indexes)
@@ -35,12 +36,12 @@ def remove_most_crowded(coords,
         return indexes
     n_coords = len(coords[indexes[0]])
     
-    points = range(len(indexes)) #holds current points still present
+    points = list(range(len(indexes))) #holds current points still present
 
 ##     if verbose:
-##         print 'mapping\n'
+##         print ('mapping\n')
 ##         for k,i,o in [(labels[p], indexes[p], coords[indexes[p]]) for p in points]:
-##             print k, i, o
+##             print (k, i, o)
     
     #unfortunatelly, a copy is necessary
     acoords = numpy.array([coords[i] for i in indexes])
@@ -62,7 +63,7 @@ def remove_most_crowded(coords,
     extremes.sort()
     
     if verbose:
-        print '\nextreme points', [labels[x] for x in extremes]
+        print('\nextreme points', [labels[x] for x in extremes])
 
     #compute distances
     # TODO: use scipy function
@@ -83,16 +84,17 @@ def remove_most_crowded(coords,
     #sort distances for each point
     distances = []
     for p in points:
-        dd = zip(list(distanceMatrix[p]), points)
+        dd = list(zip(list(distanceMatrix[p]), points))
         dd.sort()
         distances.append(dd)
     if verbose:
-        print '\nDistances'
+        print ('\nDistances')
         for p in points:
             dd = distances[p]
-            print labels[p],
-            print ', '.join(["(%-5.3g to %s)"% (t1, labels[t2]) for (t1,t2) in dd])
-        print
+            print(labels[p], end=' ')
+            dlist = ["(%-5.3g to %s)"% (t1, labels[t2]) for (t1,t2) in dd]
+            print(', '.join(dlist))
+        print()
     
     #compute k shortest (note: position 0 after sorting is always 0.0)
     last_removed = None
@@ -101,13 +103,14 @@ def remove_most_crowded(coords,
     for n in range(remove_n):
         if len(points) == 0:
             if verbose:
-                print '\nNo more points to remove'
+                print ('\nNo more points to remove')
             return points
 
         if verbose:
-            print '---------------------------\nRemoving point #%d' % (n+1), ':'
-            print '\nremaining points' #, points
-            print [labels[p] for p in points]
+            print ('---------------------------')
+            print('Removing point #{}:'.format(n+1))
+            print ('\nremaining points')
+            print ([labels[p] for p in points])
         
         if last_removed is not None:
             #remove reference to last removed point in list of distances
@@ -121,12 +124,13 @@ def remove_most_crowded(coords,
                 del(distances[i][indx_last_remove])
         
         if verbose:
-            print '\nk-distances'
+            print('\nk-distances')
             for i in points:
                 dd = distances[i][1:knumber+1]
-                print labels[i],
-                print ', '.join([ "(%-5.3g to %s)"% (t1, labels[t2]) for (t1,t2) in dd])
-            print
+                print(labels[i], end=' ')
+                dlist = ["(%-5.3g to %s)"% (t1, labels[t2]) for (t1,t2) in dd]
+                print(', '.join(dlist))
+            print()
         
         ksums = [sum([d[0] for d in distances[i][1:knumber+1]]) for i in points]
         
@@ -154,20 +158,20 @@ def remove_most_crowded(coords,
         
         if verbose:
             mcv = coords[mc_index]
-            print 'Point to remove:', mc_key, mcv
+            print('Point to remove:', mc_key, mcv)
         
     return [indexes[p] for p in points]
 
 
 def pprint(coords, indexes = None, labels=None, showplot=False):
     if indexes is None:
-        indexes = range(len(coords))
+        indexes = list(range(len(coords)))
     if len(indexes) == 0:
         print('empty data')
     if labels is None:
         labels = [str(i) for i in indexes]
     for k,p in zip(labels, indexes):
-        print k, '(%d)'%p, coords[p]
+        print (k, '(%d)'%p, coords[p])
     if showplot:
         plotlabels = labels
         xx = [coords[p][0] for p in indexes]
@@ -189,22 +193,19 @@ def test():
     keys = list(x.keys())
     keys.sort()
     coords = [x[k] for k in keys]
-    print 'all labels', keys
-    points = range(len(coords))
-    print 'all points', points
+    print('all labels', keys)
+    points = list(range(len(coords)))
+    print('all points', points)
     
     #remove the bogus point
     bindx = keys.index('Bogus')
     del(points[bindx])
     del(keys[bindx])
-    print
-    print 'labels', keys
-    print 'use only points'
-    print points
+    print('\nlabels', keys)
+    print('use only points')
+    print(points)
 
-
-    print
-    print 'initial data\n'
+    print('\ninitial data\n')
     pprint(coords, indexes=points, labels=keys, showplot=True)
     
     x = remove_most_crowded(coords, 
@@ -213,8 +214,8 @@ def test():
                             knumber=3,
                             remove_n=15,
                             verbose=True)
-    print 'remaining points:'
-    print x
+    print('remaining points:')
+    print(x)
 
 if __name__ == '__main__':
     test()
