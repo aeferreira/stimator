@@ -1,4 +1,13 @@
+"""util functions:
+
+   - tests for common types
+   - function argument parsing
+   - simple format of h:m:s from seconds
+"""
+
 from __future__ import print_function, absolute_import
+from six import string_types, integer_types
+
 
 def _args_2_dict(*p, **pdict):
     """Transform arguments to a dict, as in dict() plus f(a,b) -> {a:b}."""
@@ -12,18 +21,16 @@ def make_dict_from_args(*args, **kwargs):
     return dict(*args, **kwargs)
 
 def _is_sequence(arg):
-    return (not hasattr(arg, "strip") and
+    return (not isinstance(arg, string_types) and
             hasattr(arg, "__getitem__") or
             hasattr(arg, "__iter__"))
 
 def _is_string(a):
-    return (isinstance(a, str) or
-            isinstance(a, unicode))
+    return isinstance(a, string_types)
 
 def _is_number(a):
     return (isinstance(a, float) or
-            isinstance(a, int) or
-            isinstance(a, long))
+            isinstance(a, integer_types))
 
 # helper to transform string arguments in lists:
 def listify(arguments):
@@ -50,3 +57,21 @@ def s2HMS(seconds):
     if h == 0:
         return "%02dm %06.3fs" % (m, s)
     return "%dh %02dm %06.3fs" % (h, m, s)
+
+if __name__ == '__main__':
+    for t in ['ok ok', u'pppp', 123.4, 12, (1, 2, 'oo'), [4, 5, '00']]:
+        if _is_string(t):
+            print('{} is a string'.format(t))
+        else:
+            print('{} is not a string'.format(t))
+
+        if _is_number(t):
+            print('{} is a number'.format(t))
+        else:
+            print('{} is not a number'.format(t))
+
+        if _is_sequence(t):
+            print('{} is a sequence'.format(t))
+        else:
+            print('{} is not a sequence'.format(t))
+        print()

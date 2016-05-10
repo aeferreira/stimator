@@ -6,7 +6,7 @@ The parsing loop relies on regular expressions."""
 
 from __future__ import print_function, absolute_import
 
-import StringIO
+from six import StringIO
 import re
 import math
 from stimator import model
@@ -190,7 +190,7 @@ def getLinesFromText(text):
     except (IOError, OSError):
         pass
 
-    textlines = StringIO.StringIO(str(text))
+    textlines = StringIO(str(text))
     return textlines
 
 def read_model(text):

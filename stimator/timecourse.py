@@ -4,6 +4,7 @@ import re
 import numpy as np
 
 from six import StringIO
+from six.moves import getcwd
 
 import stimator.plots as plots
 from stimator.utils import _is_string
@@ -370,7 +371,7 @@ class Solutions(object):
             raise StimatorTCError(msg)
 
         # check and load timecourses
-        cwd = os.getcwdu()
+        cwd = getcwd()
         if filedir is not None:
             self.basedir = filedir
         else:
@@ -413,7 +414,7 @@ class Solutions(object):
             return 0
 
         # check and load timecourses
-        cwd = os.getcwdu()
+        cwd = getcwd()
         if filedir is not None:
             self.basedir = filedir
         else:
