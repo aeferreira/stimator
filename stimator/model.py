@@ -1265,4 +1265,3 @@ class BadRateError(Exception):
 
 class BadTypeComponent(Exception):
     """Flags an assignment of a model component to a wrong type object"""
-

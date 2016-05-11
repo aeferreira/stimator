@@ -21,16 +21,15 @@ def make_dict_from_args(*args, **kwargs):
     return dict(*args, **kwargs)
 
 def _is_sequence(arg):
-    return (not isinstance(arg, string_types) and
-            hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))
+    isstring = isinstance(arg, string_types)
+    isothersequences = hasattr(arg, "__getitem__") or hasattr(arg, "__iter__")
+    return not isstring and isothersequences
 
 def _is_string(a):
     return isinstance(a, string_types)
 
 def _is_number(a):
-    return (isinstance(a, float) or
-            isinstance(a, integer_types))
+    return isinstance(a, float) or isinstance(a, integer_types)
 
 # helper to transform string arguments in lists:
 def listify(arguments):
@@ -59,7 +58,7 @@ def s2HMS(seconds):
     return "%dh %02dm %06.3fs" % (h, m, s)
 
 if __name__ == '__main__':
-    for t in ['ok ok', u'pppp', 123.4, 12, (1, 2, 'oo'), [4, 5, '00']]:
+    for t in ['ok ok', u'pppp', 123.4, 12, (1, 2, 'oo'), [4, 5, 'OO']]:
         if _is_string(t):
             print('{} is a string'.format(t))
         else:

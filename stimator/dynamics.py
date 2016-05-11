@@ -1,7 +1,8 @@
 from __future__ import print_function, division, absolute_import
 import re
 import math
-import itertools
+#import itertools
+from six.moves import zip as izip
 from numpy import *
 from scipy import integrate
 from stimator.timecourse import SolutionTimeCourse, Solutions
@@ -751,7 +752,7 @@ def scan(model, plan,
         plan = dict(plan)
         names = list(plan.keys())
         # zip, terminating on the shortestsequence
-        design = list(itertools.izip(*list(plan.values())))
+        design = list(izip(*list(plan.values())))
         nruns = len(design)
         
         if titles is None:

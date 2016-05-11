@@ -31,6 +31,7 @@ best = m1.estimate()
 print(best)
 best.plot()
 
+print('--- Modifying model ---')
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.setp(bestpars)

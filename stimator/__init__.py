@@ -1,5 +1,5 @@
 """S-timator package"""
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import
 
 from stimator.model import Model
 from stimator.dynamics import solve
@@ -8,10 +8,16 @@ from stimator.modelparser import read_model
 import stimator.examples as examples
 
 class VersionObj(object):
-    pass
+    def __init__(self):
+        self.version = '0.9.99'
+        self.fullversion = self.version
+        self.date = "Mar 2016"
+
+    def __str__(self):
+        return self.version
 
 __version__ = VersionObj()
 
-__version__.version = '0.9.99'
-__version__.fullversion = __version__.version
-__version__.date = "Mar 2016"
+
+if __name__ == '__main__':
+    print(__version__)
