@@ -91,7 +91,10 @@ class MOOSorter(object):
                 raise IndexError
             return self.node
 
-        def next(self):
+        def next(self): # for Py2 compat
+            self.__next__()
+
+        def __next__(self):
             """Increments the index to the next sibling of the node,
                if not past the end of the 'tree' list"""
             if not self.__valid:
