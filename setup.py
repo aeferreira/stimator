@@ -26,7 +26,6 @@ with open('README.rst') as f:
 
 packages = [
     'stimator', 
-    'stimator.tests',
     'stimator.examples',
     'stimator.moo',
 ]
