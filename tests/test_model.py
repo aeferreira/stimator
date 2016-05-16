@@ -1,5 +1,10 @@
+import pytest
 from stimator import *
-from nose.tools import raises, assert_almost_equal
+
+def assert_almost_equal(x, y):
+    if abs(x-y) < 0.0001:
+        return True
+    return False
 
 def conservation(total, A):
     return total - A
@@ -82,14 +87,14 @@ def test_set_reaction2():
     check, msg = m.checkRates()
     assert check 
 
-@raises(AttributeError)
 def test_set_reaction_absent():
     """test bad attribute of Model.reactions"""
-    m = Model("My first model")
-    m.set_reaction('v1', "A->B", " 4*A/(p1+A)-B ")
-    m.setp('p1', 2)
-    assert (m.reactions.v2.name) == 'v1'
-    assert isinstance(m.reactions.v2, model.Reaction)
+    with pytest.raises(AttributeError):
+        m = Model("My first model")
+        m.set_reaction('v1', "A->B", " 4*A/(p1+A)-B ")
+        m.setp('p1', 2)
+        assert (m.reactions.v2.name) == 'v1'
+        assert isinstance(m.reactions.v2, model.Reaction)
     
 def test_set_reaction2b():
     """test Model.react(string, string) with math functions"""
@@ -113,17 +118,18 @@ def test_set_reaction2c():
     check, msg = m.checkRates()
     assert check 
 
-@raises(model.BadStoichError)
+
 def test_set_reaction3():
     """test Bad stoichiometry"""
-    m = Model("My first model")
-    m.set_reaction('v1', "A ## B", " 4*A/(p1+A)-B ")
+    with pytest.raises(model.BadStoichError):
+        m = Model("My first model")
+        m.set_reaction('v1', "A ## B", " 4*A/(p1+A)-B ")
 
-@raises(model.BadStoichError)
 def test_set_reaction3b():
     """test Bad stoichiometry again"""
-    m = Model("My first model")
-    m.set_reaction('v1', "A->##B", " 4*A/(p1+A)-B ")
+    with pytest.raises(model.BadStoichError):
+        m = Model("My first model")
+        m.set_reaction('v1', "A->##B", " 4*A/(p1+A)-B ")
 
 def test_set_reaction4():
     """test Bad rate law (unknown ID)"""
@@ -180,41 +186,41 @@ def test_par1():
     assert 'p1' in m.parameters
     assert 'p8' not in m.parameters
 
-@raises(AttributeError)
 def test_par1b():
     """test assignment and deletion of parameters"""
     m = Model("My first model")
     m.setp('p1', 4)
     m.parameters.p2 = 3.0
     m.parameters.p3 = 3.0
-    assert isinstance(m.parameters.p1, model.ConstValue)
-    assert (m.parameters.p1.name) == "p1"
-    assert isinstance(m.parameters.p2, model.ConstValue)
-    assert (m.parameters.p2.name) == "p2"
-    assert m.parameters.p1 == 4.0
-    assert m.parameters.p2 == 3.0
-    m.setp('p1', None)
-    assert m.getp('p1') is None
+    with pytest.raises(AttributeError):
+        assert isinstance(m.parameters.p1, model.ConstValue)
+        assert (m.parameters.p1.name) == "p1"
+        assert isinstance(m.parameters.p2, model.ConstValue)
+        assert (m.parameters.p2.name) == "p2"
+        assert m.parameters.p1 == 4.0
+        assert m.parameters.p2 == 3.0
+        m.setp('p1', None)
+        assert m.getp('p1') is None
 
-@raises(model.BadTypeComponent)
 def test_par1c():
     """test assignment of bad parameter values"""
     m = Model("My first model")
     m.setp('p1', 4)
-    assert isinstance(m.parameters.p1, model.ConstValue)
-    assert (m.parameters.p1.name) == "p1"
-    assert m.parameters.p1 == 4.0
-    m.setp('p2', 'bb')
+    with pytest.raises(model.BadTypeComponent):
+        assert isinstance(m.parameters.p1, model.ConstValue)
+        assert (m.parameters.p1.name) == "p1"
+        assert m.parameters.p1 == 4.0
+        m.setp('p2', 'bb')
 
-@raises(model.BadTypeComponent)
 def test_par1d():
     """test assignment of new parameters to None"""
     m = Model("My first model")
     m.setp('p1', 4)
-    assert isinstance(m.parameters.p1, model.ConstValue)
-    assert (m.parameters.p1.name) == "p1"
-    assert m.parameters.p1 == 4.0
-    m.setp('p2', None)
+    with pytest.raises(model.BadTypeComponent):
+        assert isinstance(m.parameters.p1, model.ConstValue)
+        assert (m.parameters.p1.name) == "p1"
+        assert m.parameters.p1 == 4.0
+        m.setp('p2', None)
 
 def test_par_in_rates1():
     """test assignment of parameters 'local' to reactions"""
@@ -235,7 +241,6 @@ def test_par_in_rates1():
     assert m.parameters.p2 == 3.0
     assert m.getp('v1.p1') == 5.0
 
-@raises(AttributeError)
 def test_par_in_rates1b():
     """testing absent parameters 'local' to reactions"""
     m = Model("My first model")
@@ -244,12 +249,13 @@ def test_par_in_rates1b():
     m.setp('v1.p1', 5)
     check, msg = m.checkRates()
     assert check 
-    assert (m.parameters.v1.p1.name) == "p1"
-    assert (m.parameters.p2.name) == "p2"
-    assert m.parameters.v1.p1 == 5.0
-    assert m.parameters.v1.p2 == 5.0
+    with pytest.raises(AttributeError):
+        assert (m.parameters.v1.p1.name) == "p1"
+        assert (m.parameters.p2.name) == "p2"
+        assert m.parameters.v1.p1 == 5.0
+        assert m.parameters.v1.p2 == 5.0
 
-@raises(AttributeError)
+
 def test_par_in_rates1c():
     """testing absent parameters 'local' to reactions with getp()"""
     m = Model("My first model")
@@ -258,24 +264,26 @@ def test_par_in_rates1c():
     m.setp('v1.p1', 5)
     check, msg = m.checkRates()
     assert check 
-    assert (m.parameters.v1.p1.name) == "p1"
-    assert (m.parameters.p2.name) == "p2"
-    assert m.parameters.v1.p1 == 5.0
-    assert m.getp('v1.p2') == 5.0
+    with pytest.raises(AttributeError):
+        assert (m.parameters.v1.p1.name) == "p1"
+        assert (m.parameters.p2.name) == "p2"
+        assert m.parameters.v1.p1 == 5.0
+        assert m.getp('v1.p2') == 5.0
 
-@raises(TypeError)
+
 def test_par_in_rates1d():
     """testing bad parameters 'local' to reactions with getp()"""
     m = Model("My first model")
-    m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':'bb'})
-    m.setp('p2', 3.0)
-    m.setp('v1.p1', 5)
-    check, msg = m.checkRates()
-    assert check 
-    assert (m.parameters.v1.p1.name) == "p1"
-    assert (m.parameters.p2.name) == "p2"
-    assert m.parameters.v1.p1 == 5.0
-    assert m.getp('v1.p2') == 5.0
+    with pytest.raises(TypeError):
+        m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1':'bb'})
+        m.setp('p2', 3.0)
+        m.setp('v1.p1', 5)
+        check, msg = m.checkRates()
+        assert check 
+        assert (m.parameters.v1.p1.name) == "p1"
+        assert (m.parameters.p2.name) == "p2"
+        assert m.parameters.v1.p1 == 5.0
+        assert m.getp('v1.p2') == 5.0
 
 def test_par_from_rates1():
     """test rate expressions with parameters 'local' to reactions"""
@@ -350,14 +358,14 @@ def test_bounds():
     assert m.parameters.p7.bounds.lower == 0.0
     assert m.parameters.p7.bounds.upper == 10.0
 
-@raises(model.BadTypeComponent)
 def test_bounds2():
     """test assignment of parameters wrong bounds"""
     m = Model("My first model")
     m.parameters.p1 = 4
     m.parameters.p2 = 3.0
-    m.parameters.p1.set_bounds((1,10,5))
-    assert m.parameters.p1.bounds is None
+    with pytest.raises(model.BadTypeComponent):    
+        m.parameters.p1.set_bounds((1,10,5))
+        assert m.parameters.p1.bounds is None
 
 def test_par_in_rates2():
     """test assignment of 'local' parameters with bounds"""
@@ -775,13 +783,13 @@ def test_reassignment3():
     check, msg = m.checkRates()
     assert check 
 
-@raises(model.BadTypeComponent)
 def test_illegal_type1():
     """test illegal type assignment"""
     m = Model("My first model")
     m.set_reaction('v1', "A->B", 4)
     m.set_reaction('v2', "B->C", 2.0)
-    m.parameters.Km = [9,10,13,45]
+    with pytest.raises(model.BadTypeComponent):
+        m.parameters.Km = [9,10,13,45]
 
 def test_meta1():
     """test Model metadata"""
@@ -798,3 +806,6 @@ def test_meta1():
     assert m.metadata.get('nonexistent', None) is None
     del m.metadata['where']
     assert m.metadata.get('where', None) is None
+
+if __name__ == '__main__':
+    pytest.main()
