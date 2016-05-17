@@ -4,7 +4,7 @@ from six import StringIO
 from numpy import isnan
 from numpy.testing import assert_array_equal
 
-from stimator import Solution
+from stimator import Solution, Solutions
 from stimator.modelparser import read_model
 from stimator.timecourse import StimatorTCError
 
@@ -217,6 +217,38 @@ def test_Solution_interface():
     assert sol.data[0, 0] == 0.95
     assert sol.data[0, 3] == 0.4
     assert isnan(sol.data[-1, -1])
+
+def test_Solutions_construction_and_iadd():
+    sols = Solutions(title='all time courses')
+    bcontext = True if sols else False
+    assert not bcontext
+    s = Solution(title='1st time course').read_str(demodata)
+    sols += s
+    s = Solution(title='2nd time course').read_str(demodata_noheader)
+    sols += s
+    bcontext = True if sols else False
+    assert bcontext
+    
+    print_1st_line = 't x y z'
+    ssols = str(sols)
+    ssols = [line.strip() for line in ssols.split('\n')]
+    assert print_1st_line == ssols[0]
+
+## !! testing transformations ----------------
+## --- before transformation
+## - names
+## ['x', 'y', 'z']
+## - data
+## [[ 0.95  0.09   nan  0.45  0.5   0.65  0.7    nan]
+ ## [ 0.     nan  0.2   0.55  0.65  0.85  0.9   0.4 ]
+ ## [ 0.     nan   nan  0.58  0.75  0.98  1.45   nan]]
+## --- after transformation
+## - names
+## ['t/2', 'mid point']
+## - data
+## [[ 0.     0.05   0.1    0.15   0.2    0.25   0.275  0.3  ]
+ ## [ 0.475    nan    nan  0.515  0.625  0.815  1.075    nan]]
+
 
 if __name__ == '__main__':
     pytest.main()
