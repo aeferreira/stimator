@@ -1,17 +1,20 @@
 import pytest
 
 from six import StringIO
-from numpy import isnan
+from numpy import isnan, array
 from numpy.testing import assert_array_equal
 
-from stimator import Solution, Solutions
+from stimator import Solution, Solutions, readTCs
 from stimator.modelparser import read_model
-from stimator.timecourse import StimatorTCError
+#from stimator.timecourse import StimatorTCError
 
 def assert_almost_equal(x, y):
     if abs(x-y) < 0.0001:
         return True
     return False
+
+def average(x, t):
+    return array((t/2.0, (x[0]+x[-1])/2.0))
 
 demodata = """
 #this is demo data with a header
@@ -218,6 +221,77 @@ def test_Solution_interface():
     assert sol.data[0, 3] == 0.4
     assert isnan(sol.data[-1, -1])
 
+def test_Solution_transformation():
+    sol = Solution(title='original time course').read_str(demodata)
+    # before transformation
+    assert sol.names == ['x', 'y', 'z']
+    assert sol.t[0] == 0.0
+    assert sol.t[-1] == 0.6
+    assert len(sol.t) == 8
+    assert sol.data.shape == (3, 8)
+    assert sol.data[0, 0] == 0.95
+    assert sol.data[0, 3] == 0.4
+    assert isnan(sol.data[-1, -1])
+    sol = sol.transform(average,
+                        newnames=['t/2', 'mid point'],
+                        new_title='after transformation')
+
+    # after transformation
+    assert sol.names == ['t/2', 'mid point']
+    assert sol.t[0] == 0.0
+    assert sol.t[-1] == 0.6
+    assert len(sol.t) == 8
+    assert sol.data.shape == (2, 8)
+    assert sol.data[0, 0] == sol.t[0] / 2.0
+    assert sol.data[0, -1] == sol.t[-1] / 2.0
+    assert sol.data[1, 0] == (0.95 + 0.0)/ 2.0
+    assert isnan(sol.data[1, -1])
+
+def test_Solution_clone_copy():
+    sol = Solution(title='original time course').read_str(demodata)
+    # original
+    assert sol.names == ['x', 'y', 'z']
+    assert sol.t[0] == 0.0
+    assert sol.t[-1] == 0.6
+    assert sol.ntimes == 8
+    assert sol.data.shape == (3, 8)
+    assert sol.init['x'] == 0.95
+    assert sol.init['z'] == 0.0
+    assert isnan(sol.last['z'])
+
+    sol2 = sol.clone()
+    sol3 = sol.copy()
+
+    # cloned solutions
+    assert sol2.names == ['x', 'y', 'z']
+    assert sol2.t[0] == 0.0
+    assert sol2.t[-1] == 0.6
+    assert sol2.ntimes == 8
+    assert sol2.data.shape == (3, 8)
+    assert sol2.init['x'] == 0.95
+    assert sol2.init['z'] == 0.0
+    assert isnan(sol2.last['z'])
+
+    assert sol3.names == ['x', 'y', 'z']
+    assert sol3.t[0] == 0.0
+    assert sol3.t[-1] == 0.6
+    assert sol3.ntimes == 8
+    assert sol3.data.shape == (3, 8)
+    assert sol3.init['x'] == 0.95
+    assert sol3.init['z'] == 0.0
+    assert isnan(sol3.last['z'])
+
+    sol4 = sol.copy('y')
+
+    assert sol4.names == ['y']
+    assert sol4.t[0] == 0.0
+    assert sol4.t[-1] == 0.6
+    assert sol4.ntimes == 8
+    assert sol4.data.shape == (1, 8)
+    assert sol4.init['y'] == 0.0
+    assert sol4.last['y'] == 0.5
+
+
 def test_Solutions_construction_and_iadd():
     sols = Solutions(title='all time courses')
     bcontext = True if sols else False
@@ -234,21 +308,9 @@ def test_Solutions_construction_and_iadd():
     ssols = [line.strip() for line in ssols.split('\n')]
     assert print_1st_line == ssols[0]
 
-## !! testing transformations ----------------
-## --- before transformation
-## - names
-## ['x', 'y', 'z']
-## - data
-## [[ 0.95  0.09   nan  0.45  0.5   0.65  0.7    nan]
- ## [ 0.     nan  0.2   0.55  0.65  0.85  0.9   0.4 ]
- ## [ 0.     nan   nan  0.58  0.75  0.98  1.45   nan]]
-## --- after transformation
-## - names
-## ['t/2', 'mid point']
-## - data
-## [[ 0.     0.05   0.1    0.15   0.2    0.25   0.275  0.3  ]
- ## [ 0.475    nan    nan  0.515  0.625  0.815  1.075    nan]]
-
-
+def test_readTCs():
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
+    assert len(tcs) == 2
+    
 if __name__ == '__main__':
     pytest.main()
