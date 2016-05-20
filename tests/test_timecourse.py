@@ -311,6 +311,125 @@ def test_Solutions_construction_and_iadd():
 def test_readTCs():
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
     assert len(tcs) == 2
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['SDLTSH', 'HTA']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].shortname == 'TSH2b.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['x1']
+    assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
+    assert tcs[1].shortname == 'TSH2a.txt'
+
+def test_readTCs_default_names():
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.',
+                  names="SDLTSH HTA".split(),
+                  verbose=False)
+    assert len(tcs) == 2
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['SDLTSH', 'HTA']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].shortname == 'TSH2b.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['SDLTSH']
+    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].shortname == 'TSH2a.txt'
+
+def test_readTCs_and_change_order():
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
+    tcs.orderByNames('HTA SDLTSH'.split())
+    assert len(tcs) == 2
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['HTA', 'SDLTSH']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].shortname == 'TSH2b.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['x1']
+    assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
+    assert tcs[1].shortname == 'TSH2a.txt'
+
+def test_saveTimeCoursesTo():
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
+    tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'],
+                          '.', verbose=False)
+    tcs = readTCs(['TSH2b_2.txt', 'TSH2a_2.txt'], '.', verbose=False)
+    assert len(tcs) == 2
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['SDLTSH', 'HTA']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].shortname == 'TSH2b_2.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['x1']
+    assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
+    assert tcs[1].shortname == 'TSH2a_2.txt'
+
+def test_readTCs_declared_in_model():
+    m = read_model("""
+    v1: HTA -> SDLTSH, rate = 1 ..
+    v2: SDLTSH -> ,    rate = 2 ..
+    timecourse TSH2b.txt
+    timecourse TSH2a.txt
+    variables SDLTSH HTA
+    """)
     
+    tcs = readTCs(m, '.', verbose=False)
+    
+    assert len(tcs) == 2
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['SDLTSH', 'HTA']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].shortname == 'TSH2b.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['SDLTSH']
+    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].shortname == 'TSH2a.txt'
+    
+    tcs.orderByModelVars(m)
+
+    assert len(tcs) == 2
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['HTA', 'SDLTSH']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].shortname == 'TSH2b.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['SDLTSH']
+    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].shortname == 'TSH2a.txt'
+
 if __name__ == '__main__':
     pytest.main()
