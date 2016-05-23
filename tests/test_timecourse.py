@@ -1,5 +1,7 @@
 import pytest
 
+import os
+
 from six import StringIO
 from numpy import isnan, array
 from numpy.testing import assert_array_equal
@@ -7,6 +9,8 @@ from numpy.testing import assert_array_equal
 from stimator import Solution, Solutions, readTCs
 from stimator.modelparser import read_model
 #from stimator.timecourse import StimatorTCError
+
+dirname, _ = os.path.split(os.path.abspath(__file__))
 
 def assert_almost_equal(x, y):
     if abs(x-y) < 0.0001:
@@ -309,7 +313,7 @@ def test_Solutions_construction_and_iadd():
     assert print_1st_line == ssols[0]
 
 def test_readTCs():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -327,7 +331,7 @@ def test_readTCs():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_readTCs_default_names():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.',
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname,
                   names="SDLTSH HTA".split(),
                   verbose=False)
     assert len(tcs) == 2
@@ -347,7 +351,7 @@ def test_readTCs_default_names():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_readTCs_and_change_order():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
     tcs.orderByNames('HTA SDLTSH'.split())
     assert len(tcs) == 2
 
@@ -366,7 +370,7 @@ def test_readTCs_and_change_order():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_saveTimeCoursesTo():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], '.', verbose=False)
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
     tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'],
                           '.', verbose=False)
     tcs = readTCs(['TSH2b_2.txt', 'TSH2a_2.txt'], '.', verbose=False)
@@ -395,7 +399,7 @@ def test_readTCs_declared_in_model():
     variables SDLTSH HTA
     """)
     
-    tcs = readTCs(m, '.', verbose=False)
+    tcs = readTCs(m, dirname, verbose=False)
     
     assert len(tcs) == 2
 
