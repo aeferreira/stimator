@@ -474,52 +474,52 @@ Solution = SolutionTimeCourse
 #         Time course divergence metrics
 # ----------------------------------------------------------------------------
 
-def extendedKLdivergence(modelTCs, deltaT, indexes):
+def extendedKLdivergence(timecourses, delta_t, index_list):
     result = []
-    for (i, j) in indexes:
-        m = modelTCs[i].data
-        n = modelTCs[j].data
+    for i, j in index_list:
+        m = timecourses[i].data
+        n = timecourses[j].data
         m = np.where(m <= 0.0, np.NaN, m)
         n = np.where(n <= 0.0, np.NaN, n)
-        dif = -deltaT * np.nansum(np.float64(m * (np.log(m / n) + n / m - 1.0)))
-        result.append(dif)
+        d = -delta_t * np.nansum(np.float64(m * (np.log(m / n) + n / m - 1.0)))
+        result.append(d)
     return result
 
 
-def KLdivergence(modelTCs, deltaT, indexes):
+def KLdivergence(timecourses, delta_t, index_list):
     result = []
-    for (i, j) in indexes:
-        m = modelTCs[i].data
-        n = modelTCs[j].data
+    for i, j in index_list:
+        m = timecourses[i].data
+        n = timecourses[j].data
         m = np.where(m <= 0.0, np.NaN, m)
         n = np.where(n <= 0.0, np.NaN, n)
-        dif = -deltaT * np.nansum(np.float64(m * np.log(m / n)))
-        result.append(dif)
+        d = -delta_t * np.nansum(np.float64(m * np.log(m / n)))
+        result.append(d)
     return result
 
 
-def L2_midpoint_weights(modelTCs, deltaT, indexes):
+def L2_midpoint_weights(timecourses, delta_t, indexes):
     """L2-norm for time courses, weighted by midpoints"""
 
     result = []
-    for i in range(len(modelTCs) - 1):
-        for j in range(i + 1, len(modelTCs)):
+    for i in range(len(timecourses) - 1):
+        for j in range(i + 1, len(timecourses)):
             numResult = 0.0
-            for tc1, tc2 in zip(modelTCs[i], modelTCs[j]):
-                tempTC = np.float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2.0)**2)) * deltaT)
+            for tc1, tc2 in zip(timecourses[i], timecourses[j]):
+                tempTC = np.float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2.0)**2)) * delta_t)
                 numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result
 
 
-def L2(modelTCs, deltaT, indexes):
+def L2(timecourses, delta_t, indexes):
     """L2-norm for time courses"""
     result = []
-    for i in range(len(modelTCs) - 1):
-        for j in range(i + 1, len(modelTCs)):
+    for i in range(len(timecourses) - 1):
+        for j in range(i + 1, len(timecourses)):
             numResult = 0.0
-            for tc1, tc2 in zip(modelTCs[i], modelTCs[j]):
-                tempTC = np.float64(((tc1 - tc2) ** 2)) * deltaT
+            for tc1, tc2 in zip(timecourses[i], timecourses[j]):
+                tempTC = np.float64(((tc1 - tc2) ** 2)) * delta_t
                 numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result
