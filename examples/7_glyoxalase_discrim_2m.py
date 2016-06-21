@@ -2,32 +2,48 @@ from __future__ import print_function
 from stimator import read_model
 from stimator.GDE3solver import GDE3Solver
 
+model1_desc = """title model 1
+rf: mgo + gsh -> hta, 0.34..
+rr: hta -> mgo + gsh, 1.01..
+r1: hta -> sdlt, kcat1 * e1 * hta / (km1 + hta)
+r2: sdlt -> gsh, kcat2 * e2 * sdlt / (km2 + sdlt)
+fake1: e1 ->, 0
+fake2: e2 ->, 0
+
+kcat1 = 8586
+km1   = 0.223
+
+kcat2 = 315
+km2   = 2.86
+
+init: mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4
+"""
+
+model2_desc = """title model 2
+rf: mgo + gsh -> hta, 0.34..
+rr: hta -> mgo + gsh, 1.01..
+r1: mgo + gsh -> sdlt, kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))
+r2: sdlt -> gsh, kcat2 * e2 * sdlt / (km2 + sdlt)
+fake1: e1 ->, 0
+fake2: e2 ->, 0
+
+kcat1 = 17046
+
+km11  = 0.875
+km12  = 1.178
+
+kcat2 = 315
+km2   = 2.86
+
+init: mgo = 2.86, hta = 0, sdlt = 0, gsh = 4, e1 = 2e-3, e2 = 4e-4
+"""
+
 def compute(obj):
 
     npoints = 240
     t0 = 0.0
     tf = 120
-    m1 = read_model("""title model 1
-    rf: mgo + gsh -> hta, 0.34..
-    rr: hta -> mgo + gsh, 1.01..
-    r1: hta -> sdlt, kcat1 * e1 * hta / (km1 + hta)
-    r2: sdlt -> gsh, kcat2 * e2 * sdlt / (km2 + sdlt)
-    fake1: e1 ->, 0
-    fake2: e2 ->, 0
-    kcat1 = 8586
-    km1   = 0.223
-    kcat2 = 315
-    km2   = 2.86
-    init  = state(mgo  = 2.86, hta = 0, sdlt = 0, gsh  = 4, e1 = 2e-3, e2   = 4e-4)
-    """)
-
-    m2 = m1.copy(new_title = 'model 2')
-    m2.set_reaction('r1', "mgo + gsh -> sdlt", "kcat1 *e1 * mgo * gsh / ((km11 + gsh)*(km12 + mgo))")
-    m2.parameters.kcat1 = 17046
-    m2.parameters.km11  = 0.875
-    m2.parameters.km12  = 1.178
-    
-    models = [m1, m2]
+    models = [read_model(model1_desc), read_model(model2_desc)]
     
     initial_opt = (('gsh', 0.1, 1.0), ('mgo', 0.1, 1.0))
     observed = ['sdlt']
@@ -43,7 +59,8 @@ def compute(obj):
     cutoffEnergy = 0 #Not used in multiobjective optimization
     useClassRandomNumberMethods = True
     dump_generations = None # do not generate generation log file
-    #dump_generations = list(range(maxGenerations)) #generate log for all generations
+    # generate log for all generations
+    #dump_generations = list(range(maxGenerations))
 
     print('==========================================================')
     print('Design of discriminatory experiment (initial conditions)\n')

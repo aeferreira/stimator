@@ -7,7 +7,7 @@ from six import StringIO
 from six.moves import getcwd
 
 import stimator.plots as plots
-from stimator.utils import _is_string
+from stimator.utils import _is_string, _is_number, _is_sequence
 
 FRAC_PATTERN = r"[-]?\d*[.]?\d+"
 REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
@@ -439,6 +439,23 @@ class Solutions(object):
         vnames = [x for x in amodel.varnames]
         self.orderByNames(vnames)
         return self
+    
+    def get_common_full_vars(self):
+        """Return a list of names of variables that
+        have full data in all timecourses."""
+
+        for itc, tc in enumerate(self):
+            names = []
+            nt = tc.ntimes
+            for name, yexp in zip(tc.names, tc.data):
+                nnan = len(yexp[np.isnan(yexp)])
+                if nnan < nt - 1:
+                    names.append(name)
+            if itc == 0:
+                common_names = set(names)
+            else:
+                common_names.intersection_update(names)
+        return list(common_names)
 
     def plot(self, **kwargs):
         return plots.plotTCs(self, **kwargs)
@@ -526,12 +543,14 @@ def L2(timecourses, delta_t, indexes):
 
 
 def _transform2array(vect):
-    if isinstance(vect, float) or isinstance(vect, int):
+    """Given a float or sequence, transform into a diagonal array.
+       A 2D array is left unchanged."""
+    if _is_number(vect):
         res = np.array((vect), dtype=float)
-    elif isinstance(vect, list) or isinstance(vect, tuple):
+    elif _is_sequence(vect):
         res = np.diag(np.array(vect, dtype=float))
     else:
-        res = vect  # is already an array (must be 2D)
+        res = vect # must be already an array (must be 2D)
     return res
 
 
@@ -572,28 +591,6 @@ def getFullTCvarIndexes(model, tcs):
         alltcvarindexes.append(np.array(varindexes, int))
         allmodelvarindexes.append(np.array(modelvarindexes, int))
     return allmodelvarindexes, alltcvarindexes
-
-
-def getCommonFullVars(tcs):
-    """Returns a list of names of variables that
-    have full data in all timecourses."""
-
-    common_names = []
-    for itc, tc in enumerate(tcs):
-        nt = tc.ntimes
-        tcnames = tc.names
-        for i, line in enumerate(tc.data):
-            # count NaN
-            yexp = line
-            xname = tcnames[i]
-            nnan = len(yexp[np.isnan(yexp)])
-            if nnan >= nt - 1:
-                if xname in common_names:
-                    common_names.remove(xname)
-            else:
-                if itc == 0:
-                    common_names.append(xname)
-    return common_names
 
 
 def getRangeVars(tcs, varnames):

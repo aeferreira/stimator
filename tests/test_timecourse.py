@@ -349,6 +349,7 @@ def test_readTCs_default_names():
     assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
     assert tcs[1].shortname == 'TSH2a.txt'
+    assert tcs.get_common_full_vars() == ['SDLTSH']
 
 def test_readTCs_and_change_order():
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)

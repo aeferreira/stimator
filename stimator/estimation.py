@@ -273,7 +273,7 @@ class DeODEOptimizer(de.DESolver):
         if not (fim.SYMPY_INSTALLED):
             best.parameters = [(p, v, 0.0) for (p, v) in parameters]
         else:
-            commonvnames = timecourse.getCommonFullVars(self.tc)
+            commonvnames = self.tc.get_common_full_vars()
             consterror = timecourse.getRangeVars(self.tc, commonvnames)
             # assume 5% of range
             consterror = timecourse.constError_func([r * 0.05 for r in consterror])
@@ -289,8 +289,7 @@ class DeODEOptimizer(de.DESolver):
             Y = self.computeSolution(i, self.bestSolution, dense=True)
             ts = linspace(tc.t[0], tc.t[-1], 500)
 
-            sol = timecourse.SolutionTimeCourse(ts,
-                                                Y.T,
+            sol = timecourse.SolutionTimeCourse(ts, Y.T,
                                                 self.varnames,
                                                 title=tc.title)
             sols += sol
