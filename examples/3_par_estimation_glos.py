@@ -28,8 +28,8 @@ optimum = m1.estimate(['TSH2a.txt', 'TSH2b.txt'], names=['SDLTSH', 'HTA'])
 print(optimum)
 optimum.plot()
 # save predicted timecourses to files
-# redsols = optimum.optimum_tcs
-# redsols.saveTimeCoursesTo(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
+redsols = optimum.optimum_tcs
+redsols.write_to(['TSH2a_pred.txt', 'TSH2b_pred.txt'], verbose=True)
 
 
 print ('-------- an example with unknown initial values --------------')

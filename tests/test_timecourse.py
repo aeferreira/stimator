@@ -6,9 +6,8 @@ from six import StringIO
 from numpy import isnan, array
 from numpy.testing import assert_array_equal
 
-from stimator import Solution, Solutions, readTCs
+from stimator import Solution, Solutions, read_tc
 from stimator.modelparser import read_model
-#from stimator.timecourse import StimatorTCError
 
 dirname, _ = os.path.split(os.path.abspath(__file__))
 
@@ -90,7 +89,7 @@ def test_read_from(tc_1):
 
 def test_read_str_orderByNames():
     sol = Solution().read_str(demodata)
-    sol.orderByNames("z y".split())
+    sol.order_by_names("z y".split())
     assert sol.names == ['z', 'y', 'x']
     assert sol.t[0] == 0.0
     assert sol.t[-1] == 0.6
@@ -102,7 +101,7 @@ def test_read_str_orderByNames():
 
 def test_read_str_orderByNames2():
     sol = Solution().read_str(demodata)
-    sol.orderByNames(["z"])
+    sol.order_by_names(["z"])
     assert sol.names == ['z', 'x', 'y']
     assert sol.t[0] == 0.0
     assert sol.t[-1] == 0.6
@@ -114,7 +113,7 @@ def test_read_str_orderByNames2():
 
 def test_read_str_bad_order_by_names():
     sol = Solution().read_str(demodata)
-    sol.orderByNames("x bof z".split())
+    sol.order_by_names("x bof z".split())
     assert sol.names == ['x', 'z', 'y']
     assert sol.t[0] == 0.0
     assert sol.t[-1] == 0.6
@@ -313,7 +312,7 @@ def test_Solutions_construction_and_iadd():
     assert print_1st_line == ssols[0]
 
 def test_readTCs():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -331,7 +330,7 @@ def test_readTCs():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_readTCs_default_names():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname,
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname,
                   names="SDLTSH HTA".split(),
                   verbose=False)
     assert len(tcs) == 2
@@ -352,8 +351,8 @@ def test_readTCs_default_names():
     assert tcs.get_common_full_vars() == ['SDLTSH']
 
 def test_readTCs_and_change_order():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
-    tcs.orderByNames('HTA SDLTSH'.split())
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
+    tcs.order_by_names('HTA SDLTSH'.split())
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -370,11 +369,10 @@ def test_readTCs_and_change_order():
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].shortname == 'TSH2a.txt'
 
-def test_saveTimeCoursesTo():
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
-    tcs.saveTimeCoursesTo(['TSH2b_2.txt', 'TSH2a_2.txt'],
-                          '.', verbose=False)
-    tcs = readTCs(['TSH2b_2.txt', 'TSH2a_2.txt'], '.', verbose=False)
+def test_write_to():
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], verbose=False)
+    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], verbose=False)
+    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -391,7 +389,7 @@ def test_saveTimeCoursesTo():
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].shortname == 'TSH2a_2.txt'
 
-def test_readTCs_declared_in_model():
+def test_read_tc_declared_in_model():
     m = read_model("""
     v1: HTA -> SDLTSH, rate = 1 ..
     v2: SDLTSH -> ,    rate = 2 ..
@@ -400,7 +398,7 @@ def test_readTCs_declared_in_model():
     variables SDLTSH HTA
     """)
     
-    tcs = readTCs(m, dirname, verbose=False)
+    tcs = read_tc(m, dirname, verbose=False)
     
     assert len(tcs) == 2
 
@@ -418,7 +416,7 @@ def test_readTCs_declared_in_model():
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
     assert tcs[1].shortname == 'TSH2a.txt'
     
-    tcs.orderByModelVars(m)
+    tcs.order_by_modelvars(m)
 
     assert len(tcs) == 2
 

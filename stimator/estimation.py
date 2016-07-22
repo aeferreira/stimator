@@ -76,7 +76,7 @@ class DeODEOptimizer(de.DESolver):
         self.dump_generations = dump_generations
 
         # reorder variables according to model
-        self.tc.orderByModelVars(self.model)
+        self.tc.order_by_modelvars(self.model)
 
         pars = model.with_bounds
         mins = array([u.bounds.lower for u in pars])
@@ -211,7 +211,7 @@ class DeODEOptimizer(de.DESolver):
             outCode = -1
         else:
             outCode = self.exitCode
-            self.generateOptimumData()
+            self.generate_optimum()
         if not self.endTicker:
             print (self.reportFinalString())
         else:
@@ -234,7 +234,7 @@ class DeODEOptimizer(de.DESolver):
             res = res + '%s %s\n' % (sstr, ostr)
         return res
 
-    def generateOptimumData(self):
+    def generate_optimum(self):
         # compute parameter standard errors, based on FIM-1
         # generate TC solutions
         best = OptimumData(self)
@@ -306,7 +306,7 @@ class DeODEOptimizer(de.DESolver):
 
         if self.dump_predictions:
             fnames = ['pred_' + self.tc[i].title for i in range(len(self.tc))]
-            best.optimum_tcs.saveTimeCoursesTo(fnames, verbose=True)
+            best.optimum_tcs.write_to(fnames, verbose=True)
 
 
 def s_timate(model, timecourses=None, opt_settings=None,

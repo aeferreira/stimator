@@ -287,7 +287,7 @@ class SolutionTimeCourse(object):
         tc.shortname = self.shortname
         return tc
 
-    def orderByNames(self, varnames):
+    def order_by_names(self, varnames):
         oldindexes = list(range(len(self)))
         newindexes = []
         for vname in varnames:
@@ -364,7 +364,7 @@ class Solutions(object):
     def append(self, other):
         return self.__iadd__(other)
 
-    def loadTimeCourses(self, filedir=None, names=None, verbose=False):
+    def _load_tcs(self, filedir=None, names=None, verbose=False):
         if len(self.filenames) == 0:
             msg = "No time courses to load!"
             msg += "Please indicate time courses with 'timecourse <filename>'"
@@ -372,25 +372,22 @@ class Solutions(object):
 
         # check and load timecourses
         cwd = getcwd()
-        if filedir is not None:
-            self.basedir = filedir
-        else:
-            self.basedir = cwd
-        os.chdir(self.basedir)
-        pathlist = [os.path.abspath(k) for k in self.filenames]
+        if filedir is None:
+            filedir = ''
+        
+        plist = [os.path.join(cwd, filedir, k) for k in self.filenames]
+        plist = [os.path.abspath(p) for p in plist]
 
         self.data = []
         nTCsOK = 0
         if verbose:
             print ("-- reading time courses -------------------------------")
-        for filename in pathlist:
+        for filename in plist:
             if not os.path.exists(filename) or not os.path.isfile(filename):
-                os.chdir(cwd)
                 raise StimatorTCError("File \n%s\ndoes not exist" % filename)
             sol = SolutionTimeCourse()
             sol.read_from(filename, names=names)
             if sol.shape == (0, 0):
-                os.chdir(cwd)
                 error_msg = "File\n%s\ndoes not contain valid data" % filename
                 raise StimatorTCError(error_msg)
             else:
@@ -400,44 +397,42 @@ class Solutions(object):
                                                             len(sol)))
                 self.append(sol)
                 nTCsOK += 1
-        self.shortnames = [os.path.split(filename)[1] for filename in pathlist]
+        self.shortnames = [os.path.split(filename)[1] for filename in plist]
         for i, sol in enumerate(self.solutions):
             sol.title = self.shortnames[i]
             sol.shortname = self.shortnames[i]
             sol.filename = self.filenames[i]
-        os.chdir(cwd)
         return nTCsOK
 
-    def saveTimeCoursesTo(self, filenames, filedir=None, verbose=False):
+    def write_to(self, filenames, filedir=None, verbose=False):
         if len(self) == 0:
             print ("No time courses to save!")
             return 0
 
         # check and load timecourses
         cwd = getcwd()
-        if filedir is not None:
-            self.basedir = filedir
-        else:
-            self.basedir = cwd
-        os.chdir(self.basedir)
-        pathlist = [os.path.abspath(k) for k in filenames]
+        if filedir is None:
+            filedir = ''
+        plist = [os.path.join(cwd, filedir, k) for k in filenames]
+        plist = [os.path.abspath(p) for p in plist]
+
+        fstring = "{} time points for {} variables written to file {}".format
 
         if verbose:
             print ("-------------------------------------------------------")
-        for fn, sol in zip(pathlist, self.solutions):
+        for fn, sol in zip(plist, self.solutions):
             sol.write_to(fn)
             if verbose:
-                print ("%d time points for %d variables written to file %s" % (sol.ntimes, len(sol), fn))
-        os.chdir(cwd)
+                print(fstring(sol.ntimes, len(sol), fn))
 
-    def orderByNames(self, varnames):
+    def order_by_names(self, varnames):
         for sol in self.solutions:
-            sol.orderByNames(varnames)
+            sol.order_by_names(varnames)
         return self
 
-    def orderByModelVars(self, amodel):
+    def order_by_modelvars(self, amodel):
         vnames = [x for x in amodel.varnames]
-        self.orderByNames(vnames)
+        self.order_by_names(vnames)
         return self
     
     def get_common_full_vars(self):
@@ -461,7 +456,7 @@ class Solutions(object):
         return plots.plotTCs(self, **kwargs)
     
 
-def readTCs(source,
+def read_tc(source,
             filedir=None,
             intvarsorder=None,
             names=None,
@@ -480,10 +475,11 @@ def readTCs(source,
     if names is None:
         if tcsnames is not None:
             names = tcsnames
-    tcs.loadTimeCourses(filedir, names=names, verbose=verbose)
+    tcs._load_tcs(filedir, names=names, verbose=verbose)
     return tcs
 
-read_tc = readTCs
+# convenient or backwards compatible aliases
+readTCs = read_tc
 TimeCourses = Solutions
 Solution = SolutionTimeCourse
 
