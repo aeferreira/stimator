@@ -566,27 +566,25 @@ def propError_func(vect):
     return CE
 
 
-def getFullTCvarIndexes(model, tcs):
+def get_fulltc_indexes(model, tcs):
     # mask series with NaN values.
-    allmodelvarindexes, alltcvarindexes = [], []
-    for data in tcs:
-        nt = data.ntimes
-        varindexes = []
-        modelvarindexes = []
+    all_model_indexes, all_tc_indexes = [], []
+    for tc in tcs:
+        ntimes = tc.ntimes
+        vars_i = []
+        vars_i_model = []
 
-        for ivar in range(len(data.data)):
+        for i, yexp in enumerate(tc):
             # count NaN
-            yexp = data[ivar]
             nnan = len(yexp[np.isnan(yexp)])
-            if nnan >= nt - 1:
+            if nnan >= ntimes - 1:
                 continue
-            varindexes.append(ivar)
-            vname = data.names[ivar]
-            indx = model.varnames.index(vname)
-            modelvarindexes.append(indx)
-        alltcvarindexes.append(np.array(varindexes, int))
-        allmodelvarindexes.append(np.array(modelvarindexes, int))
-    return allmodelvarindexes, alltcvarindexes
+            vars_i.append(i)
+            vars_i_model.append(model.varnames.index(tc.names[i]))
+        
+        all_tc_indexes.append(np.array(vars_i, int))
+        all_model_indexes.append(np.array(vars_i_model, int))
+    return all_model_indexes, all_tc_indexes
 
 
 def getRangeVars(tcs, varnames):
@@ -619,22 +617,22 @@ def getCriteriumFunction(weights, model, tc):
     'demo'       : demo weighting  W = 1/j with j = 1,...,nvars
     """
 
-    allmodelvarindexes, alltcvarindexes = getFullTCvarIndexes(model, tc)
+    vars_i_model, vars_i_tcs = get_fulltc_indexes(model, tc)
 
     if weights is None:
         def criterium(Y, i):
-            d = (Y.T[allmodelvarindexes[i]] - tc[i].data[alltcvarindexes[i]])
+            d = (Y.T[vars_i_model[i]] - tc[i].data[vars_i_tcs[i]])
             return np.sum(d * d)
         return criterium
 
     if weights == 'demo':
         W = []
         for i in range(len(tc)):
-            W.append(np.array([1.0 / (1 + j) for j in range(alltcvarindexes[i])]))
+            W.append(np.array([1.0 / (1 + j) for j in range(vars_i_tcs[i])]))
 
         # print W
         def criterium(Y, i):
-            d = (Y.T[allmodelvarindexes[i]] - tc.data[i][alltcvarindexes[i]])
+            d = (Y.T[vars_i_model[i]] - tc.data[i][vars_i_tcs[i]])
             return np.sum(d * W[i] * d)
         return criterium
 
