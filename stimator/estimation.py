@@ -248,7 +248,6 @@ class DeODEOptimizer(de.DESolver):
 
         # generate best time-courses
 
-        # par_names = [self.model.with_bounds[i].name for i in range(len(self.bestSolution))]
         par_names = [p.name for p in self.model.with_bounds]
         parameters = list(zip(par_names, [x for x in self.bestSolution]))
 

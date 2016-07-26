@@ -7,6 +7,7 @@ of a kinetic model.
 from __future__ import print_function, absolute_import
 import re
 import math
+from collections import OrderedDict
 from stimator.utils import _args_2_dict, _is_sequence, _is_number
 import stimator.kinetics as kinetics
 import stimator.dynamics as dynamics
@@ -293,7 +294,7 @@ class Bounds(ModelObject):
 class _HasOwnParameters(ModelObject):
     def __init__(self, name='?', parvalues=None):
         ModelObject.__init__(self, name)
-        self._ownparameters = {}
+        self._ownparameters = OrderedDict()
         if parvalues is None:
             parvalues = {}
         if not isinstance(parvalues, dict):
@@ -710,7 +711,7 @@ class Model(ModelObject):
         self.__reactions = QueriableList()
         self.__variables = []
         self.__extvariables = []
-        self._ownparameters = {}
+        self._ownparameters = OrderedDict()
         self.__transf = QueriableList()
         self.__invars = QueriableList()
         self._init = StateArray('init', dict())

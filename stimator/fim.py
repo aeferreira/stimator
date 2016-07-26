@@ -1,5 +1,6 @@
 """functions to compute Fisher Information Matrix"""
 from __future__ import print_function, absolute_import
+from collections import OrderedDict
 from numpy import array, diag, matrix, zeros, linalg, dstack, sum
 from stimator.dynamics import add_dSdt_to_model, dXdt_strings, solve
 from stimator.timecourse import Solutions, constError_func
@@ -39,8 +40,14 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
     for x in m.varnames:
         inits[str(x)] = 0.0
     m.set_init(inits)
+    
+    convert_pars = OrderedDict()
+    if isinstance(pars, dict):
+        pars = pars.items()
+    for p, v in pars:
+        convert_pars[p] = v
 
-    pars = dict(pars)
+    pars = convert_pars
 
     for n, v in pars.items():
         if '.' in n:
