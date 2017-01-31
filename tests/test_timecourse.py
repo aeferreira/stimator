@@ -312,7 +312,7 @@ def test_Solutions_construction_and_iadd():
     assert print_1st_line == ssols[0]
 
 def test_readTCs():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -370,9 +370,9 @@ def test_readTCs_and_change_order():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_write_to():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], verbose=False)
-    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], verbose=False)
-    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
+    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir=dirname, verbose=False)
+    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], dirname, verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)

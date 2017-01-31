@@ -25,12 +25,12 @@ def process_list(nbfiles):
         shutil.copy(fromname, '.')
         
         print ('-- executing')
-        aaa = ('ipython nbconvert --execute --inplace --to notebook %s'% name).split()
+        aaa = ('jupyter nbconvert --execute --inplace --ExecutePreprocessor.kernel_name=python3 --to notebook %s'% name).split()
         print (subprocess.check_output(aaa))
 
         rst_name = name.replace('.ipynb', '.rst')
         print ('-- converting to {0}'.format(rst_name))
-        aaa = ('ipython nbconvert --to rst %s'% name).split()
+        aaa = ('jupyter nbconvert --to rst %s'% name).split()
         print (subprocess.check_output(aaa))
 
         # MS-Windows fix:
