@@ -9,7 +9,12 @@ from numpy.testing import assert_array_equal
 from stimator import Solution, Solutions, read_tc
 from stimator.modelparser import read_model
 
-dirname, _ = os.path.split(os.path.abspath(__file__))
+_THIS_DIR, _ = os.path.split(os.path.abspath(__file__))
+#print(_THIS_DIR)
+_UPPER, _ = os.path.split(_THIS_DIR)
+#print(_UPPER)
+_DATADIR = os.path.join(_UPPER, 'examples')
+#print(_DATADIR)
 
 def assert_almost_equal(x, y):
     if abs(x-y) < 0.0001:
@@ -312,7 +317,7 @@ def test_Solutions_construction_and_iadd():
     assert print_1st_line == ssols[0]
 
 def test_readTCs():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -330,7 +335,7 @@ def test_readTCs():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_readTCs_default_names():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname,
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR,
                   names="SDLTSH HTA".split(),
                   verbose=False)
     assert len(tcs) == 2
@@ -351,7 +356,7 @@ def test_readTCs_default_names():
     assert tcs.get_common_full_vars() == ['SDLTSH']
 
 def test_readTCs_and_change_order():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
     tcs.order_by_names('HTA SDLTSH'.split())
     assert len(tcs) == 2
 
@@ -370,9 +375,9 @@ def test_readTCs_and_change_order():
     assert tcs[1].shortname == 'TSH2a.txt'
 
 def test_write_to():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], dirname, verbose=False)
-    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir=dirname, verbose=False)
-    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], dirname, verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
+    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir=_DATADIR, verbose=False)
+    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], _DATADIR, verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -398,7 +403,7 @@ def test_read_tc_declared_in_model():
     variables SDLTSH HTA
     """)
     
-    tcs = read_tc(m, dirname, verbose=False)
+    tcs = read_tc(m, _DATADIR, verbose=False)
     
     assert len(tcs) == 2
 
