@@ -30,7 +30,6 @@ Model objects
       ~Model.set_variable_dXdt
       ~Model.setp
       ~Model.solve
-      ~Model.update
 
 
    .. automethod:: __init__

@@ -26,13 +26,12 @@ One of the following "scientific python" distributions is recommended,
 Requirements
 ~~~~~~~~~~~~
 
-*S-timator* supports Python versions 2.6 and up, but support of 3.x is
-coming soon.
+*S-timator* supports Python versions 2.7 and 3.3 or above.
 
 *S-timator* depends on a "scientific python stack". The **mandatory**
 requirements for *S-timator* are the following libraries:
 
-- ``Python (2.6 or 2.7)``
+- ``Python``
 - ``numpy``
 - ``scipy``
 - ``matplotlib``
@@ -41,24 +40,22 @@ requirements for *S-timator* are the following libraries:
 - ``seaborn``
 
 
-The installation of these Python libraries is optional, but strongly recommended:
+Other Python libraries which are optional, but strongly recommended:
 
 - ``sympy``: necessary to compute dynamic sensitivities, error estimates of
   parameters and other symbolic computations.
-- ``IPython`` and all its dependencies: some *S-timator* examples are provided
-  as IPython notebooks.
-- ``wxPython``: although *S-timator* is a python library meant to be used for scripting or in
-  IPython notebook *literate computing* interface, a simple GUI is included.
-  This interface requires wxPython.
+- The ``Jupyter`` package: some *S-timator* examples are provided
+  as Jupyter notebooks.
 
 The `Anaconda Python Distribution, from "Continuum Analytics" <https://store.continuum.io/cshop/anaconda/>`_
-is, arguably, the most convenient distribution. The full installation will provide
-all S-timator requirements, except wxPython, which has to be installed after
-installing Python.
+is a convenient Python distribution that includes all of the above requirements.
 
-From the same company, the `Miniconda <http://conda.pydata.org/miniconda.html>`_ "slim" distribution
-is also an alternative, for those that worry about disk space. In this case,
-the necessary ``conda install``'s must be run for the dependencies, after installing Python.
+If the full `Anaconda Distribution` is too heavy on disk space, from the same company, the `Miniconda <http://conda.pydata.org/miniconda.html>`_ "slim" distribution
+is also an alternative. In this case, run the necessary ``conda install``'s of the requirements, after installing Miniconda:
+
+    $ conda install numpy scipy sympy pandas seaborn jupyter
+
+
 
 Installation of S-timator
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -69,6 +66,10 @@ required libraries, (``Python``, ``numpy``, ``scipy``,
 with ``pip``::
 
     $ pip install stimator
+
+Or, in case `Anaconda/Miniconda` was installed::
+
+    $ conda install -c aeferreira stimator
 
 
 

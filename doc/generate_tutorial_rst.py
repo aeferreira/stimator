@@ -11,6 +11,7 @@ nbfiles = [{'nb':'basic_features.ipynb', 'name':'basic_features'},
 
 def process_list(nbfiles):
     print ('=========== Assembling supporting files ======')
+    os.makedirs('images', exist_ok=True)
     imgs = glob.glob('../notebooks/images/*.*')
     for img in imgs:
         print ('-- copying file {0}'.format(img))
