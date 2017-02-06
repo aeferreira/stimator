@@ -376,8 +376,8 @@ def test_readTCs_and_change_order():
 
 def test_write_to():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
-    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir=_DATADIR, verbose=False)
-    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], _DATADIR, verbose=False)
+    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir='../', verbose=False)
+    tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], '../', verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -393,6 +393,12 @@ def test_write_to():
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].shortname == 'TSH2a_2.txt'
+    assert os.path.isfile('../TSH2b_2.txt')
+    assert os.path.isfile('../TSH2a_2.txt')
+    os.remove('../TSH2b_2.txt')
+    os.remove('../TSH2a_2.txt')
+    assert not os.path.isfile('../TSH2b_2.txt')
+    assert not os.path.isfile('../TSH2a_2.txt')
 
 def test_read_tc_declared_in_model():
     m = read_model("""

@@ -158,8 +158,8 @@ class SolutionTimeCourse(object):
         aTC.close()
         return result
 
-    def read_from(self, filename, names=None):
-        """Reads a time course from file.
+    def read_from(self, source, names=None):
+        """Reads a time course from a path or file-like object.
 
         Fills self.names from a header with variable names
         (possibly absent in file). Fills a 2D numpy array with
@@ -172,12 +172,12 @@ class SolutionTimeCourse(object):
         headerFound = False
         t0found = False
 
-        if hasattr(filename, 'read'):
-            f = filename
-            isname = False
-        else:
-            f = open(filename, "rU")  # could be a name,instead of an open file
-            isname = True
+        ishandle = False
+        try:
+            f = open(source, "rU")
+        except TypeError:
+            ishandle = True
+            f = source
 
         for line in f:
             line = line.strip()
@@ -204,7 +204,7 @@ class SolutionTimeCourse(object):
                     if REAL_RE.match(num):
                         temprow[i] = float(num)
                 rows.append(temprow)
-        if isname:
+        if not ishandle:
             f.close()
 
         # create default names "t, x1, x2, x3,..." or use names if provided
@@ -222,34 +222,29 @@ class SolutionTimeCourse(object):
         self.data = data[:, 1:].T
         return self
 
-    def _write_to_str(self):
-        aTC = StringIO()
-        aTC.seek(0)
-        self.write_to(aTC)
-        return aTC.getvalue()
-
     def __str__(self):
-        return self._write_to_str()
-
-    def write_to(self, filename):
-        """Writes a time course to a file or file-like object.
-        """
-
-        if hasattr(filename, 'read'):
-            f = filename
-            isname = False
-        else:
-            f = open(filename, "w")  # could be a name,instead of an open file
-            isname = True
-
-        f.write("%s %s\n" % ('t', " ".join(self.names)))
+        out = ["%s %s" % ('t', " ".join(self.names))]
         npoints = len(self.t)
         for i in range(npoints):
             row = [self.t[i]]
             row.extend(self.data[:, i])
             row = " ".join([str(j) for j in row])
-            f.write("%s\n" % row)
-        if isname:
+            out.append(row)
+        return '\n'.join(out)
+
+    def write_to(self, destination):
+        """Writes a time course to a path or file-like object.
+        """
+
+        ishandle = False
+        try:
+            f = open(destination, "w")
+        except TypeError:
+            ishandle = True
+            f = destination
+        
+        f.write(str(self))
+        if not ishandle:
             f.close()
 
     def clone(self, new_title=None):
@@ -413,17 +408,17 @@ class Solutions(object):
         cwd = getcwd()
         if filedir is None:
             filedir = ''
-        plist = [os.path.join(cwd, filedir, k) for k in filenames]
-        plist = [os.path.abspath(p) for p in plist]
+        names = [os.path.join(cwd, filedir, k) for k in filenames]
+        names = [os.path.abspath(p) for p in names]
 
         fstring = "{} time points for {} variables written to file {}".format
 
         if verbose:
             print ("-------------------------------------------------------")
-        for fn, sol in zip(plist, self.solutions):
-            sol.write_to(fn)
+        for name, sol in zip(names, self.solutions):
+            sol.write_to(name)
             if verbose:
-                print(fstring(sol.ntimes, len(sol), fn))
+                print(fstring(sol.ntimes, len(sol), name))
 
     def order_by_names(self, varnames):
         for sol in self.solutions:
@@ -458,11 +453,11 @@ class Solutions(object):
 
 def read_tc(source,
             filedir=None,
-            intvarsorder=None,
             names=None,
             verbose=False):
     tcs = Solutions()
     tcsnames = None
+    
     if hasattr(source, 'metadata'):
         # retrieve info from model declaration
         stcs = source.metadata['timecourses']
@@ -472,6 +467,7 @@ def read_tc(source,
         tcs.filenames = [source]
     else:
         tcs.filenames = source
+    
     if names is None:
         if tcsnames is not None:
             names = tcsnames
@@ -638,4 +634,3 @@ def getCriteriumFunction(weights, model, tc):
 
     # TODO: weights not implemented
     return None
-
