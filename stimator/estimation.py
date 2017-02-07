@@ -310,7 +310,6 @@ class DeODEOptimizer(de.DESolver):
 
 def s_timate(model, timecourses=None, opt_settings=None,
              tc_dir=None,
-             intvarsorder=None,
              names=None,
              verbose_readingTCs=True,
              **kwargs):
@@ -333,7 +332,6 @@ def s_timate(model, timecourses=None, opt_settings=None,
 
     tcs = timecourse.readTCs(timecourses,
                              filedir=tc_dir,
-                             intvarsorder=intvarsorder,
                              names=names,
                              verbose=verbose_readingTCs)
 
@@ -379,7 +377,7 @@ timecourse TSH2b.txt
 
     print(optimum)
     optimum.plot()
-    optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(12,7))
+    optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(9,6))
 
     # --- an example with unknown initial values --------------------
 

@@ -31,7 +31,7 @@ packages = [
     'stimator.moo',
 ]
 
-requires = ['six', 'invoke', 'pytest', 'sympy', 'pandas', 'seaborn']
+requires = ['six', 'invoke', 'pytest', 'sympy', 'matplotlib>=1.5']
 
 classifs=[
         'Development Status :: 3 - Alpha',
