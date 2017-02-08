@@ -9,37 +9,10 @@ from matplotlib import pyplot as pl
 from stimator.utils import _is_string, _is_sequence
 
 
-## def _prepare_settigs(no_mpl_changes, context, style, palette,
-##                      font, font_scale, fig_size):
-##     
-##     # save mpl settings
-##     original_settings = dict(mpl.rcParams)
-##     
-##     if no_mpl_changes:
-##         context=None
-##         style=None
-##         palette=None
-
-##     sns.set(context=context,
-##             style=style,
-##             palette=palette,
-##             font=font,
-##             font_scale=font_scale)
-##     
-##     mpl.rcParams['lines.markersize']=6
-##     mpl.rcParams['lines.markeredgewidth']=0.1
-##     
-##     if fig_size is not None:
-##         mpl.rcParams['figure.figsize'] = fig_size
-##     else:
-##         mpl.rcParams['figure.figsize'] = (8, 5.5)
-
-##     return original_settings
-
-def _prepare_settigs(style, palette, font, font_scale, fig_size):
+def _prepare_settigs(style, palette, font, fig_size):
     st_list = []
     
-    more_custom_settings = {'lines.markersize': 5,
+    more_custom_settings = {#'lines.markersize': 5,
                             'lines.markeredgewidth': 0.1}
     
     if style is not None:
@@ -47,7 +20,7 @@ def _prepare_settigs(style, palette, font, font_scale, fig_size):
             style = [style]
         st_list.extend(style)
     else:
-        st_list.extend(['seaborn-whitegrid', 'seaborn-notebook'])
+        st_list.extend(['seaborn-whitegrid'])
     
     valid_styles = []
     for s in st_list:
@@ -62,6 +35,7 @@ def _prepare_settigs(style, palette, font, font_scale, fig_size):
         more_custom_settings['figure.figsize'] = fig_size
     else:
         more_custom_settings['figure.figsize'] = (8, 5.5)
+    more_custom_settings['font.family'] = font
     
     st_list.append(more_custom_settings)
     
@@ -83,7 +57,6 @@ def plotTCs(solutions,
             style=None, 
             palette='deep',
             font="sans-serif", 
-            font_scale=1.0,
             save2file=None, **kwargs):
 
     """Generate a graph of the time course using matplotlib and seaborn.
@@ -91,9 +64,10 @@ def plotTCs(solutions,
        Called by .plot() member function of class timecourse.Solutions"""
 
 
-    settings = _prepare_settigs(style, palette, font, font_scale, fig_size)
+    settings = _prepare_settigs(style, palette, font, fig_size)
     
     with pl.style.context(settings):
+        
         # handle names and titles
         nsolutions = len(solutions)
         pnames = ['time course %d' % (i+1) for i in range(nsolutions)]
@@ -213,11 +187,10 @@ def plot_estim_optimum(opt, figure=None,
                        style=None, 
                        palette='deep',
                        font="sans-serif", 
-                       font_scale=1.0,
                        save2file=None,
                        show=False):
 
-    settings = _prepare_settigs(style, palette, font, font_scale, fig_size)
+    settings = _prepare_settigs(style, palette, font, fig_size)
     
     with pl.style.context(settings):
         if axis_set is None:
@@ -289,13 +262,12 @@ def plot_generations(opt, generations = None,
                      fig_size=None,
                      style=None, 
                      palette='deep',
-                     font="sans-serif", 
-                     font_scale=1.0):
+                     font="sans-serif"):
     
     if not opt.generations_exist:
         raise IOError('file generations.txt was not generated')
     
-    settings = _prepare_settigs(style, palette, font, font_scale, fig_size)
+    settings = _prepare_settigs(style, palette, font, fig_size)
     
     with pl.style.context(settings):
 
@@ -414,8 +386,8 @@ nothing really usefull here
                       Solution().read_str(demodata2)],
                      title='all time courses') 
     
-    #sols.plot(suptitlegend="plotting the two time courses")
-    sols.plot(suptitlegend="with font_scale=1.3", font_scale=1.3)
+    sols.plot(suptitlegend="plotting the two time courses")
+    sols.plot(suptitlegend="with font=serif", font_scale=1.3, font='serif')
     sols.plot(suptitlegend="with style=default", style='default')
     sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
     sols.plot(suptitlegend="with style=bogus", style='bogus')
@@ -446,11 +418,9 @@ nothing really usefull here
 
     sol.read_from('examples/timecourses/TSH2b.txt')
     
-    sol.plot(suptitlegend="plotting only one time course")
-
     f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
     
-    sol.plot(suptitlegend="plotting on a given axes", axes=ax2)
+    sol.plot(suptitlegend="plotting on a given axes (1 TC)", axes=ax2)
     ax2.set_ylabel('concentrations')
     ax2.set_xlabel('time')
 
