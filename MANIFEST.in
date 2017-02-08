@@ -1,4 +1,4 @@
-include LICENSE
+include LICENSE README.rst
 recursive-include examples *.py
 recursive-include examples *.ipynb
 recursive-include examples *.mdl
