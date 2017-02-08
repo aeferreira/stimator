@@ -20,7 +20,7 @@ def _prepare_settigs(style, palette, font, fig_size):
             style = [style]
         st_list.extend(style)
     else:
-        st_list.extend(['seaborn-whitegrid'])
+        st_list.extend(['seaborn-whitegrid', 'seaborn-notebook'])
     
     valid_styles = []
     for s in st_list:
