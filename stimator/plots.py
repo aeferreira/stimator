@@ -323,8 +323,8 @@ def plot_generations(opt, generations=None,
                     #ax1.plot(solx, soly, marker='o', ls='None', label=gen)
                     ## for px, py in zip(objx, objy):
                         ## ax2.axhline(py, xmin=px, xmax=px*0.01, color='black')
-                    ax2.plot(objx, objy, '_', ls='None', label=gen)
                     ax2.axvline(objx[0], lw=0.5, color='lightgray')
+                    ax2.plot(objx, objy, '_', ls='None', label=gen)
                     solx = []
                     soly = []
                     objx = []

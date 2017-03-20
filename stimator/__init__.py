@@ -9,9 +9,9 @@ import stimator.examples as examples
 
 class VersionObj(object):
     def __init__(self):
-        self.version = '0.9.102'
+        self.version = '0.9.110'
         self.fullversion = self.version
-        self.date = "Fev 2017"
+        self.date = "Mar 2017"
 
     def __str__(self):
         return self.version

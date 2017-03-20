@@ -31,7 +31,7 @@ packages = [
     'stimator.moo',
 ]
 
-requires = ['six', 'invoke', 'pytest', 'sympy', 'matplotlib>=1.5']
+requires = ['six', 'pytest', 'sympy', 'numpy', 'scipy', 'matplotlib>=1.5']
 
 classifs=[
         'Development Status :: 3 - Alpha',
@@ -47,6 +47,7 @@ classifs=[
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Scientific/Engineering :: Artificial Life',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Chemistry',
