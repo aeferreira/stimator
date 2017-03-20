@@ -84,7 +84,7 @@ def plotTCs(solutions,
         else:
             nplts = nsolutions
 
-        # compute rows and columns in grid of plots
+        # compute shape of grid
         ncols = int(math.ceil(math.sqrt(nplts)))
         nrows = int(math.ceil(float(nplts)/ncols))
 
@@ -94,45 +94,79 @@ def plotTCs(solutions,
                 figure = pl.figure()
             axis_set = [figure.add_subplot(nrows, ncols, i+1) for i in range(nplts)]
 
-        # create "plot description" records
+        cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
+        cyclingcolors = itertools.cycle(cyl)
+        
+        # create "plot description" records color = next(cyclingcolors)
         plots_desc = []
+        color_table = {}
         if not group:
-            for k, solution in enumerate(solutions):
-                rsol = list(range(len(solution)))
-                pdesc = dict(title=pnames[k],
-                             lines=[(solution.names[i], k, i) for i in rsol])
-                plots_desc.append(pdesc)
+            for k, sol in enumerate(solutions):
+                cdesc = []
+                ldesc = [(sol.names[i], k, i) for i in range(len(sol))]
+                for name, _, _ in ldesc:
+                    if name in color_table:
+                        c = color_table[name]
+                    else:
+                        c = next(cyclingcolors)
+                        color_table[name] = c
+                    cdesc.append(c)
+                
+                plots_desc.append(dict(title=pnames[k],
+                                       lines=ldesc,
+                                       colors=cdesc))
         else:
             for g in group:
                 if _is_string(g):
                     pdesc = dict(title=g)
-                    plines = []
-                    for k, solution in enumerate(solutions):
-                        if g in solution.names:
-                            indx = solution.names.index(g)
-                            plines.append((pnames[k], k, indx))
-                    pdesc['lines'] = plines
+                    ldesc = []
+                    cdesc = []
+                    for k, sol in enumerate(solutions):
+                        if g in sol.names:
+                            indx = sol.names.index(g)
+                            ldesc.append((pnames[k], k, indx))
+                    for _, k, indx in ldesc:
+                        if (k, indx) in color_table:
+                            c = color_table[(k, indx)]
+                        else:
+                            c = next(cyclingcolors)
+                            color_table[(k, indx)] = c
+                        cdesc.append(c)
+                    
+                    pdesc['lines'] = ldesc
+                    pdesc['colors'] = cdesc
                 else:
                     if _is_sequence(g):
                         pdesc = dict(title=' '.join(g))
-                        plines = []
+                        ldesc = []
+                        cdesc = []
                         for vvv in g:
-                            for k, solution in enumerate(solutions):
-                                if vvv in solution.names:
-                                    indx = solution.names.index(vvv)
+                            for k, sol in enumerate(solutions):
+                                if vvv in sol.names:
+                                    indx = sol.names.index(vvv)
                                     if len(solutions) > 1:
-                                        plines.append(("%s, %s" % (vvv, pnames[k]),
+                                        ldesc.append(("%s, %s" % (vvv, pnames[k]),
                                                       k,
                                                       indx))
                                     else:
-                                        plines.append(("%s" % (vvv), k, indx))
-                        pdesc['lines'] = plines
+                                        ldesc.append(("%s" % (vvv), k, indx))
+                        for _, k, indx in ldesc:
+                            if (k, indx) in color_table:
+                                c = color_table[(k, indx)]
+                            else:
+                                c = next(cyclingcolors)
+                                color_table[(k, indx)] = c
+                            cdesc.append(c)
+                        pdesc['lines'] = ldesc
+                        pdesc['colors'] = cdesc
                     else:
                         raise StimatorTCError('%s is not a str or seq' % str(g))
                 plots_desc.append(pdesc)
-        
+##         print('--- Color table ---')
+##         for k, v in color_table.items():
+##             print(k, '--->', v)
         # draw plots
-        for i,p in enumerate(plots_desc):
+        for i, p in enumerate(plots_desc):
             curraxis = axis_set[i]
             nlines = len(p['lines'])
             use_dots = not solutions[0].dense
@@ -141,12 +175,14 @@ def plotTCs(solutions,
             
             ls, marker = ('None', 'o') if use_dots else ('-', 'None')
 
-            for lname, ltc, li in p['lines']:
+            for ((lname, ltc, li), c) in zip(p['lines'], p['colors']):
                 y = solutions[ltc] [li]
                 data_loc = np.logical_not(np.isnan(y))
                 x = solutions[ltc].t[data_loc]
                 y = y[data_loc]
-                curraxis.plot(x, y, ls=ls, marker=marker, label=lname, clip_on = False)
+                curraxis.plot(x, y, ls=ls, marker=marker, color=c,
+                                    label=lname,
+                                    clip_on = False)
 
             if yrange is not None:
                 curraxis.set_ylim(yrange)
