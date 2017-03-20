@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as pl
+from cycler import cycler
 
 from stimator.utils import _is_string, _is_sequence
 
@@ -35,6 +36,10 @@ def _prepare_settigs(style, palette, font, fig_size):
         more_custom_settings['figure.figsize'] = fig_size
     else:
         more_custom_settings['figure.figsize'] = (8, 5.5)
+    
+    if palette is not None:
+        more_custom_settings['axes.prop_cycle'] = cycler('color', list(palette))
+    
     more_custom_settings['font.family'] = font
     
     st_list.append(more_custom_settings)
@@ -55,11 +60,11 @@ def plotTCs(solutions,
             legend=True,
             force_dense=False,
             style=None, 
-            palette='deep',
+            palette=None,
             font="sans-serif", 
             save2file=None, **kwargs):
 
-    """Generate a graph of the time course using matplotlib and seaborn.
+    """Generate a graph of the time course using matplotlib.
        
        Called by .plot() member function of class timecourse.Solutions"""
 
@@ -79,10 +84,7 @@ def plotTCs(solutions,
                     pnames[i] = solutions[i].title
 
         # find how many plots
-        if group:
-            nplts = len(group)
-        else:
-            nplts = nsolutions
+        nplts = len(group) if group else nsolutions
 
         # compute shape of grid
         ncols = int(math.ceil(math.sqrt(nplts)))
@@ -97,7 +99,7 @@ def plotTCs(solutions,
         cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
         cyclingcolors = itertools.cycle(cyl)
         
-        # create "plot description" records color = next(cyclingcolors)
+        # create "plot description" records
         plots_desc = []
         color_table = {}
         if not group:
@@ -112,59 +114,43 @@ def plotTCs(solutions,
                         color_table[name] = c
                     cdesc.append(c)
                 
-                plots_desc.append(dict(title=pnames[k],
-                                       lines=ldesc,
-                                       colors=cdesc))
+                plots_desc.append({'title': pnames[k], 'lines': ldesc, 'colors': cdesc})
         else:
             for g in group:
+                ldesc = []
+                cdesc = []
                 if _is_string(g):
-                    pdesc = dict(title=g)
-                    ldesc = []
-                    cdesc = []
+                    pdesc = {'title': g}
                     for k, sol in enumerate(solutions):
                         if g in sol.names:
                             indx = sol.names.index(g)
                             ldesc.append((pnames[k], k, indx))
-                    for _, k, indx in ldesc:
-                        if (k, indx) in color_table:
-                            c = color_table[(k, indx)]
-                        else:
-                            c = next(cyclingcolors)
-                            color_table[(k, indx)] = c
-                        cdesc.append(c)
-                    
-                    pdesc['lines'] = ldesc
-                    pdesc['colors'] = cdesc
                 else:
-                    if _is_sequence(g):
-                        pdesc = dict(title=' '.join(g))
-                        ldesc = []
-                        cdesc = []
-                        for vvv in g:
-                            for k, sol in enumerate(solutions):
-                                if vvv in sol.names:
-                                    indx = sol.names.index(vvv)
-                                    if len(solutions) > 1:
-                                        ldesc.append(("%s, %s" % (vvv, pnames[k]),
-                                                      k,
-                                                      indx))
-                                    else:
-                                        ldesc.append(("%s" % (vvv), k, indx))
-                        for _, k, indx in ldesc:
-                            if (k, indx) in color_table:
-                                c = color_table[(k, indx)]
-                            else:
-                                c = next(cyclingcolors)
-                                color_table[(k, indx)] = c
-                            cdesc.append(c)
-                        pdesc['lines'] = ldesc
-                        pdesc['colors'] = cdesc
-                    else:
+                    if not _is_sequence(g):
                         raise StimatorTCError('%s is not a str or seq' % str(g))
+
+                    pdesc = {'title': ' '.join(g)}
+                    for vvv in g:
+                        for k, sol in enumerate(solutions):
+                            if vvv in sol.names:
+                                indx = sol.names.index(vvv)
+                                if len(solutions) > 1:
+                                    ldesc.append(("%s, %s" % (vvv, pnames[k]),
+                                                  k,
+                                                  indx))
+                                else:
+                                    ldesc.append(("%s" % (vvv), k, indx))
+                for _, k, indx in ldesc:
+                    if (k, indx) in color_table:
+                        c = color_table[(k, indx)]
+                    else:
+                        c = next(cyclingcolors)
+                        color_table[(k, indx)] = c
+                    cdesc.append(c)
+
+                pdesc.update({'lines': ldesc, 'colors': cdesc})
                 plots_desc.append(pdesc)
-##         print('--- Color table ---')
-##         for k, v in color_table.items():
-##             print(k, '--->', v)
+
         # draw plots
         for i, p in enumerate(plots_desc):
             curraxis = axis_set[i]
@@ -221,7 +207,7 @@ def plot_estim_optimum(opt, figure=None,
                        axis_set=None,
                        fig_size=None,
                        style=None, 
-                       palette='deep',
+                       palette=None,
                        font="sans-serif", 
                        save2file=None,
                        show=False):
@@ -233,10 +219,6 @@ def plot_estim_optimum(opt, figure=None,
             if figure is None:
                 figure = pl.figure()
 
-    ##     original_cycle = mpl.rcParams["axes.color_cycle"]
-    ##     curr_cycle = _repeatitems(original_cycle, 2)
-    ##     mpl.rcParams["axes.color_cycle"] = curr_cycle
-        
         bestsols = opt.optimum_dense_tcs
         expsols = opt.optimizer.tc
         tcstats = opt.tcdata
@@ -255,11 +237,7 @@ def plot_estim_optimum(opt, figure=None,
             expsol = expsols[i]
             symsol = bestsols[i]
             
-    ##         curr_palette = sns.color_palette()
-    ##         cyclingcolors = itertools.cycle(curr_palette)
-            
             cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
-            #print(cyl)
             cyclingcolors = itertools.cycle(cyl)
 
             for line in range(len(expsol)):
@@ -287,26 +265,23 @@ def plot_estim_optimum(opt, figure=None,
             figure.savefig(save2file)
         if show:
             if save2file is not None:
-                if hasattr(save2file,'read'):
+                if hasattr(save2file, 'read'):
                     save2file.close()
             pl.show()
 
 
-def plot_generations(opt, generations = None,
-                     pars = None,
-                     figure=None, show=False,
+def plot_generations(opt, generations=None,
+                     pars=None, figure=None, show=False,
                      fig_size=None,
-                     style=None, 
-                     palette='deep',
-                     font="sans-serif"):
+                     style=None, palette=None, font="sans-serif"):
     
     if not opt.generations_exist:
         raise IOError('file generations.txt was not generated')
     
     settings = _prepare_settigs(style, palette, font, fig_size)
+    settings.append({'lines.markeredgewidth': 1.0})
     
     with pl.style.context(settings):
-
 
         if figure is None:
             figure = pl.figure()
@@ -329,8 +304,10 @@ def plot_generations(opt, generations = None,
         
         scores_col = len(opt.parameters)
         
-        ax1 = pl.subplot(1,2,1)
-        ax2 = pl.subplot(1,2,2)
+        #ax1 = pl.subplot(1,2,1)
+        #ax2 = pl.subplot(1,2,2)
+        ax2 = pl.subplot(1,1,1)
+        
         # parse generations
         gen = -1
         f = open('generations.txt')
@@ -343,8 +320,11 @@ def plot_generations(opt, generations = None,
             line = line.strip()
             if line == '' and reading:
                 if len(solx) > 0:
-                    ax1.plot(solx, soly, marker='o', ls='None', label=gen)
-                    ax2.plot(objx, objy, marker='o', ls='None', label=gen)
+                    #ax1.plot(solx, soly, marker='o', ls='None', label=gen)
+                    ## for px, py in zip(objx, objy):
+                        ## ax2.axhline(py, xmin=px, xmax=px*0.01, color='black')
+                    ax2.plot(objx, objy, '_', ls='None', label=gen)
+                    ax2.axvline(objx[0], lw=0.5, color='lightgray')
                     solx = []
                     soly = []
                     objx = []
@@ -365,10 +345,10 @@ def plot_generations(opt, generations = None,
             else:
                 continue
         f.close()
-        ax1.legend(loc=0)
-        ax1.set_title('population')
-        ax1.set_xlabel(pars[0])
-        ax1.set_ylabel(pars[1])
+        # ax1.legend(loc=0)
+        # ax1.set_title('population')
+        # ax1.set_xlabel(pars[0])
+        # ax1.set_ylabel(pars[1])
         ax2.set_title('scores')
         ax2.set_yscale('log')
         ax2.set_xlabel('generation')
@@ -423,11 +403,14 @@ nothing really usefull here
                      title='all time courses') 
     
     sols.plot(suptitlegend="plotting the two time courses")
-    sols.plot(suptitlegend="with font=serif", font_scale=1.3, font='serif')
+    sols.plot(suptitlegend="with font=serif, palette='rgb'",
+              font_scale=1.3, font='serif', palette='rgb')
     sols.plot(suptitlegend="with style=default", style='default')
     sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
     sols.plot(suptitlegend="with style=bogus", style='bogus')
+    
     sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
+    
     sols.plot(suptitlegend="with force_dense=True", force_dense=True)
     sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
     sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')

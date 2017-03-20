@@ -1,12 +1,12 @@
-from __future__ import print_function
 """S-timator : DEMO of dynamic sensitivities."""
+from __future__ import print_function
 
 from numpy import *
 from stimator import read_model, Solutions
 from stimator.dynamics import add_dSdt_to_model
 
-print (__doc__, '\n')
-print ("""Sensitivity ODEs are added to model, according to formula:
+print(__doc__, '\n')
+print("""Sensitivity ODEs are added to model, according to formula:
 
      dS/dt = df/dx * S + df/dp
 -----------------------------------------------------------
