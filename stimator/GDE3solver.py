@@ -133,10 +133,12 @@ class GDE3Solver(DESolver):
     def __init__(self, models, 
                  toOpt, objectiveFunction, observed, 
                  npoints, t0, tf, 
-                 populationSize, maxGenerations, deStrategy, 
+                 pop_size, deStrategy, 
                  diffScale, crossoverProb, cutoffEnergy, 
                  useClassRandomNumberMethods, 
-                 dif = '0', dump_generations = None):
+                 dif='0',
+                 dump_generations=None,
+                 max_generations=200):
 
         self.models = models
         self.npoints = npoints
@@ -162,12 +164,13 @@ class GDE3Solver(DESolver):
         self.dump_generations = dump_generations
 
         DESolver.__init__(self, 
-                          len(toOpt), populationSize, maxGenerations, 
+                          len(toOpt), pop_size,
                           self.opt_mins, self.opt_maxs, 
                           deStrategy, diffScale, crossoverProb, 
-                          cutoffEnergy, useClassRandomNumberMethods)
+                          cutoffEnergy, useClassRandomNumberMethods, 
+                          max_generations=max_generations)
 
-        self.deltaT = (tf - t0)/npoints
+        self.deltaT = (tf - t0) / npoints
 
         self.objFuncList = []
 
@@ -182,7 +185,7 @@ class GDE3Solver(DESolver):
         self.dif = dif
 
         # threshold for improvement based on 5 % of new solution count
-        self.roomForImprovement = int(round(0.05 * populationSize))
+        self.roomForImprovement = int(round(0.05 * pop_size))
 
         #counter of number of generations with only non-dominated solutions
         self.fullnondominated = 0
@@ -211,8 +214,8 @@ class GDE3Solver(DESolver):
             self.model_indexes.extend([(j,i) for (i,j) in self.model_indexes])
 
         # working storage arrays
-        self.new_generation_energies = [[] for i in range(self.populationSize)]
-        self.new_population = numpy.empty((self.populationSize,len(self.toOpt)))
+        self.new_generation_energies = [[] for i in range(self.pop_size)]
+        self.new_population = numpy.empty((self.pop_size,len(self.toOpt)))
         self.gen_times = []
         self.calcTrialSolution = self.Rand1Bin
 
@@ -222,10 +225,10 @@ class GDE3Solver(DESolver):
            current population."""
         r1,r2,r3 = self.SelectSamples(candidate, 3)
         n = self.GetRandIntInPars()
-        self.trialSolution = numpy.copy(self.population[candidate])
-        for i in range(self.parameterCount):
-            self.trialSolution[n] = self.population[r1][n] + self.scale * (self.population[r2][n] - self.population[r3][n])
-            n = (n + 1) % self.parameterCount
+        self.trialSolution = numpy.copy(self.pop[candidate])
+        for i in range(self.pars_count):
+            self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
+            n = (n + 1) % self.pars_count
 
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
@@ -240,7 +243,7 @@ class GDE3Solver(DESolver):
             self.exitCode = 4
             return
         # Hit max generations
-        if self.generation >= self.maxGenerations:
+        if self.generation >= self.max_generations:
             self.exitCode = 3
             return
         # Hit several generations with only non-dominate solutions
@@ -267,7 +270,7 @@ class GDE3Solver(DESolver):
             # base class DESolver.__init__()  populates the initial population 
             
             self.population_energies = []
-            for trial in self.population:
+            for trial in self.pop:
                 energies = self.EnergyFunction(trial)
                 if self.dif in '+-':
                     difs = []
@@ -284,7 +287,7 @@ class GDE3Solver(DESolver):
 ##             print '------- BEGIN CONTROL ----------------------------'
 ##             numpy.set_printoptions(precision=14)
 ##             for i in range(30):
-##                 print i, self.population[i], self.population_energies[i]
+##                 print i, self.pop[i], self.population_energies[i]
 ##             print '------- END CONTROL ------------------------------'
 
             timeElapsed = time() - time0
@@ -300,14 +303,14 @@ class GDE3Solver(DESolver):
 
             print ("Generating new candidates...")
             self.new_generation_energies = []
-            for p in range(self.populationSize):
+            for p in range(self.pop_size):
                 # generate new solutions.,reject those out-of-bounds or repeated
 
                 while True:
                     # force a totally new solution
                     self.calcTrialSolution(p)
                     ltrial = self.trialSolution
-##                     if numpy.all(ltrial == self.population[p]):
+##                     if numpy.all(ltrial == self.pop[p]):
 ##                         print 'SOL REPEATED'
 ##                         continue
                     # check if out of bounds
@@ -351,11 +354,11 @@ class GDE3Solver(DESolver):
                     newBetterSols += 1
                 elif energyComparison[i] < 0:
                     objectives.append(self.population_energies[i])
-                    working_sols.append(numpy.copy(self.population[i]))
+                    working_sols.append(numpy.copy(self.pop[i]))
                     n_keys += 1
                 else: #energyComparison[i] == 0
                     objectives.append(self.population_energies[i])
-                    working_sols.append(numpy.copy(self.population[i]))
+                    working_sols.append(numpy.copy(self.pop[i]))
                     objectives.append(self.new_generation_energies[i])
                     working_sols.append(numpy.copy(self.new_population[i]))
                     n_keys += 2
@@ -371,36 +374,36 @@ class GDE3Solver(DESolver):
             flengths = [len(i) for i in nondominated_waves]
             print ('Front lengths: {}'.format(flengths))
             
-            # rebuild current population to populationSize
-            self.population = []
+            # rebuild current population to pop_size
+            self.pop = []
             self.population_energies = []
             
             fronts = []    # holds indexes of (used) non-dominated waves
             
             remaining = []
             for ndf in nondominated_waves:
-                excess = len(self.population) + len(ndf) - self.populationSize
-                if len(self.population) < self.populationSize and excess >= 0:
-                    # create a set of solutions to exactly complete pop to populationSize
+                excess = len(self.pop) + len(ndf) - self.pop_size
+                if len(self.pop) < self.pop_size and excess >= 0:
+                    # create a set of solutions to exactly complete pop to pop_size
                     remaining = remove_most_crowded(objectives,
                                                     indexes = ndf,
                                                     knumber = 3, 
                                                     remove_n = excess)
                     break
-                elif len(self.population) == self.populationSize:
+                elif len(self.pop) == self.pop_size:
                     # do nothing, pop complete
                     break
                 else:
                     # just copy  the whole ndf 'front' into pop
                     fronts.append(ndf)
                     for s in ndf:
-                        self.population.append(working_sols[s])
+                        self.pop.append(working_sols[s])
                         self.population_energies.append(objectives[s])
             
-            # use the (trimmed)  last front to complete pop to self.populationSize 
+            # use the (trimmed)  last front to complete pop to self.pop_size 
             fronts.append(remaining)
             for s in remaining:
-                self.population.append(working_sols[s])
+                self.pop.append(working_sols[s])
                 self.population_energies.append(objectives[s])
             
             timeElapsed2 = time() - sortingtime
@@ -416,7 +419,7 @@ class GDE3Solver(DESolver):
 
             n_nondominated = flengths[0]
             print ('%d non-dominated solutions'%(n_nondominated))
-            if n_nondominated == len(self.population):
+            if n_nondominated == len(self.pop):
                 self.fullnondominated += 1
             else:
                 self.fullnondominated = 0
@@ -454,7 +457,7 @@ class GDE3Solver(DESolver):
     def generation_string(self, generation):
         generation = str(generation)
         res = 'generation %s -------------------------\n'%generation
-        for s,o in zip(self.population, self.population_energies):
+        for s,o in zip(self.pop, self.population_energies):
             sstr = ' '.join([str(i) for i in s])
             ostr = ' '.join([str(i) for i in o])
             res = res + '%s %s\n'%(sstr, ostr)

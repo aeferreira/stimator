@@ -52,7 +52,7 @@ def compute(obj):
     ##         "e1":[1.9e-3, 2.0e-3], "e2":[3.9e-4, 4.0e-4]}
     
     populationSize = 200
-    maxGenerations = 100
+    max_generations = 100
     DEStrategy = 'Rand1Bin'
     diffScale = 0.5
     crossoverProb = 0.7
@@ -75,13 +75,14 @@ def compute(obj):
                        obj, 
                        observed, 
                        npoints, t0, tf, 
-                       populationSize, maxGenerations, 
+                       populationSize,
                        DEStrategy, 
                        diffScale, 
                        crossoverProb, 
                        cutoffEnergy, 
                        useClassRandomNumberMethods,
-                       dump_generations = dump_generations)#, dif = '-')
+                       dump_generations=dump_generations,
+                       max_generations=max_generations)#, dif = '-')
     solver.run()
     
     print ('-----------------------------------------------\nFinal front:')
@@ -89,7 +90,7 @@ def compute(obj):
         sstr = ' '.join(solver.toOptKeys)
         ostr = ' '.join([str(d) for d in solver.model_indexes])
         print ('{} ----> {}'.format(sstr, ostr))
-        for s,o in zip(solver.population, solver.population_energies):
+        for s,o in zip(solver.pop, solver.population_energies):
             sstr = ' '.join(["%6.4g"%i for i in s])
             ostr = ' '.join(["%6.4g"%i for i in o])
             print('{} ----> {}'.format(sstr, ostr))

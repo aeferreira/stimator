@@ -66,7 +66,8 @@ class DeODEOptimizer(de.DESolver):
                  dump_generations=None,
                  dump_predictions=False,
                  initial='init',
-                 maxGenerations_noimprovement=20):
+                 max_generations=200,
+                 convergence_noimprovement=20):
         self.model = model
         self.tc = tcs
         self.varnames = model.varnames
@@ -86,16 +87,17 @@ class DeODEOptimizer(de.DESolver):
             optSettings['pop_size'] = optSettings['genomesize']
         if optSettings.get('max_generations', None) is None:
             optSettings['max_generations'] = optSettings['generations']
+        max_generations=optSettings['max_generations']
 
         de.DESolver.__init__(self, len(pars),  # number of parameters
                              int(optSettings['pop_size']),  # pop size
-                             int(optSettings['max_generations']),  # max gens
                              mins, maxs,  # min and max parameter values
                              "Best2Exp",  # DE strategy
                              0.7, 0.6,  # DiffScale, Crossover Prob
                              0.0,  # Cut-off energy
                              True,  # use class random-number methods
-                             maxGenerations_noimprovement)
+                             max_generations=max_generations,
+                             convergence_noimprovement=convergence_noimprovement)
 
         # cutoffEnergy is 1e-6 of deviation from data
         self.cutoffEnergy = 1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
@@ -171,8 +173,8 @@ class DeODEOptimizer(de.DESolver):
 
     def externalEnergyFunction(self, trial):
         # if out of bounds flag with error energy
-        for trialpar, minInitialValue, maxInitialValue in zip(trial, self.minInitialValue, self.maxInitialValue):
-            if trialpar > maxInitialValue or trialpar < minInitialValue:
+        for p, minInitialValue, maxInitialValue in zip(trial, self.min_values, self.max_values):
+            if p > maxInitialValue or p < minInitialValue:
                 return 1.0E300
         # set parameter values from trial
         self.model.set_uncertain(trial)
@@ -225,7 +227,7 @@ class DeODEOptimizer(de.DESolver):
         # find if objectives is iterable
         isiter = hasattr(self.popEnergy[0], '__contains__')
         res = 'generation %s -------------------------\n' % generation
-        for s, o in zip(self.population, self.popEnergy):
+        for s, o in zip(self.pop, self.popEnergy):
             sstr = ' '.join([str(i) for i in s])
             if isiter:
                 ostr = ' '.join([str(i) for i in o])
@@ -241,8 +243,8 @@ class DeODEOptimizer(de.DESolver):
         best.optimization_score = self.bestEnergy
         best.optimization_generations = self.generation
         best.optimization_exit_by = self.exitCodeStrings[self.exitCode]
-        best.max_generations = self.maxGenerations
-        best.pop_size = self.populationSize
+        best.max_generations = self.max_generations
+        best.pop_size = self.pop_size
 
         # TODO: Store initial solver parameters?
 
@@ -372,7 +374,7 @@ timecourse TSH2b.txt
     optimum = s_timate(m1, tc_dir='examples/timecourses', 
                        names=['SDLTSH', 'HTA'],
                        dump_generations=True) 
-    # maxGenerations_noimprovement=40)
+    # convergence_noimprovement=40)
     # ... intvarsorder=(0,2,1) ...
 
     print(optimum)
