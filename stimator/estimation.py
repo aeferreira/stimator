@@ -200,7 +200,7 @@ class DeODEOptimizer(de.DESolver):
             self.msgTicker(msg)
 
     def reportGeneration(self):
-        msg = "%-4d: %f" % (self.generation, float(self.bestEnergy))
+        msg = "%-4d: %f" % (self.generation, float(self.best_score))
         if not self.msgTicker:
             print (msg)
         else:
@@ -225,9 +225,9 @@ class DeODEOptimizer(de.DESolver):
     def generation_string(self, generation):
         generation = str(generation)
         # find if objectives is iterable
-        isiter = hasattr(self.popEnergy[0], '__contains__')
+        isiter = hasattr(self.scores[0], '__contains__')
         res = 'generation %s -------------------------\n' % generation
-        for s, o in zip(self.pop, self.popEnergy):
+        for s, o in zip(self.pop, self.scores):
             sstr = ' '.join([str(i) for i in s])
             if isiter:
                 ostr = ' '.join([str(i) for i in o])
@@ -240,7 +240,7 @@ class DeODEOptimizer(de.DESolver):
         # compute parameter standard errors, based on FIM-1
         # generate TC solutions
         best = OptimumData(self)
-        best.optimization_score = self.bestEnergy
+        best.optimization_score = self.best_score
         best.optimization_generations = self.generation
         best.optimization_exit_by = self.exitCodeStrings[self.exitCode]
         best.max_generations = self.max_generations
@@ -251,13 +251,13 @@ class DeODEOptimizer(de.DESolver):
         # generate best time-courses
 
         par_names = [p.name for p in self.model.with_bounds]
-        parameters = list(zip(par_names, [x for x in self.bestSolution]))
+        parameters = list(zip(par_names, [x for x in self.best]))
 
         sols = timecourse.Solutions()
         best.tcdata = []
 
         for (i, tc) in enumerate(self.tc):
-            Y = self.computeSolution(i, self.bestSolution)
+            Y = self.computeSolution(i, self.best)
             if Y is not None:
                 score = self.criterium(Y, i)
             else:
@@ -283,11 +283,11 @@ class DeODEOptimizer(de.DESolver):
                                            sols,
                                            consterror,
                                            commonvnames)
-            best.parameters = [(par_names[i], value, invFIM1[i, i]**0.5) for (i, value) in enumerate(self.bestSolution)]
+            best.parameters = [(par_names[i], value, invFIM1[i, i]**0.5) for (i, value) in enumerate(self.best)]
 
         sols = timecourse.Solutions()
         for (i, tc) in enumerate(self.tc):
-            Y = self.computeSolution(i, self.bestSolution, dense=True)
+            Y = self.computeSolution(i, self.best, dense=True)
             ts = linspace(tc.t[0], tc.t[-1], 500)
 
             sol = timecourse.SolutionTimeCourse(ts, Y.T,
