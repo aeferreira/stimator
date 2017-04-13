@@ -224,7 +224,7 @@ class GDE3Solver(DESolver):
            The intent is to aggressively generate a new solution from
            current population."""
         r1,r2,r3 = self.SelectSamples(candidate, 3)
-        n = self.GetRandIntInPars()
+        n = numpy.random.randint(self.pars_count)
         self.trialSolution = numpy.copy(self.pop[candidate])
         for i in range(self.pars_count):
             self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])

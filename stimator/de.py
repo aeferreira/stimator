@@ -105,20 +105,11 @@ class DESolver(object):
     def reportFinal(self):
         print(self.reportFinalString())
 
-    def GetRandIntInPars(self):
-        return np.random.randint(self.pars_count)
-        #return random.randint(0, self.pars_count-1)
-
     def GetRandFloatIn01(self):
         r = np.random.uniform()
         #r = random.uniform(0.0, 1.0)
         return r
         
-    def GetRandIntInPop(self):
-        return np.random.randint(self.pop_size)
-        #return random.randint(0, self.pop_size-1)
-
-
     # this class might normally be subclassed and this method overridden,
     # or the self.externalEnergyFunction(trial) set
     # and this method used as is
@@ -236,9 +227,22 @@ class DESolver(object):
 
     
     # DE models
+
+    def get_pars2change(self):
+        pars = []
+        n = np.random.randint(self.pars_count)
+        for i in range(self.pars_count):
+            k = self.GetRandFloatIn01()
+            if k >= self.crossOverProbability:
+                return pars
+            pars.append(n)
+            n = (n + 1) % self.pars_count
+        return pars
+
+
     def Best1Exp(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        n = self.GetRandIntInPars()
+        n = self.np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -253,7 +257,7 @@ class DESolver(object):
 
     def Rand1Exp(self, candidate):
         r1,r2,r3 = self.SelectSamples(candidate, 3)
-        n = self.GetRandIntInPars()
+        n = self.np.random.randint(self.pars_count)
         
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -264,21 +268,28 @@ class DESolver(object):
             self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
             n = (n + 1) % self.pars_count
             i += 1
-
-    def Best2Exp(self, candidate):
-        r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        self.trialSolution = np.copy(self.pop[candidate])
-        n = self.GetRandIntInPars()
-        for i in range(self.pars_count):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability:
-                break
+    
+    def Best2Exp(self, i):
+        r1,r2,r3,r4 = self.SelectSamples(i, 4)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        for n in change:
             self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] + self.pop[r2][n] - self.pop[r3][n] - self.pop[r4][n])
-            n = (n + 1) % self.pars_count
+
+##     def Best2Exp(self, candidate):
+##         r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
+##         self.trialSolution = np.copy(self.pop[candidate])
+##         n = np.random.randint(self.pars_count)
+##         for i in range(self.pars_count):
+##             k = self.GetRandFloatIn01()
+##             if k >= self.crossOverProbability:
+##                 break
+##             self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] + self.pop[r2][n] - self.pop[r3][n] - self.pop[r4][n])
+##             n = (n + 1) % self.pars_count
             
     def RandToBest1Exp(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -293,7 +304,7 @@ class DESolver(object):
 
     def Rand2Exp(self, candidate):
         r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -307,7 +318,7 @@ class DESolver(object):
 
     def Best1Bin(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -322,7 +333,7 @@ class DESolver(object):
 
     def Rand1Bin(self, candidate):
         r1,r2,r3 = self.SelectSamples(candidate, 3)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -337,7 +348,7 @@ class DESolver(object):
 
     def RandToBest1Bin(self, candidate):
         r1,r2 = self.SelectSamples(candidate, 2)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -352,7 +363,7 @@ class DESolver(object):
 
     def Best2Bin(self, candidate):
         r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
@@ -367,7 +378,7 @@ class DESolver(object):
 
     def Rand2Bin(self, candidate):
         r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
-        n = self.GetRandIntInPars()
+        n = np.random.randint(self.pars_count)
 
         self.trialSolution = np.copy(self.pop[candidate])
         i = 0
