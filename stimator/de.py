@@ -10,7 +10,6 @@
 
 from __future__ import print_function, absolute_import, division
 import stimator.utils as utils
-import random
 import time
 import numpy as np
 import scipy.optimize
@@ -29,7 +28,6 @@ class DESolver(object):
                        max_generations=200,
                        convergence_noimprovement=20):
 
-        random.seed(3)
         np.random.seed(3)
 
         self.max_generations = max_generations
@@ -58,19 +56,13 @@ class DESolver(object):
         # min_values and max_values must be scalars
         # or vectors of size pars_count
         self.pop = np.random.uniform(0.0, 1.0, size=(pop_size, pars_count))
-##         print('...... pop log uniform 0............')
-##         print('pop_size', pop_size)
-##         print('pars_count', pars_count)
-##         print('self.pop', self.pop)
-##         
-##         print('...... end pop log ............')
         self.pop = self.pop * (max_values - min_values) + min_values
 
-        # initial energies for comparison
-        self.scores = np.ones(self.pop_size) * 1.0E300
+        # initial scores for comparison
+        self.scores = np.ones(self.pop_size) * float('inf')
 
         self.best = np.zeros(self.pars_count)
-        self.best_score = 1.0E300
+        self.best_score = float('inf')
         self.generation = 0
         self.generationsWithNoImprovement = 0
         self.atSolution = False
@@ -114,14 +106,17 @@ class DESolver(object):
         print(self.reportFinalString())
 
     def GetRandIntInPars(self):
-        return random.randint(0, self.pars_count-1)
+        return np.random.randint(self.pars_count)
+        #return random.randint(0, self.pars_count-1)
 
     def GetRandFloatIn01(self):
-        r = random.uniform(0.0, 1.0)
+        r = np.random.uniform()
+        #r = random.uniform(0.0, 1.0)
         return r
         
     def GetRandIntInPop(self):
-        return random.randint(0, self.pop_size-1)
+        return np.random.randint(self.pop_size)
+        #return random.randint(0, self.pop_size-1)
 
 
     # this class might normally be subclassed and this method overridden,
@@ -131,7 +126,7 @@ class DESolver(object):
         try:
             score = self.externalEnergyFunction(trial)
         except (ArithmeticError, FloatingPointError):
-            score = 1.0E300 # high energies for arithmetic exceptions
+            score = float('inf') # high energies for arithmetic exceptions
 
         # we will be "done" if the energy is less than or equal to the cutoff energy
         if score <= self.cutoff_score:
@@ -384,16 +379,17 @@ class DESolver(object):
             n = (n + 1) % self.pars_count
             i += 1
 
-    def SelectSamples(self, candidate, n):
-        """Select n different members of population which are different from candidate."""
-        
-        s = random.sample(list(range(self.pop_size)),n)
-        while candidate in s:
-            s = random.sample(list(range(self.pop_size)),n)
-        
-#        universe = range(0,candidate)+range(candidate+1, self.pop_size-1)
-#        s = random.sample(universe, n)
+    def SelectSamples(self, i, n):
+        """Select n different members of population which are different from i."""
+        the_set = [k for k in range(self.pop_size) if k != i]
+        #the_set = list(range(i)) + list(range(i + 1, self.pop_size))
+        s = np.random.choice(the_set, n, replace=False)
         return s
+        
+##         s = random.sample(list(range(self.pop_size)),n)
+##         while i in s:
+##             s = random.sample(list(range(self.pop_size)),n)
+##         return s
 
     def SetupClassRandomNumberMethods(self):
         np.random.seed(3) # this yields same results each time run() is run

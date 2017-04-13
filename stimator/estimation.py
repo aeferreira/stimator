@@ -175,7 +175,7 @@ class DeODEOptimizer(de.DESolver):
         # if out of bounds flag with error energy
         for p, minInitialValue, maxInitialValue in zip(trial, self.min_values, self.max_values):
             if p > maxInitialValue or p < minInitialValue:
-                return 1.0E300
+                return float('inf')
         # set parameter values from trial
         self.model.set_uncertain(trial)
 
@@ -185,7 +185,7 @@ class DeODEOptimizer(de.DESolver):
             if Y is not None:
                 self.timecourse_scores[i] = self.criterium(Y, i)
             else:
-                return (1.0E300)
+                return float('inf')
 
         globalscore = self.timecourse_scores.sum()
         return globalscore
