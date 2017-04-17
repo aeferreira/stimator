@@ -41,7 +41,6 @@ class DESolver(object):
             self.SetupClassRandomNumberMethods()
 
         # deStrategy is the name of the DE function to use
-        #self.calcTrialSolution = eval('self.' + deStrategy)
         self.calcTrialSolution = getattr(self, deStrategy)
 
         # DE hyperparameters
@@ -174,23 +173,24 @@ class DESolver(object):
 ##             print('current', self.pop[i],' score', self.scores[i])
                 
             self.calcTrialSolution(i)
-            score, self.atSolution = self.EnergyFunction(self.trialSolution)
-##             print('trial', self.trialSolution, 'trial score', score)
-            
-            if score < self.scores[i]:
-                # New low for this individual
-                self.scores[i] = score
-                self.pop[i] = np.copy(self.trialSolution)
-##                 print('REPLACED')
+            if not self.no_change:
+                score, self.atSolution = self.EnergyFunction(self.trialSolution)
+    ##             print('trial', self.trialSolution, 'trial score', score)
+                
+                if score < self.scores[i]:
+                    # New low for this individual
+                    self.scores[i] = score
+                    self.pop[i] = np.copy(self.trialSolution)
+    ##                 print('REPLACED')
 
-                # Check if all-time low
-                if score < self.best_score:
-                    self.best_score = score
-                    self.best = np.copy(self.trialSolution)
-                    #self.best = self.trialSolution
-                    self.generationsWithNoImprovement = 0
-            
-            #print self.pop[i],'=', self.scores[i]
+                    # Check if all-time low
+                    if score < self.best_score:
+                        self.best_score = score
+                        self.best = np.copy(self.trialSolution)
+                        #self.best = self.trialSolution
+                        self.generationsWithNoImprovement = 0
+                
+                #print self.pop[i],'=', self.scores[i]
             
             # no need to try another i if we are done
             if self.atSolution:
@@ -240,155 +240,86 @@ class DESolver(object):
         return pars
 
 
-    def Best1Exp(self, candidate):
-        r1,r2 = self.SelectSamples(candidate, 2)
-        n = self.np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
+    def Best1Exp(self, i):
+        r1,r2 = self.SelectSamples(i, 2)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
             self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] - self.pop[r2][n])
-            n = (n + 1) % self.pars_count
-            i += 1
 
-
-    def Rand1Exp(self, candidate):
-        r1,r2,r3 = self.SelectSamples(candidate, 3)
-        n = self.np.random.randint(self.pars_count)
-        
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
+    def Rand1Exp(self, i):
+        r1,r2,r3 = self.SelectSamples(i, 3)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
             self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
-            n = (n + 1) % self.pars_count
-            i += 1
     
     def Best2Exp(self, i):
         r1,r2,r3,r4 = self.SelectSamples(i, 4)
+        pop = self.pop
+        self.trialSolution = np.copy(pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
+            self.trialSolution[n] = self.best[n] + self.scale * (pop[r1][n] + pop[r2][n] - pop[r3][n] - pop[r4][n])
+
+    def RandToBest1Exp(self, i):
+        r1,r2 = self.SelectSamples(i, 2)
         self.trialSolution = np.copy(self.pop[i])
         change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
+            self.trialSolution[n] += self.scale * (self.best[n] - self.trialSolution[n]) + self.scale * (self.pop[r1][n] - self.pop[r2][n])
+
+    def Rand2Exp(self, i):
+        r1,r2,r3,r4,r5 = self.SelectSamples(i, 5)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
+            self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] + self.pop[r3][n] - self.pop[r4][n] - self.pop[r5][n])
+
+    def Best1Bin(self, i):
+        r1,r2 = self.SelectSamples(i, 2)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
+            self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] - self.pop[r2][n])
+
+    def Rand1Bin(self, i):
+        r1,r2,r3 = self.SelectSamples(i, 3)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
+            self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
+
+    def RandToBest1Bin(self, i):
+        r1,r2 = self.SelectSamples(i, 2)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
+            self.trialSolution[n] += self.scale * (self.best[n] - self.trialSolution[n]) + self.scale * (self.pop[r1][n] - self.pop[r2][n])
+
+    def Best2Bin(self, i):
+        r1,r2,r3,r4 = self.SelectSamples(i, 4)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
         for n in change:
             self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] + self.pop[r2][n] - self.pop[r3][n] - self.pop[r4][n])
 
-##     def Best2Exp(self, candidate):
-##         r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-##         self.trialSolution = np.copy(self.pop[candidate])
-##         n = np.random.randint(self.pars_count)
-##         for i in range(self.pars_count):
-##             k = self.GetRandFloatIn01()
-##             if k >= self.crossOverProbability:
-##                 break
-##             self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] + self.pop[r2][n] - self.pop[r3][n] - self.pop[r4][n])
-##             n = (n + 1) % self.pars_count
-            
-    def RandToBest1Exp(self, candidate):
-        r1,r2 = self.SelectSamples(candidate, 2)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
-            self.trialSolution[n] += self.scale * (self.best[n] - self.trialSolution[n]) + self.scale * (self.pop[r1][n] - self.pop[r2][n])
-            n = (n + 1) % self.pars_count
-            i += 1
-
-
-    def Rand2Exp(self, candidate):
-        r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
+    def Rand2Bin(self, i):
+        r1,r2,r3,r4,r5 = self.SelectSamples(i, 5)
+        self.trialSolution = np.copy(self.pop[i])
+        change = self.get_pars2change()
+        self.no_change = (len(change) == 0)
+        for n in change:
             self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] + self.pop[r3][n] - self.pop[r4][n] - self.pop[r5][n])
-            n = (n + 1) % self.pars_count
-            i += 1
-
-    def Best1Bin(self, candidate):
-        r1,r2 = self.SelectSamples(candidate, 2)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
-            self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] - self.pop[r2][n])
-            n = (n + 1) % self.pars_count
-            i += 1
-
-
-    def Rand1Bin(self, candidate):
-        r1,r2,r3 = self.SelectSamples(candidate, 3)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
-            self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
-            n = (n + 1) % self.pars_count
-            i += 1
-
-
-    def RandToBest1Bin(self, candidate):
-        r1,r2 = self.SelectSamples(candidate, 2)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
-            self.trialSolution[n] += self.scale * (self.best[n] - self.trialSolution[n]) + self.scale * (self.pop[r1][n] - self.pop[r2][n])
-            n = (n + 1) % self.pars_count
-            i += 1
-
-
-    def Best2Bin(self, candidate):
-        r1,r2,r3,r4 = self.SelectSamples(candidate, 4)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
-            self.trialSolution[n] = self.best[n] + self.scale * (self.pop[r1][n] + self.pop[r2][n] - self.pop[r3][n] - self.pop[r4][n])
-            n = (n + 1) % self.pars_count
-            i += 1
-
-
-    def Rand2Bin(self, candidate):
-        r1,r2,r3,r4,r5 = self.SelectSamples(candidate, 5)
-        n = np.random.randint(self.pars_count)
-
-        self.trialSolution = np.copy(self.pop[candidate])
-        i = 0
-        while(1):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability or i == self.pars_count:
-                break
-            self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] + self.pop[r3][n] - self.pop[r4][n] - self.pop[r5][n])
-            n = (n + 1) % self.pars_count
-            i += 1
 
     def SelectSamples(self, i, n):
         """Select n different members of population which are different from i."""
@@ -397,11 +328,6 @@ class DESolver(object):
         s = np.random.choice(the_set, n, replace=False)
         return s
         
-##         s = random.sample(list(range(self.pop_size)),n)
-##         while i in s:
-##             s = random.sample(list(range(self.pop_size)),n)
-##         return s
-
     def SetupClassRandomNumberMethods(self):
         np.random.seed(3) # this yields same results each time run() is run
         self.nonStandardRandomCount = self.pop_size * self.pars_count * 3

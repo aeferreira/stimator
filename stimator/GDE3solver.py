@@ -219,16 +219,17 @@ class GDE3Solver(DESolver):
         self.gen_times = []
         self.calcTrialSolution = self.Rand1Bin
 
-    def Rand1Bin(self, candidate):
+    def Rand1Bin(self, i):
         """This function overrides the base class (de.py).
            The intent is to aggressively generate a new solution from
            current population."""
-        r1,r2,r3 = self.SelectSamples(candidate, 3)
-        n = numpy.random.randint(self.pars_count)
-        self.trialSolution = numpy.copy(self.pop[candidate])
-        for i in range(self.pars_count):
+        r1,r2,r3 = self.SelectSamples(i, 3)
+        #n = numpy.random.randint(self.pars_count)
+        self.trialSolution = numpy.copy(self.pop[i])
+        #for i in range(self.pars_count):
+        for n in range(self.pars_count):
             self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
-            n = (n + 1) % self.pars_count
+            #n = (n + 1) % self.pars_count
 
     def EnergyFunction(self, trial):
         #compute solution for each model, using trial vector
