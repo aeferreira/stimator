@@ -104,11 +104,6 @@ class DESolver(object):
     def reportFinal(self):
         print(self.reportFinalString())
 
-    def GetRandFloatIn01(self):
-        r = np.random.uniform()
-        #r = random.uniform(0.0, 1.0)
-        return r
-        
     # this class might normally be subclassed and this method overridden,
     # or the self.externalEnergyFunction(trial) set
     # and this method used as is
@@ -232,12 +227,21 @@ class DESolver(object):
         pars = []
         n = np.random.randint(self.pars_count)
         for i in range(self.pars_count):
-            k = self.GetRandFloatIn01()
-            if k >= self.crossOverProbability:
+            #k = self.GetRandFloatIn01()
+            d = np.random.uniform()
+            if d >= self.crossOverProbability:
                 return pars
             pars.append(n)
             n = (n + 1) % self.pars_count
         return pars
+
+
+    def SelectSamples(self, i, n):
+        """Select n different members of population which are different from i."""
+        the_set = [k for k in range(self.pop_size) if k != i]
+        #the_set = list(range(i)) + list(range(i + 1, self.pop_size))
+        s = np.random.choice(the_set, n, replace=False)
+        return s
 
 
     def Best1Exp(self, i):
@@ -262,6 +266,7 @@ class DESolver(object):
         self.trialSolution = np.copy(pop[i])
         change = self.get_pars2change()
         self.no_change = (len(change) == 0)
+##         self.trialSolution[change] = self.best[change] + self.scale * (pop[r1][change] + pop[r2][change] - pop[r3][change] - pop[r4][change])
         for n in change:
             self.trialSolution[n] = self.best[n] + self.scale * (pop[r1][n] + pop[r2][n] - pop[r3][n] - pop[r4][n])
 
@@ -321,13 +326,6 @@ class DESolver(object):
         for n in change:
             self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] + self.pop[r3][n] - self.pop[r4][n] - self.pop[r5][n])
 
-    def SelectSamples(self, i, n):
-        """Select n different members of population which are different from i."""
-        the_set = [k for k in range(self.pop_size) if k != i]
-        #the_set = list(range(i)) + list(range(i + 1, self.pop_size))
-        s = np.random.choice(the_set, n, replace=False)
-        return s
-        
     def SetupClassRandomNumberMethods(self):
         np.random.seed(3) # this yields same results each time run() is run
         self.nonStandardRandomCount = self.pop_size * self.pars_count * 3
