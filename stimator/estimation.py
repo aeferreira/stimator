@@ -93,9 +93,7 @@ class DeODEOptimizer(de.DESolver):
                              int(optSettings['pop_size']),  # pop size
                              mins, maxs,  # min and max parameter values
                              "Best2Exp",  # DE strategy
-                             0.7, 0.6,  # DiffScale, Crossover Prob
-                             0.0,  # Cut-off energy
-                             True,  # use class random-number methods
+                             0.7, 0.6, 0.0, # DiffScale, p crossover, Cut-off S
                              max_generations=max_generations,
                              convergence_noimprovement=convergence_noimprovement)
 
@@ -171,7 +169,7 @@ class DeODEOptimizer(de.DESolver):
         #     return (1.0E300)
         return output[0]
 
-    def externalEnergyFunction(self, trial):
+    def external_score_function(self, trial):
         # if out of bounds flag with error energy
         for p, minInitialValue, maxInitialValue in zip(trial, self.min_values, self.max_values):
             if p > maxInitialValue or p < minInitialValue:
@@ -215,7 +213,7 @@ class DeODEOptimizer(de.DESolver):
             outCode = self.exitCode
             self.generate_optimum()
         if not self.endTicker:
-            print (self.reportFinalString())
+            de.DESolver.reportFinal(self)
         else:
             self.endTicker(outCode)
         if self.dump_generations is not None:

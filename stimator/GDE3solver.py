@@ -135,7 +135,7 @@ class GDE3Solver(DESolver):
                  npoints, t0, tf, 
                  pop_size, deStrategy, 
                  diffScale, crossoverProb, cutoffEnergy, 
-                 useClassRandomNumberMethods, 
+                 useClassRandomNumberMethods=False, 
                  dif='0',
                  dump_generations=None,
                  max_generations=200):
@@ -167,8 +167,9 @@ class GDE3Solver(DESolver):
                           len(toOpt), pop_size,
                           self.opt_mins, self.opt_maxs, 
                           deStrategy, diffScale, crossoverProb, 
-                          cutoffEnergy, useClassRandomNumberMethods, 
-                          max_generations=max_generations)
+                          cutoffEnergy, 
+                          max_generations=max_generations,
+                          useClassRandomNumberMethods=useClassRandomNumberMethods)
 
         self.deltaT = (tf - t0) / npoints
 
@@ -194,7 +195,7 @@ class GDE3Solver(DESolver):
                         'L2_midpoint_weights':timecourse.L2_midpoint_weights,
                         'KL'      :timecourse.KLdivergence,
                         'L2'      :timecourse.L2}
-        if self.objFunc not in str2distance.keys():
+        if self.objFunc not in str2distance:
             raise ("%s is not an implemented divergence function"%self.objFunc)
 
         if self.objFunc in ('L2_midpoint_weights','L2'):  #symetric measures
@@ -224,14 +225,12 @@ class GDE3Solver(DESolver):
            The intent is to aggressively generate a new solution from
            current population."""
         r1,r2,r3 = self.SelectSamples(i, 3)
-        #n = numpy.random.randint(self.pars_count)
-        self.trialSolution = numpy.copy(self.pop[i])
-        #for i in range(self.pars_count):
+        new_i = numpy.copy(self.pop[i])
         for n in range(self.pars_count):
-            self.trialSolution[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
-            #n = (n + 1) % self.pars_count
+            new_i[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
+        return new_i
 
-    def EnergyFunction(self, trial):
+    def score_function(self, trial):
         #compute solution for each model, using trial vector
         sols = [s.solve(trial) for s in self.objFuncList]
         if self.distance_func is not None:
@@ -252,10 +251,6 @@ class GDE3Solver(DESolver):
             self.exitCode = 6
             return
 
-        ## # no need to try another generation if we are done (energy criterium)
-        ## if self.atSolution:
-            ## self.exitCode = 1
-            ## return
         # generation 0: initialization
         if self.generation == 0:
             print ('------------------------------------\nGeneration 0')
@@ -272,7 +267,7 @@ class GDE3Solver(DESolver):
             
             self.population_energies = []
             for trial in self.pop:
-                energies = self.EnergyFunction(trial)
+                energies = self.score_function(trial)
                 if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
@@ -309,8 +304,7 @@ class GDE3Solver(DESolver):
 
                 while True:
                     # force a totally new solution
-                    self.calcTrialSolution(p)
-                    ltrial = self.trialSolution
+                    ltrial = self.calcTrialSolution(p)
 ##                     if numpy.all(ltrial == self.pop[p]):
 ##                         print 'SOL REPEATED'
 ##                         continue
@@ -320,10 +314,10 @@ class GDE3Solver(DESolver):
                     else: continue
                 
                 #Handle new solution
-                self.new_population[p,:] = self.trialSolution
+                self.new_population[p,:] = ltrial
                 
                 # compute trialSolution energies
-                trialEnergies = self.EnergyFunction(self.trialSolution)
+                trialEnergies = self.score_function(ltrial)
                 if self.dif in '+-':
                     difs = []
                     for i in range(self.nmodels):
