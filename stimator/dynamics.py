@@ -1,11 +1,11 @@
 from __future__ import print_function, division, absolute_import
 import re
 import math
-#import itertools
 from six.moves import zip as izip
 from numpy import *
 from scipy import integrate
 from stimator.timecourse import SolutionTimeCourse, Solutions
+from stimator.utils import _is_string, _is_sequence
 
 from stimator.examples import models
 
@@ -14,16 +14,6 @@ identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 def identifiersInExpr(_expr):
     iterator = identifier.finditer(_expr)
     return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
-
-
-def _is_string(a):
-    return (isinstance(a, str) or
-            isinstance(a, unicode))
-
-def _is_sequence(arg):
-    return (not hasattr(arg, "strip") and
-            hasattr(arg, "__getitem__") or
-            hasattr(arg, "__iter__"))
 
 
 def _find_indexof_component(model, name):
@@ -50,7 +40,6 @@ def _find_indexof_component(model, name):
     raise AttributeError('%s is not a component in this model' % name)
 
 
-
 def init2array(model):
     """Transforms a state object into a numpy.array object.
        
@@ -59,6 +48,7 @@ def init2array(model):
        Values are returned in the order of model variables.
     """
     return array([model.get_init(var) for var in model.varnames])
+
 
 def genStoichiometryMatrix(m):
     check, msg = m.checkRates()

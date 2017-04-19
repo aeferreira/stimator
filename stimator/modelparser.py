@@ -90,6 +90,7 @@ hascontinuation = re.compile(hascontpattern)
 
 def logicalLines(textlines):
     """generator that parses logical lines of input text.
+    
     The backslash is a continuation character
     """
     linenum = -1
@@ -140,11 +141,11 @@ class LogicalLoc(object):
         self.end = end   # end relative to logical line
         self.linestart = linestart # start of logical line
         self.lineend = lineend   # end of logical line
-    def clone(self):
-        return LogicalLoc(self.nline, self.start, self.end, self.linestart, self.lineend)
 
 def getPhysicalLineData(textlines, logpos):
-    textlines = getLinesFromText(textlines)
+    print(type(textlines))
+    textlines = get_text_as_file(textlines)
+    print(type(textlines))
 
     physstart = logpos.start + logpos.linestart
     physend = logpos.end + logpos.linestart
@@ -163,15 +164,9 @@ def getPhysicalLineData(textlines, logpos):
             nendline = iline
             endline = line
             endlinepos = physend - line_start_pos
-            try2close(textlines)
             return PhysicalLoc(physstart, startline, nstartline, startlinepos, physend, endline, nendline, endlinepos)
     return None
 
-def try2close(f):
-    try:
-        f.close()
-    except:
-        pass
 
 class StimatorParserError(Exception):
     def __init__(self, value, physloc, logloc):
@@ -181,12 +176,12 @@ class StimatorParserError(Exception):
     def __str__(self):
         return str(self.value)
 
-def getLinesFromText(text):
-    if isinstance(text, list):
-        return text
-    # try to open with native open function (if source is pathname)
+def get_text_as_file(text):
+    # try to open in case it is a pathname
     try:
-        return open(text)
+        f = open(text)
+        text = f.read()
+        f.close()
     except (IOError, OSError):
         pass
 
@@ -204,47 +199,6 @@ def read_model(text):
     ppos = getPhysicalLineData(text, logloc)
     raise StimatorParserError(parser.error, ppos, logloc)
 
-def try2read_model(text):
-    try:
-        m = read_model(text)
-        tc = m.metadata['timecourses']
-        print ('\n-------- Model %s successfuly read ------------------'% m.metadata['title'])
-        print (m)
-        if len(tc.filenames) > 0:
-            print ("the timecourses to load are {}".format(tc.filenames))
-            if tc.defaultnames:
-                print ("\nthe default names to use in timecourses are {}".format(tc.defaultnames))
-        print()
-        return
-    except StimatorParserError as expt:
-        print ("\n*****************************************")
-
-        if expt.physloc.nstartline == expt.physloc.nendline:
-            locmsg = "Error in line %d of model definition" % (expt.physloc.nendline)
-        else:
-            locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline, expt.physloc.nendline)
-        print (locmsg)
-
-        ppos = expt.physloc
-        if ppos.nstartline != ppos.nendline:
-            caretline = [" "]*(len(ppos.startline)+1)
-            caretline[ppos.startlinepos] = "^"
-            caretline = ''.join(caretline)
-            value = "%s\n%s\n" % (ppos.startline.rstrip(), caretline)
-            caretline = [" "]*(len(ppos.endline)+1)
-            caretline[ppos.endlinepos] = "^"
-            caretline = ''.join(caretline)
-            value = "%s\n%s\n%s" % (value, ppos.endline.rstrip(), caretline)
-        else:
-            caretline = [" "]*(len(ppos.startline)+1)
-            caretline[ppos.startlinepos] = "^"
-            caretline[ppos.endlinepos] = "^"
-            caretline = ''.join(caretline)
-            value = "%s\n%s" % (ppos.startline.rstrip(), caretline)
-        print (value)
-
-        print (expt)
-
 #----------------------------------------------------------------------------
 #         The core StimatorParser class
 #----------------------------------------------------------------------------
@@ -261,10 +215,8 @@ class StimatorParser(object):
 
         self.model = model.Model()
         self.tc = TimeCourses()
-        # default Differential Evolution num of generations and population size
+        # optimizer configuration
         self.optSettings = {}
-##         self.optSettings = {'generations':200, 'genomesize' :80,
-##                             'max_generations':200, 'pop_size' :80}
 
         self.tclines = []  #location of timecourse def lines for error reporting
         self.vname = []
@@ -276,7 +228,8 @@ class StimatorParser(object):
 
         self.reset()
 
-        self.textlines = getLinesFromText(text)
+        self.textlines = get_text_as_file(text)
+        print(type(self.textlines))
 
         #parse the lines of text using matches and dispatch to *Parse functions
         for (line, nline, start, end) in logicalLines(self.textlines):
@@ -290,15 +243,12 @@ class StimatorParser(object):
                     output_function = getattr(StimatorParser, d[1])
                     output_function(self, line, loc, matchresult)
                     if self.error:
-                        try2close(self.textlines)
                         return #quit on first error. Needs revision!
                     matchfound = True
                     break #do not try any more patterns
             if not matchfound:
                 self.setError("Invalid syntax:\n%s"% line, loc)
-                try2close(self.textlines)
                 return
-        try2close(self.textlines)
 
         # check the validity of rate laws
         check, msg = self.model.checkRates()
@@ -341,13 +291,9 @@ class StimatorParser(object):
         """Uses builtin eval function to check for the validity of a math expression.
 
            Constants previously defined can be used"""
-##         print '\n==== Test of expr |', valueexpr
         locs = {}
         for (name, value) in self.model._genlocs4rate():
             locs[name] = value
-##         print '||| locs dict ||||'
-##         print locs
-##         print '|||||||||||||||'
         try:
             value = float(eval(valueexpr, vars(math), locs))
         except Exception as e:
@@ -356,7 +302,6 @@ class StimatorParser(object):
             if excpt_type == "SyntaxError":
                 excpt_msg = "Bad math expression"
             return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
-##          print 'expr OK, value=', value
         return ("", value)
 
     def _process_consts_in_rate(self, rate, loc):
@@ -503,14 +448,9 @@ class StimatorParser(object):
         name = match.group('name')
         state = match.group('value')
         state = state.replace('state', 'self.model.set_init')
-##         print 'stateDefParse'
-##         print 'name', name
-##         print 'state', state
 
         try:
             value = eval(state)
-            #self.model.set_init(value)
-            #setattr(self.model, name, value)
         except Exception:
             self.setError("Bad '%s' state definition"%name, loc)
             return
@@ -518,19 +458,12 @@ class StimatorParser(object):
     def initDefParse(self, line, loc, match):
         name = match.group('name')
         state = match.group('value')
-##         print 'initDefParse'
-##         print 'name', name
-##         print 'state', state
         if state[0] == '(' and state[-1] == ')':
             state = state[1:-1]
         state = 'self.model.set_init(%s)'%state
 
-        #state = state.replace('state', 'self.model.set_init')
-
         try:
             value = eval(state)
-            #self.model.set_init(value)
-            #setattr(self.model, name, value)
         except Exception:
             self.setError("Bad '%s' state definition"%name, loc)
             return
@@ -588,25 +521,71 @@ class StimatorParser(object):
                 return
             flulist.append(v)
         self.model.set_bounds(name, (flulist[0], flulist[1]))
-        #setattr(obj, name, (flulist[0],flulist[1]))
 
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
         self.model.metadata['title'] = title
-        #~ setattr(self.model, 'title', title)
     def tfDefParse(self, line, loc, match):
         title = match.group('tf')
         self.model.metadata['tf'] = title
-        #~ setattr(self.model, 'title', title)
-
     def repListDefParse(self, line, loc, match):
         title = match.group('names')
         self.model.metadata['!!'] = title
-        #~ setattr(self.model, 'title', title)
 
 #----------------------------------------------------------------------------
 #         TESTING CODE
 #----------------------------------------------------------------------------
+
+def _insert_line_and_string(textlines, i, line, replace=False):
+    newlines = textlines[:]
+    if not replace:
+        newlines.insert(i, line)
+    else:
+        newlines[i] = line
+    return '\n'.join(newlines)
+
+
+def try2read_model(text):
+    try:
+        m = read_model(text)
+        tc = m.metadata['timecourses']
+        print ('\n-------- Model %s successfuly read ------------------'% m.metadata['title'])
+        print (m)
+        if len(tc.filenames) > 0:
+            print ("the timecourses to load are {}".format(tc.filenames))
+            if tc.defaultnames:
+                print ("\nthe default names to use in timecourses are {}".format(tc.defaultnames))
+        print()
+        return
+    except StimatorParserError as expt:
+        print ("\n*****************************************")
+
+        if expt.physloc.nstartline == expt.physloc.nendline:
+            locmsg = "Error in line %d of model definition" % (expt.physloc.nendline)
+        else:
+            locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline, expt.physloc.nendline)
+        print (locmsg)
+
+        ppos = expt.physloc
+        if ppos.nstartline != ppos.nendline:
+            caretline = [" "]*(len(ppos.startline)+1)
+            caretline[ppos.startlinepos] = "^"
+            caretline = ''.join(caretline)
+            value = "%s\n%s\n" % (ppos.startline.rstrip(), caretline)
+            caretline = [" "]*(len(ppos.endline)+1)
+            caretline[ppos.endlinepos] = "^"
+            caretline = ''.join(caretline)
+            value = "%s\n%s\n%s" % (value, ppos.endline.rstrip(), caretline)
+        else:
+            caretline = [" "]*(len(ppos.startline)+1)
+            caretline[ppos.startlinepos] = "^"
+            caretline[ppos.endlinepos] = "^"
+            caretline = ''.join(caretline)
+            value = "%s\n%s" % (ppos.startline.rstrip(), caretline)
+        print (value)
+
+        print (expt)
+
 
 def test():
 
@@ -666,58 +645,42 @@ tf: 10
     #m= read_model(modelText)
     try2read_model(modelText)
 
-    textlines = modelText.split('\n')
+    textlines = modelText.splitlines()
     print ('\n======================================================')
     print ('Testing error handling...')
 
-    textlines.insert(12, 'pipipi = pois  #this is an error')
-    modelText = '\n'.join(textlines)
+    modelText = _insert_line_and_string(textlines, 12,
+                                        'pipipi = pois  #this is an error')
     try2read_model(modelText)
 
-    del textlines[12]
-    textlines.insert(6, 'find pois in [1e-5, 2 + kkk]  #this is an error')
-    modelText = '\n'.join(textlines)
+    modelText = _insert_line_and_string(textlines, 6,
+                                        'find pois in [1e-5, 2 + kkk]  #this is an error')
+    try2read_model(modelText)
+    
+    modelText = _insert_line_and_string(textlines, 6,
+                                        'pipipi = pi*1e100**10000  #this is an overflow')
     try2read_model(modelText)
 
-    del textlines[6]
-    textlines.insert(6, 'pipipi = pi*1e100**10000  #this is an overflow')
-    modelText = '\n'.join(textlines)
+    modelText = _insert_line_and_string(textlines, 12,
+                                        'Glx1 : TSH2  + XXX -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
     try2read_model(modelText)
 
-    del textlines[6]
-    #test repeated declaration
-    textlines.insert(12, 'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
-    modelText = '\n'.join(textlines)
+    #test bad rate
+    modelText = _insert_line_and_string(textlines, 5,
+                                        'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG2)*(KmTSH2+TSH2))',
+                                        replace=True)
     try2read_model(modelText)
 
-    del textlines[12]
-    del textlines[5]
-    #text bad rate
-    textlines.insert(5, 'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG2)*(KmTSH2+TSH2))')
-    modelText = '\n'.join(textlines)
+    #test bad rate
+    modelText = _insert_line_and_string(textlines, 8,
+                                        '    Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2',
+                                        replace=True)
     try2read_model(modelText)
 
-    del textlines[5]
-    #text bad rate
-    textlines.insert(5, 'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG2))*(KmTSH2+TSH2))')
-    modelText = '\n'.join(textlines)
-    try2read_model(modelText)
 
-    del textlines[5]
-    textlines.insert(5, 'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
-    del textlines[8]
-    #text bad rate
-    textlines.insert(8, '    Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2')
-    modelText = '\n'.join(textlines)
+    modelText = _insert_line_and_string(textlines, 6,
+                                        'bolas !! not good')
     try2read_model(modelText)
-
-    del textlines[8]
-    textlines.insert(8, '    Vmax2*SDLTSH / (Km2 + SDLTSH) #reaction 2')
-    textlines.insert(6, 'bolas !! not good')
-    modelText = '\n'.join(textlines)
-    try2read_model(modelText)
-
-    del textlines[6]
 
     filename = "examples/model_files/ca.txt"
     try2read_model(filename)
