@@ -6,6 +6,7 @@ from stimator.dynamics import solve
 from stimator.timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
 from stimator.modelparser import read_model
 import stimator.examples as examples
+from stimator.run_tests import run_tests
 
 class VersionObj(object):
     def __init__(self):
