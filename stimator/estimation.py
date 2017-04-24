@@ -341,7 +341,7 @@ def s_timate(model, timecourses=None, opt_settings=None,
 
 
 def test():
-    from modelparser import read_model
+    from stimator import read_model
     m1 = read_model("""
 title Glyoxalase system in L. Infantum
 

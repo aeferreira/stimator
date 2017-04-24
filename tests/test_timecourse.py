@@ -326,13 +326,13 @@ def test_readTCs():
     assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
     assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
     assert isnan(tcs[0].last['HTA'])
-    assert tcs[0].shortname == 'TSH2b.txt'
+    assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['x1']
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
-    assert tcs[1].shortname == 'TSH2a.txt'
+    assert tcs[1].title == 'TSH2a.txt'
 
 def test_readTCs_default_names():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR,
@@ -346,13 +346,13 @@ def test_readTCs_default_names():
     assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
     assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
     assert isnan(tcs[0].last['HTA'])
-    assert tcs[0].shortname == 'TSH2b.txt'
+    assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
     assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
-    assert tcs[1].shortname == 'TSH2a.txt'
+    assert tcs[1].title == 'TSH2a.txt'
     assert tcs.get_common_full_vars() == ['SDLTSH']
 
 def test_readTCs_and_change_order():
@@ -366,13 +366,13 @@ def test_readTCs_and_change_order():
     assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
     assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
     assert isnan(tcs[0].last['HTA'])
-    assert tcs[0].shortname == 'TSH2b.txt'
+    assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['x1']
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
-    assert tcs[1].shortname == 'TSH2a.txt'
+    assert tcs[1].title == 'TSH2a.txt'
 
 def test_write_to():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
@@ -386,13 +386,13 @@ def test_write_to():
     assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
     assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
     assert isnan(tcs[0].last['HTA'])
-    assert tcs[0].shortname == 'TSH2b_2.txt'
+    assert tcs[0].title == 'TSH2b_2.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['x1']
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
-    assert tcs[1].shortname == 'TSH2a_2.txt'
+    assert tcs[1].title == 'TSH2a_2.txt'
     assert os.path.isfile('../TSH2b_2.txt')
     assert os.path.isfile('../TSH2a_2.txt')
     os.remove('../TSH2b_2.txt')
@@ -419,13 +419,13 @@ def test_read_tc_declared_in_model():
     assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
     assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
     assert isnan(tcs[0].last['HTA'])
-    assert tcs[0].shortname == 'TSH2b.txt'
+    assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
     assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
-    assert tcs[1].shortname == 'TSH2a.txt'
+    assert tcs[1].title == 'TSH2a.txt'
     
     tcs.order_by_modelvars(m)
 
@@ -437,13 +437,13 @@ def test_read_tc_declared_in_model():
     assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
     assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
     assert isnan(tcs[0].last['HTA'])
-    assert tcs[0].shortname == 'TSH2b.txt'
+    assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
     assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
-    assert tcs[1].shortname == 'TSH2a.txt'
+    assert tcs[1].title == 'TSH2a.txt'
 
 if __name__ == '__main__':
     pytest.main()

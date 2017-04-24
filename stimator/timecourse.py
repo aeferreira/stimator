@@ -42,9 +42,6 @@ class SolutionTimeCourse(object):
         self.title = title  # a title for the solution
         self.dense = dense
 
-        # for solutions read from a file
-        self.filename = ""
-        self.shortname = ""
 
     def __len__(self):
         """Retrieves the number of vars in this solution,
@@ -255,8 +252,6 @@ class SolutionTimeCourse(object):
                                 self.title, self.dense)
         if new_title is not None:
             tc.title = new_title
-        tc.filename = self.filename
-        tc.shortname = self.shortname
         return tc
 
     def copy(self, names=[], newtitle=None):
@@ -278,8 +273,6 @@ class SolutionTimeCourse(object):
         else:
             title = self.title
         tc = SolutionTimeCourse(t, data, names[:], title, dense=self.dense)
-        tc.filename = self.filename
-        tc.shortname = self.shortname
         return tc
 
     def order_by_names(self, varnames):
@@ -395,8 +388,6 @@ class Solutions(object):
         self.shortnames = [os.path.split(filename)[1] for filename in plist]
         for i, sol in enumerate(self.solutions):
             sol.title = self.shortnames[i]
-            sol.shortname = self.shortnames[i]
-            sol.filename = self.filenames[i]
         return nTCsOK
 
     def write_to(self, filenames, filedir=None, verbose=False):
@@ -461,8 +452,9 @@ def read_tc(source,
     if hasattr(source, 'metadata'):
         # retrieve info from model declaration
         stcs = source.metadata['timecourses']
-        tcs.filenames = stcs.filenames
-        tcsnames = stcs.defaultnames
+        tcs.filenames = stcs['filenames']
+        if 'defaultnames' in stcs:
+            tcsnames = stcs['defaultnames']
     elif _is_string(source):
         tcs.filenames = [source]
     else:

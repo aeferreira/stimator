@@ -360,7 +360,7 @@ def plot_generations(opt, generations=None,
 # ----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    from stimator.modelparser import read_model
+    from stimator import read_model
     from stimator.timecourse import Solution, Solutions, readTCs
 
     demodata = """

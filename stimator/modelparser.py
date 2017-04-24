@@ -10,7 +10,6 @@ from six import StringIO
 import re
 import math
 from stimator import model
-from stimator.timecourse import TimeCourses
 
 #----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
@@ -123,7 +122,7 @@ def logicalLines(textlines):
             continuing = False
     return
 
-class PhysicalLoc(object):
+class _Physical_Line(object):
     def __init__(self, start, startline, nstartline, startlinepos, end, endline, nendline, endlinepos):
         self.start = start        # start pos, relative to whole text
         self.nstartline = nstartline   # start line number
@@ -134,7 +133,7 @@ class PhysicalLoc(object):
         self.endline = endline      # end line
         self.endlinepos = endlinepos   # end pos, relative to end line
 
-class LogicalLoc(object):
+class _Logical_Line(object):
     def __init__(self, nline, start, end, linestart, lineend):
         self.nline = nline # logical line
         self.start = start # start relative to logical line
@@ -142,10 +141,10 @@ class LogicalLoc(object):
         self.linestart = linestart # start of logical line
         self.lineend = lineend   # end of logical line
 
-def getPhysicalLineData(textlines, logpos):
-    print(type(textlines))
-    textlines = get_text_as_file(textlines)
-    print(type(textlines))
+def _line_from_logical_line(textlines, logpos):
+    """Computes a physical line from a logical line."""
+    
+    textlines = _get_text_as_file(textlines)
 
     physstart = logpos.start + logpos.linestart
     physend = logpos.end + logpos.linestart
@@ -164,7 +163,7 @@ def getPhysicalLineData(textlines, logpos):
             nendline = iline
             endline = line
             endlinepos = physend - line_start_pos
-            return PhysicalLoc(physstart, startline, nstartline, startlinepos, physend, endline, nendline, endlinepos)
+            return _Physical_Line(physstart, startline, nstartline, startlinepos, physend, endline, nendline, endlinepos)
     return None
 
 
@@ -176,7 +175,7 @@ class StimatorParserError(Exception):
     def __str__(self):
         return str(self.value)
 
-def get_text_as_file(text):
+def _get_text_as_file(text):
     # try to open in case it is a pathname
     try:
         f = open(text)
@@ -196,7 +195,7 @@ def read_model(text):
         parser.model.metadata['optSettings'] = parser.optSettings
         return parser.model
     logloc = parser.errorloc
-    ppos = getPhysicalLineData(text, logloc)
+    ppos = _line_from_logical_line(text, logloc)
     raise StimatorParserError(parser.error, ppos, logloc)
 
 #----------------------------------------------------------------------------
@@ -214,13 +213,13 @@ class StimatorParser(object):
         self.errorloc = None
 
         self.model = model.Model()
-        self.tc = TimeCourses()
+        self.tc = {'filenames': []}
         # optimizer configuration
         self.optSettings = {}
 
         self.tclines = []  #location of timecourse def lines for error reporting
         self.vname = []
-        self.rateloc = []  #location of rate def for error reporting, a list of LogicalLoc's
+        self.rateloc = []  #location of rate def for error reporting, a list of _Logical_Line's
 
 
     def parse(self, text):
@@ -228,13 +227,12 @@ class StimatorParser(object):
 
         self.reset()
 
-        self.textlines = get_text_as_file(text)
-        print(type(self.textlines))
+        self.textlines = _get_text_as_file(text)
 
         #parse the lines of text using matches and dispatch to *Parse functions
         for (line, nline, start, end) in logicalLines(self.textlines):
-            #package LogicalLoc
-            loc = LogicalLoc(nline, 0, len(line), start, end)
+            #package _Logical_Line
+            loc = _Logical_Line(nline, 0, len(line), start, end)
 
             matchfound = False
             for d in dispatchers:
@@ -339,7 +337,7 @@ class StimatorParser(object):
         #process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
-        rate_loc = LogicalLoc(loc.nline,
+        rate_loc = _Logical_Line(loc.nline,
                               match.start('rate'),
                               match.start('rate')+len(rate),
                               loc.linestart,
@@ -381,7 +379,7 @@ class StimatorParser(object):
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        rate_loc = LogicalLoc(loc.nline,
+        rate_loc = _Logical_Line(loc.nline,
                               match.start('value'),
                               match.start('value')+len(expr),
                               loc.linestart,
@@ -402,7 +400,7 @@ class StimatorParser(object):
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        rate_loc = LogicalLoc(loc.nline,
+        rate_loc = _Logical_Line(loc.nline,
                               match.start('value'),
                               match.start('value') + len(expr),
                               loc.linestart,
@@ -422,7 +420,7 @@ class StimatorParser(object):
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
-        rate_loc = LogicalLoc(loc.nline,
+        rate_loc = _Logical_Line(loc.nline,
                               match.start('value'),
                               match.start('value') + len(expr),
                               loc.linestart,
@@ -442,7 +440,7 @@ class StimatorParser(object):
     def tcDefParse(self, line, loc, match):
         filename = match.group('filename').strip()
         self.tclines.append(loc.nline)
-        self.tc.filenames.append(filename)
+        self.tc['filenames'].append(filename)
 
     def stateDefParse(self, line, loc, match):
         name = match.group('name')
@@ -497,13 +495,13 @@ class StimatorParser(object):
         pass # for now
 
     def varListParse(self, line, loc, match):
-        if self.tc.defaultnames: #repeated declaration
+        if 'defaultnames' in self.tc: #repeated declaration
             self.setError("Repeated declaration", loc)
             return
 
         names = match.group('names')
         names = names.strip()
-        self.tc.defaultnames = names.split()
+        self.tc['defaultnames'] = names.split()
 
     def findDefParse(self, line, loc, match):
         name = match.group('name')
@@ -536,25 +534,17 @@ class StimatorParser(object):
 #         TESTING CODE
 #----------------------------------------------------------------------------
 
-def _insert_line_and_string(textlines, i, line, replace=False):
-    newlines = textlines[:]
-    if not replace:
-        newlines.insert(i, line)
-    else:
-        newlines[i] = line
-    return '\n'.join(newlines)
-
-
 def try2read_model(text):
     try:
         m = read_model(text)
         tc = m.metadata['timecourses']
-        print ('\n-------- Model %s successfuly read ------------------'% m.metadata['title'])
+        titleformat = '\n-------- Model {} successfuly read -----------'.format
+        print(titleformat(m.metadata['title']))
         print (m)
-        if len(tc.filenames) > 0:
-            print ("the timecourses to load are {}".format(tc.filenames))
-            if tc.defaultnames:
-                print ("\nthe default names to use in timecourses are {}".format(tc.defaultnames))
+        if len(tc['filenames']) > 0:
+            print ("the timecourses to load are {}".format(tc['filenames']))
+            if 'defaultnames' in tc:
+                print ("\nthe default names to use in timecourses are {}".format(tc['defaultnames']))
         print()
         return
     except StimatorParserError as expt:
@@ -585,105 +575,3 @@ def try2read_model(text):
         print (value)
 
         print (expt)
-
-
-def test():
-
-    modelText = """
-#This is an example of a valid model:
-title: Glyoxalase system in L. infantum
-variables: SDLTSH TSH2 MG
-
-Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))
-leak : MG -> 4.2 MGout, 10 ..
-reaction Glx2 : SDLTSH ->  2  Lac,  \\
-    step(t, 2.0, Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2
-kout_global = 3.14
-export: Lac ->, kout * Lac, kout = sqrt(4.0)/2.0 * kout_global
-
-in i1 = 20 - TSH2
--> i2 = i1 * 15
-input i3 = i1 + i2
-
-~ totTSH = TSH2 + SDLTSH
-~ Lacmult = mult * Lac,      mult = (kout_global/export.kout) * 2
-pi   = 3.1416
-pi2  = 2*pi
-pipi = pi**2  #this is pi square
-KmMG = sqrt(1e-2)
-Vmax1 = 0.0001
-find Vmax1 in [1e-9, 1e-3]
-find   KmMG  in [1e-5, 1]
-find KmTSH2 in [1e-5, pi/pi]
-
-find Km2   in [1e-5, 1]
-find Vmax2 in (1e-9, 1e-3)
-
-find export.kout in (3,4)
-
-@ 3.4 pi = 2*pi
-x' = MG/2
-#init  = state(TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0)
-init: TSH2 = 0.1, MG = 0.63655, SDLTSH = 0.0, x = 0
-
-genomesize = 50 #should be enough
-generations = 400
-popsize = 20
-
-timecourse my file.txt  # this is a timecourse filename
-timecourse anotherfile.txt
-#timecourse stillanotherfile.txt
-tf: 10
-!! SDLTSH > TSH2 -> ~ ..
-
-"""
-
-    print ('------------- test model -----------------------')
-    print (modelText)
-    print ('------------------------------------------------')
-
-    #m= read_model(modelText)
-    try2read_model(modelText)
-
-    textlines = modelText.splitlines()
-    print ('\n======================================================')
-    print ('Testing error handling...')
-
-    modelText = _insert_line_and_string(textlines, 12,
-                                        'pipipi = pois  #this is an error')
-    try2read_model(modelText)
-
-    modelText = _insert_line_and_string(textlines, 6,
-                                        'find pois in [1e-5, 2 + kkk]  #this is an error')
-    try2read_model(modelText)
-    
-    modelText = _insert_line_and_string(textlines, 6,
-                                        'pipipi = pi*1e100**10000  #this is an overflow')
-    try2read_model(modelText)
-
-    modelText = _insert_line_and_string(textlines, 12,
-                                        'Glx1 : TSH2  + XXX -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG)*(KmTSH2+TSH2))')
-    try2read_model(modelText)
-
-    #test bad rate
-    modelText = _insert_line_and_string(textlines, 5,
-                                        'Glx1 : TSH2  + MG -> SDLTSH, rate = Vmax1*TSH2*MG / ((KmMG+MG2)*(KmTSH2+TSH2))',
-                                        replace=True)
-    try2read_model(modelText)
-
-    #test bad rate
-    modelText = _insert_line_and_string(textlines, 8,
-                                        '    Vmax2*SDLTSH / (Km2 + SDLTSH)) #reaction 2',
-                                        replace=True)
-    try2read_model(modelText)
-
-
-    modelText = _insert_line_and_string(textlines, 6,
-                                        'bolas !! not good')
-    try2read_model(modelText)
-
-    filename = "examples/model_files/ca.txt"
-    try2read_model(filename)
-
-if __name__ == "__main__":
-    test()

@@ -778,7 +778,7 @@ def scan(model, plan,
 
 def test():
     #import time
-    from modelparser import read_model     
+    from stimator import read_model     
     m = read_model("""
     title a simple 2 enzyme system
     v1 = A -> B, rate = V*A/(Km1 + A), V = 1, Km = 1
