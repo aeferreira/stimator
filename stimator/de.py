@@ -66,10 +66,7 @@ class DESolver(object):
         self.generationsWithNoImprovement = 0
         self.atSolution = False
         self.exitCode = 0
-        
-        self.elapsed = 0.0
-    
-    
+
     exitCodeStrings = (
     "not done",
     "Solution found by energy criterium",
@@ -80,11 +77,14 @@ class DESolver(object):
 
     def reportInitial(self):
         print("Solving...")
+        #initialize stopwatch
+        self.start_time = time.clock()
 
     def reportGeneration(self):
         print("{:-4d}: {:f}".format(self.generation, self.best_score))
 
     def reportFinal(self):
+        ttime = time.clock() - self.start_time
         code = DESolver.exitCodeStrings[self.exitCode]
         res = ['Done!',
                '%s in %d generations.' % (code, self.generation),
@@ -92,7 +92,7 @@ class DESolver(object):
                'best solution: %s' % self.best]
         res = '\n' + '\n'.join(res)
         took_msg = '\nOptimization took {:.3f} s ({})'.format
-        res += took_msg(self.elapsed, utils.s2HMS(self.elapsed))
+        res += took_msg(ttime, utils.s2HMS(ttime))
         print(res)
 
     # this class might normally be subclassed and this method overridden,
@@ -134,8 +134,6 @@ class DESolver(object):
                 if score < self.best_score:
                     self.best_score = score
                     self.best = np.copy(self.pop[i])
-            #initialize stopwatch
-            self.elapsed = time.clock()
             self.reportGeneration()
             if not self.atSolution:
                 self.generationsWithNoImprovement += 1
@@ -189,7 +187,6 @@ class DESolver(object):
             self.best = scipy.optimize.fmin(self.external_score_function,
                                             self.best, disp=0) 
             self.best_score, self.atSolution = self.score_function(self.best)
-        self.elapsed = time.clock() - self.elapsed
         self.reportFinal()
 
     def run(self):

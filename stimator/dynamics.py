@@ -97,9 +97,9 @@ def dXdt_strings(m):
             if coef == 0.0: continue
             ratestring = '(%s)'% v(fully_qualified = True)
             if coef == 1.0:
-                ratestring = '+'+ratestring
+                ratestring = '+'+ ratestring
             else:
-                ratestring = "%g*%s" % (coef,ratestring)
+                ratestring = "%g*%s" % (coef, ratestring)
                 if coef > 0.0:
                     ratestring = '%s%s'%('+', ratestring)
             dXdtstring += ratestring

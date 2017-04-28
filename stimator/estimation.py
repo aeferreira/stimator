@@ -1,5 +1,7 @@
 from __future__ import print_function, absolute_import, division
 
+import time
+
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan
 from scipy import integrate
 
@@ -190,6 +192,8 @@ class DeODEOptimizer(de.DESolver):
 
     def reportInitial(self):
         msg = "\nSolving %s..." % self.model.metadata.get('title', '')
+        #initialize stopwatch
+        self.start_time = time.clock()
         if self.dump_generations is not None:
             self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:

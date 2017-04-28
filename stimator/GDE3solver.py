@@ -1,6 +1,6 @@
 from __future__ import print_function, absolute_import, division
 from time import time
-import numpy
+import numpy as np
 from scipy import integrate
 
 import stimator.timecourse as timecourse
@@ -27,9 +27,9 @@ def dominance(vec1, vec2):
 ##     """Compute Pareto dominance relationship."""
 ##     size = len(vec1)
 ##     d = vec2 <= vec1
-##     if numpy.all(d): return -size
+##     if np.all(d): return -size
 ##     d = vec2 >= vec1
-##     if numpy.all(d): return size
+##     if np.all(d): return size
 ##     return 0
 
 def nondominated_solutions(energies):
@@ -66,7 +66,7 @@ class ModelSolver(object):
     'model' is a model object
     't0' and 'tf' are floats
     'npoints' is a positive integer.
-    'observerd' is a list of variable names to output.
+    'observed' is a list of variable names to output.
     'optnames'are variable names. Their initial values will be optimized
     in the experimental design."""
 
@@ -77,7 +77,7 @@ class ModelSolver(object):
             tf = 1.0
         self.tf = tf
 
-        self.vector = numpy.copy(dynamics.init2array(model))
+        self.vector = np.copy(dynamics.init2array(model))
 
         self.names = model.varnames
 
@@ -90,17 +90,17 @@ class ModelSolver(object):
             if not (name in self.names):
                 raise AttributeError('%s is not a variable in model'%name)
 
-        self.optvars_indexes = numpy.array([self.names.index(name) for name in self.optvars])
-        self.obsvars_indexes = numpy.array([self.names.index(name) for name in self.observed])
+        self.optvars_indexes = np.array([self.names.index(name) for name in self.optvars])
+        self.obsvars_indexes = np.array([self.names.index(name) for name in self.observed])
 
-        self.times = numpy.linspace (self.t0, self.tf, self.npoints)                
+        self.times = np.linspace (self.t0, self.tf, self.npoints)                
         
         # scale times for output
         scale = float(self.times[-1] - self.t0)
         #scale = 1.0
         
         self.f = dynamics.getdXdt(model, scale=scale, t0=self.t0)
-        self.t = numpy.copy((self.times-self.t0)/scale) # this scales time points
+        self.t = np.copy((self.times-self.t0)/scale) # this scales time points
 
     def solve(self, trial):
         """Returns the solution for a particular trial of initial values."""
@@ -108,13 +108,13 @@ class ModelSolver(object):
 
         for value,indx in zip(trial, self.optvars_indexes):
             self.vector[indx] = value
-        y0 = numpy.copy(self.vector)
+        y0 = np.copy(self.vector)
         output = salg(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
                         None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
         if output[-1] < 0: return None
         Y = output[0]
         title = self.model.metadata.get('title', '')
-        Y = numpy.copy(Y.T)
+        Y = np.copy(Y.T)
 
         sol = timecourse.SolutionTimeCourse(self.times, Y, self.names, title)
         sol = sol.copy(self.observed)
@@ -156,8 +156,8 @@ class GDE3Solver(DESolver):
             self.toOptKeys.append(n)
             self.opt_maxs.append(max_v)
             self.opt_mins.append(min_v)
-        self.opt_maxs = numpy.array(self.opt_maxs)
-        self.opt_mins = numpy.array(self.opt_mins)
+        self.opt_maxs = np.array(self.opt_maxs)
+        self.opt_mins = np.array(self.opt_mins)
 
         #self.toOptKeys = self.toOpt.keys()
         self.objFunc = objectiveFunction
@@ -216,7 +216,7 @@ class GDE3Solver(DESolver):
 
         # working storage arrays
         self.new_generation_energies = [[] for i in range(self.pop_size)]
-        self.new_population = numpy.empty((self.pop_size,len(self.toOpt)))
+        self.new_population = np.empty((self.pop_size,len(self.toOpt)))
         self.gen_times = []
         self.calcTrialSolution = self.Rand1Bin
 
@@ -225,7 +225,7 @@ class GDE3Solver(DESolver):
            The intent is to aggressively generate a new solution from
            current population."""
         r1,r2,r3 = self.SelectSamples(i, 3)
-        new_i = numpy.copy(self.pop[i])
+        new_i = np.copy(self.pop[i])
         for n in range(self.pars_count):
             new_i[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] - self.pop[r3][n])
         return new_i
@@ -260,7 +260,7 @@ class GDE3Solver(DESolver):
                 self.dumpfile = open('generations.txt', 'w')
 
             time0 = time()
-            self.elapsed = time0
+            self.start_time = time0
 
             # compute initial energies
             # base class DESolver.__init__()  populates the initial population 
@@ -281,7 +281,7 @@ class GDE3Solver(DESolver):
                     self.population_energies.append(energies)
 
 ##             print '------- BEGIN CONTROL ----------------------------'
-##             numpy.set_printoptions(precision=14)
+##             np.set_printoptions(precision=14)
 ##             for i in range(30):
 ##                 print i, self.pop[i], self.population_energies[i]
 ##             print '------- END CONTROL ------------------------------'
@@ -305,11 +305,11 @@ class GDE3Solver(DESolver):
                 while True:
                     # force a totally new solution
                     ltrial = self.calcTrialSolution(p)
-##                     if numpy.all(ltrial == self.pop[p]):
+##                     if np.all(ltrial == self.pop[p]):
 ##                         print 'SOL REPEATED'
 ##                         continue
                     # check if out of bounds
-                    inbounds = numpy.all(numpy.logical_and(ltrial <= self.opt_maxs, ltrial >= self.opt_mins))
+                    inbounds = np.all(np.logical_and(ltrial <= self.opt_maxs, ltrial >= self.opt_mins))
                     if inbounds: break
                     else: continue
                 
@@ -337,25 +337,25 @@ class GDE3Solver(DESolver):
 
             #working structures for sorting
             objectives = [[]]
-            working_sols = [numpy.array([0.0])]
+            working_sols = [np.array([0.0])]
             
             n_keys = 0
             newBetterSols = 0
             for i in range(len(energyComparison)):
                 if energyComparison[i] > 0:
                     objectives.append(self.new_generation_energies[i])
-                    working_sols.append(numpy.copy(self.new_population[i]))
+                    working_sols.append(np.copy(self.new_population[i]))
                     n_keys += 1
                     newBetterSols += 1
                 elif energyComparison[i] < 0:
                     objectives.append(self.population_energies[i])
-                    working_sols.append(numpy.copy(self.pop[i]))
+                    working_sols.append(np.copy(self.pop[i]))
                     n_keys += 1
                 else: #energyComparison[i] == 0
                     objectives.append(self.population_energies[i])
-                    working_sols.append(numpy.copy(self.pop[i]))
+                    working_sols.append(np.copy(self.pop[i]))
                     objectives.append(self.new_generation_energies[i])
-                    working_sols.append(numpy.copy(self.new_population[i]))
+                    working_sols.append(np.copy(self.new_population[i]))
                     n_keys += 2
             
             print ('New dominant solutions: {}'.format(newBetterSols))
@@ -407,7 +407,7 @@ class GDE3Solver(DESolver):
             print ('Used front lengths:', flengths, '= %d'%sum(flengths))
             
 ##             print '------- BEGIN CONTROL ----------------------------'
-##             numpy.set_printoptions(precision=14)
+##             np.set_printoptions(precision=14)
 ##             for i in fronts[0]:
 ##                 print i, working_sols[i], objectives[i]
 ##             print '------- END CONTROL ------------------------------'
@@ -461,7 +461,7 @@ class GDE3Solver(DESolver):
     def finalize(self):
         if self.exitCode == 0:
             self.exitCode = -1
-        ttime = self.elapsed = time() - self.elapsed
+        ttime = time() - self.start_time
         print ('=============================================')
         print ("Finished!")
         print (GDE3Solver.exitCodeStrings[self.exitCode])
