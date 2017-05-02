@@ -16,28 +16,34 @@ def identifiersInExpr(_expr):
     return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
 
 
-def _find_indexof_component(model, name):
+def _get_code_index(model, name):
     for i, p in enumerate(model.with_bounds):
         if p.name == name:
-            return i, 'uncertain'
+            #return i, 'uncertain'
+            return ('u', i)
     for p in model.parameters:
         if p.name == name:
-            return -1, 'parameters'
+            #return -1, 'parameters'
+            return ('p', model.getp(name))
     i = model._Model__reactions.iget(name)
     if i is not None:
-        return i, 'reactions'
+        #return i, 'reactions'
+        return ('r', i)
     try:
         i = model._Model__variables.index(name)
-        return i, 'variables'
+        #return i, 'variables'
+        return ('v', i)
     except:
         pass
     i = model._Model__transf.iget(name)
     if i is not None:
-        return i, 'transf'
+        #return i, 'transf'
+        return ('t', i)
     i = model._Model__invars.iget(name)
     if i is not None:
-        return i, 'invar'
-    raise AttributeError('%s is not a component in this model' % name)
+        #return i, 'invar'
+        return ('i', i)
+    raise AttributeError('{} is not a component in this model'.format(name))
 
 
 def init2array(model):
@@ -68,15 +74,14 @@ def genStoichiometryMatrix(m):
     return N
 
 def rates_strings(m, fully_qualified=True):
-    """Generate a tuple of tuples of
-       (name, rate) where
+    """Generate a dictionary of 'name': rate where
        'name' is the name of a reaction
-       'rhs' is the string of the rate of the reaction.
+       'rate' is the string of the rate of the reaction.
     """
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
-    return tuple([(v.name, v(fully_qualified=fully_qualified)) for v in m.reactions])
+    return dict((v.name, v(fully_qualified=fully_qualified)) for v in m.reactions)
 
 def dXdt_strings(m):
     """Generate a tuple of tuples of
@@ -343,35 +348,29 @@ def rateCalcString(rateString, symbmap):
 def compile_rates(m, collection, with_uncertain=False):
     symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
     ratestrs = [rateCalcString(v(fully_qualified=True), symbmap) for v in collection]
-    ratebytecode = [compile(v, '<string>','eval') for v in ratestrs]
-    return ratebytecode
+    return [compile(v, '<string>','eval') for v in ratestrs]
 
 def _get_rates_function(m, with_uncertain):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
     
-    # get sizes
-    n_inputs = len(m.input_variables)
-    n_v = len(m.reactions)
-    n_transf = len(m.transformations)
-    
     # compile input variables
     invarbytecode = compile_rates(m, m.input_variables, with_uncertain=with_uncertain)
     # create array to hold input-variable values's
-    input_variables = empty(n_inputs)
+    input_variables = empty(len(m.input_variables))
     eniv = list(enumerate(invarbytecode))
 
     # compile reaction rates
     ratebytecode = compile_rates(m, m.reactions, with_uncertain=with_uncertain)
     # create array to hold reaction rate values
-    _v_rates = empty(n_v)
+    _v_rates = empty(len(m.reactions))
     enre = list(enumerate(ratebytecode))
     
     # compile transformations
     tratebytecode = compile_rates(m, m.transformations, with_uncertain=with_uncertain)
-    # create array to hold ttransformation values
-    _t_rates = empty(n_transf)
+    # create array to hold transformation values
+    _t_rates = empty(len(m.transformations))
     entr = list(enumerate(tratebytecode))
     
     def f(variables, t):
@@ -399,34 +398,6 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
 
     return fout
 
-    
-def rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
-    """Generate function to compute rate vector for this model.
-    
-       Function has signature f(variables, t)"""
-    
-    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
-    
-    def fout(variables, t):
-        t = t*scale + t0
-        _, v, _ = get_rates(variables, t)
-        return v
-
-    return fout
-
-def transf_func(m, with_uncertain=False, scale=1.0, t0=0.0):
-    """Generate function to compute rate vector for this model.
-    
-       Function has signature f(variables, t)"""
-
-    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
-    
-    def fout(variables, t):
-        t = t*scale + t0
-        _, _, tvalues = get_rates(variables, t)
-        return tvalues
-    return fout
-
 
 def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
@@ -434,7 +405,7 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
        Function has signature f(variables, t)
        This is compatible with scipy.integrate.odeint"""
 
-    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
+    f_rates = _get_rates_function(m, with_uncertain=with_uncertain)
 
     # compute stoichiometry matrix, scale and transpose
     N  = genStoichiometryMatrix(m)
@@ -444,7 +415,7 @@ def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
     
     def fout(variables, t):
         t = t*scale + t0
-        input_variables, v, t_values = get_rates(variables, t)
+        input_variables, v, t_values = f_rates(variables, t)
         dot(v,NT,x)
         return x
     return fout
@@ -503,19 +474,19 @@ def genTransformationFunction(m, f):
     if f in all_special:
         f = [f.strip()]
     
-    if _is_sequence(f):
-        names = []
-        for a in f:
-            if not _is_string(a):
-                raise TypeError(str(a) + ' must be a string')
-            if a in special_transf:
-                names.extend([x.name for x in m.transformations])
-            elif a in special_rates:
-                names.extend([x.name for x in m.reactions])
-            else:
-                names.append(a)
-    else:
+    if not _is_sequence(f):
         raise TypeError('outputs must be a sequence of names.')
+    
+    names = []
+    for a in f:
+        if not _is_string(a):
+            raise TypeError(str(a) + ' must be a string')
+        if a in special_transf:
+            names.extend([x.name for x in m.transformations])
+        elif a in special_rates:
+            names.extend([x.name for x in m.reactions])
+        else:
+            names.append(a)
     
     nargs = len(names)
     
@@ -524,21 +495,7 @@ def genTransformationFunction(m, f):
     data = []
 
     for name in names:
-        i, kind = _find_indexof_component(m, name)
-        if kind == 'parameters':
-            data.append(('p', m.getp(name)))
-        elif kind == 'variables':
-            data.append(('v', i))
-        elif kind == 'transf':
-            data.append(('t', i))
-        elif kind == 'reactions':
-            data.append(('r', i))
-        elif kind == 'invar':
-            data.append(('i', i))
-        elif kind == 'uncertain':
-            data.append(('u', i))
-        else:
-            raise AttributeError(name + ' is not a component in this model')
+        data.append( _get_code_index(m, name))
     
     args = [0.0] * nargs
     for (i, (kind, d)) in enumerate(data):
@@ -549,9 +506,7 @@ def genTransformationFunction(m, f):
         input_variables, v, t_values = get_rates(variables, t)
         
         for (i, (kind, d)) in enumerate(data):
-            if kind == 'p':
-                continue
-            elif kind == 'v':
+            if kind == 'v':
                 args[i] = variables[d]
             elif kind == 'r':
                 args[i] = v[d]
@@ -779,23 +734,31 @@ def scan(model, plan,
 def test():
     #import time
     from stimator import read_model     
-    m = read_model("""
-    title a simple 2 enzyme system
-    v1 = A -> B, rate = V*A/(Km1 + A), V = 1, Km = 1
-    v2 = B ->  , rate = V*B/(Km2 + B)
+    m1_text ="""
+    title a simple 2 step system
+    v1: A -> B, rate = V * A / (Km1 + A), V = 1, Km = 1
+    
+    v2: B ->  , rate = V * c2 * B**3
+    
     V  = sqrt(4.0)
     Km1 = 1
-    Km2 = 0.2
-    find Km2 in [0, 1.2]
-    init = state(B = 0.4, A = 1)
+    c2 = 0.2
+    
+    find c2 in [0, 1.2]
+    
+    init: B = 0.4, A = 1
+    
     -> vin = 2 * A * v1.Km
-    ~ t1 = A+B + vin
+    ~ t1 = A + B + vin
     ~ t2 = v1.V * A * step(t, 1.0)
     # ~ t3 = v1.V * A * max(t, 1.0)
-    """)
-    print (m)
+    """
+    
+    m = read_model(m1_text)
+    
+    print (m1_text)
 
-    print ('********** Testing stoichiometry matrix ********************')
+    print ('\n********** Testing stoichiometry matrix ********************')
     print ('Stoichiometry matrix:')
     N = genStoichiometryMatrix(m)
     print ('  ', '  '.join([v.name for v in m.reactions]))
@@ -809,32 +772,28 @@ def test():
     print()
     print ('********** Testing rate and dXdt strings *******************')
     print ('rates_strings(fully_qualified = False): ---')
-    for v in rates_strings(m, fully_qualified = False):
-        print (v)
+    print(rates_strings(m, fully_qualified = False))
     print ('\nrates_strings(): -------------------------')
-    for v in rates_strings(m):
-        print (v)
+    print(rates_strings(m))
     print ('\ndXdt_strings(): --------------------------')
     for xname,dxdt in dXdt_strings(m):
         print ('(d%s/dt) ='%(xname),dxdt)
-    print()
-    print ('Jacobian_strings(): -------------------------')
+    print ('\nJacobian_strings(): -------------------------')
     vnames = m.varnames
     for i,vec in enumerate(Jacobian_strings(m)):
         for j, dxdx in enumerate(vec):
             print ('(d d%s/dt / d %s) ='%(vnames[i],vnames[j]), dxdx)
-    print()
-    print ('dfdp_strings(m, parnames): ------------------')
-    parnames = "Km2 v1.V".split()
-    print ('parnames = ["Km2", "v1.V"]\n')
+    print ('\ndfdp_strings(m, parnames): ------------------')
+    parnames = "c2 v1.V".split()
+    print ('parnames = {}\n'.format(parnames))
     vnames = m.varnames
     for i,vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
             print ('(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx)
     print()
     print ('dfdp_strings(m, parnames): (with unknown pars)')
-    parnames = "Km3 v1.V".split()
-    print ('parnames = ["Km3", "v1.V"]\n')
+    parnames = "c3 v1.V".split()
+    print ('parnames = {}\n'.format(parnames))
     vnames = m.varnames
     for i,vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
@@ -854,7 +813,7 @@ def test():
               m.transformations.t2,
               m.input_variables.vin):
         vstr = v(fully_qualified = True)
-        print ('calcstring for %s = %s\n\t'% (v.name, vstr), rateCalcString(vstr, symbmap))
+        print ('calcstring for %s = %s\n   '% (v.name, vstr), rateCalcString(vstr, symbmap))
     print ('calcstring for v2 with uncertain parameters:\n\t', rateCalcString(m.reactions.v2(fully_qualified = True), symbmap2))
 
     print ('\n********** Testing rate and dXdt generating functions ******')
@@ -871,84 +830,117 @@ def test():
     print ('parameters:')
     print (dict((p.name, p) for p in m.parameters))
  
-    print ('\n---- rates using rates_func(m) -------------------------')
-    vratesfunc = rates_func(m)
-    vrates = vratesfunc(varvalues,t)
+    print ('\n---- rates using all_rates_func(m) -------------------------')
+    func = all_rates_func(m)
+    ivs, vs, ts = func(varvalues,t)
     frmtstr = "%s = %-25s = %s"
-    for v,r in zip(m.reactions, vrates):
+    for v,r in zip(m.reactions, vs):
         print (frmtstr % (v.name, v(fully_qualified = True), r))
-
-    print ('---- transformations using transf_func(m) ----------------')
-    tratesfunc = transf_func(m)
-    trates = tratesfunc(varvalues,t)
-    for v,r in zip(m.transformations, trates):
+    for v,r in zip(m.transformations, ts):
         print (frmtstr % (v.name, v(fully_qualified = True), r))
-    print ('---- same, at t = 2.0 --')
-    trates = tratesfunc(varvalues,2.0)
-    for v,r in zip(m.transformations, trates):
+    for v,r in zip(m.input_variables, ivs):
         print (frmtstr % (v.name, v(fully_qualified = True), r))
-
-    print ('--------- NEW MODEL, with input variables -------------')
     
-    m2 = read_model("""
+    print ('---- same, at t = 2.0 --')
+    ivs, vs, ts = func(varvalues, 2.0)
+    for v,r in zip(m.reactions, vs):
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
+    for v,r in zip(m.transformations, ts):
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
+    for v,r in zip(m.input_variables, ivs):
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
+
+    print ('\n\n--------- NEW MODEL, with input variables -------------')
+    
+    m2_txt = """
     title a simple 2 enzyme system
-    v1 = A -> B, rate = vin*A/(Km1 + A), V = 1, Km = 1
-    v2 = B ->  , rate = V*B/(Km2 + B)
+    v1: A -> B, rate = vin * A / (Km1 + A), V = 1, Km1 = 1
+    v2: B ->  , rate = V * B**2
+    
     V  = sqrt(4.0)
-    Km1 = 1
-    Km2 = 0.2
-    find Km2 in [0, 1.2]
-    init = state(B = 0.4, A = 1)
+    find v1.Km1 in [0, 1.2]
+    init: B = 0.4, A = 1
     
     -> vin = v1.V * step(t, 1.0) + 1
-    """)
+    """
+    m = read_model(m2_txt)
     
-    print (m2)
+    print (m2_txt)
+    print ('********** Testing rate and dXdt strings *******************')
+    print ('rates_strings(fully_qualified = False): ---')
+    print(rates_strings(m, fully_qualified = False))
+    print ('\nrates_strings(): -------------------------')
+    print(rates_strings(m))
+    print ('\ndXdt_strings(): --------------------------')
+    for xname,dxdt in dXdt_strings(m):
+        print ('(d%s/dt) ='%(xname),dxdt)
+##     print ('\nJacobian_strings(): -------------------------')
+##     vnames = m.varnames
+##     for i,vec in enumerate(Jacobian_strings(m)):
+##         for j, dxdx in enumerate(vec):
+##             print ('(d d%s/dt / d %s) ='%(vnames[i],vnames[j]), dxdx)
+##     print ('\ndfdp_strings(m, parnames): ------------------')
+##     parnames = "c2 v1.V".split()
+##     print ('parnames = {}\n'.format(parnames))
+##     vnames = m.varnames
+##     for i,vec in enumerate(dfdp_strings(m, parnames)):
+##         for j, dxdx in enumerate(vec):
+##             print ('(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx)
+##     print()
+##     print ('dfdp_strings(m, parnames): (with unknown pars)')
+##     parnames = "c3 v1.V".split()
+##     print ('parnames = {}\n'.format(parnames))
+##     vnames = m.varnames
+##     for i,vec in enumerate(dfdp_strings(m, parnames)):
+##         for j, dxdx in enumerate(vec):
+##             print ('(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx)
+    print ('---- state and parameters -------------------')
+    t = 4
+    varvalues = [1.0, 2.0]
+    print ("t =", t)
+    print ('variables:')
+    print (dict((n, value) for n,value in zip(m.varnames, varvalues)))
+    print ('parameters:')
+    print (dict((p.name, p) for p in m.parameters))
+    print ('\n---- rates using all_rates_func(m) -------------------------')
+    func = all_rates_func(m)
+    ivs, vs, ts = func(varvalues,t)
+    frmtstr = "%s = %-25s = %s"
+    for v,r in zip(m.reactions, vs):
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
+    for v,r in zip(m.transformations, ts):
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
+    for v,r in zip(m.input_variables, ivs):
+        print (frmtstr % (v.name, v(fully_qualified = True), r))
 
     print ('---- dXdt using getdXdt(m) -------------------')
-    f = getdXdt(m2)
+    f = getdXdt(m)
     dXdt = f(varvalues,t)
-    for x,r in zip(m2.varnames,  dXdt):
+    for x,r in zip(m.varnames,  dXdt):
         print ("d%s/dt = %s" % (x,r))
 
     print ('---- dXdt using getdXdt(m) setting uncertain parameters ---')
+    pars = [3.0]
     print ('f = getdXdt(m, with_uncertain = True)')
-    f = getdXdt(m2, with_uncertain = True)
-    print ('setting uncertain as', dict((v.name, value) for v,value in zip(m2.with_bounds, pars)))
+    f = getdXdt(m, with_uncertain = True)
+    print ('setting uncertain as', dict((v.name, value) for v,value in zip(m.with_bounds, pars)))
     print ('m.set_uncertain(pars)')
-    m2.set_uncertain(pars)
+    m.set_uncertain(pars)
     dXdt = f(varvalues,t)
-    for x,r in zip(m2.varnames, dXdt):
+    for x,r in zip(m.varnames, dXdt):
         print ("d%s/dt = %s" % (x, r))
 
-    print ('---- dXdt using getdXdt(m) with a state argument (m.init) --')
-    print ('m.init:', m2.get_init())
-    print ('f = getdXdt(m)')
-    f = getdXdt(m2)
-    print ('dXdt = f(init2array(m),t)')
-    dXdt = f(init2array(m2),t)
-    for x,r in zip(m2.varnames, dXdt):
-        print ("d%s/dt = %s" % (x, r))
-    
-    print ('---- same, changing state argument ---------------------------')
-    m2.init.A = 2.0
-    print ('after m2.init.A = 2.0')
-    print ('m2.init:', m2.get_init())
-    print ('dXdt = f(init2array(m2),t)')
-    dXdt = f(init2array(m2),t)
-    for x,r in zip(m2.varnames, dXdt):
-        print ("d%s/dt = %s" % (x, r))
-    print ('\n********** Testing add_dSdt_to_model functions ***************')
-    print ('\n--- Using back model m ---\n')
-    m2 = m.copy()
-    print (m2)
+    print('\n********** Testing add_dSdt_to_model functions ***************')
+    print('\n--- Using back model m ---\n')
+    m2 = read_model(m1_text)
+    print(m2)
     print ('----------------------------------------------------')
     pars = "Km2 v1.V".split()
-    print ('pars =', pars)
-    print ("\n!!! applying function add_dSdt_to_model(m, pars) !!!")
+    print('pars =', pars)
+    print("\n!!! applying function add_dSdt_to_model(m, pars) !!!")
     Snames = add_dSdt_to_model(m2, pars)
-    print ('Snames = \n', Snames)
-    print (m2)
+    print('Snames = \n', Snames)
+    print(m2)
     
     # print 'BEGIN EXAMPLES'
     # t0 = time.time()
