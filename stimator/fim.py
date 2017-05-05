@@ -2,7 +2,7 @@
 from __future__ import print_function, absolute_import
 from collections import OrderedDict
 from numpy import array, diag, matrix, zeros, linalg, dstack, sum
-from stimator.dynamics import add_dSdt_to_model, dXdt_strings, solve
+from stimator.dynamics import add_dSdt_to_model, solve
 from stimator.timecourse import Solutions, constError_func
 
 SYMPY_INSTALLED = True
