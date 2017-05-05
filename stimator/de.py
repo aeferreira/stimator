@@ -317,9 +317,12 @@ class DESolver(object):
 
     def SelectSamples(self, i, n):
         """Select n different indexes of pop which are different from i."""
-        the_set = [k for k in range(self.pop_size) if k != i]
+        #the_set = [k for k in range(self.pop_size) if k != i]
         #the_set = list(range(i)) + list(range(i + 1, self.pop_size))
+        the_set = range(self.pop_size)
         s = np.random.choice(the_set, n, replace=False)
+        if i in s:
+            s = np.random.choice(the_set, n, replace=False)
         return s
 
 
