@@ -120,7 +120,7 @@ def dXdt_strings(m):
     return res
 
 
-def _gen_canonical_symbmap(m):
+def _gen_canonical_symbmap(m, extra_id_list=None):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
@@ -132,39 +132,53 @@ def _gen_canonical_symbmap(m):
     sympysymbs = {}
     symbcounter = 0
     for x in m.varnames:
-        symbname = '_symbol_Id%d'% symbcounter
-        symbmap[x] = symbname
-        sympysymbs[symbname] = sympy.Symbol(symbname)
+        name = '_symbol_Id%d'% symbcounter
+        symbmap[x] = name
+        sympysymbs[name] = sympy.Symbol(name)
         symbcounter += 1
     for p in m.parameters:
-        symbname = '_symbol_Id%d'% symbcounter 
-        symbmap[p.name] = symbname
-        sympysymbs[symbname] = sympy.Symbol(symbname)
+        name = '_symbol_Id%d'% symbcounter 
+        symbmap[p.name] = name
+        sympysymbs[name] = sympy.Symbol(name)
         symbcounter += 1
-    return symbmap, sympysymbs
+    if extra_id_list is not None:
+        for x in extra_id_list:
+            name = '_symbol_Id%d'% symbcounter
+            symbmap[x] = name
+            sympysymbs[name] = sympy.Symbol(name)
+            symbcounter += 1
+##     for f in m._usable_functions:
+##         if f in vars(sympy):
+##             name = '_symbol_Id%d'% symbcounter
+##             symbmap[f] = name
+##             sympysymbs[name] = getattr(sympy, f)
+##             symbcounter += 1
+##     name = '_symbol_Id%d'% symbcounter
+##     symbmap['Heavyside'] = name
+##     sympysymbs[name] = sympy.Heavyside
+    
+            
+    return {'s_table': symbmap, 'sympy_s_table': sympysymbs}
 
 def _replace_exprs2canonical(s, symbmap):
     for symb in symbmap:
         symbesc = symb.replace('.', '\.')
-##         print 'symb =', symb
-##         print 'symbesc =', symbesc
-##         print 's =', s
-##         s = s.replace(symb, symbmap[symb])
         s = re.sub(r"(?<![_.])\b%s\b(?![_.\[])"%symbesc, symbmap[symb], s)
-##         print 's =', s
     return s
 
 def _replace_canonical2exprs(s, symbmap):
     for symb in symbmap:
         s = re.sub(r"(?<![.])\b%s\b" % symbmap[symb], symb, s)
-##         s = s.replace(symbmap[symb], symb)
     return s
 
-def _differentiate_expr(expr, wrt, symbmap, sympysymbs, _scale=1.0):
+def _differentiate_expr(expr, wrt, symbols, _scale=1.0):
     if _GLOBAL_SYMPY is None:
         raise ImportError('ERROR: sympy module must be installed to calculate partial derivs')
     else:
         sympy = _GLOBAL_SYMPY
+    
+    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
+    
     texpr = _replace_exprs2canonical(expr, symbmap)
     if wrt not in symbmap:
         return '0.0'
@@ -183,8 +197,23 @@ def _differentiate_expr(expr, wrt, symbmap, sympysymbs, _scale=1.0):
     dres = _replace_canonical2exprs(dres, symbmap)
     return dres
     
+def _simplify_expr(expr, symbols):
+    if _GLOBAL_SYMPY is None:
+        raise ImportError('ERROR: sympy module must be installed to calculate partial derivs')
+    else:
+        sympy = _GLOBAL_SYMPY
+    
+    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
+    resstr = _replace_exprs2canonical(expr, symbmap)
+    #make sympy reduce the expression using sympysymbs dictionary
+    dres = str(eval(resstr, None, sympysymbs))
+    if dres == '0':
+        dres = '0.0'
+    dres = _replace_canonical2exprs(dres, symbmap)
+    return dres
+    
 
-def Jacobian_strings(m, _scale=1.0):
+def Jacobian_strings(m, _scale=1.0, symbols=None):
     """Generate a matrix (list of lists) of strings
        to compute the jacobian for this model.
     
@@ -194,20 +223,23 @@ def Jacobian_strings(m, _scale=1.0):
     nvars = len(dxdtstrings)
     vnames = m.varnames
     
-    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+    if symbols is None:
+        symbols = _gen_canonical_symbmap(m)
+    
+    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
     
     jfuncs = []
     for x in vnames:
         dlist = []
         for y in vnames:
             dexpr = _differentiate_expr(dxdtstrings[x], y,
-                                        symbmap, sympysymbs, _scale)
+                                        symbols, _scale)
             dlist.append(dexpr)
         jfuncs.append(dlist)
     return jfuncs
             
         
-def dfdp_strings(m, parnames, _scale=1.0):
+def dfdp_strings(m, parnames, _scale=1.0, symbols=None):
     """Generate a matrix (list of lists) of strings
        to compute the partial derivatives of rhs of SODE
        with respect to a list of parameters.
@@ -219,7 +251,11 @@ def dfdp_strings(m, parnames, _scale=1.0):
     nvars = len(dxdtstrings)
     vnames = m.varnames
     
-    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+    if symbols is None:
+        symbols = _gen_canonical_symbmap(m)
+    
+    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
+
     npars = len(parnames)
     
     dxdp_strs = []
@@ -227,7 +263,7 @@ def dfdp_strings(m, parnames, _scale=1.0):
         dlist = []
         for p in parnames:
             dexpr = _differentiate_expr(dxdtstrings[x], p,
-                                        symbmap, sympysymbs, _scale)
+                                        symbols, _scale)
             dlist.append(dexpr)
         dxdp_strs.append(dlist)
     return dxdp_strs
@@ -241,66 +277,70 @@ def add_dSdt_to_model(m, pars):
     m is a model object
     pars are a list of parameter names
     """
-    if _GLOBAL_SYMPY is None:
-        raise ImportError('ERROR: sympy module must be installed to calculate partial derivs')
-    else:
-        sympy = _GLOBAL_SYMPY
     
     #Find pars that are initial values
     init_of = []
     for p in pars:
+        init_of.append(None)
         if '.' in p:
             tks = p.split('.')
             if tks[1] in m.init:
-                init_of.append(tks[1])
-            else:
-                init_of.append(None)
-        else:
-            init_of.append(None)
+                init_of[-1] = tks[1]
 
-    J = Jacobian_strings(m)
-    dfdpstrs = dfdp_strings(m, pars)
+    #create names and symbols for sensitivities
+    Snames = []
+    Smatrix = []
+    vnames = m.varnames
+    for x in vnames:
+        new_row = []
+        for p in pars:
+            Sname = "d_%s_d_%s" % (x, p.replace('.','_'))
+            new_row.append(Sname)
+            Snames.append((x, p, Sname))
+        Smatrix.append(new_row)
+ 
+    id_list=[name[2] for name in Snames]
+
+    symbols = _gen_canonical_symbmap(m, extra_id_list=id_list)
+
+    J = Jacobian_strings(m, symbols=symbols)
+    dfdpstrs = dfdp_strings(m, pars, symbols=symbols)
     nvars = len(J)
     npars = len(pars)
     
-    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+    
+##     print ('\n############## canonical_symbmap(m) --------------')
+##     symbmap=symbols['s_table']
+##     for k in symbmap:
+##         print('{:15} --> {}'.format(k, symbmap[k]))
+##     print ('\n############## canonical_symbmap(m) --------------')
 
-    #create symbols for sensitivities
-    Snames = []
-    Smatrix = []
-    for i in range(nvars):
-        Smatrix.append([])
-        for j in range(npars):
-            Sname = "d_%s_d_%s" % (m.varnames[i], pars[j].replace('.','_'))
-            sympysymbs[Sname] = sympy.Symbol(str(Sname))
-            Smatrix[i].append(Sname)
-            Snames.append((m.varnames[i], pars[j], Sname))
     #compute rhs of sensitivities symbolically
     for i in range(nvars):
-        vname = m.varnames[i]
+        x = m.varnames[i]
         for j in range(npars):
             #compute string for dS/dt
             resstr = dfdpstrs[i][j] if init_of[j] is None else ''
             # matrix multiplication with strings:
             for k in range(nvars):
-                resstr = resstr+ "+(%s)*(%s)"%(J[i][k], Smatrix[k][j])
-            resstr = _replace_exprs2canonical(resstr, symbmap)
-            #make sympy reduce the expression using sympysymbs dictionary
-            dres = str(eval(resstr, None, sympysymbs))
-            if dres == '0':
-                dres = '0.0'
-            dres = _replace_canonical2exprs(dres, symbmap)
-            m.set_variable_dXdt(Smatrix[i][j], dres)
+                resstr = resstr + "+(%s)*(%s)"%(J[i][k], Smatrix[k][j])
+            dres = _simplify_expr(resstr, symbols=symbols)
+            
+            # add new variable to model
+            name = Smatrix[i][j]
+            m.set_variable_dXdt(name, dres)
+            
+            # set initial value
             if init_of[j] is None:
-                m.set_init([(Smatrix[i][j], 0.0)])
+                m.set_init([(name, 0.0)])
             else:
-                if init_of[j] == vname:
-                    m.set_init([(Smatrix[i][j], 1.0)])
+                if init_of[j] == x:
+                    m.set_init([(name, 1.0)])
                 else:
-                    m.set_init([(Smatrix[i][j], 0.0)])
+                    m.set_init([(name, 0.0)])
     return Snames
 
-def _gen_calc_symbmap(m, with_uncertain = False):
+def _gen_calc_symbmap(m, with_uncertain=False):
     symbmap = {}
     for i, x in enumerate(m.varnames):
         symbname = "variables[%d]"%i
@@ -714,7 +754,7 @@ def test():
     from stimator import read_model     
     m1_text ="""
     title a simple 2 step system
-    v1: A -> B, rate = V * A / (Km1 + A), V = 1, Km = 1
+    v1: A -> B, rate = V / (Km1 + A), V = 1, Km = 1
     
     v2: B ->  , rate = V * c2 * B**3
     
@@ -760,7 +800,8 @@ def test():
 
     print ('********** Testing differentiation of strings *******************')
     print ('\n---------- Testing _gen_canonical_symbmap(m) --------------')
-    symbmap, sympysymbs = _gen_canonical_symbmap(m)
+    symbols = _gen_canonical_symbmap(m)
+    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
     print('symbmap')
     for k in symbmap:
         print('{:8} --> {}'.format(k, symbmap[k]))
@@ -771,11 +812,11 @@ def test():
         expr = dxdt_strs[x]
         print ('\nexpression =', expr)
         for x in m.varnames:
-            dexpr = _differentiate_expr(expr, x, symbmap, sympysymbs)
+            dexpr = _differentiate_expr(expr, x, symbols)
             print('d / d', x, '=', dexpr)
         print('---')
         for p in m.parameters:
-            dexpr = _differentiate_expr(expr, p.name, symbmap, sympysymbs)
+            dexpr = _differentiate_expr(expr, p.name, symbols)
             print('d / d', p.name, '=', dexpr)
     
     print ('\nJacobian_strings(): -------------------------')
@@ -859,7 +900,7 @@ def test():
         print(x, m.get_init(x))
         print('   d {} / dt = {}'.format(x, dxdtstrs[x]))
     print('---------------------')
-    pars = "Km2 v1.V".split()
+    pars = "Km2 v1.V init.B".split()
     print('pars =', pars)
     Snames = add_dSdt_to_model(m, pars)
     print('Snames = \n', Snames)
@@ -870,70 +911,6 @@ def test():
     for x in vnames:
         print(x, m.get_init(x))
         print('   d {} / dt = {}'.format(x, dxdtstrs[x]))
-    print ('\n\n--------- NEW MODEL, with input variables -------------')
-    
-    m2_txt = """
-    title a simple 2 enzyme system
-    v1: A -> B, rate = vin * A / (Km1 + A), V = 1, Km1 = 1
-    v2: B ->  , rate = V * B**2
-    
-    V  = sqrt(4.0)
-    find v1.Km1 in [0, 1.2]
-    init: B = 0.4, A = 1
-    
-    -> vin = v1.V * step(t, 1.0) + 1
-    """
-    m = read_model(m2_txt)
-    
-    print (m2_txt)
-    print ('********** Testing rate and dXdt strings *******************')
-    print ('rates_strings(fully_qualified = False): ---')
-    print(rates_strings(m, fully_qualified = False))
-    print ('\nrates_strings(): -------------------------')
-    print(rates_strings(m))
-    print ('\ndXdt_strings(): --------------------------')
-    dxdt_strs = dXdt_strings(m)
-    for x in m.varnames:
-        print ('(d%s/dt) ='%(x), dxdt_strs[x])
-    print ('---- state and parameters -------------------')
-    t = 4
-    varvalues = [1.0, 2.0]
-    print ("t =", t)
-    print ('variables:')
-    print (dict((n, value) for n,value in zip(m.varnames, varvalues)))
-    print ('parameters:')
-    print (dict((p.name, p) for p in m.parameters))
-    print ('\n---- rates using all_rates_func(m) -------------------------')
-    func = all_rates_func(m)
-    ivs, vs, ts = func(varvalues,t)
-    frmtstr = "%s = %-25s = %s"
-    for v,r in zip(m.reactions, vs):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    for v,r in zip(m.transformations, ts):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    for v,r in zip(m.input_variables, ivs):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-
-    print ('---- dXdt using getdXdt(m) -------------------')
-    f = getdXdt(m)
-    dXdt = f(varvalues,t)
-    for x,r in zip(m.varnames,  dXdt):
-        print ("d%s/dt = %s" % (x,r))
-
-    print ('---- dXdt using getdXdt(m) setting uncertain parameters ---')
-    pars = [3.0]
-    print ('f = getdXdt(m, with_uncertain = True)')
-    f = getdXdt(m, with_uncertain = True)
-    print ('setting uncertain as', dict((v.name, value) for v,value in zip(m.with_bounds, pars)))
-    print ('m.set_uncertain(pars)')
-    m.set_uncertain(pars)
-    dXdt = f(varvalues,t)
-    for x,r in zip(m.varnames, dXdt):
-        print ("d%s/dt = %s" % (x, r))
-
-    
-    # print 'BEGIN EXAMPLES'
-    # t0 = time.time()
     
     print ('---------------- EXAMPLE 1 ------------------')
     mtext = """

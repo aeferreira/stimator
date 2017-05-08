@@ -32,8 +32,12 @@ def get_allowed_f():
     v = vars(math)
     math_f = {}
     for k in v:
-        if isinstance(v[k], float) or callable(v[k]):
-            math_f[k] = v[k]
+        obj = v[k]
+        if isinstance(obj, float):
+            math_f[k] = obj
+        elif callable(obj):
+            if not obj.__name__.startswith('__'):
+                math_f[k] = obj
     fdict.update(math_f)
     return fdict
 
