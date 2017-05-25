@@ -51,8 +51,12 @@ m2.parameters.Km2 = 0.0980973
 # overide the default pop_size:80
 opt_settings = {'pop_size':60}
 
-optimum = m2.estimate(timecourses=['TSH2a.txt'], opt_settings=opt_settings,
-                      names=['SDLTSH', 'HTA'])
+best = m2.estimate(timecourses='TSH2a.txt',
+                   opt_settings=opt_settings,
+                   names=['SDLTSH', 'HTA'])
 
-print(optimum)
-optimum.plot(show=True)
+print(best)
+
+best.optimum_tcs.write_to('TSH2a_pred_2.txt', verbose=True)
+
+best.plot(show=True)
