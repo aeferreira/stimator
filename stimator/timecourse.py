@@ -399,6 +399,8 @@ class Solutions(object):
         cwd = getcwd()
         if filedir is None:
             filedir = ''
+        if _is_string(filenames):
+            filenames = [filenames]
         names = [os.path.join(cwd, filedir, k) for k in filenames]
         names = [os.path.abspath(p) for p in names]
 
