@@ -46,6 +46,17 @@ def _prepare_settigs(style, palette, font, fig_size):
     
     return st_list
 
+def _plotTC(lines_desc, solutions, title, ls, marker, ax):
+    for line in lines_desc:
+        sol = solutions[line['solution_index']]
+        y = sol[line['var_index']]
+        data_loc = np.logical_not(np.isnan(y))
+        x = sol.t[data_loc]
+        y = y[data_loc]
+        ax.plot(x, y, ls=ls, marker=marker, 
+                      color=line['color'], label=line['name'],
+                      clip_on=False)
+        ax.set_title(title)
 
 def plotTCs(solutions,
             show=False,
@@ -104,27 +115,33 @@ def plotTCs(solutions,
         color_table = {}
         if not group:
             for k, sol in enumerate(solutions):
-                cdesc = []
-                ldesc = [(sol.names[i], k, i) for i in range(len(sol))]
-                for name, _, _ in ldesc:
+                line_desc = []
+                for i in range(len(sol)):
+                    name = sol.names[i]
+                    line = {'name': name,
+                            'solution_index': k,
+                            'var_index': i}
                     if name in color_table:
                         c = color_table[name]
                     else:
                         c = next(cyclingcolors)
                         color_table[name] = c
-                    cdesc.append(c)
-                
-                plots_desc.append({'title': pnames[k], 'lines': ldesc, 'colors': cdesc})
+                    line['color'] = c
+                    line_desc.append(line)
+                    
+                plots_desc.append({'title': pnames[k], 'lines': line_desc})
         else:
             for g in group:
-                ldesc = []
-                cdesc = []
+                line_desc = []
                 if _is_string(g):
                     pdesc = {'title': g}
                     for k, sol in enumerate(solutions):
                         if g in sol.names:
                             indx = sol.names.index(g)
-                            ldesc.append((pnames[k], k, indx))
+                            line={'name': pnames[k],
+                                  'solution_index': k,
+                                  'var_index': indx}
+                            line_desc.append(line)
                 else:
                     if not _is_sequence(g):
                         raise StimatorTCError('%s is not a str or seq' % str(g))
@@ -134,45 +151,37 @@ def plotTCs(solutions,
                         for k, sol in enumerate(solutions):
                             if vvv in sol.names:
                                 indx = sol.names.index(vvv)
+                                line = {'solution_index': k, 'var_index': indx}
                                 if len(solutions) > 1:
-                                    ldesc.append(("%s, %s" % (vvv, pnames[k]),
-                                                  k,
-                                                  indx))
+                                    line['name'] = "%s, %s" % (vvv, pnames[k])
                                 else:
-                                    ldesc.append(("%s" % (vvv), k, indx))
-                for _, k, indx in ldesc:
-                    if (k, indx) in color_table:
-                        c = color_table[(k, indx)]
+                                    line['name'] = "%s" % (vvv)
+                                line_desc.append(line)
+                for line in line_desc:
+                    unique_id = (line['solution_index'], line['var_index'])
+                    if unique_id in color_table:
+                        c = color_table[unique_id]
                     else:
                         c = next(cyclingcolors)
-                        color_table[(k, indx)] = c
-                    cdesc.append(c)
+                        color_table[unique_id] = c
+                    line['color'] = c
 
-                pdesc.update({'lines': ldesc, 'colors': cdesc})
+                pdesc['lines'] = line_desc
                 plots_desc.append(pdesc)
 
         # draw plots
         for i, p in enumerate(plots_desc):
             curraxis = axis_set[i]
-            nlines = len(p['lines'])
             use_dots = not solutions[0].dense
             if force_dense:
                 use_dots = False
             
             ls, marker = ('None', 'o') if use_dots else ('-', 'None')
-
-            for ((lname, ltc, li), c) in zip(p['lines'], p['colors']):
-                y = solutions[ltc] [li]
-                data_loc = np.logical_not(np.isnan(y))
-                x = solutions[ltc].t[data_loc]
-                y = y[data_loc]
-                curraxis.plot(x, y, ls=ls, marker=marker, color=c,
-                                    label=lname,
-                                    clip_on = False)
+            
+            _plotTC(p['lines'], solutions, p['title'], ls, marker, curraxis)
 
             if yrange is not None:
                 curraxis.set_ylim(yrange)
-            curraxis.set_title(p['title'])
             if legend:
                 h, l = curraxis.get_legend_handles_labels()
                 curraxis.legend(h, l, loc='best')
@@ -405,6 +414,9 @@ nothing really usefull here
     sols.plot(suptitlegend="plotting the two time courses")
     sols.plot(suptitlegend="with font=serif, palette='rgb'",
               font_scale=1.3, font='serif', palette='rgb')
+    p = ['crimson', 'mediumpurple', 'darkolivegreen']
+    sols.plot(suptitlegend="with font=serif, palette=['crimson', 'mediumpurple', 'darkolivegreen']",
+              font_scale=0.5, font='serif', palette=p)
     sols.plot(suptitlegend="with style=default", style='default')
     sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
     sols.plot(suptitlegend="with style=bogus", style='bogus')
