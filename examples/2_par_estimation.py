@@ -1,11 +1,9 @@
 from __future__ import print_function
-from stimator import read_model
-from stimator.versions import version_info
+from stimator import read_model, __version__
 
-print ('Version information')
-print (version_info())
+print ('S-timator version', __version__)
 
-mdl = """# Example file for S-timator
+mdl = """# Example model
 title Example 2
 
 vin  : -> x1     , rate = k1

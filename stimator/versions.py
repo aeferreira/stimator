@@ -45,7 +45,7 @@ except ImportError:
 
 try:
     import stimator
-    versions['S-timator'] = stimator.__version__.version
+    versions['S-timator'] = stimator.__version__
 except ImportError:
     versions['S-timator'] = None
 

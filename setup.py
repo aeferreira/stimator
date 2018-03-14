@@ -14,7 +14,7 @@ def find_version(*file_paths):
     p = os.path.join(here, *file_paths)
     with open(p) as f:
         version_file = f.read()
-    version_match = re.search(r"self.version = ['\"]([^'\"]*)['\"]",
+    version_match = re.search(r"__version__ = ['\"]([^'\"]*)['\"]",
                               version_file, re.M)
     if version_match:
         return version_match.group(1)

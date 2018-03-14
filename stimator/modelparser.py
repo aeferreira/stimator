@@ -9,7 +9,7 @@ from __future__ import print_function, absolute_import
 from six import StringIO
 import re
 import math
-from stimator import model
+import stimator.model as model
 
 #----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
