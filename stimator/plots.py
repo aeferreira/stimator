@@ -46,6 +46,40 @@ def _prepare_settigs(style, palette, font, fig_size):
     
     return st_list
 
+class PlotGrid(object):
+    def __init__(self,
+            solutions,
+            figure=None,
+            axis_set=None,
+            fig_size=None,
+            titles=None,
+            ynormalize=False,
+            yrange=None,
+            group=False,
+            suptitlegend=None,
+            legend=True,
+            force_dense=False,
+            style=None, 
+            palette=None,
+            font="sans-serif", 
+            save2file=None, **kwargs):
+        self.solutions = solutions
+        self.figure = figure
+        self.axis_set = axis_set
+        self.fig_size = fig_size
+        self.titles = titles
+        self.ynormalize = ynormalize
+        self.yrange = yrange
+        self.group = group
+        self.suptitlegend = suptitlegend
+        self.legend = legend
+        self.force_dense = force_dense
+        self.style = style
+        self.pallete = palette
+        self.font = font
+        self.save2file = save2file
+        
+
 def _plotTC(lines_desc, solutions, title, ls, marker, ax):
     for line in lines_desc:
         sol = solutions[line['solution_index']]
@@ -455,6 +489,12 @@ nothing really usefull here
     ax2.set_ylabel('concentrations')
     ax2.set_xlabel('time')
 
+    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
+                  'examples/timecourses',
+                  names="SDLTSH HTA".split(),
+                  verbose=False)
+    tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
+
     print ('\n!! testing transformations ----------------')
        
     sols = Solutions(title='all time courses')
@@ -472,11 +512,5 @@ nothing really usefull here
     
     sols.plot(suptitlegend="plotting original and transf", force_dense=True)
     
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
-                  'examples/timecourses',
-                  names="SDLTSH HTA".split(),
-                  verbose=False)
-    tcs.plot(suptitlegend="read from file")
-    tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
 
     pl.show()
