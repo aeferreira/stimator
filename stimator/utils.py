@@ -31,6 +31,9 @@ def _is_string(a):
 def _is_number(a):
     return isinstance(a, float) or isinstance(a, integer_types)
 
+def _is_integer(a):
+    return isinstance(a, integer_types)
+    
 # helper to transform string arguments in lists:
 def listify(arguments):
     if isinstance(arguments, list) or isinstance(arguments, tuple):

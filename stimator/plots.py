@@ -7,8 +7,189 @@ import matplotlib as mpl
 from matplotlib import pyplot as pl
 from cycler import cycler
 
-from stimator.utils import _is_string, _is_sequence
+from stimator.utils import _is_string, _is_sequence, _is_integer
 
+def _get_plot_grid_dict(g):
+    if g is None:
+        return {'nrows':1, 'ncols':1, 'names':[0]}
+    if _is_integer(g) and g > 0:
+        return {'nrows':g, 'ncols':1, 'names':[i for i in range(g)]}
+    if _is_string(g):
+        return {'nrows':1, 'ncols':len(g), 'names': list(g)}
+    if _is_sequence(g):
+        if len(g) == 2 and _is_integer(g[0]) and _is_integer(g[1]):
+            if g[0] > 0 and g[1] > 0:
+                nrows = g[0]
+                ncols = g[1]
+                names =[]
+                for i in range(nrows):
+                    for j in range(ncols):
+                        names.append((i, j))
+                return {'nrows':nrows, 'ncols':ncols, 'names':names}
+        nrows = len(g)
+        names = []
+        for i in g:
+            if not (_is_string(i) or _is_sequence(i)):
+                raise ValueError('wrong grid specification')
+        ncols = min([len(i) for i in g])
+        for i in g:
+            names.extend(list(i[:ncols]))
+        return {'nrows': nrows, 'ncols':ncols, 'names':names}
+    raise TypeError('wrong grid specification')
+
+
+class PlotGrid(object):
+    def __init__(self,
+            solutions,
+            grid=None,
+            #axis_set=None,
+            fig_size=None,
+            ynormalize=False,
+            yrange=None,
+            suptitlegend=None,
+            style=None, 
+            palette=None,
+            font="sans-serif",
+            **kwargs):
+        self.solutions = solutions
+        self.fig_size = fig_size
+        self.ynormalize = ynormalize
+        self.yrange = yrange
+        self.suptitlegend = suptitlegend
+        self.style = style
+        self.pallete = palette
+        self.font = font
+        #self.axis_set = axis_set
+                
+        grid_desc = _get_plot_grid_dict(grid)
+        nrows = grid_desc['nrows']
+        ncols = grid_desc['ncols']
+
+        # create figure and axes
+        fig, axes = pl.subplots(nrows, ncols, figsize=fig_size)
+        if not hasattr(axes, 'shape'): # only one axes was created
+            print(axes)
+            self.axes_table = {grid_desc['names'][0]: axes}
+        else:
+            print(axes)
+            print(axes.shape)
+        
+            self.axes_table = {}
+            for a, name in zip(axes.ravel(), grid_desc['names']):
+                self.axes_table[name] = a
+        print(self.axes_table)
+        
+        self.fig = fig
+        self.axes = axes
+        print(self.fig.axes)
+
+    def _get_axes_from_loc(self, loc):
+        if loc is None:
+            # the one and only or default to the first
+            # fig.axes is a list
+            return self.fig.axes[0]
+        if loc in self.axes_table:
+            return self.axes_table[loc]
+        try:
+            ax = self.axes[loc]
+            if hasattr(ax, 'plot'):
+                return ax
+        except (IndexError, ValueError):
+            pass
+        raise ValueError('panel {} does not exist'.format(loc))
+            
+    
+    def plot123(self, loc=None, show=False):
+        ax = self._get_axes_from_loc(loc)
+        ax.plot(range(3), range(1,4), 'or')
+        if show:
+            pl.show()
+        return self
+    
+    def savefig(self, filename):
+        self.fig.savefig(filename)
+    
+    def show(self):
+        pl.show()
+
+    def plot_solution(self, solution_index,
+                loc=None, show=False,
+                title=None,
+                fig_size=None,
+                yrange=None,
+                legend=True,
+                force_dense=False,
+                style=None, 
+                palette=None,
+                font="sans-serif", **kwargs):
+
+        """Generate a graph of the time course using matplotlib.
+           
+           Called by .plot() member function of class timecourse.Solutions"""
+
+        ax = self._get_axes_from_loc(loc)
+        sol = self.solutions[solution_index]
+        
+        pname = 'timecourse %d' % solution_index
+        if title:
+            pname = title
+        else:
+            if sol.title:
+                pname = sol.title
+        
+        settings = _prepare_settigs(style, palette, font, fig_size)
+        
+        with pl.style.context(settings):
+            
+            cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
+            cyclingcolors = itertools.cycle(cyl)
+            
+            # create "plot description" record
+            
+            color_table = {}
+            lines_desc = []
+            for i in range(len(sol)):
+                name = sol.names[i]
+                line = {'name': name,
+                        'solution_index': solution_index,
+                        'var_index': i}
+                if name in color_table:
+                    c = color_table[name]
+                else:
+                    c = next(cyclingcolors)
+                    color_table[name] = c
+                line['color'] = c
+                lines_desc.append(line)
+            
+            plot_desc = {'title': pname, 'lines': lines_desc}
+
+            # draw plot
+            use_dots = not self.solutions[0].dense
+            if force_dense:
+                use_dots = False
+            
+            ls, marker = ('None', 'o') if use_dots else ('-', 'None')
+            
+            _plotTC(plot_desc['lines'], self.solutions, plot_desc['title'], ls, marker, ax)
+
+            if yrange is not None:
+                ax.set_ylim(yrange)
+            if legend:
+                h, l = ax.get_legend_handles_labels()
+                ax.legend(h, l, loc='best')
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+            
+        if show:
+            pl.show()
+        return self
+
+    def yscale_identical(self):
+        rs = [a.get_ylim() for a in self.fig.axes]
+        common_range = min([l for l,h in rs]), max([h for l,h in rs])
+        for a in self.fig.axes:
+            a.set_ylim(common_range)
+        return self
 
 def _prepare_settigs(style, palette, font, fig_size):
     st_list = []
@@ -32,10 +213,10 @@ def _prepare_settigs(style, palette, font, fig_size):
                 valid_styles.append(s)
     st_list = valid_styles
     
-    if fig_size is not None:
-        more_custom_settings['figure.figsize'] = fig_size
-    else:
-        more_custom_settings['figure.figsize'] = (8, 5.5)
+##     if fig_size is not None:
+##         more_custom_settings['figure.figsize'] = fig_size
+##     else:
+##         more_custom_settings['figure.figsize'] = (8, 5.5)
     
     if palette is not None:
         more_custom_settings['axes.prop_cycle'] = cycler('color', list(palette))
@@ -45,40 +226,7 @@ def _prepare_settigs(style, palette, font, fig_size):
     st_list.append(more_custom_settings)
     
     return st_list
-
-class PlotGrid(object):
-    def __init__(self,
-            solutions,
-            figure=None,
-            axis_set=None,
-            fig_size=None,
-            titles=None,
-            ynormalize=False,
-            yrange=None,
-            group=False,
-            suptitlegend=None,
-            legend=True,
-            force_dense=False,
-            style=None, 
-            palette=None,
-            font="sans-serif", 
-            save2file=None, **kwargs):
-        self.solutions = solutions
-        self.figure = figure
-        self.axis_set = axis_set
-        self.fig_size = fig_size
-        self.titles = titles
-        self.ynormalize = ynormalize
-        self.yrange = yrange
-        self.group = group
-        self.suptitlegend = suptitlegend
-        self.legend = legend
-        self.force_dense = force_dense
-        self.style = style
-        self.pallete = palette
-        self.font = font
-        self.save2file = save2file
-        
+       
 
 def _plotTC(lines_desc, solutions, title, ls, marker, ax):
     for line in lines_desc:
@@ -114,27 +262,27 @@ def plotTCs(solutions,
        Called by .plot() member function of class timecourse.Solutions"""
 
 
+    # handle names and titles
+    nsolutions = len(solutions)
+    pnames = ['time course %d' % (i+1) for i in range(nsolutions)]
+    for i in range(nsolutions):
+        if titles:
+            pnames[i] = titles[i]
+        else:
+            if solutions[i].title:
+                pnames[i] = solutions[i].title
+
+    # find how many plots
+    nplts = len(group) if group else nsolutions
+
+    # compute shape of grid
+    ncols = int(math.ceil(math.sqrt(nplts)))
+    nrows = int(math.ceil(float(nplts)/ncols))
+    
     settings = _prepare_settigs(style, palette, font, fig_size)
     
     with pl.style.context(settings):
         
-        # handle names and titles
-        nsolutions = len(solutions)
-        pnames = ['time course %d' % (i+1) for i in range(nsolutions)]
-        for i in range(nsolutions):
-            if titles:
-                pnames[i] = titles[i]
-            else:
-                if solutions[i].title:
-                    pnames[i] = solutions[i].title
-
-        # find how many plots
-        nplts = len(group) if group else nsolutions
-
-        # compute shape of grid
-        ncols = int(math.ceil(math.sqrt(nplts)))
-        nrows = int(math.ceil(float(nplts)/ncols))
-
         # handle axes
         if axis_set is None:
             if figure is None:
@@ -441,76 +589,43 @@ nothing really usefull here
 0.6  - 0.4 - -
 """
 
+    t = np.linspace(0, 6, 11)
+    y = np.sin(t)
+    y2 = np.cos(t - 0.5)
+    header = 't s1 s2'
+    lines = ['{} {} {}'.format(i, j, k) for (i,j,k) in zip(t, y, y2)]
+    demosin = '\n'.join([header]+lines)
+    
+    sine_sols = Solutions([Solution(title='sin and cos').read_str(demosin)])
+    
     sols = Solutions([Solution(title='the first tc').read_str(demodata),
                       Solution().read_str(demodata2)],
-                     title='all time courses') 
+                     title='all time courses')
+    pg = PlotGrid(sols, grid=(2,2))
+    pg.plot123((1,1))
+    pg.plot123((0,0))
+    pl.show()
+    
+    pg = PlotGrid(sols)
+    pg.plot123()
+    pl.show()
+    
+    pg = PlotGrid(sols, grid=('ABCD'))
+    pg.plot123('B')
+    pg.plot123(0)
+    pl.show()
+
+    pg = PlotGrid(sols, grid=('AB','CD'))
+    pg.plot123('B')
+    pg.plot123((1,0))
+    #pg.plot123(0)
+    pl.show()
+
+    pg = PlotGrid(sine_sols)
+    pg.plot_solution(0)
+    pl.show()
     
     sols.plot(suptitlegend="plotting the two time courses")
     sols.plot(suptitlegend="with font=serif, palette='rgb'",
               font_scale=1.3, font='serif', palette='rgb')
-    p = ['crimson', 'mediumpurple', 'darkolivegreen']
-    sols.plot(suptitlegend="with font=serif, palette=['crimson', 'mediumpurple', 'darkolivegreen']",
-              font_scale=0.5, font='serif', palette=p)
-    sols.plot(suptitlegend="with style=default", style='default')
-    sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
-    sols.plot(suptitlegend="with style=bogus", style='bogus')
-    
-    sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
-    
-    sols.plot(suptitlegend="with force_dense=True", force_dense=True)
-    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
-    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
-    
-    sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
-    sols.plot(group=['z', ('x','y')], suptitlegend="with group=['z', ('x','y')]")
-    sols.plot(group=['z', ('x','z')], suptitlegend="with group=['z', ('x','z')]")
-    
-    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
-    
-    sols.plot(suptitlegend="with given axis_set", 
-              force_dense=True,
-              axis_set=[ax1, ax2])
-    ax1.set_ylabel('variables')
-    ax2.set_ylabel('variables')
-    ax2.set_xlabel('time')
-
-    sol=Solution().read_str(demodata)
-    sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
-    sol.plot(group=['z', ('x','y')], 
-             suptitlegend="1tc with group=['z', ('x','y')]")
-    sol.plot(group=['z', ('x','z')], 
-             suptitlegend="1tc with group=['z', ('x','z')]")
-
-    sol.read_from('examples/timecourses/TSH2b.txt')
-    
-    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
-    
-    sol.plot(suptitlegend="plotting on a given axes (1 TC)", axes=ax2)
-    ax2.set_ylabel('concentrations')
-    ax2.set_xlabel('time')
-
-    tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
-                  'examples/timecourses',
-                  names="SDLTSH HTA".split(),
-                  verbose=False)
-    tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
-
-    print ('\n!! testing transformations ----------------')
-       
-    sols = Solutions(title='all time courses')
-    s = Solution(title='original time course').read_str(demodata2)
-    sols += s
-    
-    def average(x, t):
-        # print ('applying transformation')
-        return np.array([t/2.0, (x[0]+x[-1])/2.0])
-    
-    s = s.transform(average,
-                    newnames=['t/2', 'mid point'], 
-                    new_title='after transformation')
-    sols += s 
-    
-    sols.plot(suptitlegend="plotting original and transf", force_dense=True)
-    
-
     pl.show()
