@@ -257,8 +257,7 @@ class SolutionTimeCourse(object):
     def copy(self, names=[], newtitle=None):
         """Constructs new solution, restricted to the variables in 'names'."""
         if not (isinstance(names, list) or isinstance(names, tuple)):
-            names = names.strip()
-            names = names.split()
+            names = names.strip().split()
         t = self.t.copy()
         if names == []:
             names = self.names

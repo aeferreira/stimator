@@ -104,20 +104,43 @@ class ModelSolver(object):
 
     def solve(self, trial):
         """Returns the solution for a particular trial of initial values."""
-        salg=integrate._odepack.odeint
+        #salg=integrate._odepack.odeint
 
         for value,indx in zip(trial, self.optvars_indexes):
             self.vector[indx] = value
         y0 = np.copy(self.vector)
-        output = salg(self.f, y0, self.t, (), None, 0, -1, -1, 0, None, 
-                        None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
-        if output[-1] < 0: return None
+        
+        
+        solver = integrate.odeint
+        output = solver(self.f, y0, self.t,
+                        args=(),
+                        Dfun=None,
+                        col_deriv=0,
+                        full_output=True,
+                        ml=None,
+                        rtol=None,
+                        mu=None,
+                        atol=None,
+                        tcrit=None, 
+                        h0=0.0, 
+                        hmax=0.0,
+                        hmin=0.0,
+                        ixpr=0,
+                        mxstep=0,
+                        mxhnil=0,
+                        mxordn=12,
+                        mxords=5)#, tfirst=False)
+        out_message = output[1]['message'].strip()
+        if out_message != 'Integration successful.':
+            #print('Solution failed:', out_message)
+            return None
+
         Y = output[0]
         title = self.model.metadata.get('title', '')
         Y = np.copy(Y.T)
 
         sol = timecourse.SolutionTimeCourse(self.times, Y, self.names, title)
-        sol = sol.copy(self.observed)
+        sol = sol.copy(names=self.observed)
         return sol
 
 

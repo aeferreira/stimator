@@ -110,7 +110,7 @@ class DeODEOptimizer(de.DESolver):
                                   scale=scale,
                                   with_uncertain=True,
                                   t0=t0)
-        self.salg = integrate._odepack.odeint
+        #self.salg = integrate.odeint
 
         # store initial values and (scaled) time points
         if isinstance(initial, str) or isinstance(initial, StateArray):
@@ -163,12 +163,31 @@ class DeODEOptimizer(de.DESolver):
             ts = self.times[i]
         else:
             ts = linspace(self.times[i][0], self.times[i][-1], 500)
-        output = self.salg(self.calcDerivs, y0, ts, (), None, 0, -1, -1, 0,
-                           None, None, None, 0.0, 0.0, 0.0, 0, 0, 0, 12, 5)
-        if output[-1] < 0:
+
+        solver = integrate.odeint
+        output = solver(self.calcDerivs, y0, ts,
+                        args=(),
+                        Dfun=None,
+                        col_deriv=0,
+                        full_output=True,
+                        ml=None,
+                        rtol=None,
+                        mu=None,
+                        atol=None,
+                        tcrit=None, 
+                        h0=0.0, 
+                        hmax=0.0,
+                        hmin=0.0,
+                        ixpr=0,
+                        mxstep=0,
+                        mxhnil=0,
+                        mxordn=12,
+                        mxords=5)#, tfirst=False)
+        out_message = output[1]['message'].strip()
+        if out_message != 'Integration successful.':
+            #print('Solution failed:', out_message)
             return None
-        # if infodict['message'] != 'Integration successful.':
-        #     return (1.0E300)
+
         return output[0]
 
     def external_score_function(self, trial):
@@ -285,7 +304,10 @@ class DeODEOptimizer(de.DESolver):
                                            sols,
                                            consterror,
                                            commonvnames)
-            best.parameters = [(par_names[i], value, invFIM1[i, i]**0.5) for (i, value) in enumerate(self.best)]
+            best.parameters = [(par_names[i],
+                                value,
+                                invFIM1[i, i]**0.5)
+                                for (i, value) in enumerate(self.best)]
 
         sols = timecourse.Solutions()
         for (i, tc) in enumerate(self.tc):
