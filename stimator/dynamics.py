@@ -765,38 +765,24 @@ def scan(model, plan,
     """Wrapper around ModelSolver."""
                         
     plan = dict(plan)
-    names = list(plan.keys())
+    names = list(plan) # gets the keys
     # zip, terminating on the shortestsequence
-    design = list(izip(*list(plan.values())))
-    nruns = len(design)
+    scan_values = list(zip(*(plan.values())))
+    nruns = len(scan_values)
     
     if titles is None:
         titles = []
-        for v in design:
-            pairs = list(zip(names, v))
-            pairs = ['%s = %g'%(n, v) for (n, v) in pairs]
+        for run_values in scan_values:
+            pairs = ['%s = %g'%(n, v) for (n, v) in zip(names, run_values)]
             titles.append(', '.join(pairs))
-
-##         print 'plan'
-##         print plan
-##         print '---'
-##         print 'parameter names'
-##         print names
-##         print '---'
-##         print 'design'
-##         print design
-##         print '---'
-##         print 'titles'
-##         print titles
-##         print '---'
-    
+   
     ms = ModelSolver(model, tf=tf, npoints=npoints, t0=t0, 
                      initial=initial, times=times, outputs=outputs, 
                      changing_pars=names)
 
     s = Solutions()
-    for title, p in zip(titles, design):
-        s += ms.solve(title=title, par_values=p)
+    for title, run_values in zip(titles, scan_values):
+        s += ms.solve(title=title, par_values=run_values)
 
     return s
     
@@ -1047,14 +1033,14 @@ def test():
     print ('---------------- scanning example ------------------')
     m3 = read_model(models.ca.text)
     scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
+    # scans_k1 = 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
     
     sols2 = scan(m3, {'B': scans}, tf=10.0)
     # print 'END of SCANNING EXAMPLE'
     # tscancomp = time.time()
     # print 'took', tscancomp - tplot
 
-    sols2.plot(legend=True, ynormalize=True,  group=['Ca'],
-               fig_size=(10,6))
+    sols2.plot(legend=True, ynormalize=True,  group=['Ca'], fig_size=(10,6))
 
     # print 'END of PLOTTING SCANNING EXAMPLE'
     # tscan = time.time()
