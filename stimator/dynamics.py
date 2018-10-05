@@ -15,10 +15,19 @@ _GLOBAL_SYMPY = None
 try:
     import sympy
     _GLOBAL_SYMPY = sympy
-except:
+except ImportError:
     pass
 
 from stimator.examples import models
+
+#-----------------------------------------
+# New Exception class
+#-----------------------------------------
+
+class BadRateError(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
 
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 
@@ -592,23 +601,23 @@ def solve(model,
     f = getdXdt(model, scale=scale, t0=t0)
     t = np.copy((times-t0)/scale)  # this scales time points
 
-    output = solver(f, y0, t, 
-                    args=(), 
-                    Dfun=None, 
-                    col_deriv=0, 
-                    full_output=True, 
+    output = solver(f, y0, t,
+                    args=(),
+                    Dfun=None,
+                    col_deriv=0,
+                    full_output=True,
                     ml=None,
                     rtol=None,
                     mu=None,
                     atol=None,
-                    tcrit=None, 
-                    h0=0.0, 
-                    hmax=0.0, 
+                    tcrit=None,
+                    h0=0.0,
+                    hmax=0.0,
                     hmin=0.0,
-                    ixpr=0, 
-                    mxstep=0, 
-                    mxhnil=0, 
-                    mxordn=12, 
+                    ixpr=0,
+                    mxstep=0,
+                    mxhnil=0,
+                    mxordn=12,
                     mxords=5)#, tfirst=False)
     out_message = output[1]['message'].strip()
     if out_message != 'Integration successful.':
@@ -617,7 +626,7 @@ def solve(model,
 
     Y = output[0]
 
-    if title is None: 
+    if title is None:
         title = model.metadata.get('title', '')
     Y = np.copy(Y.T)
 
@@ -718,24 +727,24 @@ class ModelSolver(object):
             y0[self.vars_initindexes] = par_values[self.pars_initindexes]
 
 
-        output = integrate.odeint(self.f, y0, self.t, 
-                                    args=(), 
-                                    Dfun=None, 
-                                    col_deriv=0, 
-                                    full_output=True, 
-                                    ml=None,
-                                    rtol=None,
-                                    mu=None,
-                                    atol=None,
-                                    tcrit=None, 
-                                    h0=0.0, 
-                                    hmax=0.0, 
-                                    hmin=0.0,
-                                    ixpr=0, 
-                                    mxstep=0, 
-                                    mxhnil=0, 
-                                    mxordn=12, 
-                                    mxords=5)#, tfirst=False)
+        output = integrate.odeint(self.f, y0, self.t,
+                                  args=(),
+                                  Dfun=None,
+                                  col_deriv=0,
+                                  full_output=True,
+                                  ml=None,
+                                  rtol=None,
+                                  mu=None,
+                                  atol=None,
+                                  tcrit=None,
+                                  h0=0.0,
+                                  hmax=0.0,
+                                  hmin=0.0,
+                                  ixpr=0,
+                                  mxstep=0,
+                                  mxhnil=0,
+                                  mxordn=12,
+                                  mxords=5)#, tfirst=False)
         out_message = output[1]['message'].strip()
         if out_message != 'Integration successful.':
             print('Solution failed:', out_message)
@@ -761,23 +770,23 @@ def scan(model, plan,
          outputs=None,
          titles=None,
          changing_pars=None):
-        
+
     """Wrapper around ModelSolver."""
-                        
+
     plan = dict(plan)
     names = list(plan) # gets the keys
     # zip, terminating on the shortestsequence
     scan_values = list(zip(*(plan.values())))
     nruns = len(scan_values)
-    
+
     if titles is None:
         titles = []
         for run_values in scan_values:
             pairs = ['%s = %g'%(n, v) for (n, v) in zip(names, run_values)]
             titles.append(', '.join(pairs))
-   
-    ms = ModelSolver(model, tf=tf, npoints=npoints, t0=t0, 
-                     initial=initial, times=times, outputs=outputs, 
+
+    ms = ModelSolver(model, tf=tf, npoints=npoints, t0=t0,
+                     initial=initial, times=times, outputs=outputs,
                      changing_pars=names)
 
     s = Solutions()
