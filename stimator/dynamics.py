@@ -25,8 +25,8 @@ from stimator.examples import models
 #-----------------------------------------
 
 class BadRateError(Exception):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
 
 
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
@@ -119,7 +119,8 @@ def dXdt_strings(m):
         dXdtstring = ''
         for j, v in enumerate(m.reactions):
             coef = N[i, j]
-            if coef == 0.0: continue
+            if coef == 0.0:
+                continue
             ratestring = '(%s)'% v(fully_qualified=True)
             if coef == 1.0:
                 ratestring = '+'+ ratestring
@@ -794,11 +795,11 @@ def scan(model, plan,
         s += ms.solve(title=title, par_values=run_values)
 
     return s
-    
+
 
 def test():
     #import time
-    from stimator import read_model     
+    from stimator import read_model
     m1_text = """
     title a simple 2 step system
     v1: A -> B, rate = V / (Km1 + A), V = 1, Km = 1
@@ -818,16 +819,16 @@ def test():
     ~ t2 = v1.V * A * step(t, 1.0)
     # ~ t3 = v1.V * A * max(t, 1.0)
     """
-    
+
     m = read_model(m1_text)
-    
+
     print(m1_text)
 
     print('\n********** Testing stoichiometry matrix ********************')
     print('Stoichiometry matrix:')
     N = genStoichiometryMatrix(m)
     print('  ', '  '.join([v.name for v in m.reactions]))
-    for i,x in enumerate(m.varnames):
+    for i, x in enumerate(m.varnames):
         print(x, N[i, :])
     print()
     print('********** Testing state2array()****************************')
@@ -877,66 +878,66 @@ def test():
     vnames = m.varnames
     for i, vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
-            print ('(d d%s/dt / d %s) ='%(vnames[i],parnames[j]), dxdx)
+            print('(d d%s/dt / d %s) =' % (vnames[i], parnames[j]), dxdx)
     print()
-    
+
     print('dfdp_strings(m, parnames): (with unknown pars)')
     parnames = "c3 v1.V".split()
-    print ('parnames = {}\n'.format(parnames))
+    print('parnames = {}\n'.format(parnames))
     vnames = m.varnames
-    for i,vec in enumerate(dfdp_strings(m, parnames)):
+    for i, vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
-            print ('(d d%s/dt / d %s) ='%(vnames[i], parnames[j]), dxdx)
-    
+            print('(d d%s/dt / d %s) ='%(vnames[i], parnames[j]), dxdx)
+
     print('\n********** Testing _gen_calc_symbmap(m) *******************')
     print('_gen_calc_symbmap(m, with_uncertain = False):')
     print(_gen_calc_symbmap(m))
     print('\n_gen_calc_symbmap(m, with_uncertain = True):')
-    print(_gen_calc_symbmap(m, with_uncertain = True))
-    
+    print(_gen_calc_symbmap(m, with_uncertain=True))
+
     print('\n********** Testing rateCalcString **************************')
-    symbmap = _gen_calc_symbmap(m, with_uncertain = False)
-    symbmap2 = _gen_calc_symbmap(m, with_uncertain = True)
-    for v in (m.reactions.v1, 
-              m.reactions.v2, 
-              m.transformations.t1, 
+    symbmap = _gen_calc_symbmap(m, with_uncertain=False)
+    symbmap2 = _gen_calc_symbmap(m, with_uncertain=True)
+    for v in (m.reactions.v1,
+              m.reactions.v2,
+              m.transformations.t1,
               m.transformations.t2,
               m.input_variables.vin):
-        vstr = v(fully_qualified = True)
-        print ('calcstring for %s = %s\n   '% (v.name, vstr), rateCalcString(vstr, symbmap))
-    print('calcstring for v2 with uncertain parameters:\n\t', rateCalcString(m.reactions.v2(fully_qualified = True), symbmap2))
+        vstr = v(fully_qualified=True)
+        print('calcstring for %s = %s\n   '% (v.name, vstr), rateCalcString(vstr, symbmap))
+    print('calcstring for v2 with uncertain parameters:\n\t', rateCalcString(m.reactions.v2(fully_qualified=True), symbmap2))
 
     print('\n********** Testing rate and dXdt generating functions ******')
     print('Operating point --------------------------------')
     varvalues = [1.0, 0.4]
-    pars      = [0.4]
-    t         = 0.0
+    pars = [0.4]
+    t = 0.0
 
     print("t =", t)
     print('variables:')
-    print(dict((n, value) for n,value in zip(m.varnames, varvalues)))
+    print(dict((n, value) for n, value in zip(m.varnames, varvalues)))
     print('parameters:')
     print(dict((p.name, p) for p in m.parameters))
- 
+
     print('\n---- rates using all_rates_func(m) -------------------------')
     func = all_rates_func(m)
-    ivs, vs, ts = func(varvalues,t)
+    ivs, vs, ts = func(varvalues, t)
     frmtstr = "%s = %-25s = %s"
-    for v,r in zip(m.reactions, vs):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    for v,r in zip(m.transformations, ts):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    for v,r in zip(m.input_variables, ivs):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    
+    for v, r in zip(m.reactions, vs):
+        print(frmtstr % (v.name, v(fully_qualified=True), r))
+    for v, r in zip(m.transformations, ts):
+        print(frmtstr % (v.name, v(fully_qualified=True), r))
+    for v, r in zip(m.input_variables, ivs):
+        print(frmtstr % (v.name, v(fully_qualified=True), r))
+
     print('---- same, at t = 2.0 --')
     ivs, vs, ts = func(varvalues, 2.0)
-    for v,r in zip(m.reactions, vs):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    for v,r in zip(m.transformations, ts):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
-    for v,r in zip(m.input_variables, ivs):
-        print (frmtstr % (v.name, v(fully_qualified = True), r))
+    for v, r in zip(m.reactions, vs):
+        print(frmtstr % (v.name, v(fully_qualified=True), r))
+    for v, r in zip(m.transformations, ts):
+        print(frmtstr % (v.name, v(fully_qualified=True), r))
+    for v, r in zip(m.input_variables, ivs):
+        print(frmtstr % (v.name, v(fully_qualified=True), r))
 
     print('\n********** Testing add_dSdt_to_model() ***************')
     print('------ in original model')
@@ -958,7 +959,7 @@ def test():
     for x in vnames:
         print(x, m.get_init(x))
         print('   d {} / dt = {}'.format(x, dxdtstrs[x]))
-    
+
     print('---------------- EXAMPLE 1 ------------------')
     mtext = """
     title a simple 2 enzyme system
@@ -985,17 +986,17 @@ def test():
     print('At t =', solution1.t[-1])
     #print solution1.last
     for x in solution1.last:
-        print ("%-8s= %f" % (x, solution1.last[x]))
-    
+        print("%-8s= %f" % (x, solution1.last[x]))
+
     # print 'END of EXAMPLES 1'
     # t1 = time.time()
     # print 'took', t1 - t0
-    
+
     print('---------------- EXAMPLE 3 ------------------')
     m3 = read_model(models.ca.text)
 
     print(models.ca.text)
-    ms = ModelSolver(m3, tf = 8.0, npoints = 2000)
+    ms = ModelSolver(m3, tf=8.0, npoints=2000)
     solution3 = ms.solve()
 ##     solution3 = solve(m3, tf = 8.0, npoints = 2000)
 
@@ -1009,12 +1010,12 @@ def test():
 
     print(m4)
 
-    solution4 = solve(m4, tf = 100.0, npoints = 2000, 
+    solution4 = solve(m4, tf=100.0, npoints=2000,
                       outputs="x1 x2 x3".split())
-    solution4b = solve(m4, tf = 100.0, npoints = 2000, outputs="~",
-                      title='Rossler, outputs="~"')
-    
-    def transformation(vars,t):
+    solution4b = solve(m4, tf=100.0, npoints=2000, outputs="~",
+                       title='Rossler, outputs="~"')
+
+    def transformation(vars, t):
         if t > 40.0:
             return (vars[0]-5.0, vars[1], vars[2])
         else:
@@ -1026,30 +1027,30 @@ def test():
     # print 'END of EXAMPLES 4'
     # t4 = time.time()
     # print 'took', t4 - t3
-    
+
     #savingfile = open('examples/analysis.png', 'w+b')
     savingfile = 'examples/analysis.png'
     sols = Solutions([solution1, solution1a, solution1v,
-                      solution3, 
+                      solution3,
                       solution4b, solution4])
     sols.plot() #save2file=savingfile)
-    
+
     # print 'END of plotting first 4 examples'
     # tplot = time.time()
     # print 'took', tplot - t4
 
 
-    print ('---------------- scanning example ------------------')
+    print('---------------- scanning example ------------------')
     m3 = read_model(models.ca.text)
     scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
     # scans_k1 = 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
-    
+
     sols2 = scan(m3, {'B': scans}, tf=10.0)
     # print 'END of SCANNING EXAMPLE'
     # tscancomp = time.time()
     # print 'took', tscancomp - tplot
 
-    sols2.plot(legend=True, ynormalize=True,  group=['Ca'], fig_size=(10,6))
+    sols2.plot(legend=True, ynormalize=True, group=['Ca'], fig_size=(10, 6))
 
     # print 'END of PLOTTING SCANNING EXAMPLE'
     # tscan = time.time()
@@ -1079,7 +1080,7 @@ def test():
     # tstairway = time.time()
     # print 'took', tstairway - tscan
 
-    solstairs.plot(fig_size=(9,6), show=True)
+    solstairs.plot(fig_size=(9, 6), show=True)
 
     # print 'END of STAIRWAY PLOTTING'
     # tstairwayplot = time.time()
