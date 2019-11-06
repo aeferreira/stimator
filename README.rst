@@ -56,6 +56,3 @@ with ``pip``::
 
     $ pip install stimator
 
-or, in a Anaconda/Miniconda installation, install from the *aeferreira* channel::
-    
-    $ conda install -c aeferreira stimator

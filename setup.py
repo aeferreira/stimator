@@ -29,9 +29,11 @@ packages = [
     'stimator', 
     'stimator.examples',
     'stimator.moo',
+    'examples',
+    'tests'
 ]
 
-requires = ['six', 'pytest', 'sympy', 'numpy', 'scipy', 'matplotlib>=1.5']
+requires = ['six', 'pytest', 'sympy', 'numpy', 'scipy', 'matplotlib>=2.0']
 
 classifs=[
         'Development Status :: 3 - Alpha',
@@ -47,6 +49,7 @@ classifs=[
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering :: Artificial Life',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Chemistry',
@@ -61,6 +64,7 @@ setup(name = "stimator",
     url = "http://webpages.fc.ul.pt/~aeferreira/stimator",
     include_package_data=True,
     packages = packages,
+    package_data={'examples': ['ex2data.txt', 'TSH2a.txt', 'TSH2b.txt']},
     keywords = "ODE-models estimation dynamics",
     classifiers=classifs,
     long_description = readme,
