@@ -171,7 +171,7 @@ class SolutionTimeCourse(object):
 
         ishandle = False
         try:
-            f = open(source, "rU")
+            f = open(source)
         except TypeError:
             ishandle = True
             f = source
