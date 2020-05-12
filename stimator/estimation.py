@@ -412,10 +412,6 @@ find V2 in [0.00001, 0.0001]
 Km2 = 0.0980973
 find Km2 in (0.01, 1)
 
-~sdlx2 = 2 * SDLTSH
-
-!! HTA SDLTSH sdlx2
-
 init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 timecourse TSH2a.txt
@@ -429,7 +425,7 @@ timecourse TSH2b.txt
     tcdir = pathlib.Path(this_file.parents[0], 'examples', 'timecourses')
     #print(tcdir)
 
-    optimum = s_timate(m1, tc_dir=tcdir, timecourses=['TSH2a.txt', 'TSH2b.txt'],
+    optimum = s_timate(m1, tc_dir=tcdir, #timecourses=['TSH2a.txt', 'TSH2b.txt'],
                        names=['SDLTSH', 'HTA'],
                        dump_generations=True) 
     # convergence_noimprovement=40)
@@ -442,7 +438,36 @@ timecourse TSH2b.txt
 
     # --- an example with transformations --------------------
 
-    optimum = s_timate(m1, tc_dir=tcdir, timecourses=['tc_double.txt'],
+    mtransf = read_model("""
+title Glyoxalase system in L. Infantum
+
+glx1 : HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
+#glx1 : HTA -> SDLTSH, V*HTA/(Km1 + HTA), V=2.57594e-05
+glx2 : SDLTSH ->,     V2*SDLTSH/(Km2 + SDLTSH)
+
+#find glx1.V  in [0.00001, 0.0001]
+find V1  in [0.00001, 0.0001]
+
+Km1 = 0.252531
+find Km1 in [0.01, 1]
+
+V2  = 2.23416e-05
+find V2 in [0.00001, 0.0001]
+
+Km2 = 0.0980973
+find Km2 in (0.01, 1)
+
+~sdlx2 = 2 * SDLTSH
+
+!! HTA SDLTSH sdlx2
+
+init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
+
+timecourse TSH2a.txt
+timecourse TSH2b.txt
+""")
+
+    optimum = s_timate(mtransf, tc_dir=tcdir, timecourses=['tc_double.txt'],
                        names=['sdlx2', 'SDLTSH', 'HTA']) 
 
     print(optimum)
