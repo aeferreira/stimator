@@ -4,12 +4,89 @@ import time
 
 from numpy import array, nansum, fabs, copy, empty, linspace, isnan
 from scipy import integrate
+import numpy as np
 
 import stimator.de as de
-from stimator.dynamics import getdXdt, init2array
+#from stimator.dynamics import getdXdt, init2array
+from stimator.dynamics import getdXdt, init2array, ModelSolver, solve
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
+
+
+# ----------------------------------------------------------------------------
+#         Optimum criteria for TC similarity
+# ----------------------------------------------------------------------------
+
+def get_matching_subsets(sol, tc):
+    # find indexers to match a solution and tc
+    # to create compatible subsets for objetive functions
+    # return the subsets
+    sol_indexes, tc_indexes = [], []
+    ntimes = tc.ntimes
+
+    for i, yexp in enumerate(tc):
+        # count NaN, keep only columns with sufficient number of points
+        nnan = len(yexp[np.isnan(yexp)])
+        if nnan >= ntimes - 1:
+            continue
+        colname = tc.names[i]
+        if colname not in sol.names:
+            continue
+        tc_indexes.append(i)
+        sol_indexes.append(sol.names.index(colname))
+
+    tc_indexes = array(tc_indexes, int)
+    sol_indexes = array(sol_indexes, int)
+    # print(sol)
+    # print('-------------')
+    # print(tc)
+    return sol.data[sol_indexes], tc.data[tc_indexes]
+
+
+def getRangeVars(tcs, varnames):
+    ranges = [0.0 for i in range(len(varnames))]
+    for ix, x in enumerate(varnames):
+        for tc in tcs:
+            yexp = tc[x]
+            tpe = (max(yexp) - min(yexp))
+            ranges[ix] = max(ranges[ix], tpe)
+    return ranges
+
+def getCriteriumFunction(weights=None):
+    """Returns a function to compute the objective function given a solution and a timecourse.
+
+    The function has signature
+    criterium(Y,i)
+    Y is the predicted timecourse, for a given set of parameters.
+    i is the index of the timecourse.
+    The function returns a float.
+
+    tc is a Solutions object holding ('experimental') timecourse data,
+    each timecourse has shape (nvars, ntimes).
+
+    weights can be:
+
+    None         : no weighting (simple LSquares, S = sum((Ypred-Yexp)**2))
+    all others are weighted LSquares, S = (Ypred-Yexp).T * W * (Ypred-Yexp)
+    'demo'       : demo weighting  W = 1/j with j = 1,...,nvars
+    """
+
+    def unweighted_criterium(sol, tc):
+        sol_subset, tc_subset = get_matching_subsets(sol, tc)
+        d = (sol_subset - tc_subset)
+        return np.sum(d * d)
+
+    if weights is None:
+        return unweighted_criterium
+    else:
+        return unweighted_criterium
+
+        #     return np.sum(d.T * W[i] * d)
+
+    # TODO: weights not implemented
+    return None
+
 
 # ----------------------------------------------------------------------------
 #         Class to perform DE optimization for ODE systems
@@ -70,9 +147,10 @@ class DeODEOptimizer(de.DESolver):
                  initial='init',
                  max_generations=200,
                  convergence_noimprovement=20):
-        self.model = model
+        #self.varnames = model.varnames
+        self.model = model.copy()
+        self.model_solvers = []
         self.tc = tcs
-        self.varnames = model.varnames
         self.endTicker = anEndComputationTicker
         self.msgTicker = aMsgTicker
         self.dump_predictions = dump_predictions
@@ -82,6 +160,8 @@ class DeODEOptimizer(de.DESolver):
         self.tc.order_by_modelvars(self.model)
 
         pars = model.with_bounds
+        self.par_names = [p.name for p in self.model.with_bounds]
+        self.varnames = list(self.model.varnames)
         mins = array([u.bounds.lower for u in pars])
         maxs = array([u.bounds.upper for u in pars])
 
@@ -102,93 +182,30 @@ class DeODEOptimizer(de.DESolver):
         # cutoffEnergy is 1e-6 of deviation from data
         self.cutoffEnergy = 1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
 
-        # scale times to maximum time in data
-        scale = float(max([(tc.t[-1]-tc.t[0]) for tc in self.tc]))
-        t0 = self.tc[0].t[0]
+        # create one ModelSolver per timecorse
 
-        self.calcDerivs = getdXdt(model,
-                                  scale=scale,
-                                  with_uncertain=True,
-                                  t0=t0)
-        #self.salg = integrate.odeint
-
-        # store initial values and (scaled) time points
-        if isinstance(initial, str) or isinstance(initial, StateArray):
-            try:
-                globalX0 = copy(init2array(model))
-            except AttributeError:
-                globalX0 = zeros(len(model.varnames))
-
-        else:
-            globalX0 = copy(initial)
-
-        self.X0 = []
-        self.times = []
-        for data in self.tc:
+        # overide initial values of solver with first time-course point
+        for tc in self.tc:
             X0 = []
-            for ix, xname in enumerate(model.varnames):
-                if xname in data.names:
-                    X0.append(data[xname][0])
-                else:
-                    X0.append(globalX0[ix])
+            for xname in model.varnames:
+                x0value = tc[xname][0] if xname in tc.names else self.model.get_init(xname)
+                X0.append(x0value)
             X0 = array(X0, dtype=float)
+            ms = ModelSolver(self.model,
+                            times=tc.t.copy(),
+                            initial=X0,
+                            title=tc.title,
+                            changing_pars=self.par_names)
+            self.model_solvers.append(ms)
 
-            self.X0.append(X0)
-            t = data.t
-            times = (t-t0)/scale  # +t0  # this scales time points
-            self.times.append(times)
         self.timecourse_scores = empty(len(self.tc))
-
-        # find uncertain initial values
-        mapinit2trial = []
-        for iu, u in enumerate(self.model.with_bounds):
-            if u.name.startswith('init'):
-                varname = u.name.split('.')[-1]
-                ix = self.varnames.index(varname)
-                mapinit2trial.append((ix, iu))
-        self.trial_initindexes = array([j for (i, j) in mapinit2trial], dtype=int)
-        self.vars_initindexes = array([i for (i, j) in mapinit2trial], dtype=int)
-
-        self.criterium = timecourse.getCriteriumFunction(weights,
-                                                         self.model,
-                                                         self.tc)
+        self.criterium = getCriteriumFunction(weights)
 
     def computeSolution(self, i, trial, dense=None):
         """Computes solution for timecourse i, given parameters trial."""
 
-        y0 = copy(self.X0[i])
-        # fill uncertain initial values
-        y0[self.vars_initindexes] = trial[self.trial_initindexes]
-        if dense is None:
-            ts = self.times[i]
-        else:
-            ts = linspace(self.times[i][0], self.times[i][-1], 500)
-
-        solver = integrate.odeint
-        output = solver(self.calcDerivs, y0, ts,
-                        args=(),
-                        Dfun=None,
-                        col_deriv=0,
-                        full_output=True,
-                        ml=None,
-                        rtol=None,
-                        mu=None,
-                        atol=None,
-                        tcrit=None, 
-                        h0=0.0, 
-                        hmax=0.0,
-                        hmin=0.0,
-                        ixpr=0,
-                        mxstep=0,
-                        mxhnil=0,
-                        mxordn=12,
-                        mxords=5)#, tfirst=False)
-        out_message = output[1]['message'].strip()
-        if out_message != 'Integration successful.':
-            #print('Solution failed:', out_message)
-            return None
-
-        return output[0]
+        sol = self.model_solvers[i].solve(par_values=trial)
+        return sol
 
     def external_score_function(self, trial):
         # if out of bounds flag with error energy
@@ -196,13 +213,14 @@ class DeODEOptimizer(de.DESolver):
             if p > maxInitialValue or p < minInitialValue:
                 return float('inf')
         # set parameter values from trial
-        self.model.set_uncertain(trial)
+        #self.model.set_uncertain(trial)
 
         # compute solutions and scores
         for i in range(len(self.tc)):
-            Y = self.computeSolution(i, trial)
-            if Y is not None:
-                self.timecourse_scores[i] = self.criterium(Y, i)
+            sol = self.model_solvers[i].solve(par_values=trial)
+            #sol = self.computeSolution(i, trial)
+            if sol is not None:
+                self.timecourse_scores[i] = self.criterium(sol, self.tc[i])
             else:
                 return float('inf')
 
@@ -212,7 +230,7 @@ class DeODEOptimizer(de.DESolver):
     def reportInitial(self):
         msg = "\nSolving %s..." % self.model.metadata.get('title', '')
         #initialize stopwatch
-        self.start_time = time.clock()
+        self.start_time = time.time()
         if self.dump_generations is not None:
             self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:
@@ -271,22 +289,17 @@ class DeODEOptimizer(de.DESolver):
 
         # generate best time-courses
 
-        par_names = [p.name for p in self.model.with_bounds]
-        parameters = list(zip(par_names, [x for x in self.best]))
+        parameters = list(zip(self.par_names, [x for x in self.best]))
 
         sols = timecourse.Solutions()
         best.tcdata = []
 
         for (i, tc) in enumerate(self.tc):
-            Y = self.computeSolution(i, self.best)
-            if Y is not None:
-                score = self.criterium(Y, i)
+            sol = self.computeSolution(i, self.best)
+            if sol is not None:
+                score = self.criterium(sol, tc)
             else:
                 score = 1.0E300
-            sol = timecourse.SolutionTimeCourse(tc.t,
-                                                Y.T,
-                                                self.varnames,
-                                                title=tc.title)
             sols += sol
             best.tcdata.append((self.tc[i].title, tc.ntimes, score))
 
@@ -296,7 +309,14 @@ class DeODEOptimizer(de.DESolver):
             best.parameters = [(p, v, 0.0) for (p, v) in parameters]
         else:
             commonvnames = self.tc.get_common_full_vars()
-            consterror = timecourse.getRangeVars(self.tc, commonvnames)
+            # print(commonvnames)
+            commonvnames = set(commonvnames).intersection(set(self.model.varnames))
+            if len(commonvnames) == 0:
+                commonvnames = self.model.varnames
+            else:
+                commonvnames = list(commonvnames)
+            print(commonvnames)
+            consterror = getRangeVars(self.tc, commonvnames)
             # assume 5% of range
             consterror = timecourse.constError_func([r * 0.05 for r in consterror])
             FIM1, invFIM1 = fim.computeFIM(self.model,
@@ -304,19 +324,19 @@ class DeODEOptimizer(de.DESolver):
                                            sols,
                                            consterror,
                                            commonvnames)
-            best.parameters = [(par_names[i],
+            best.parameters = [(self.par_names[i],
                                 value,
                                 invFIM1[i, i]**0.5)
                                 for (i, value) in enumerate(self.best)]
 
         sols = timecourse.Solutions()
         for (i, tc) in enumerate(self.tc):
-            Y = self.computeSolution(i, self.best, dense=True)
-            ts = linspace(tc.t[0], tc.t[-1], 500)
+            sol = self.computeSolution(i, self.best, dense=True)
+            # ts = linspace(tc.t[0], tc.t[-1], 500)
 
-            sol = timecourse.SolutionTimeCourse(ts, Y.T,
-                                                self.varnames,
-                                                title=tc.title)
+            # sol = timecourse.SolutionTimeCourse(ts, Y.T,
+            #                                     self.varnames,
+            #                                     title=tc.title)
             sols += sol
 
         best.optimum_dense_tcs = sols
@@ -387,6 +407,10 @@ find V2 in [0.00001, 0.0001]
 Km2 = 0.0980973
 find Km2 in (0.01, 1)
 
+~sdlx2 = 2 * SDLTSH
+
+!! HTA SDLTSH sdlx2
+
 init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 timecourse TSH2a.txt
@@ -394,8 +418,13 @@ timecourse TSH2b.txt
 """)
 
     # print m1
+    # get tcdir
+    import pathlib
+    this_file = pathlib.Path(__file__)
+    tcdir = pathlib.Path(this_file.parents[0], 'examples', 'timecourses')
+    #print(tcdir)
 
-    optimum = s_timate(m1, tc_dir='examples/timecourses', 
+    optimum = s_timate(m1, tc_dir=tcdir, timecourses=['TSH2a.txt', 'TSH2b.txt'],
                        names=['SDLTSH', 'HTA'],
                        dump_generations=True) 
     # convergence_noimprovement=40)
@@ -404,6 +433,16 @@ timecourse TSH2b.txt
     print(optimum)
     optimum.plot()
     optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(9,6))
+
+
+    # --- an example with transformations --------------------
+
+    optimum = s_timate(m1, tc_dir=tcdir, timecourses=['tc_double.txt'],
+                       names=['sdlx2', 'SDLTSH', 'HTA']) 
+
+    print(optimum)
+    optimum.plot()
+
 
     # --- an example with unknown initial values --------------------
 
@@ -420,7 +459,7 @@ timecourse TSH2b.txt
     # cannot fit one initial value using several timecourses!!!
 
     optimum = s_timate(m2, timecourses=['TSH2a.txt'], 
-                       tc_dir='examples/timecourses',
+                       tc_dir=tcdir,
                        opt_settings={'pop_size': 60},
                        names=['SDLTSH', 'HTA'])
 

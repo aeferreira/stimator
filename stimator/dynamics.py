@@ -569,7 +569,7 @@ def solve(model,
           tf=None,
           npoints=500,
           t0=0.0,
-          initial='init',
+          initial=None,
           times=None,
           outputs=None,
           title=None,
@@ -580,7 +580,7 @@ def solve(model,
     names = [x for x in model.varnames]
 
     #get initial values
-    if initial == 'init':
+    if initial is None:
         y0 = init2array(model)
     else:
         y0 = np.copy(initial)
@@ -649,7 +649,7 @@ class ModelSolver(object):
                  tf=1.0,
                  npoints=500,
                  t0=0.0,
-                 initial='init',
+                 initial=None,
                  times=None,
                  outputs=None,
                  title=None,
@@ -668,7 +668,7 @@ class ModelSolver(object):
             self.title = self.model.metadata.get('title', '')
 
         #get initial values
-        if initial == 'init':
+        if initial is None:
             self.y0 = np.copy(init2array(self.model))
         else:
             self.y0 = np.copy(initial)
@@ -766,7 +766,7 @@ def scan(model, plan,
          tf=1.0,
          npoints=500,
          t0=0.0,
-         initial='init',
+         initial=None,
          times=None,
          outputs=None,
          titles=None,
