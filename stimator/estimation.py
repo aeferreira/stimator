@@ -18,7 +18,7 @@ import stimator.plots as plots
 #         Optimum criteria for TC similarity
 # ----------------------------------------------------------------------------
 
-def get_matching_subsets(sol, tc):
+def get_matching_indexes(repnames, tc):
     # find indexers to match a solution and tc
     # to create compatible subsets for objetive functions
     # return the subsets
@@ -31,17 +31,18 @@ def get_matching_subsets(sol, tc):
         if nnan >= ntimes - 1:
             continue
         colname = tc.names[i]
-        if colname not in sol.names:
+        if colname not in repnames:
             continue
         tc_indexes.append(i)
-        sol_indexes.append(sol.names.index(colname))
+        sol_indexes.append(repnames.index(colname))
 
     tc_indexes = array(tc_indexes, int)
     sol_indexes = array(sol_indexes, int)
-    # print(sol)
+    return sol_indexes, tc_indexes
+        # print(sol)
     # print('-------------')
     # print(tc)
-    return sol.data[sol_indexes], tc.data[tc_indexes]
+    # return sol.data[sol_indexes], tc.data[tc_indexes]
 
 
 def getRangeVars(tcs, varnames):
@@ -53,7 +54,7 @@ def getRangeVars(tcs, varnames):
             ranges[ix] = max(ranges[ix], tpe)
     return ranges
 
-def getCriteriumFunction(weights=None):
+def get_criterium(repnames, tc, weights=None):
     """Returns a function to compute the objective function given a solution and a timecourse.
 
     The function has signature
@@ -71,9 +72,10 @@ def getCriteriumFunction(weights=None):
     all others are weighted LSquares, S = (Ypred-Yexp).T * W * (Ypred-Yexp)
     'demo'       : demo weighting  W = 1/j with j = 1,...,nvars
     """
+    sol_indexes, tc_indexes = get_matching_indexes(repnames, tc)
 
     def unweighted_criterium(sol, tc):
-        sol_subset, tc_subset = get_matching_subsets(sol, tc)
+        sol_subset, tc_subset = sol[sol_indexes], tc[tc_indexes]
         d = (sol_subset - tc_subset)
         return np.sum(d * d)
 
@@ -183,6 +185,7 @@ class DeODEOptimizer(de.DESolver):
         self.cutoffEnergy = 1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
 
         # create one ModelSolver per timecorse
+        self.criterium = []
 
         # overide initial values of solver with first time-course point
         for tc in self.tc:
@@ -197,9 +200,10 @@ class DeODEOptimizer(de.DESolver):
                             title=tc.title,
                             changing_pars=self.par_names)
             self.model_solvers.append(ms)
+            solnames = ms.solutions_names()
+            self.criterium.append(get_criterium(solnames, tc, weights))
 
         self.timecourse_scores = empty(len(self.tc))
-        self.criterium = getCriteriumFunction(weights)
 
     def computeSolution(self, i, trial, dense=None):
         """Computes solution for timecourse i, given parameters trial."""
@@ -220,7 +224,7 @@ class DeODEOptimizer(de.DESolver):
             sol = self.model_solvers[i].solve(par_values=trial)
             #sol = self.computeSolution(i, trial)
             if sol is not None:
-                self.timecourse_scores[i] = self.criterium(sol, self.tc[i])
+                self.timecourse_scores[i] = self.criterium[i](sol, self.tc[i])
             else:
                 return float('inf')
 
@@ -297,7 +301,7 @@ class DeODEOptimizer(de.DESolver):
         for (i, tc) in enumerate(self.tc):
             sol = self.computeSolution(i, self.best)
             if sol is not None:
-                score = self.criterium(sol, tc)
+                score = self.criterium[i](sol, tc)
             else:
                 score = 1.0E300
             sols += sol
@@ -309,14 +313,15 @@ class DeODEOptimizer(de.DESolver):
             best.parameters = [(p, v, 0.0) for (p, v) in parameters]
         else:
             commonvnames = self.tc.get_common_full_vars()
-            # print(commonvnames)
             commonvnames = set(commonvnames).intersection(set(self.model.varnames))
             if len(commonvnames) == 0:
                 commonvnames = self.model.varnames
+                consterror = getRangeVars(best.optimum_tcs, commonvnames)
             else:
                 commonvnames = list(commonvnames)
-            print(commonvnames)
-            consterror = getRangeVars(self.tc, commonvnames)
+                consterror = getRangeVars(self.tc, commonvnames)
+            # print(commonvnames)
+
             # assume 5% of range
             consterror = timecourse.constError_func([r * 0.05 for r in consterror])
             FIM1, invFIM1 = fim.computeFIM(self.model,

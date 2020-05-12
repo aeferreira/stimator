@@ -714,6 +714,11 @@ class ModelSolver(object):
         if f is not None:
             self.tranf_f = f
             self.tranf_names = f.names
+    
+    def solutions_names(self):
+        if self.tranf_names is not None:
+            return self.tranf_names
+        return self.model.varnames
 
     def solve(self, title=None, par_values=None):
 

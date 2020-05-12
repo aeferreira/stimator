@@ -78,13 +78,13 @@ class DESolver(object):
     def reportInitial(self):
         print("Solving...")
         #initialize stopwatch
-        self.start_time = time.clock()
+        self.start_time = time.time()
 
     def reportGeneration(self):
         print("{:-4d}: {:f}".format(self.generation, self.best_score))
 
     def reportFinal(self):
-        ttime = time.clock() - self.start_time
+        ttime = time.time() - self.start_time
         code = DESolver.exitCodeStrings[self.exitCode]
         res = ['Done!',
                '%s in %d generations.' % (code, self.generation),

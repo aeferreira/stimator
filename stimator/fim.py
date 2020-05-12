@@ -77,6 +77,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
 
     #keep indexes of variables considered
     if vars is not None:
+        # print(vars)
         vnames = m.varnames
         xindexes = []
         for vname in vars:
