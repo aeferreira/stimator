@@ -8,7 +8,7 @@ import numpy as np
 
 import stimator.de as de
 #from stimator.dynamics import getdXdt, init2array
-from stimator.dynamics import getdXdt, init2array, ModelSolver, solve
+from stimator.dynamics import getdXdt, init2array, ModelSolver, solve, get_outputs_decl
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
@@ -194,10 +194,13 @@ class DeODEOptimizer(de.DESolver):
                 x0value = tc[xname][0] if xname in tc.names else self.model.get_init(xname)
                 X0.append(x0value)
             X0 = array(X0, dtype=float)
+            outputs = get_outputs_decl(self.model)
+            outputs = self.model.varnames + outputs
             ms = ModelSolver(self.model,
                             times=tc.t.copy(),
                             initial=X0,
                             title=tc.title,
+                            #outputs=outputs,
                             changing_pars=self.par_names)
             self.model_solvers.append(ms)
             solnames = ms.solutions_names()
@@ -316,23 +319,27 @@ class DeODEOptimizer(de.DESolver):
             commonvnames = set(commonvnames).intersection(set(self.model.varnames))
             if len(commonvnames) == 0:
                 commonvnames = self.model.varnames
-                consterror = getRangeVars(best.optimum_tcs, commonvnames)
+                # consterror = getRangeVars(best.optimum_tcs, commonvnames)
+                consterror = None
             else:
                 commonvnames = list(commonvnames)
+                # print(commonvnames)
                 consterror = getRangeVars(self.tc, commonvnames)
-            # print(commonvnames)
+                # assume 5% of range
+                consterror = timecourse.constError_func([r * 0.05 for r in consterror])
 
-            # assume 5% of range
-            consterror = timecourse.constError_func([r * 0.05 for r in consterror])
-            FIM1, invFIM1 = fim.computeFIM(self.model,
-                                           parameters,
-                                           sols,
-                                           consterror,
-                                           commonvnames)
-            best.parameters = [(self.par_names[i],
-                                value,
-                                invFIM1[i, i]**0.5)
-                                for (i, value) in enumerate(self.best)]
+            try:
+                FIM1, invFIM1 = fim.computeFIM(self.model,
+                                            parameters,
+                                            sols,
+                                            consterror,
+                                            commonvnames)
+                best.parameters = [(self.par_names[i],
+                                    value,
+                                    invFIM1[i, i]**0.5)
+                                    for (i, value) in enumerate(self.best)]
+            except:
+                best.parameters = [(p, v, 0.0) for (p, v) in parameters]
 
         sols = timecourse.Solutions()
         for (i, tc) in enumerate(self.tc):
@@ -459,7 +466,7 @@ find Km2 in (0.01, 1)
 
 ~sdlx2 = 2 * SDLTSH
 
-!! HTA SDLTSH sdlx2
+!! sdlx2
 
 init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 

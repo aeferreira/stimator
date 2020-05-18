@@ -506,6 +506,15 @@ def _gen_outputs_decl(m, ignore_replist=False):
     else:
         return None
 
+def get_outputs_decl(m):
+    decl = m.metadata.get('!!', None)
+
+    if decl is not None:
+        names = decl.strip().split()
+        return names
+    return []
+
+
 def genTransformationFunction(m, f):
     special_transf = ['~']
     special_rates = ['>', '>>', '->']

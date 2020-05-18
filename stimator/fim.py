@@ -35,11 +35,11 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
     """
     m = model.copy()
 
-    #ensure m has init attr
-    inits = {}
-    for x in m.varnames:
-        inits[str(x)] = 0.0
-    m.set_init(inits)
+    # #ensure m has init attr
+    # inits = {}
+    # for x in m.varnames:
+    #     inits[str(x)] = 0.0
+    # m.set_init(inits)
     
     convert_pars = OrderedDict()
     if isinstance(pars, dict):
@@ -77,7 +77,6 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
 
     #keep indexes of variables considered
     if vars is not None:
-        # print(vars)
         vnames = m.varnames
         xindexes = []
         for vname in vars:
@@ -97,6 +96,16 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
         for sol in sols:
             sol.xindexes = xindexes
             sol.indexes = indexes
+
+    # handle expCOV == None
+    if expCOV is None:
+        ranges = [0.0 for i in range(len(vars))]
+        for sol in sols:
+            for i in sol.xindexes:
+                y =sol.data[i, :]
+                tpe = (max(y) - min(y))
+                ranges[i] = max(ranges[i], tpe)
+        expCOV = constError_func([r * 0.05 for r in ranges])
 
     tcFIM = []
     for sol in sols:
