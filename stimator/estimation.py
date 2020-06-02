@@ -189,13 +189,10 @@ class DeODEOptimizer(de.DESolver):
                 x0value = tc[xname][0] if xname in tc.names else self.model.get_init(xname)
                 X0.append(x0value)
             X0 = array(X0, dtype=float)
-            outputs = get_outputs_decl(self.model)
-            outputs = self.model.varnames + outputs
             ms = ModelSolver(self.model,
                             times=tc.t.copy(),
                             initial=X0,
                             title=tc.title,
-                            #outputs=outputs,
                             changing_pars=self.par_names)
             self.model_solvers.append(ms)
             solnames = ms.solutions_names()

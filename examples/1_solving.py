@@ -15,7 +15,7 @@ k2 = 2
 k3 = 1
 init: (x1=0, x2=0)
 
-#filter what you want to plot
+# filter what you want to plot
 !! x1 x2"""
 
 m = read_model(mdl)

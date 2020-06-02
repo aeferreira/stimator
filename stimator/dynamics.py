@@ -36,7 +36,6 @@ def identifiersInExpr(_expr):
     return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
 
 
-
 def init2array(model):
     """Transforms a state object into a numpy.array object.
 
@@ -292,13 +291,6 @@ def add_dSdt_to_model(m, pars):
     nvars = len(J)
     npars = len(pars)
 
-
-##     print ('\n############## canonical_symbmap(m) --------------')
-##     symbmap=symbols['s_table']
-##     for k in symbmap:
-##         print('{:15} --> {}'.format(k, symbmap[k]))
-##     print ('\n############## canonical_symbmap(m) --------------')
-
     #compute rhs of sensitivities symbolically
     for i in range(nvars):
         x = m.varnames[i]
@@ -342,18 +334,44 @@ def _gen_calc_symbmap(model, with_uncertain=False):
     for p in model.parameters:
         if p.bounds and with_uncertain:
             continue
-        valuestr = "%g"% p
+        valuestr = "%g" % p
         symbmap[p.name] = valuestr
 
     return symbmap
 
+def _get_code_index(model, name):
+    for i, p in enumerate(model.with_bounds):
+        if p.name == name:
+            #return i, 'uncertain'
+            return ('u', i)
+    for p in model.parameters:
+        if p.name == name:
+            #return -1, 'parameters'
+            return ('p', model.getp(name))
+    i = model._Model__reactions.iget(name)
+    if i is not None:
+        #return i, 'reactions'
+        return ('r', i)
+    try:
+        i = model._Model__variables.index(name)
+        #return i, 'variables'
+        return ('v', i)
+    except:
+        pass
+    i = model._Model__transf.iget(name)
+    if i is not None:
+        #return i, 'transf'
+        return ('t', i)
+    i = model._Model__invars.iget(name)
+    if i is not None:
+        #return i, 'invar'
+        return ('i', i)
+    raise AttributeError('{} is not a component in this model'.format(name))
+
+
 def compile_rates(m, collection, with_uncertain=False):
     symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
     ratestrs = [rateCalcString(v(fully_qualified=True), symbmap) for v in collection]
-##     print('************** compile_rates *********************')
-##     for rstr in ratestrs:
-##         print(rstr)
-##     print('************** end compile_rates *********************')
     return [compile(v, '<string>', 'eval') for v in ratestrs]
 
 def _get_rates_function(m, with_uncertain, out_names=None):
@@ -379,9 +397,29 @@ def _get_rates_function(m, with_uncertain, out_names=None):
     _t_rates = np.empty(len(m.transformations))
     entr = list(enumerate(transf_bytecode))
 
-    # handle names of output variables to keep
+    # handle names of output variables to retain
+    # if out_names is not None then a transformation function is also returned
     if out_names is not None:
-        pass
+        loc_codes = [_get_code_index(m, name) for name in out_names]
+        _out_rates = np.empty(len(loc_codes))
+
+        out_bytecode = []
+
+        for (kind, d) in loc_codes:
+            if kind == 'v':
+                out_bytecode.append(compile('variables[{}]'.format(d), '<string>', 'eval'))
+            elif kind == 'r':
+                out_bytecode.append(enre[d][1])
+            elif kind == 'i':
+                out_bytecode.append(compile('input_variables[{}]'.format(d), '<string>', 'eval'))
+            elif kind == 't':
+                out_bytecode.append(entr[d][1])
+            elif kind == 'u':
+                out_bytecode.append(compile('m_Parameters[{}]'.format(d), '<string>', 'eval'))
+            elif kind == 'p':
+                out_bytecode.append(compile(str(d), '<string>', 'eval'))
+            else:
+                continue
 
     def f(variables, t):
         m_Parameters = m._Model__m_Parameters
@@ -400,27 +438,24 @@ def _get_rates_function(m, with_uncertain, out_names=None):
 
     def dyn_f(variables, t):
         m_Parameters = m._Model__m_Parameters
-##         print('************** locals *********************')
-##         for l, v in locals().items():
-##             print(l,'--->', v)
-##         print('************** end locals *********************')
 
         for i, r in eniv:
             input_variables[i] = eval(r, m._usable_functions, locals())
-        for i, r in enre:
-            _v_rates[i] = eval(r, m._usable_functions, locals())
-        for i, r in entr:
-            _t_rates[i] = eval(r, m._usable_functions, locals())
-        return input_variables, _v_rates, _t_rates
+        for i, r in enumerate(out_bytecode):
+            _out_rates[i] = eval(r, m._usable_functions, locals())
+        return _out_rates
 
-    return f
+    if out_names is not None:
+        return f, dyn_f
+    return f, None
+
 
 def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rate vector for this model.
 
        Function has signature f(variables, t)"""
 
-    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
+    get_rates, _ = _get_rates_function(m, with_uncertain=with_uncertain)
 
     def fout(variables, t):
         t = t*scale + t0
@@ -429,13 +464,13 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     return fout
 
 
-def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0):
+def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0, out_names=None):
     """Generate function to compute rhs of SODE for this model.
 
        Function has signature f(variables, t)
        This is compatible with scipy.integrate.odeint"""
 
-    f_rates = _get_rates_function(model, with_uncertain=with_uncertain)
+    f_rates, transf_function = _get_rates_function(model, with_uncertain=with_uncertain, out_names=out_names)
 
     # compute stoichiometry matrix, scale and transpose
     N = genStoichiometryMatrix(model)
@@ -448,7 +483,7 @@ def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0):
         input_variables, v, t_values = f_rates(variables, t)
         np.dot(v, NT, dxdt)
         return dxdt
-    return fout
+    return fout, transf_function
 
 
 def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
@@ -487,117 +522,41 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
         return J
 
 
-def _gen_outputs_decl(m, ignore_replist=False):
-    decl = m.metadata.get('!!', None)
+def get_outputs_decl(model, ignore_replist=False):
+    decl = model.metadata.get('!!', None)
 
     if decl is not None and not ignore_replist:
         names = decl.strip().split()
-        return genTransformationFunction(m, names)
+        return [n.strip() for n in names]
     else:
+        return []
+
+
+def process_outputs_list(names, model):
+    if names is None:
         return None
-
-def get_outputs_decl(m):
-    decl = m.metadata.get('!!', None)
-
-    if decl is not None:
-        names = decl.strip().split()
-        return names
-    return []
-
-def _get_code_index(model, name):
-    for i, p in enumerate(model.with_bounds):
-        if p.name == name:
-            #return i, 'uncertain'
-            return ('u', i)
-    for p in model.parameters:
-        if p.name == name:
-            #return -1, 'parameters'
-            return ('p', model.getp(name))
-    i = model._Model__reactions.iget(name)
-    if i is not None:
-        #return i, 'reactions'
-        return ('r', i)
-    try:
-        i = model._Model__variables.index(name)
-        #return i, 'variables'
-        return ('v', i)
-    except:
-        pass
-    i = model._Model__transf.iget(name)
-    if i is not None:
-        #return i, 'transf'
-        return ('t', i)
-    i = model._Model__invars.iget(name)
-    if i is not None:
-        #return i, 'invar'
-        return ('i', i)
-    raise AttributeError('{} is not a component in this model'.format(name))
-
-
-def genTransformationFunction(model, f):
-    if _is_string(f):
-        f = [f.strip()]
+    if _is_string(names):
+        names = [names.strip()]
     special_transf = ['~']
     special_rates = ['>', '>>', '->']
 
-    if not _is_sequence(f):
+    if not _is_sequence(names):
         raise TypeError('outputs must be a sequence of names.')
 
-    names = []
-    for a in f:
+    if len(names) == 0:
+        return None
+
+    out_names = []
+    for a in names:
         if not _is_string(a):
             raise TypeError(str(a) + ' must be a string')
         if a in special_transf:
-            names.extend([x.name for x in model.transformations])
+            out_names.extend([x.name for x in model.transformations])
         elif a in special_rates:
-            names.extend([x.name for x in model.reactions])
+            out_names.extend([x.name for x in model.reactions])
         else:
-            names.append(a)
-
-    nargs = len(names)
-
-    get_rates = _get_rates_function(model, with_uncertain=False)
-
-    data = []
-
-    for name in names:
-        data.append(_get_code_index(model, name))
-
-    args = [0.0] * nargs
-    for (i, (kind, d)) in enumerate(data):
-        if kind == 'p':
-            args[i] = d
-    
-    input_vars_source_indexes = []
-    input_vars_dest_indexes = []
-    rates_source_indexes = []
-    rates_dest_indexes = []
-    transf_source_indexes = []
-    transf_dest_indexes = []
-    vars_source_indexes = []
-    vars_dest_indexes = []
-
-    def fout(variables, t):
-        input_variables, rate_values, tranf_values = get_rates(variables, t)
-
-        for (i, (kind, d)) in enumerate(data):
-            if kind == 'v':
-                args[i] = variables[d]
-            elif kind == 'r':
-                args[i] = rate_values[d]
-            elif kind == 'i':
-                args[i] = input_variables[d]
-            elif kind == 't':
-                args[i] = tranf_values[d]
-            elif kind == 'u':
-                args[i] = model._Model__m_Parameters[d]
-            else:
-                continue
-        return args
-
-    transf_function = fout
-    transf_function.names = names
-    return transf_function
+            out_names.append(a)
+    return out_names
 
 
 def solve(model,
@@ -634,7 +593,19 @@ def solve(model,
     scale = float(times[-1] - t0)
     #scale = 1.0
 
-    f = getdXdt(model, scale=scale, t0=t0)
+    # get outputs
+    out_names = get_outputs_decl(model, ignore_replist)
+
+    # overide if outputs argument is not None
+    if outputs is not None:
+        out_names = outputs
+    out_names = process_outputs_list(out_names, model)
+
+    f, transf_f = getdXdt(model, scale=scale, t0=t0, out_names=out_names)
+
+    if transf_f is not None:
+        transf_f.names = out_names
+
     t = np.copy((times-t0)/scale)  # this scales time points
 
     output = solver(f, y0, t,
@@ -668,13 +639,8 @@ def solve(model,
 
     sol = SolutionTimeCourse(times, Y, names, title, dense=True)
 
-    # get outputs
-    f = _gen_outputs_decl(model, ignore_replist)
-    # overide if outputs argument is not None
-    if outputs is not None:
-        f = genTransformationFunction(model, outputs)
-    if f is not None:
-        sol.apply_transf(f, f.names)
+    if transf_f is not None:
+        sol.apply_transf(transf_f, transf_f.names)
 
     return sol
 
@@ -736,23 +702,20 @@ class ModelSolver(object):
         self.pars_initindexes = np.array([j for (i, j) in mapinit2pars], dtype=int)
         self.vars_initindexes = np.array([i for (i, j) in mapinit2pars], dtype=int)
 
-        self.f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0)
-
-        self.tranf_f = None
-        self.tranf_names = None
-
         # get outputs
-        f = _gen_outputs_decl(self.model, ignore_replist)
+        out_names = get_outputs_decl(self.model, ignore_replist)
         # overide if outputs argument is not None
         if outputs is not None:
-            f = genTransformationFunction(self.model, outputs)
-        if f is not None:
-            self.tranf_f = f
-            self.tranf_names = f.names
-    
+            out_names = outputs
+        out_names = process_outputs_list(out_names, model)
+
+        self.f, self.transf_f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0, out_names=out_names)
+        if self.transf_f is not None:
+            self.transf_f.names = out_names
+
     def solutions_names(self):
-        if self.tranf_names is not None:
-            return self.tranf_names
+        if self.transf_f is not None:
+            return self.transf_f.names
         return self.model.varnames
 
     def solve(self, title=None, par_values=None):
@@ -798,8 +761,8 @@ class ModelSolver(object):
         sol = SolutionTimeCourse(self.times, Y.T, self.names, title, dense=True)
 
         # a filter string or transformation function
-        if self.tranf_f is not None:
-            sol.apply_transf(self.tranf_f, self.tranf_names)
+        if self.transf_f is not None:
+            sol.apply_transf(self.transf_f, self.transf_f.names)
         return sol
 
 def scan(model, plan,

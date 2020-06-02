@@ -16,7 +16,7 @@ find k1 in [0, 2]
 find k2 in [0, 2]
 find k3 in [0, 2]
 
-!! x2
+!! x2 x1
 
 timecourse ex2data.txt
 popsize = 60     # population size in GA
