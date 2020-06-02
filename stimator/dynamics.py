@@ -36,35 +36,6 @@ def identifiersInExpr(_expr):
     return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
 
 
-def _get_code_index(model, name):
-    for i, p in enumerate(model.with_bounds):
-        if p.name == name:
-            #return i, 'uncertain'
-            return ('u', i)
-    for p in model.parameters:
-        if p.name == name:
-            #return -1, 'parameters'
-            return ('p', model.getp(name))
-    i = model._Model__reactions.iget(name)
-    if i is not None:
-        #return i, 'reactions'
-        return ('r', i)
-    try:
-        i = model._Model__variables.index(name)
-        #return i, 'variables'
-        return ('v', i)
-    except:
-        pass
-    i = model._Model__transf.iget(name)
-    if i is not None:
-        #return i, 'transf'
-        return ('t', i)
-    i = model._Model__invars.iget(name)
-    if i is not None:
-        #return i, 'invar'
-        return ('i', i)
-    raise AttributeError('{} is not a component in this model'.format(name))
-
 
 def init2array(model):
     """Transforms a state object into a numpy.array object.
@@ -353,28 +324,28 @@ def add_dSdt_to_model(m, pars):
                     m.set_init([(name, 0.0)])
     return Snames
 
-def _gen_calc_symbmap(m, with_uncertain=False):
+def rateCalcString(rateString, symbmap):
+    return _replace_exprs2canonical(rateString, symbmap)
+
+def _gen_calc_symbmap(model, with_uncertain=False):
     symbmap = {}
-    for i, x in enumerate(m.varnames):
+    for i, x in enumerate(model.varnames):
         symbname = "variables[%d]"%i
         symbmap[x] = symbname
-    for i, x in enumerate(m.input_variables):
+    for i, x in enumerate(model.input_variables):
         symbname = "input_variables[%d]"%i
         symbmap[x.name] = symbname
     if with_uncertain:
-        for i, u in enumerate(m.with_bounds):
+        for i, u in enumerate(model.with_bounds):
             symbname = "m_Parameters[%d]"%i
             symbmap[u.name] = symbname
-    for p in m.parameters:
+    for p in model.parameters:
         if p.bounds and with_uncertain:
             continue
         valuestr = "%g"% p
         symbmap[p.name] = valuestr
 
     return symbmap
-
-def rateCalcString(rateString, symbmap):
-    return _replace_exprs2canonical(rateString, symbmap)
 
 def compile_rates(m, collection, with_uncertain=False):
     symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
@@ -385,7 +356,7 @@ def compile_rates(m, collection, with_uncertain=False):
 ##     print('************** end compile_rates *********************')
     return [compile(v, '<string>', 'eval') for v in ratestrs]
 
-def _get_rates_function(m, with_uncertain):
+def _get_rates_function(m, with_uncertain, out_names=None):
     check, msg = m.checkRates()
     if not check:
         raise BadRateError(msg)
@@ -403,12 +374,31 @@ def _get_rates_function(m, with_uncertain):
     enre = list(enumerate(ratebytecode))
 
     # compile transformations
-    tratebytecode = compile_rates(m, m.transformations, with_uncertain=with_uncertain)
+    transf_bytecode = compile_rates(m, m.transformations, with_uncertain=with_uncertain)
     # create array to hold transformation values
     _t_rates = np.empty(len(m.transformations))
-    entr = list(enumerate(tratebytecode))
+    entr = list(enumerate(transf_bytecode))
+
+    # handle names of output variables to keep
+    if out_names is not None:
+        pass
 
     def f(variables, t):
+        m_Parameters = m._Model__m_Parameters
+##         print('************** locals *********************')
+##         for l, v in locals().items():
+##             print(l,'--->', v)
+##         print('************** end locals *********************')
+
+        for i, r in eniv:
+            input_variables[i] = eval(r, m._usable_functions, locals())
+        for i, r in enre:
+            _v_rates[i] = eval(r, m._usable_functions, locals())
+        for i, r in entr:
+            _t_rates[i] = eval(r, m._usable_functions, locals())
+        return input_variables, _v_rates, _t_rates
+
+    def dyn_f(variables, t):
         m_Parameters = m._Model__m_Parameters
 ##         print('************** locals *********************')
 ##         for l, v in locals().items():
@@ -439,25 +429,25 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     return fout
 
 
-def getdXdt(m, with_uncertain=False, scale=1.0, t0=0.0):
+def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
 
        Function has signature f(variables, t)
        This is compatible with scipy.integrate.odeint"""
 
-    f_rates = _get_rates_function(m, with_uncertain=with_uncertain)
+    f_rates = _get_rates_function(model, with_uncertain=with_uncertain)
 
     # compute stoichiometry matrix, scale and transpose
-    N = genStoichiometryMatrix(m)
+    N = genStoichiometryMatrix(model)
     N *= scale
     NT = N.transpose()
-    x = np.empty(len(m.varnames))
+    dxdt = np.empty(len(model.varnames))
 
     def fout(variables, t):
         t = t*scale + t0
         input_variables, v, t_values = f_rates(variables, t)
-        np.dot(v, NT, x)
-        return x
+        np.dot(v, NT, dxdt)
+        return dxdt
     return fout
 
 
@@ -513,6 +503,35 @@ def get_outputs_decl(m):
         names = decl.strip().split()
         return names
     return []
+
+def _get_code_index(model, name):
+    for i, p in enumerate(model.with_bounds):
+        if p.name == name:
+            #return i, 'uncertain'
+            return ('u', i)
+    for p in model.parameters:
+        if p.name == name:
+            #return -1, 'parameters'
+            return ('p', model.getp(name))
+    i = model._Model__reactions.iget(name)
+    if i is not None:
+        #return i, 'reactions'
+        return ('r', i)
+    try:
+        i = model._Model__variables.index(name)
+        #return i, 'variables'
+        return ('v', i)
+    except:
+        pass
+    i = model._Model__transf.iget(name)
+    if i is not None:
+        #return i, 'transf'
+        return ('t', i)
+    i = model._Model__invars.iget(name)
+    if i is not None:
+        #return i, 'invar'
+        return ('i', i)
+    raise AttributeError('{} is not a component in this model'.format(name))
 
 
 def genTransformationFunction(model, f):
