@@ -7,7 +7,6 @@ from scipy import integrate
 import numpy as np
 
 import stimator.de as de
-#from stimator.dynamics import getdXdt, init2array
 from stimator.dynamics import getdXdt, init2array, ModelSolver, solve, get_outputs_decl
 import stimator.fim as fim
 import stimator.timecourse as timecourse
@@ -39,10 +38,6 @@ def get_matching_indexes(repnames, tc):
     tc_indexes = array(tc_indexes, int)
     sol_indexes = array(sol_indexes, int)
     return sol_indexes, tc_indexes
-        # print(sol)
-    # print('-------------')
-    # print(tc)
-    # return sol.data[sol_indexes], tc.data[tc_indexes]
 
 
 def getRangeVars(tcs, varnames):
@@ -470,8 +465,6 @@ find Km2 in (0.01, 1)
 
 init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
-timecourse TSH2a.txt
-timecourse TSH2b.txt
 """)
 
     optimum = s_timate(mtransf, tc_dir=tcdir, timecourses=['tc_double.txt'],

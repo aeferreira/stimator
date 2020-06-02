@@ -515,13 +515,11 @@ def get_outputs_decl(m):
     return []
 
 
-def genTransformationFunction(m, f):
+def genTransformationFunction(model, f):
+    if _is_string(f):
+        f = [f.strip()]
     special_transf = ['~']
     special_rates = ['>', '>>', '->']
-    all_special = special_transf + special_rates
-
-    if f in all_special:
-        f = [f.strip()]
 
     if not _is_sequence(f):
         raise TypeError('outputs must be a sequence of names.')
@@ -531,47 +529,56 @@ def genTransformationFunction(m, f):
         if not _is_string(a):
             raise TypeError(str(a) + ' must be a string')
         if a in special_transf:
-            names.extend([x.name for x in m.transformations])
+            names.extend([x.name for x in model.transformations])
         elif a in special_rates:
-            names.extend([x.name for x in m.reactions])
+            names.extend([x.name for x in model.reactions])
         else:
             names.append(a)
 
     nargs = len(names)
 
-    get_rates = _get_rates_function(m, with_uncertain=False)
+    get_rates = _get_rates_function(model, with_uncertain=False)
 
     data = []
 
     for name in names:
-        data.append(_get_code_index(m, name))
+        data.append(_get_code_index(model, name))
 
     args = [0.0] * nargs
     for (i, (kind, d)) in enumerate(data):
         if kind == 'p':
             args[i] = d
+    
+    input_vars_source_indexes = []
+    input_vars_dest_indexes = []
+    rates_source_indexes = []
+    rates_dest_indexes = []
+    transf_source_indexes = []
+    transf_dest_indexes = []
+    vars_source_indexes = []
+    vars_dest_indexes = []
 
     def fout(variables, t):
-        input_variables, v, t_values = get_rates(variables, t)
+        input_variables, rate_values, tranf_values = get_rates(variables, t)
 
         for (i, (kind, d)) in enumerate(data):
             if kind == 'v':
                 args[i] = variables[d]
             elif kind == 'r':
-                args[i] = v[d]
+                args[i] = rate_values[d]
             elif kind == 'i':
                 args[i] = input_variables[d]
             elif kind == 't':
-                args[i] = t_values[d]
+                args[i] = tranf_values[d]
             elif kind == 'u':
-                args[i] = m._Model__m_Parameters[d]
+                args[i] = model._Model__m_Parameters[d]
             else:
                 continue
         return args
 
-    result = fout
-    result.names = names
-    return result
+    transf_function = fout
+    transf_function.names = names
+    return transf_function
 
 
 def solve(model,
