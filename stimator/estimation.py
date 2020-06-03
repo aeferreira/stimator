@@ -7,7 +7,7 @@ from scipy import integrate
 import numpy as np
 
 import stimator.de as de
-from stimator.dynamics import getdXdt, init2array, ModelSolver, solve, get_outputs_decl
+from stimator.dynamics import init2array, ModelSolver, solve, get_outputs_decl
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
