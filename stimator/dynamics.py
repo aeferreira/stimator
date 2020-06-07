@@ -324,9 +324,9 @@ def _gen_calc_symbmap(model, with_uncertain=False):
     for i, x in enumerate(model.varnames):
         symbname = "variables[%d]"%i
         symbmap[x] = symbname
-    for i, x in enumerate(model.input_variables):
+    for i, invar in enumerate(model.input_variables):
         symbname = "input_variables[%d]"%i
-        symbmap[x.name] = symbname
+        symbmap[invar.name] = symbname
     if with_uncertain:
         for i, u in enumerate(model.with_bounds):
             symbname = "m_Parameters[%d]"%i
@@ -374,33 +374,41 @@ def compile_rates(m, collection, with_uncertain=False):
     ratestrs = [rateCalcString(v(fully_qualified=True), symbmap) for v in collection]
     return [compile(v, '<string>', 'eval') for v in ratestrs]
 
-def _get_rates_function(m, with_uncertain, out_names=None):
-    check, msg = m.checkRates()
+def compile_all_rates(model, with_uncertain=False):
+    symbmap = _gen_calc_symbmap(model, with_uncertain=with_uncertain)
+    input_rates = [rateCalcString(v(fully_qualified=True), symbmap) for v in model.input_variables]
+    rate_rates = [rateCalcString(v(fully_qualified=True), symbmap) for v in model.reactions]
+    transf_rates = [rateCalcString(v(fully_qualified=True), symbmap) for v in  model.transformations]
+    input_bc = [compile(v, '<string>', 'eval') for v in input_rates]
+    rate_bc = [compile(v, '<string>', 'eval') for v in rate_rates]
+    transf_bc = [compile(v, '<string>', 'eval') for v in transf_rates]
+    return input_bc, rate_bc, transf_bc
+
+
+def _get_rates_function(model, with_uncertain, out_names=None):
+    check, msg = model.checkRates()
     if not check:
         raise BadRateError(msg)
 
-    # compile input variables
-    invarbytecode = compile_rates(m, m.input_variables, with_uncertain=with_uncertain)
+    # compile all changing variables
+    invarbytecode, ratebytecode, transf_bytecode = compile_all_rates(model, with_uncertain=with_uncertain)
+
     # create array to hold input-variable values's
-    input_variables = np.empty(len(m.input_variables))
+    input_variables = np.empty(len(model.input_variables))
     eniv = list(enumerate(invarbytecode))
 
-    # compile reaction rates
-    ratebytecode = compile_rates(m, m.reactions, with_uncertain=with_uncertain)
     # create array to hold reaction rate values
-    _v_rates = np.empty(len(m.reactions))
+    _v_rates = np.empty(len(model.reactions))
     enre = list(enumerate(ratebytecode))
 
-    # compile transformations
-    transf_bytecode = compile_rates(m, m.transformations, with_uncertain=with_uncertain)
     # create array to hold transformation values
-    _t_rates = np.empty(len(m.transformations))
+    _t_rates = np.empty(len(model.transformations))
     entr = list(enumerate(transf_bytecode))
 
     # handle names of output variables to retain
     # if out_names is not None then a transformation function is also returned
     if out_names is not None:
-        loc_codes = [_get_code_index(m, name) for name in out_names]
+        loc_codes = [_get_code_index(model, name) for name in out_names]
         _out_rates = np.empty(len(loc_codes))
 
         out_bytecode = []
@@ -422,27 +430,27 @@ def _get_rates_function(m, with_uncertain, out_names=None):
                 continue
 
     def f(variables, t):
-        m_Parameters = m._Model__m_Parameters
+        m_Parameters = model._Model__m_Parameters
 ##         print('************** locals *********************')
 ##         for l, v in locals().items():
 ##             print(l,'--->', v)
 ##         print('************** end locals *********************')
 
         for i, r in eniv:
-            input_variables[i] = eval(r, m._usable_functions, locals())
+            input_variables[i] = eval(r, model._usable_functions, locals())
         for i, r in enre:
-            _v_rates[i] = eval(r, m._usable_functions, locals())
+            _v_rates[i] = eval(r, model._usable_functions, locals())
         for i, r in entr:
-            _t_rates[i] = eval(r, m._usable_functions, locals())
+            _t_rates[i] = eval(r, model._usable_functions, locals())
         return input_variables, _v_rates, _t_rates
 
     def dyn_f(variables, t):
-        m_Parameters = m._Model__m_Parameters
+        m_Parameters = model._Model__m_Parameters
 
         for i, r in eniv:
-            input_variables[i] = eval(r, m._usable_functions, locals())
+            input_variables[i] = eval(r, model._usable_functions, locals())
         for i, r in enumerate(out_bytecode):
-            _out_rates[i] = eval(r, m._usable_functions, locals())
+            _out_rates[i] = eval(r, model._usable_functions, locals())
         return _out_rates
 
     if out_names is not None:
@@ -781,7 +789,6 @@ def scan(model, plan,
     names = list(plan) # gets the keys
     # zip, terminating on the shortestsequence
     scan_values = list(zip(*(plan.values())))
-    nruns = len(scan_values)
 
     if titles is None:
         titles = []
@@ -1031,8 +1038,8 @@ def test():
     # t4 = time.time()
     # print 'took', t4 - t3
 
-    #savingfile = open('examples/analysis.png', 'w+b')
-    savingfile = 'examples/analysis.png'
+    # savingfile = open('examples/analysis.png', 'w+b')
+    # savingfile = 'examples/analysis.png'
     sols = Solutions([solution1, solution1a, solution1v,
                       solution3,
                       solution4b, solution4])
