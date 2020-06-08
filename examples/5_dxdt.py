@@ -28,8 +28,7 @@ v3         = CaComp -> Ca, \
 init       : Ca = 0.1, CaComp = 0.63655
 """)
 
-x = m.solve(tf = 6.0, npoints = 5000, title = '$X$')
-transf, _ = getdXdt(m)
-dxdt = x.copy(newtitle='$dX / dt$').apply_transf(transf)
+solution = m.solve(tf = 6.0, npoints=5000, title='$X$')
+dxdt = solution.copy(newtitle='$dX / dt$').apply_transf(getdXdt(m))
 
-Solutions([x,dxdt]).plot(show = True)
+Solutions([solution,dxdt]).plot(show=True)

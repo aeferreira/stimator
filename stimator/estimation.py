@@ -11,6 +11,7 @@ from stimator.dynamics import init2array, ModelSolver, solve, get_outputs_decl
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
+from stimator.utils import _is_sequence
 
 
 # ----------------------------------------------------------------------------
@@ -203,7 +204,11 @@ class DeODEOptimizer(de.DESolver):
     def computeSolution(self, i, trial, dense=None):
         """Computes solution for timecourse i, given parameters trial."""
 
-        sol = self.model_solvers[i].solve(par_values=trial)
+        if dense is not None:
+            npoints = 1000
+        else:
+            npoints = None
+        sol = self.model_solvers[i].solve(par_values=trial, npoints=npoints)
         return sol
 
     def external_score_function(self, trial):
@@ -381,9 +386,9 @@ def s_timate(model, timecourses=None, opt_settings=None,
         timecourses = model  # use model as source in readTCs
 
     tcs = timecourse.readTCs(timecourses,
-                             filedir=tc_dir,
-                             names=names,
-                             verbose=verbose_readingTCs)
+                            filedir=tc_dir,
+                            names=names,
+                            verbose=verbose_readingTCs)
 
     optimizer = DeODEOptimizer(model, optSettings, tcs, **kwargs)
     optimizer.run()
@@ -391,9 +396,60 @@ def s_timate(model, timecourses=None, opt_settings=None,
 
 
 def test():
-    from stimator import read_model
+    from stimator import read_model, Solution
+
+    # --- example 1 --------------------
+
+    example1_data = """
+t   x1   x2
+0   0   0
+2   1.403812093   0.48351624
+4   1.528870297   1.483289613
+6   1.917963699   2.039584833
+8   2.028998372   2.826410056
+10   1.978326655   3.106415222
+12   2.143692636   3.060669986
+14   2.289572191   3.231815374
+16   2.019850835   3.310127564
+18   1.977904321   3.098886165
+20   2.126776717   3.463202683
+"""
+    tc = Solution.read_str(example1_data)
+
+    mdl1 = """# Example model
+title Example 1
+
+vin  : -> x1     , rate = k1
+v2   : x1 ->  x2 , rate = k2 * x1
+vout : x2 ->     , rate = k3 * x2
+
+init : x1=0, x2=0
+
+find k1 in [0, 2]
+find k2 in [0, 2]
+find k3 in [0, 2]
+
+!! x2 x1
+
+popsize = 60     # population size in GA
+"""
+    model = read_model(mdl1)
+    best = model.estimate(timecourses=tc)
+
+    print(best)
+    best.plot()
+
+    print('--- Modifying model ---')
+    m2 = model.copy()
+    bestpars = [(n,v) for n,v,e in best.parameters]
+    m2.setp(bestpars)
+
+    m2.solve(tf=20.0).plot()
+
+    # --- example 2 --------------------
+
     m1 = read_model("""
-title Glyoxalase system in L. Infantum
+title example 2: Glyoxalase system in L. Infantum
 
 glx1 : HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
 #glx1 : HTA -> SDLTSH, V*HTA/(Km1 + HTA), V=2.57594e-05
@@ -435,10 +491,10 @@ timecourse TSH2b.txt
     optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(9,6))
 
 
-    # --- an example with transformations --------------------
+    # --- example 2, fitting a transformation --------------------
 
     mtransf = read_model("""
-title Glyoxalase system in L. Infantum
+title example 2, fitting a transformation
 
 glx1 : HTA -> SDLTSH, V1*HTA/(Km1 + HTA)
 #glx1 : HTA -> SDLTSH, V*HTA/(Km1 + HTA), V=2.57594e-05
@@ -456,7 +512,7 @@ find V2 in [0.00001, 0.0001]
 Km2 = 0.0980973
 find Km2 in (0.01, 1)
 
-~sdlx2 = 2 * SDLTSH
+~sdlx2 = 2 * SDLTSH # the transformation to fit
 
 !! sdlx2
 
@@ -471,7 +527,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
     optimum.plot()
 
 
-    # --- an example with unknown initial values --------------------
+    # --- example 2 with unknown initial values --------------------
 
     m2 = m1.copy()
 

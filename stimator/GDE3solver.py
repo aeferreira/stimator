@@ -99,7 +99,7 @@ class ModelSolver(object):
         scale = float(self.times[-1] - self.t0)
         #scale = 1.0
         
-        self.f, _ = dynamics.getdXdt(model, scale=scale, t0=self.t0)
+        self.f = dynamics.getdXdt(model, scale=scale, t0=self.t0)
         self.t = np.copy((self.times-self.t0)/scale) # this scales time points
 
     def solve(self, trial):

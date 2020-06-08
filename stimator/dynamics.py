@@ -339,40 +339,6 @@ def _gen_calc_symbmap(model, with_uncertain=False):
 
     return symbmap
 
-def _get_code_index(model, name):
-    for i, p in enumerate(model.with_bounds):
-        if p.name == name:
-            #return i, 'uncertain'
-            return ('u', i)
-    for p in model.parameters:
-        if p.name == name:
-            #return -1, 'parameters'
-            return ('p', model.getp(name))
-    i = model._Model__reactions.iget(name)
-    if i is not None:
-        #return i, 'reactions'
-        return ('r', i)
-    try:
-        i = model._Model__variables.index(name)
-        #return i, 'variables'
-        return ('v', i)
-    except:
-        pass
-    i = model._Model__transf.iget(name)
-    if i is not None:
-        #return i, 'transf'
-        return ('t', i)
-    i = model._Model__invars.iget(name)
-    if i is not None:
-        #return i, 'invar'
-        return ('i', i)
-    raise AttributeError('{} is not a component in this model'.format(name))
-
-
-def compile_rates(m, collection, with_uncertain=False):
-    symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
-    ratestrs = [rateCalcString(v(fully_qualified=True), symbmap) for v in collection]
-    return [compile(v, '<string>', 'eval') for v in ratestrs]
 
 def compile_all_rates(model, with_uncertain=False):
     symbmap = _gen_calc_symbmap(model, with_uncertain=with_uncertain)
@@ -385,49 +351,18 @@ def compile_all_rates(model, with_uncertain=False):
     return input_bc, rate_bc, transf_bc
 
 
-def _get_rates_function(model, with_uncertain, out_names=None):
+def _get_rates_function(model, with_uncertain):
     check, msg = model.checkRates()
     if not check:
         raise BadRateError(msg)
 
     # compile all changing variables
-    invarbytecode, ratebytecode, transf_bytecode = compile_all_rates(model, with_uncertain=with_uncertain)
+    input_bc, rate_bc, transf_bc = compile_all_rates(model, with_uncertain=with_uncertain)
 
-    # create array to hold input-variable values's
+    # create arrays to hold computed values
     input_variables = np.empty(len(model.input_variables))
-    eniv = list(enumerate(invarbytecode))
-
-    # create array to hold reaction rate values
     _v_rates = np.empty(len(model.reactions))
-    enre = list(enumerate(ratebytecode))
-
-    # create array to hold transformation values
     _t_rates = np.empty(len(model.transformations))
-    entr = list(enumerate(transf_bytecode))
-
-    # handle names of output variables to retain
-    # if out_names is not None then a transformation function is also returned
-    if out_names is not None:
-        loc_codes = [_get_code_index(model, name) for name in out_names]
-        _out_rates = np.empty(len(loc_codes))
-
-        out_bytecode = []
-
-        for (kind, d) in loc_codes:
-            if kind == 'v':
-                out_bytecode.append(compile('variables[{}]'.format(d), '<string>', 'eval'))
-            elif kind == 'r':
-                out_bytecode.append(enre[d][1])
-            elif kind == 'i':
-                out_bytecode.append(compile('input_variables[{}]'.format(d), '<string>', 'eval'))
-            elif kind == 't':
-                out_bytecode.append(entr[d][1])
-            elif kind == 'u':
-                out_bytecode.append(compile('m_Parameters[{}]'.format(d), '<string>', 'eval'))
-            elif kind == 'p':
-                out_bytecode.append(compile(str(d), '<string>', 'eval'))
-            else:
-                continue
 
     def f(variables, t):
         m_Parameters = model._Model__m_Parameters
@@ -436,26 +371,83 @@ def _get_rates_function(model, with_uncertain, out_names=None):
 ##             print(l,'--->', v)
 ##         print('************** end locals *********************')
 
-        for i, r in eniv:
+        for i, r in enumerate(input_bc):
             input_variables[i] = eval(r, model._usable_functions, locals())
-        for i, r in enre:
+        for i, r in enumerate(rate_bc):
             _v_rates[i] = eval(r, model._usable_functions, locals())
-        for i, r in entr:
+        for i, r in enumerate(transf_bc):
             _t_rates[i] = eval(r, model._usable_functions, locals())
         return input_variables, _v_rates, _t_rates
 
-    def dyn_f(variables, t):
+    return f
+
+
+def get_outputs_function(model, with_uncertain=False, out_names=None):
+    check, msg = model.checkRates()
+    if not check:
+        raise BadRateError(msg)
+
+    # compile all changing variables
+    input_bc, rate_bc, transf_bc = compile_all_rates(model, with_uncertain=with_uncertain)
+
+    # create arrays to hold computed values
+    input_variables = np.empty(len(model.input_variables))
+
+    # handle names of output variables to retain
+    #loc_codes = [_get_code_index(model, name) for name in out_names]
+
+    out_bytecode = []
+
+    for name in out_names:
+        exist = False
+
+        for i, p in enumerate(model.with_bounds):
+            if p.name == name:
+                out_bytecode.append(compile('m_Parameters[{}]'.format(i), '<string>', 'eval'))
+                exist = True
+                break
+        if exist:
+            continue
+        for p in model.parameters:
+            if p.name == name:
+                out_bytecode.append(compile(str(model.getp(name)), '<string>', 'eval'))
+                exist = True
+                break
+        if exist:
+            continue
+        i = model._Model__reactions.iget(name)
+        if i is not None:
+            out_bytecode.append(rate_bc[i])
+            continue
+        try:
+            i = model._Model__variables.index(name)
+            out_bytecode.append(compile('variables[{}]'.format(i), '<string>', 'eval'))
+            continue
+        except:
+            pass
+        i = model._Model__transf.iget(name)
+        if i is not None:
+            out_bytecode.append(transf_bc[i])
+            continue
+        i = model._Model__invars.iget(name)
+        if i is not None:
+            out_bytecode.append(compile('input_variables[{}]'.format(i), '<string>', 'eval'))
+            continue
+        if not exist:
+            raise AttributeError('{} is not a component in this model'.format(name))
+
+    _out_rates = np.empty(len(out_bytecode))
+
+    def out_f(variables, t):
         m_Parameters = model._Model__m_Parameters
 
-        for i, r in eniv:
+        for i, r in enumerate(input_bc):
             input_variables[i] = eval(r, model._usable_functions, locals())
         for i, r in enumerate(out_bytecode):
             _out_rates[i] = eval(r, model._usable_functions, locals())
         return _out_rates
 
-    if out_names is not None:
-        return f, dyn_f
-    return f, None
+    return out_f
 
 
 def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
@@ -463,7 +455,7 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
 
        Function has signature f(variables, t)"""
 
-    get_rates, _ = _get_rates_function(m, with_uncertain=with_uncertain)
+    get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
 
     def fout(variables, t):
         t = t*scale + t0
@@ -472,13 +464,13 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     return fout
 
 
-def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0, out_names=None):
+def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
 
        Function has signature f(variables, t)
        This is compatible with scipy.integrate.odeint"""
 
-    f_rates, transf_function = _get_rates_function(model, with_uncertain=with_uncertain, out_names=out_names)
+    f_rates = _get_rates_function(model, with_uncertain=with_uncertain)
 
     # compute stoichiometry matrix, scale and transpose
     N = genStoichiometryMatrix(model)
@@ -488,10 +480,10 @@ def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0, out_names=None):
 
     def fout(variables, t):
         t = t*scale + t0
-        input_variables, v, t_values = f_rates(variables, t)
+        _, v, _ = f_rates(variables, t)
         np.dot(v, NT, dxdt)
         return dxdt
-    return fout, transf_function
+    return fout
 
 
 def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
@@ -601,17 +593,18 @@ def solve(model,
     scale = float(times[-1] - t0)
     #scale = 1.0
 
-    # get outputs
-    out_names = get_outputs_decl(model, ignore_replist)
+    f = getdXdt(model, scale=scale, t0=t0)
+    transf_f = None
 
+    # get outputs
     # overide if outputs argument is not None
+    out_names = get_outputs_decl(model, ignore_replist)
     if outputs is not None:
         out_names = outputs
     out_names = process_outputs_list(out_names, model)
 
-    f, transf_f = getdXdt(model, scale=scale, t0=t0, out_names=out_names)
-
-    if transf_f is not None:
+    if out_names is not None:
+        transf_f = get_outputs_function(model, out_names=out_names)
         transf_f.names = out_names
 
     t = np.copy((times-t0)/scale)  # this scales time points
@@ -710,15 +703,18 @@ class ModelSolver(object):
         self.pars_initindexes = np.array([j for (i, j) in mapinit2pars], dtype=int)
         self.vars_initindexes = np.array([i for (i, j) in mapinit2pars], dtype=int)
 
+        self.f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0)
+
+        self.transf_f = None
         # get outputs
-        out_names = get_outputs_decl(self.model, ignore_replist)
         # overide if outputs argument is not None
+        out_names = get_outputs_decl(self.model, ignore_replist)
         if outputs is not None:
             out_names = outputs
         out_names = process_outputs_list(out_names, model)
 
-        self.f, self.transf_f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0, out_names=out_names)
-        if self.transf_f is not None:
+        if out_names is not None:
+            self.transf_f = get_outputs_function(model, with_uncertain=True, out_names=out_names)
             self.transf_f.names = out_names
 
     def solutions_names(self):
@@ -726,7 +722,7 @@ class ModelSolver(object):
             return self.transf_f.names
         return self.model.varnames
 
-    def solve(self, title=None, par_values=None):
+    def solve(self, title=None, par_values=None, npoints=None):
 
         # set initial values
         y0 = np.copy(self.y0)
@@ -738,8 +734,13 @@ class ModelSolver(object):
             # fill uncertain initial values
             y0[self.vars_initindexes] = par_values[self.pars_initindexes]
 
+        if npoints is not None:
+            tpoints = np.linspace(self.t[0], self.t[-1], npoints)
+        else:
+            tpoints = self.t
 
-        output = integrate.odeint(self.f, y0, self.t,
+
+        output = integrate.odeint(self.f, y0, tpoints,
                                   args=(),
                                   Dfun=None,
                                   col_deriv=0,
@@ -766,7 +767,13 @@ class ModelSolver(object):
 
         if title is None:
             title = self.title
-        sol = SolutionTimeCourse(self.times, Y.T, self.names, title, dense=True)
+
+        if npoints is not None:
+            tpoints = np.linspace(self.times[0], self.times[-1], npoints)
+        else:
+            tpoints = self.times
+
+        sol = SolutionTimeCourse(tpoints, Y.T, self.names, title, dense=True)
 
         # a filter string or transformation function
         if self.transf_f is not None:

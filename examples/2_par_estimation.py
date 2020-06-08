@@ -1,7 +1,24 @@
 from __future__ import print_function
-from stimator import read_model, __version__
+from stimator import read_model, __version__, Solution
 
 print ('S-timator version', __version__)
+
+example_data = """
+t   x1   x2
+0   0   0
+2   1.403812093   0.48351624
+4   1.528870297   1.483289613
+6   1.917963699   2.039584833
+8   2.028998372   2.826410056
+10   1.978326655   3.106415222
+12   2.143692636   3.060669986
+14   2.289572191   3.231815374
+16   2.019850835   3.310127564
+18   1.977904321   3.098886165
+20   2.126776717   3.463202683
+"""
+
+tc = Solution.read_str(example_data)
 
 mdl = """# Example model
 title Example 2
@@ -18,13 +35,12 @@ find k3 in [0, 2]
 
 !! x2 x1
 
-timecourse ex2data.txt
 popsize = 60     # population size in GA
 """
 m1 = read_model(mdl)
 print(mdl)
 
-best = m1.estimate()
+best = m1.estimate(tc)
 
 print(best)
 best.plot()

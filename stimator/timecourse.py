@@ -148,10 +148,11 @@ class SolutionTimeCourse(object):
 
         return self.clone().apply_transf(f, newnames, new_title)
 
-    def read_str(self, s, names=None):
+    @classmethod
+    def read_str(cls, s, names=None):
         aTC = StringIO(s)
         aTC.seek(0)
-        result = self.read_from(aTC, names)
+        result = cls().read_from(aTC, names)
         aTC.close()
         return result
 
@@ -447,6 +448,11 @@ def read_tc(source,
             filedir=None,
             names=None,
             verbose=False):
+    if isinstance(source, Solutions):
+        return source
+    elif isinstance(source, SolutionTimeCourse):
+        return Solutions([source])
+
     tcs = Solutions()
     tcsnames = None
     
