@@ -326,7 +326,7 @@ class DeODEOptimizer(de.DESolver):
                 consterror = timecourse.constError_func([r * 0.05 for r in consterror])
 
             try:
-                FIM1, invFIM1 = fim.computeFIM(self.model,
+                _, invFIM1 = fim.computeFIM(self.model,
                                             parameters,
                                             sols,
                                             consterror,
