@@ -17,6 +17,7 @@ import stimator.estimation as estimation
 #         Functions to check the validity of math expressions
 # ----------------------------------------------------------------------------
 
+
 def get_allowed_f():
     fdict = {}
 
@@ -59,6 +60,7 @@ CHEMCOMPLEX = re.compile(COMPLEX_P, re.IGNORECASE)
 # ----------------------------------------------------------------------------
 #         Utility functions
 # ----------------------------------------------------------------------------
+
 
 def process_stoich(expr):
     """Split a stoichiometry string into reagents, products and irreversible flag.
@@ -424,10 +426,14 @@ class _HasRate(_HasOwnParameters):
     def __call__(self, fully_qualified=False):
         rate = self.__rate
         if fully_qualified:
-            for localparname in self._ownparameters:
-                fully = '%s.%s' % (self.name, localparname)
-                rate = re.sub(r"(?<!\.)\b%s\b(?![.\[])" % localparname, fully, rate)
+            for parname in self._ownparameters:
+                fully = '%s.%s' % (self.name, parname)
+                rate = re.sub(r"(?<!\.)\b%s\b(?![.\[])" % parname, fully, rate)
         return rate
+
+    @property
+    def qrate(self):
+        return self.__call__(fully_qualified=True)
 
     def __eq__(self, other):
         if not _HasOwnParameters.__eq__(self, other):
@@ -547,8 +553,8 @@ class _Collection_Accessor(object):
         return len(self.collection)
 
     def __getattr__(self, name):
-##         if name in self.__dict__:
-##             return self.__dict__[name]
+        # if name in self.__dict__:
+        #   return self.__dict__[name]
         r = self.collection.get(name)
         if r is not None:
             return r
@@ -578,8 +584,6 @@ class _init_Accessor(object):
         return len(self._model._init._ownparameters)
 
     def __getattr__(self, name):
-##         if name in self.__dict__:
-##             return self.__dict__[name]
         return self._model._init.getp(name)
 
     def __setattr__(self, name, value):
@@ -615,8 +619,6 @@ class _Parameters_Accessor(object):
         return len(list(self._get_iparameters()))
 
     def __getattr__(self, name):
-##         if name in self.__dict__:
-##             return self.__dict__[name]
         o = self._reactions.get(name)
         if o:
             return _Has_Parameters_Accessor(o)
@@ -858,16 +860,16 @@ class Model(ModelObject):
             _set_par(o, name, value)
         self._refreshVars()
 
-
     def getp(self, name):
         """Retrieve a parameter of the model.
-
 
         Parameters
         ----------
         name : str
             The name of the parameter. "Dot" access to parameters of reactions
-            or transformations, for example ``model.setp('v1.k', 2)`` is allowed.
+            or transformations, for example
+            ``model.setp('v1.k', 2)`` is allowed.
+
         Returns
         -------
         float
@@ -884,7 +886,6 @@ class Model(ModelObject):
                 return self._ownparameters[name]
             else:
                 raise AttributeError(name + ' is not a parameter of ' + self.name)
-
 
     def _get_obj_withpars(self, name):
         o = self.__reactions.get(name)
@@ -1071,7 +1072,7 @@ class Model(ModelObject):
     def _is_equal_to(self, other, verbose=False):
         if not ModelObject.__eq__(self, other):
             if verbose:
-                print ('ModelObjects are not the same')
+                print('ModelObjects are not the same')
             return False
         self._refreshVars()
         cnames = ('reactions',
@@ -1093,10 +1094,10 @@ class Model(ModelObject):
                         other.__extvariables]
         for cname, c1, c2 in zip(cnames, collections1, collections2):
             if verbose:
-                print ('\n', cname)
+                print('\n', cname)
             if len(c1) != len(c2):
                 if verbose:
-                    print (cname, 'lenghts are not equal')
+                    print(cname, 'lenghts are not equal')
                 return False
             if isinstance(c1, dict):
                 names = c1.keys()
@@ -1114,10 +1115,10 @@ class Model(ModelObject):
                     ro = c2[ivname]
                 if not ro == r:
                     if verbose:
-                        print (vname, 'are not equal')
+                        print(vname, 'are not equal')
                     return False
                 if verbose:
-                    print (vname, 'are equal')
+                    print(vname, 'are equal')
         return True
 
     def solve(self, **kwargs):
@@ -1135,7 +1136,7 @@ class Model(ModelObject):
     def register_kin_func(self, f):
         f.is_rate = True
         self._usable_functions[f.__name__] = f
-        #globals()[f.__name__] = f
+        # globals()[f.__name__] = f
 
     def _refreshVars(self):
         # can't use self.__variables=[] Triggers __setattr__
@@ -1188,41 +1189,40 @@ class Model(ModelObject):
             for p in obj._ownparameters.items():
                 yield p
 
-
     def _test_with_everything(self, expr, obj):
         locs = dict(self._genlocs4rate(obj))
 
-##         print '\nChecking {}, expr = {}'.format(obj.name, expr)
-##         print "---locs"
-##         for k in locs:
-##             if k in self.input_variables:
-##                 pf = '{} is a {}, value = {}'
-##                 print (pf.format(k, 'Input var', locs[k]))
-##             elif isinstance(locs[k], _Has_Parameters_Accessor):
-##                 pf = '{} is a {}'
-##                 if k in self.reactions:
-##                     ttt = 'Reaction'
-##                 elif k in self.transformations:
-##                     ttt = 'Transformation'
-##                 else:
-##                     ttt = 'Something with parameters'
-##                 print (pf.format(k, ttt))
-##             else:
-##                 print k, '=', locs[k]
+        # print '\nChecking {}, expr = {}'.format(obj.name, expr)
+        # print "---locs"
+        # for k in locs:
+        #     if k in self.input_variables:
+        #         pf = '{} is a {}, value = {}'
+        #         print (pf.format(k, 'Input var', locs[k]))
+        #     elif isinstance(locs[k], _Has_Parameters_Accessor):
+        #         pf = '{} is a {}'
+        #         if k in self.reactions:
+        #             ttt = 'Reaction'
+        #         elif k in self.transformations:
+        #             ttt = 'Transformation'
+        #         else:
+        #             ttt = 'Something with parameters'
+        #         print (pf.format(k, ttt))
+        #     else:
+        #         print k, '=', locs[k]
 
-##         print '\nfirst pass...'
+        # print '\nfirst pass...'
 
         # part 1: nonpermissive, except for NameError
         try:
             value = float(eval(expr, self._usable_functions, locs))
         except NameError:
             pass
-        except TypeError as e:
+        except TypeError:
             return ("Invalid use of a rate in expression", 0.0)
         except Exception as e:
-##             print 'failed on first pass'
+            # print('failed on first pass')
             return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-##         print 'second pass...'
+        # print('second pass...')
         # part 2: permissive, with dummy values (1.0) for vars
         vardict = {}
         for i in self.__variables:
@@ -1234,9 +1234,9 @@ class Model(ModelObject):
         except (ArithmeticError, ValueError):
             pass  # might fail but we don't know the values of vars
         except Exception as e:
-##             print 'failed on second pass...'
+            # print('failed on second pass...')
             return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-##         print 'VALUE = ', value
+        # print('VALUE = ', value)
         return "", value
 
 
