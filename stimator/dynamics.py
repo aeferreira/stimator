@@ -411,7 +411,8 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
             out_bytecode.append(compile(c_str, '<string>', 'eval'))
             continue
         if not exist:
-            raise AttributeError('{} is not a component in this model'.format(name))
+            error_msg = '{} is not a component in this model'.format(name)
+            raise AttributeError(error_msg)
 
     _out_rates = np.empty(len(out_bytecode))
 
@@ -477,27 +478,16 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
     symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
     ratestrs = [[calc_string(col, symbmap) for col in line] for line in Jstrings]
     ratebytecode = [[compile(col, '<string>', 'eval') for col in line] for line in ratestrs]
+    Jarray = np.empty((nvars, nvars), float)
 
-    def J(variables, t):
-        Jarray = np.empty((nvars, nvars), float)
-        t = t*scale + t0
-        for i in range(nvars):
-            for j in range(nvars):
-                Jarray[i, j] = eval(ratebytecode[i][j], m._usable_functions, locals())
-        return Jarray
-
-    def J2(variables, t):
+    def Jfunc(variables, t):
         m_Parameters = m._Model__m_Parameters
-        Jarray = np.empty((nvars, nvars), float)
         t = t*scale + t0
         for i in range(nvars):
             for j in range(nvars):
                 Jarray[i, j] = eval(ratebytecode[i][j], m._usable_functions, locals())
         return Jarray
-    if with_uncertain:
-        return J2
-    else:
-        return J
+    return Jfunc
 
 
 def get_outputs_decl(model, ignore_replist=False):
@@ -690,7 +680,9 @@ class ModelSolver(object):
         out_names = process_outputs_list(out_names, model)
 
         if out_names is not None:
-            self.transf_f = get_outputs_function(model, with_uncertain=True, out_names=out_names)
+            self.transf_f = get_outputs_function(model,
+                                                 with_uncertain=True,
+                                                 out_names=out_names)
             self.transf_f.names = out_names
 
     def solutions_names(self):

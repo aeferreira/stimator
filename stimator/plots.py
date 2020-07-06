@@ -12,17 +12,17 @@ from stimator.utils import _is_string, _is_sequence
 
 def _prepare_settigs(style, palette, font, fig_size):
     st_list = []
-    
-    more_custom_settings = {#'lines.markersize': 5,
+
+    more_custom_settings = {  # 'lines.markersize': 5,
                             'lines.markeredgewidth': 0.1}
-    
+
     if style is not None:
         if not _is_sequence(style):
             style = [style]
         st_list.extend(style)
     else:
         st_list.extend(['seaborn-whitegrid', 'seaborn-notebook'])
-    
+
     valid_styles = []
     for s in st_list:
         if not _is_string(s):
@@ -31,20 +31,21 @@ def _prepare_settigs(style, palette, font, fig_size):
             if s in mpl.style.available:
                 valid_styles.append(s)
     st_list = valid_styles
-    
+
     if fig_size is not None:
         more_custom_settings['figure.figsize'] = fig_size
     else:
         more_custom_settings['figure.figsize'] = (8, 5.5)
-    
+
     if palette is not None:
         more_custom_settings['axes.prop_cycle'] = cycler('color', list(palette))
-    
+
     more_custom_settings['font.family'] = font
-    
+
     st_list.append(more_custom_settings)
-    
+
     return st_list
+
 
 def _plotTC(lines_desc, solutions, title, ls, marker, ax):
     for line in lines_desc:
@@ -53,10 +54,11 @@ def _plotTC(lines_desc, solutions, title, ls, marker, ax):
         data_loc = np.logical_not(np.isnan(y))
         x = sol.t[data_loc]
         y = y[data_loc]
-        ax.plot(x, y, ls=ls, marker=marker, 
-                      color=line['color'], label=line['name'],
-                      clip_on=False)
+        ax.plot(x, y, ls=ls, marker=marker,
+                color=line['color'], label=line['name'],
+                clip_on=False)
         ax.set_title(title)
+
 
 def plotTCs(solutions,
             show=False,
@@ -70,20 +72,19 @@ def plotTCs(solutions,
             suptitlegend=None,
             legend=True,
             force_dense=False,
-            style=None, 
+            style=None,
             palette=None,
-            font="sans-serif", 
+            font="sans-serif",
             save2file=None, **kwargs):
 
     """Generate a graph of the time course using matplotlib.
-       
+
        Called by .plot() member function of class timecourse.Solutions"""
 
-
     settings = _prepare_settigs(style, palette, font, fig_size)
-    
+
     with pl.style.context(settings):
-        
+
         # handle names and titles
         nsolutions = len(solutions)
         pnames = ['time course %d' % (i+1) for i in range(nsolutions)]
@@ -109,7 +110,7 @@ def plotTCs(solutions,
 
         cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
         cyclingcolors = itertools.cycle(cyl)
-        
+
         # create "plot description" records
         plots_desc = []
         color_table = {}
@@ -128,7 +129,7 @@ def plotTCs(solutions,
                         color_table[name] = c
                     line['color'] = c
                     line_desc.append(line)
-                    
+
                 plots_desc.append({'title': pnames[k], 'lines': line_desc})
         else:
             for g in group:
@@ -138,9 +139,9 @@ def plotTCs(solutions,
                     for k, sol in enumerate(solutions):
                         if g in sol.names:
                             indx = sol.names.index(g)
-                            line={'name': pnames[k],
-                                  'solution_index': k,
-                                  'var_index': indx}
+                            line = {'name': pnames[k],
+                                    'solution_index': k,
+                                    'var_index': indx}
                             line_desc.append(line)
                 else:
                     if not _is_sequence(g):
@@ -175,19 +176,19 @@ def plotTCs(solutions,
             use_dots = not solutions[0].dense
             if force_dense:
                 use_dots = False
-            
+
             ls, marker = ('None', 'o') if use_dots else ('-', 'None')
-            
+
             _plotTC(p['lines'], solutions, p['title'], ls, marker, curraxis)
 
             if yrange is not None:
                 curraxis.set_ylim(yrange)
             if legend:
-                h, l = curraxis.get_legend_handles_labels()
-                curraxis.legend(h, l, loc='best')
+                handles, lbls = curraxis.get_legend_handles_labels()
+                curraxis.legend(handles, lbls, loc='best')
             curraxis.set_xlabel('')
             curraxis.set_ylabel('')
-        
+
         # draw suptitle (needs a figure object)
         fig_obj = pl.gcf()
         if suptitlegend is not None:
@@ -197,7 +198,7 @@ def plotTCs(solutions,
 
         if ynormalize and not yrange:
             rs = [a.get_ylim() for a in axis_set]
-            common_range = min([l for l,h in rs]), max([h for l,h in rs])
+            common_range = min([l for l, h in rs]), max([h for l, h in rs])
             for a in axis_set:
                 a.set_ylim(common_range)
 
@@ -207,22 +208,22 @@ def plotTCs(solutions,
             figure.savefig(save2file)
         if show:
             if save2file is not None:
-                if hasattr(save2file,'read'):
+                if hasattr(save2file, 'read'):
                     save2file.close()
             pl.show()
 
 
-def plot_estim_optimum(opt, figure=None, 
+def plot_estim_optimum(opt, figure=None,
                        axis_set=None,
                        fig_size=None,
-                       style=None, 
+                       style=None,
                        palette=None,
-                       font="sans-serif", 
+                       font="sans-serif",
                        save2file=None,
                        show=False):
 
     settings = _prepare_settigs(style, palette, font, fig_size)
-    
+
     with pl.style.context(settings):
         if axis_set is None:
             if figure is None:
@@ -235,17 +236,17 @@ def plot_estim_optimum(opt, figure=None,
         ncols = int(math.ceil(math.sqrt(nplts)))
         nrows = int(math.ceil(float(nplts)/ncols))
         if axis_set is None:
-            axis_set = [figure.add_subplot(nrows, ncols,i+1) for i in range(nplts)]
+            axis_set = [figure.add_subplot(nrows, ncols, i + 1) for i in range(nplts)]
         else:
             axis_set = axis_set
-        
+
         for i in range(nplts):
             subplot = axis_set[i]
             # subplot.set_xlabel("time")
             subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
             expsol = expsols[i]
             symsol = bestsols[i]
-            
+
             cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
             cyclingcolors = itertools.cycle(cyl)
 
@@ -260,14 +261,14 @@ def plot_estim_optimum(opt, figure=None,
                 ysim = symsol[symsol.names.index(xname)]
                 lsexp, mexp = 'None', 'o'
                 lssim, msim = '-', 'None'
-                
+
                 color = next(cyclingcolors)
-                
-                subplot.plot(expsol.t, yexp, 
-                             marker=mexp, ls=lsexp, color=color, clip_on = False)
-                subplot.plot(symsol.t, ysim, 
-                             marker=msim, ls=lssim, color= color,
-                             label='%s' % xname, clip_on = False)
+
+                subplot.plot(expsol.t, yexp,
+                             marker=mexp, ls=lsexp, color=color, clip_on=False)
+                subplot.plot(symsol.t, ysim,
+                             marker=msim, ls=lssim, color=color,
+                             label='%s' % xname, clip_on=False)
             subplot.legend(loc='best')
 
         if save2file is not None:
@@ -283,13 +284,13 @@ def plot_generations(opt, generations=None,
                      pars=None, figure=None, show=False,
                      fig_size=None,
                      style=None, palette=None, font="sans-serif"):
-    
+
     if not opt.generations_exist:
         raise IOError('file generations.txt was not generated')
-    
+
     settings = _prepare_settigs(style, palette, font, fig_size)
     settings.append({'lines.markeredgewidth': 1.0})
-    
+
     with pl.style.context(settings):
 
         if figure is None:
@@ -297,26 +298,24 @@ def plot_generations(opt, generations=None,
         figure.clear()
 
         if generations is None:
-            all_gens = list(range(opt.optimization_generations +1))
+            all_gens = list(range(opt.optimization_generations + 1))
             dump_generations = all_gens
 
-        n_gens = len(dump_generations)
-        
         if pars is None:
             first2 = opt.parameters[:2]
             pars = [p[0] for p in first2]
-        
+
         pnames = [p[0] for p in opt.parameters]
-        
+
         colp0 = pnames.index(pars[0])
         colp1 = pnames.index(pars[1])
-        
+
         scores_col = len(opt.parameters)
-        
-        #ax1 = pl.subplot(1,2,1)
-        #ax2 = pl.subplot(1,2,2)
-        ax2 = pl.subplot(1,1,1)
-        
+
+        # ax1 = pl.subplot(1,2,1)
+        # ax2 = pl.subplot(1,2,2)
+        ax2 = pl.subplot(1, 1, 1)
+
         # parse generations
         gen = -1
         f = open('generations.txt')
@@ -329,9 +328,9 @@ def plot_generations(opt, generations=None,
             line = line.strip()
             if line == '' and reading:
                 if len(solx) > 0:
-                    #ax1.plot(solx, soly, marker='o', ls='None', label=gen)
-                    ## for px, py in zip(objx, objy):
-                        ## ax2.axhline(py, xmin=px, xmax=px*0.01, color='black')
+                    # ax1.plot(solx, soly, marker='o', ls='None', label=gen)
+                    # for px, py in zip(objx, objy):
+                    #     ax2.axhline(py, xmin=px, xmax=px*0.01, color='black')
                     ax2.axvline(objx[0], lw=0.5, color='lightgray')
                     ax2.plot(objx, objy, '_', ls='None', label=gen)
                     solx = []
@@ -368,8 +367,8 @@ def plot_generations(opt, generations=None,
 #         TESTING CODE
 # ----------------------------------------------------------------------------
 
+
 if __name__ == "__main__":
-    from stimator import read_model
     from stimator.timecourse import Solution, Solutions, readTCs
 
     demodata = """
@@ -409,8 +408,8 @@ nothing really usefull here
 
     sols = Solutions([Solution(title='the first tc').read_str(demodata),
                       Solution().read_str(demodata2)],
-                     title='all time courses') 
-    
+                     title='all time courses')
+
     sols.plot(suptitlegend="plotting the two time courses")
     sols.plot(suptitlegend="with font=serif, palette='rgb'",
               font_scale=1.3, font='serif', palette='rgb')
@@ -420,58 +419,58 @@ nothing really usefull here
     sols.plot(suptitlegend="with style=default", style='default')
     sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
     sols.plot(suptitlegend="with style=bogus", style='bogus')
-    
-    sols.plot(fig_size=(12,6), suptitlegend="with fig_size=(12,6)")  
-    
+
+    sols.plot(fig_size=(12, 6), suptitlegend="with fig_size=(12,6)")
+
     sols.plot(suptitlegend="with force_dense=True", force_dense=True)
-    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')    
-    sols.plot(yrange=(0,2), suptitlegend='with yrange=(0,2)')
-    
+    sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')
+    sols.plot(yrange=(0, 2), suptitlegend='with yrange=(0,2)')
+
     sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
-    sols.plot(group=['z', ('x','y')], suptitlegend="with group=['z', ('x','y')]")
-    sols.plot(group=['z', ('x','z')], suptitlegend="with group=['z', ('x','z')]")
-    
+    sols.plot(group=['z', ('x', 'y')], suptitlegend="with group=['z', ('x','y')]")
+    sols.plot(group=['z', ('x', 'z')], suptitlegend="with group=['z', ('x','z')]")
+
     f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
-    
-    sols.plot(suptitlegend="with given axis_set", 
+
+    sols.plot(suptitlegend="with given axis_set",
               force_dense=True,
               axis_set=[ax1, ax2])
     ax1.set_ylabel('variables')
     ax2.set_ylabel('variables')
     ax2.set_xlabel('time')
 
-    sol=Solution().read_str(demodata)
+    sol = Solution().read_str(demodata)
     sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
-    sol.plot(group=['z', ('x','y')], 
+    sol.plot(group=['z', ('x', 'y')],
              suptitlegend="1tc with group=['z', ('x','y')]")
-    sol.plot(group=['z', ('x','z')], 
+    sol.plot(group=['z', ('x', 'z')],
              suptitlegend="1tc with group=['z', ('x','z')]")
 
     sol.read_from('examples/timecourses/TSH2b.txt')
-    
+
     f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
-    
+
     sol.plot(suptitlegend="plotting on a given axes (1 TC)", axes=ax2)
     ax2.set_ylabel('concentrations')
     ax2.set_xlabel('time')
 
-    print ('\n!! testing transformations ----------------')
-       
+    print('\n!! testing transformations ----------------')
+
     sols = Solutions(title='all time courses')
     s = Solution(title='original time course').read_str(demodata2)
     sols += s
-    
+
     def average(x, t):
         # print ('applying transformation')
         return np.array([t/2.0, (x[0]+x[-1])/2.0])
-    
+
     s = s.transform(average,
-                    newnames=['t/2', 'mid point'], 
+                    newnames=['t/2', 'mid point'],
                     new_title='after transformation')
-    sols += s 
-    
+    sols += s
+
     sols.plot(suptitlegend="plotting original and transf", force_dense=True)
-    
+
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
                   'examples/timecourses',
                   names="SDLTSH HTA".split(),
