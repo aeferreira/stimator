@@ -9,7 +9,7 @@ from stimator.model import Model
 from stimator.modelparser import read_model
 import stimator.examples as examples
 
-__version__ = '0.9.130'
+__version__ = '0.9.135'
 
 sys.path.insert(0, os.path.split(os.path.split(os.path.abspath(__file__))[0])[0])
 
@@ -19,7 +19,7 @@ class VersionObj(object):
     def __init__(self):
         self.version = __version__
         self.fullversion = self.version
-        self.date = "Nov 2019"
+        self.date = "Dec 2020"
 
     def __str__(self):
         return self.version
