@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib import pyplot as pl
+from matplotlib import pyplot as plt
 from cycler import cycler
 
 from stimator.utils import _is_string, _is_sequence
@@ -57,7 +57,7 @@ def _plotTC(lines_desc, solutions, title, ls, marker, ax):
         ax.plot(x, y, ls=ls, marker=marker,
                 color=line['color'], label=line['name'],
                 clip_on=False)
-        ax.set_title(title)
+    ax.set_title(title)
 
 
 def plotTCs(solutions,
@@ -83,7 +83,7 @@ def plotTCs(solutions,
 
     settings = _prepare_settigs(style, palette, font, fig_size)
 
-    with pl.style.context(settings):
+    with plt.style.context(settings):
 
         # handle names and titles
         nsolutions = len(solutions)
@@ -105,7 +105,7 @@ def plotTCs(solutions,
         # handle axes
         if axis_set is None:
             if figure is None:
-                figure = pl.figure()
+                figure = plt.figure()
             axis_set = [figure.add_subplot(nrows, ncols, i+1) for i in range(nplts)]
 
         cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
@@ -190,7 +190,7 @@ def plotTCs(solutions,
             curraxis.set_ylabel('')
 
         # draw suptitle (needs a figure object)
-        fig_obj = pl.gcf()
+        fig_obj = plt.gcf()
         if suptitlegend is not None:
             fig_obj.suptitle(suptitlegend)
         elif hasattr(solutions, 'title'):
@@ -210,7 +210,7 @@ def plotTCs(solutions,
             if save2file is not None:
                 if hasattr(save2file, 'read'):
                     save2file.close()
-            pl.show()
+            plt.show()
 
 
 def plot_estim_optimum(opt, figure=None,
@@ -224,10 +224,10 @@ def plot_estim_optimum(opt, figure=None,
 
     settings = _prepare_settigs(style, palette, font, fig_size)
 
-    with pl.style.context(settings):
+    with plt.style.context(settings):
         if axis_set is None:
             if figure is None:
-                figure = pl.figure()
+                figure = plt.figure()
 
         bestsols = opt.optimum_dense_tcs
         expsols = opt.optimizer.tc
@@ -277,7 +277,7 @@ def plot_estim_optimum(opt, figure=None,
             if save2file is not None:
                 if hasattr(save2file, 'read'):
                     save2file.close()
-            pl.show()
+            plt.show()
 
 
 def plot_generations(opt, generations=None,
@@ -291,10 +291,10 @@ def plot_generations(opt, generations=None,
     settings = _prepare_settigs(style, palette, font, fig_size)
     settings.append({'lines.markeredgewidth': 1.0})
 
-    with pl.style.context(settings):
+    with plt.style.context(settings):
 
         if figure is None:
-            figure = pl.figure()
+            figure = plt.figure()
         figure.clear()
 
         if generations is None:
@@ -314,7 +314,7 @@ def plot_generations(opt, generations=None,
 
         # ax1 = pl.subplot(1,2,1)
         # ax2 = pl.subplot(1,2,2)
-        ax2 = pl.subplot(1, 1, 1)
+        ax2 = plt.subplot(1, 1, 1)
 
         # parse generations
         gen = -1
@@ -361,7 +361,7 @@ def plot_generations(opt, generations=None,
         ax2.set_yscale('log')
         ax2.set_xlabel('generation')
         if show:
-            pl.show()
+            plt.show()
 
 # ----------------------------------------------------------------------------
 #         TESTING CODE
@@ -414,7 +414,7 @@ nothing really usefull here
     sols.plot(suptitlegend="with font=serif, palette='rgb'",
               font_scale=1.3, font='serif', palette='rgb')
     p = ['crimson', 'mediumpurple', 'darkolivegreen']
-    sols.plot(suptitlegend="with font=serif, palette=['crimson', 'mediumpurple', 'darkolivegreen']",
+    sols.plot(suptitlegend=f"with font=serif, palette = {p}",
               font_scale=0.5, font='serif', palette=p)
     sols.plot(suptitlegend="with style=default", style='default')
     sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
@@ -430,7 +430,7 @@ nothing really usefull here
     sols.plot(group=['z', ('x', 'y')], suptitlegend="with group=['z', ('x','y')]")
     sols.plot(group=['z', ('x', 'z')], suptitlegend="with group=['z', ('x','z')]")
 
-    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
+    f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
     sols.plot(suptitlegend="with given axis_set",
               force_dense=True,
@@ -445,10 +445,17 @@ nothing really usefull here
              suptitlegend="1tc with group=['z', ('x','y')]")
     sol.plot(group=['z', ('x', 'z')],
              suptitlegend="1tc with group=['z', ('x','z')]")
+    
+    from pathlib import Path
+    # print(Path.cwd())
+    # print(Path(__file__).resolve())
+    examples_loc = str(Path(__file__).resolve().parent / 'examples' /'timecourses')
+    #print(locfile)
 
-    sol.read_from('examples/timecourses/TSH2b.txt')
+    # sol.read_from('examples/timecourses/TSH2b.txt')
+    sol.read_from(examples_loc + '/TSH2b.txt')
 
-    f, (ax1, ax2) = pl.subplots(2, 1, sharex=True)
+    f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 
     sol.plot(suptitlegend="plotting on a given axes (1 TC)", axes=ax2)
     ax2.set_ylabel('concentrations')
@@ -472,10 +479,10 @@ nothing really usefull here
     sols.plot(suptitlegend="plotting original and transf", force_dense=True)
 
     tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
-                  'examples/timecourses',
+                  examples_loc,
                   names="SDLTSH HTA".split(),
                   verbose=False)
     tcs.plot(suptitlegend="read from file")
     tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
 
-    pl.show()
+    plt.show()
