@@ -1,7 +1,8 @@
 from __future__ import print_function
 from stimator import read_model, __version__, Solution
+from matplotlib import pyplot as plt
 
-print ('S-timator version', __version__)
+print('S-timator version', __version__)
 
 example_data = """
 t   x1   x2
@@ -44,10 +45,16 @@ best = m1.estimate(tc)
 
 print(best)
 best.plot()
+plt.show()
 
 print('--- Modifying model ---')
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.setp(bestpars)
+print('ok')
 
-m2.solve(tf=20.0).plot(show=True)
+f, (ax1,ax2) = plt.subplots(1,2)
+m2.solve(tf=20.0).plot(axes=ax2)
+
+
+plt.show()

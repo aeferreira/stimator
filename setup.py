@@ -10,6 +10,7 @@ import os
 
 here = os.path.abspath(os.path.dirname(__file__))
 
+
 def find_version(*file_paths):
     p = os.path.join(here, *file_paths)
     with open(p) as f:
@@ -20,22 +21,20 @@ def find_version(*file_paths):
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
 
+
 with open('README.rst') as f:
     readme = f.read()
-## with open('HISTORY.rst') as f:
-##     history = f.read()
+
 
 packages = [
-    'stimator', 
-    'stimator.examples',
+    'stimator',
     'stimator.moo',
-    'examples',
-    'tests'
+    'stimator.examples',
 ]
 
 requires = ['six', 'pytest', 'sympy', 'numpy', 'scipy', 'matplotlib>=2.0']
 
-classifs=[
+classifs = [
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
         'Intended Audience :: Education',
@@ -54,21 +53,21 @@ classifs=[
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Topic :: Scientific/Engineering :: Chemistry',
         'Topic :: Scientific/Engineering :: Physics']
-    
-setup(name = "stimator",
-    version=find_version('stimator', '__init__.py'),
-    license = "BSD",
-    description = "Analysis of ODE models with focus on model selection and parameter estimation.",
-    author = "António Ferreira",
-    author_email = "aeferreira@fc.ul.pt",
-    url = "http://webpages.fc.ul.pt/~aeferreira/stimator",
-    include_package_data=True,
-    packages = packages,
-    package_data={'examples': ['TSH2a.txt', 'TSH2b.txt'],
-                  'stimator.examples':['timecourses/*.txt']},
-    keywords = "ODE-models estimation dynamics",
-    classifiers=classifs,
-    long_description = readme,
-    install_requires = requires)
 
+sdesc = "Analysis of ODE models with parameter estimation and model selection."
 
+setup(name="stimator",
+      version=find_version('stimator', '__init__.py'),
+      license="BSD",
+      description=sdesc,
+      author="António Ferreira",
+      author_email="aeferreira@fc.ul.pt",
+      url="http://webpages.fc.ul.pt/~aeferreira/stimator",
+      include_package_data=True,
+      packages=packages,
+      package_data={'stimator.examples':
+                    ['timecourses/TSH2a.txt', 'timecourses/TSH2b.txt']},
+      keywords="ODE-models estimation dynamics",
+      classifiers=classifs,
+      long_description=readme,
+      install_requires=requires)
