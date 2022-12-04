@@ -1,0 +1,15 @@
+[version]
+path = "stimator/__init__.py"
+
+[build]
+include = [
+  "stimator/*.py",
+  "stimator/moo/*.py",
+  "stimator/examples/*.py",
+  "stimator/examples/timecourses/*.txt",
+  "examples/*.py",
+  "examples/*.txt",
+  "tests/*py",
+  "README.rst",
+  "LICENSE",
+]

@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stimator"
+dynamic = ["version"]
+description = "Analysis of ODE models with focus on model selection and parameter estimation."
+readme = "README.rst"
+requires-python = ">=3.7"
+license = { file = ["LICENSE"] }
+authors = [
+    { name = "António Ferreira", email = "aeferreira@fc.ul.pt" },
+]
+keywords = [
+    "ODE-models",
+    "dynamics",
+    "estimation",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Artificial Life",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "matplotlib>=2.0",
+    "numpy",
+    "scipy",
+    "sympy",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "http://webpages.fc.ul.pt/~aeferreira/stimator"
+
+
