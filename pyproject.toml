@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Analysis of ODE models with focus on model selection and parameter estimation."
 readme = "README.rst"
 requires-python = ">=3.7"
-license = { file = ["LICENSE"] }
+license = {file = "LICENSE"}
 authors = [
     { name = "António Ferreira", email = "aeferreira@fc.ul.pt" },
 ]

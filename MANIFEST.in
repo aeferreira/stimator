@@ -1,8 +1,0 @@
-include LICENSE README.rst
-recursive-include examples *.py
-recursive-include examples *.ipynb
-recursive-include examples *.mdl
-recursive-include examples *.txt
-recursive-include tests *.py
-prune examples/.ipynb_checkpoints
-prune examples/controls
