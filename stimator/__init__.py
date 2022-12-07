@@ -1,18 +1,13 @@
 """S-timator package"""
-from __future__ import print_function, absolute_import
-import os
-import sys
 
 from stimator.timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
 
 from stimator.model import Model
 from stimator.modelparser import read_model
-import stimator.examples as examples
 
 
 __version__ = '0.9.135'
 
-#sys.path.insert(0, os.path.split(os.path.split(os.path.abspath(__file__))[0])[0])
 
 class VersionObj(object):
     def __init__(self):
@@ -22,6 +17,7 @@ class VersionObj(object):
 
     def __str__(self):
         return self.version
+
 
 __full_version__ = VersionObj()
 

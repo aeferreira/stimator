@@ -1,4 +1,3 @@
-from __future__ import print_function
 from stimator import read_model, __version__, Solution
 from matplotlib import pyplot as plt
 
@@ -49,11 +48,11 @@ plt.show()
 
 print('--- Modifying model ---')
 m2 = m1.copy()
-bestpars = [(n,v) for n,v,e in best.parameters]
+bestpars = [(n, v) for n, v, e in best.parameters]
 m2.setp(bestpars)
 print('ok')
 
-f, (ax1,ax2) = plt.subplots(1,2)
+f, (ax1, ax2) = plt.subplots(1, 2)
 m2.solve(tf=20.0).plot(axes=ax2)
 
 

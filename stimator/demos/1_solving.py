@@ -1,5 +1,5 @@
-from __future__ import print_function
 from stimator import read_model
+from matplotlib import pyplot as plt
 
 mdl = """# Example file for S-timator
 title Example 1
@@ -20,8 +20,21 @@ init: (x1=0, x2=0)
 
 m = read_model(mdl)
 
-print ('========= model ========================================')
-print (mdl)
-print ('--------------------------------------------------------')
+print('========= model ========================================')
+print(mdl)
+print('--------------------------------------------------------')
 
-m.solve(tf=5.0).plot(show=True, fig_size=(6.5, 6))
+ax = plt.gca()
+print(plt.get_fignums())
+m.solve(tf=5.0).plot(fig_size=(6.5, 6))
+print(plt.get_fignums())
+# plt.show()
+
+print('========= check ========================================')
+print('between plots')
+print('--------------------------------------------------------')
+
+m.solve(tf=20.0).plot(fig_size=(6.5, 6))
+print(plt.get_fignums())
+plt.show()
+print(plt.get_fignums())

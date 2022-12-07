@@ -287,13 +287,8 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[np.array(newindexes, dtype=int)]
 
-    def plot(self, axes=None, **kwargs):
-        if axes is not None:
-            axis_set = [axes]
-        else:
-            axis_set = None
-        ss = Solutions([self])
-        ss.plot(axis_set=axis_set, **kwargs)
+    def plot(self, what=None, ax=None, title=None, **kwargs):
+        plots.plot_timecourse(self, what, ax, title, **kwargs)
 
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR SEVERAL TIMECOURSES
