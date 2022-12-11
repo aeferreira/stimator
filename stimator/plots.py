@@ -45,54 +45,95 @@ def _prepare_settigs(style, palette, font, fig_size):
 
     return st_list
 
-def _get_indexes_to_plot(timecourse, what):
+
+def _get_cols_to_plot(timecourse, what):
     if what is None:
-        return range(len(timecourse.names))
+        return timecourse.names[:]
     if _is_string(what):
         what = [what]
     if not _is_sequence(what):
         raise ValueError(f"No data for {str(what)} in timecourse")
-    indexes2plot = []
+    cols2plot = []
     for elem in what:
         if isinstance(elem, int):
-            if (0 <= elem < len(timecourse.names)) and (elem not in indexes2plot):
-                indexes2plot.append(elem)
+            if (0 <= elem < len(timecourse.names)):
+                name = timecourse.names[elem]
+                if name not in cols2plot:
+                    cols2plot.append(name)
             else:
                 raise ValueError(f"Index {elem} out of range in timecourse")
         elif _is_string(elem):
-            try:
-                i = timecourse.names.index(elem)
-            except ValueError:
+            if elem not in timecourse.names:
                 raise ValueError(f"No data for {str(elem)} in timecourse")
-            if i not in indexes2plot:
-                indexes2plot.append(i)
-    return indexes2plot
+            if elem not in cols2plot:
+                cols2plot.append(elem)
+    return cols2plot
+
+def _get_overiding_prop_table(styling, prop_cycle):
+    if styling is None:
+        return None
+    if not isinstance(styling, dict):
+        raise TypeError(f"'styling' parameter must be a dict")
+    if prop_cycle is not None:
+        if isinstance(prop_cycle, dict):
+            prop_cycle = cycler(**prop_cycle)
+    else: # use the current prop_cycle
+        prop_cycle = mpl.rcParams['axes.prop_cycle']
+    props = list(prop_cycle)
+
+    stylingdict = {}
+
+    for k, v in styling.items():
+        if isinstance(v, dict):
+            stylingdict[k] = v
+        elif isinstance(v, int):
+            stylingdict[k] = props[v]
+        elif _is_string(v):
+            stylingdict[k] = {'color': v}
+        else:
+            raise ValueError(f"'{v}' is an invalid color or style ")
+    return stylingdict
 
 
 
-
-def plot_timecourse(timecourse, what=None, ax=None, title=None, **kwargs):
+def plot_timecourse(timecourse, what=None, ax=None,
+                    prop_cycle=None, styling=None,
+                    title=None, tight_t0=True, **kwargs):
     if ax is None:
         ax = plt.gca()
 
-    indexes_to_plot = _get_indexes_to_plot(timecourse, what)
-    nseries = len(indexes_to_plot)
+    if prop_cycle is not None:
+        if isinstance(prop_cycle, dict):
+            prop_cycle = cycler(**prop_cycle)
+        ax.set_prop_cycle(prop_cycle)
+
+    cols_to_plot = _get_cols_to_plot(timecourse, what)
 
     # cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
     # cyclingcolors = itertools.cycle(cyl)
-    for i in indexes_to_plot:
-        name = timecourse.names[i]
-        y = timecourse[i]
-        data_loc = np.logical_not(np.isnan(y))
-        x = timecourse.t[data_loc]
-        y = y[data_loc]
+    for name in cols_to_plot:
+        x = timecourse.t
+        y = timecourse[name]
         ax.plot(x, y, label=name, **kwargs)
+
+    if styling is not None:
+        stylingdict = _get_overiding_prop_table(styling, prop_cycle)
+        lines = ax.get_lines()
+        for i, name in enumerate(cols_to_plot):
+            if name in stylingdict:
+                lines[i].set(label= name, **(stylingdict[name]))
+
+    handles, lbls = ax.get_legend_handles_labels()
+    ax.legend(handles, lbls, loc='best')
+
     if title is not None:
         ax.set_title(title)
     elif timecourse.title:
         ax.set_title(timecourse.title)
-    handles, lbls = ax.get_legend_handles_labels()
-    ax.legend(handles, lbls, loc='best')
+
+    if tight_t0:
+        if timecourse.t[0] < timecourse.t[-1]:
+            ax.set_xlim(timecourse.t[0], None)
     return ax
 
 
@@ -261,7 +302,7 @@ def plotTCs(solutions,
 
         if ynormalize and not yrange:
             rs = [a.get_ylim() for a in axis_set]
-            common_range = min([l for l, h in rs]), max([h for l, h in rs])
+            common_range = min([low for low, _ in rs]), max([h for _, h in rs])
             for a in axis_set:
                 a.set_ylim(common_range)
 
@@ -440,7 +481,7 @@ if __name__ == "__main__":
 #this is demo data with a header
 t x y z
 0       0.95 0         0
-0.1                  0.1
+0.1   0.1  0.5        0.2
 
   0.2 skip 0.2 skip this
 nothing really usefull here
@@ -482,14 +523,47 @@ nothing really usefull here
 
     plot_timecourse(sol, title="simple TC plot")
     plt.show()
-    plot_timecourse(sol, title="plot with different lw", linewidth=10)
+    plot_timecourse(sol,
+                    title="plot with different lw, linewidth=10",
+                    linewidth=10)
     plt.show()
-    plot_timecourse(stsh, title="plot with different marker", marker="+")
+    plot_timecourse(stsh,
+                    title="plot with different marker, marker='+'",
+                    tight_t0=False, marker='+')
     plt.show()
-    plot_timecourse(sol, what='z', title="plot with filtering")
+    plot_timecourse(sol, what='z',
+                    title="plot with filtering, what='z'")
     plt.show()
-    plot_timecourse(sol, what=[0, 'z'], title="plot with filtering")
+    plot_timecourse(sol, what=[0, 'z'],
+                    title="plot with filtering, what=[0, 'z']")
+    plt.show()
 
+    with plt.style.context('ggplot'):
+        plot_timecourse(sol, title="simple TC plot with ggplot style")
+    plt.show()
+
+    custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
+                 cycler(lw=[1, 2, 3, 4]))
+
+    plot_timecourse(sol,
+                    title="plot with a custom cycler",
+                    prop_cycle=custom_cycler)
+    plt.show()
+
+    st = {'x': 'royalblue'}
+    plot_timecourse(sol, styling=st,
+                    title="plot, styling {'x': 'royalblue'}")
+    plt.show()
+
+    st = {'x': {'c':'royalblue', 'ls': '--'}}
+    plot_timecourse(sol, styling=st,
+                    title="plot, styling {'x': {'c':'royalblue', 'ls': '--'}}}")
+    plt.show()
+
+    st = {'x': 9}
+    plot_timecourse(sol, styling=st,
+                    title="plot, styling {'x': 9}")
+    plt.show()
 
     # sols = Solutions([Solution(title='the first tc').read_str(demodata),
     #                   Solution().read_str(demodata2)],
@@ -530,7 +604,7 @@ nothing really usefull here
     #          suptitlegend="1tc with group=['z', ('x','y')]")
     # sol.plot(group=['z', ('x', 'z')],
     #          suptitlegend="1tc with group=['z', ('x','z')]")
-    
+
     # from pathlib import Path
     # # print(Path.cwd())
     # # print(Path(__file__).resolve())
