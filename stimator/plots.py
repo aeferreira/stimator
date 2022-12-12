@@ -4,46 +4,9 @@ import itertools
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-from cycler import cycler
+from cycler import cycler, Cycler
 
 from stimator.utils import _is_string, _is_sequence
-
-
-def _prepare_settigs(style, palette, font, fig_size):
-    st_list = []
-
-    more_custom_settings = {  # 'lines.markersize': 5,
-                            'lines.markeredgewidth': 0.1}
-
-    if style is not None:
-        if not _is_sequence(style):
-            style = [style]
-        st_list.extend(style)
-    else:
-        st_list.extend(['seaborn-whitegrid', 'seaborn-notebook'])
-
-    valid_styles = []
-    for s in st_list:
-        if not _is_string(s):
-            valid_styles.append(s)
-        else:
-            if s in mpl.style.available:
-                valid_styles.append(s)
-    st_list = valid_styles
-
-    if fig_size is not None:
-        more_custom_settings['figure.figsize'] = fig_size
-    else:
-        more_custom_settings['figure.figsize'] = (8, 5.5)
-
-    if palette is not None:
-        more_custom_settings['axes.prop_cycle'] = cycler('color', list(palette))
-
-    more_custom_settings['font.family'] = font
-
-    st_list.append(more_custom_settings)
-
-    return st_list
 
 
 def _get_cols_to_plot(timecourse, what):
@@ -69,16 +32,13 @@ def _get_cols_to_plot(timecourse, what):
                 cols2plot.append(elem)
     return cols2plot
 
+
 def _get_overiding_prop_table(styling, prop_cycle):
     if styling is None:
         return None
     if not isinstance(styling, dict):
-        raise TypeError(f"'styling' parameter must be a dict")
-    if prop_cycle is not None:
-        if isinstance(prop_cycle, dict):
-            prop_cycle = cycler(**prop_cycle)
-    else: # use the current prop_cycle
-        prop_cycle = mpl.rcParams['axes.prop_cycle']
+        raise TypeError("'styling' parameter must be a dict")
+
     props = list(prop_cycle)
 
     stylingdict = {}
@@ -95,42 +55,95 @@ def _get_overiding_prop_table(styling, prop_cycle):
     return stylingdict
 
 
+MPL_QUALIT = ['Pastel1', 'Pastel2', 'Paired', 'Accent',
+              'Dark2', 'Set1', 'Set2', 'Set3', 'tab10',
+              'tab20', 'tab20b', 'tab20c']
+
+MPL_QUALITATIVE_TABLE = {cm: mpl.colormaps[cm].colors for cm in MPL_QUALIT}
+
+
+def _get_list_from_palette(pname):
+    """get a list of RGB values from a palette name.
+
+    mpl qualitative names are accepted.
+    TODO: accept seaborn and palettable generated palettes as pname"""
+    if pname in MPL_QUALIT:
+        return MPL_QUALITATIVE_TABLE[pname]
+    raise ValueError(f'palette name {pname} not found')
+
+
+def _get_new_prop_cycle(prop_cycle, palette):
+    if prop_cycle is None and palette is None:
+        return None
+    if prop_cycle is not None:
+        if isinstance(prop_cycle, dict):
+            prop_cycle = cycler(**prop_cycle)
+        if not isinstance(prop_cycle, Cycler):
+            raise TypeError("'prop_cycle' must be a dict or a Cycler object")
+
+    # include the palette in the prop_cycler
+    if palette is not None:
+        color_list = _get_list_from_palette(palette)
+        color_cycle = cycler('color', color_list)
+        if prop_cycle is None:
+            return color_cycle
+
+        # merge with specified cycler
+        color_list = []
+        # get color list as long as the prop_cycle
+        for _, p in zip(range(len(prop_cycle)), color_cycle()):
+            color_list.append(p['color'])
+
+        # substitute colors
+        trans = prop_cycle.by_key()
+        trans['color'] = color_list
+        prop_cycle = cycler(**trans)
+    return prop_cycle
+
 
 def plot_timecourse(timecourse, what=None, ax=None,
-                    prop_cycle=None, styling=None,
+                    prop_cycle=None, palette=None, styling=None,
                     title=None, tight_t0=True, **kwargs):
     if ax is None:
         ax = plt.gca()
 
-    if prop_cycle is not None:
-        if isinstance(prop_cycle, dict):
-            prop_cycle = cycler(**prop_cycle)
-        ax.set_prop_cycle(prop_cycle)
+    # locally set the prop_cycler if prop_cycle or palette are given
+    used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
+    if used_prop_cycle is not None:
+        ax.set_prop_cycle(used_prop_cycle)
+    else:
+        used_prop_cycle = mpl.rcParams['axes.prop_cycle']
 
+    # find what (which columns) to plot
     cols_to_plot = _get_cols_to_plot(timecourse, what)
 
-    # cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
-    # cyclingcolors = itertools.cycle(cyl)
+    # plot (as lines)
     for name in cols_to_plot:
         x = timecourse.t
         y = timecourse[name]
         ax.plot(x, y, label=name, **kwargs)
 
+    # overide prop_cycler styles if these are specified on the styling dict
+    # for some variables
     if styling is not None:
-        stylingdict = _get_overiding_prop_table(styling, prop_cycle)
+        stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
         lines = ax.get_lines()
         for i, name in enumerate(cols_to_plot):
             if name in stylingdict:
-                lines[i].set(label= name, **(stylingdict[name]))
+                lines[i].set(label=name, **(stylingdict[name]))
 
+    # draw legend
     handles, lbls = ax.get_legend_handles_labels()
     ax.legend(handles, lbls, loc='best')
 
+    # draw plot title
     if title is not None:
         ax.set_title(title)
     elif timecourse.title:
         ax.set_title(timecourse.title)
 
+    # remove the left margin for the x-axis
+    # to start the plot at t0
     if tight_t0:
         if timecourse.t[0] < timecourse.t[-1]:
             ax.set_xlim(timecourse.t[0], None)
@@ -147,174 +160,6 @@ def plot_timecourse(timecourse, what=None, ax=None,
 #                 color=line['color'], label=line['name'],
 #                 clip_on=False)
 #     ax.set_title(title)
-
-
-def _plotTC(lines_desc, solutions, title, ls, marker, ax):
-    for line in lines_desc:
-        sol = solutions[line['solution_index']]
-        y = sol[line['var_index']]
-        data_loc = np.logical_not(np.isnan(y))
-        x = sol.t[data_loc]
-        y = y[data_loc]
-        ax.plot(x, y, ls=ls, marker=marker,
-                color=line['color'], label=line['name'],
-                clip_on=False)
-    ax.set_title(title)
-
-
-def plotTCs(solutions,
-            show=False,
-            figure=None,
-            axis_set=None,
-            fig_size=None,
-            titles=None,
-            ynormalize=False,
-            yrange=None,
-            group=False,
-            suptitlegend=None,
-            legend=True,
-            force_dense=False,
-            style=None,
-            palette=None,
-            font="sans-serif",
-            save2file=None, **kwargs):
-
-    """Generate a graph of the time course using matplotlib.
-
-       Called by .plot() member function of class timecourse.Solutions"""
-
-    settings = _prepare_settigs(style, palette, font, fig_size)
-
-    with plt.style.context(settings):
-
-        # handle names and titles
-        nsolutions = len(solutions)
-        pnames = ['time course %d' % (i+1) for i in range(nsolutions)]
-        for i in range(nsolutions):
-            if titles:
-                pnames[i] = titles[i]
-            else:
-                if solutions[i].title:
-                    pnames[i] = solutions[i].title
-
-        # find how many plots
-        nplts = len(group) if group else nsolutions
-
-        # compute shape of grid
-        ncols = int(math.ceil(math.sqrt(nplts)))
-        nrows = int(math.ceil(float(nplts)/ncols))
-
-        # handle axes
-        if axis_set is None:
-            figure, axis_set = plt.subplots(nrows, ncols, figsize=fig_size)
-            if hasattr(axis_set, 'shape'):
-                axis_set = list(axis_set.flat)
-            else:
-                axis_set = [axis_set]
-
-        cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
-        cyclingcolors = itertools.cycle(cyl)
-
-        # create "plot description" records
-        plots_desc = []
-        color_table = {}
-        if not group:
-            for k, sol in enumerate(solutions):
-                line_desc = []
-                for i in range(len(sol)):
-                    name = sol.names[i]
-                    line = {'name': name,
-                            'solution_index': k,
-                            'var_index': i}
-                    if name in color_table:
-                        c = color_table[name]
-                    else:
-                        c = next(cyclingcolors)
-                        color_table[name] = c
-                    line['color'] = c
-                    line_desc.append(line)
-
-                plots_desc.append({'title': pnames[k], 'lines': line_desc})
-        else:
-            for g in group:
-                line_desc = []
-                if _is_string(g):
-                    pdesc = {'title': g}
-                    for k, sol in enumerate(solutions):
-                        if g in sol.names:
-                            indx = sol.names.index(g)
-                            line = {'name': pnames[k],
-                                    'solution_index': k,
-                                    'var_index': indx}
-                            line_desc.append(line)
-                else:
-                    if not _is_sequence(g):
-                        raise StimatorTCError('%s is not a str or seq' % str(g))
-
-                    pdesc = {'title': ' '.join(g)}
-                    for vvv in g:
-                        for k, sol in enumerate(solutions):
-                            if vvv in sol.names:
-                                indx = sol.names.index(vvv)
-                                line = {'solution_index': k, 'var_index': indx}
-                                if len(solutions) > 1:
-                                    line['name'] = "%s, %s" % (vvv, pnames[k])
-                                else:
-                                    line['name'] = "%s" % (vvv)
-                                line_desc.append(line)
-                for line in line_desc:
-                    unique_id = (line['solution_index'], line['var_index'])
-                    if unique_id in color_table:
-                        c = color_table[unique_id]
-                    else:
-                        c = next(cyclingcolors)
-                        color_table[unique_id] = c
-                    line['color'] = c
-
-                pdesc['lines'] = line_desc
-                plots_desc.append(pdesc)
-
-        # draw plots
-        for i, p in enumerate(plots_desc):
-            curraxis = axis_set[i]
-            use_dots = not solutions[0].dense
-            if force_dense:
-                use_dots = False
-
-            ls, marker = ('None', 'o') if use_dots else ('-', 'None')
-
-            _plotTC(p['lines'], solutions, p['title'], ls, marker, curraxis)
-
-            if yrange is not None:
-                curraxis.set_ylim(yrange)
-            if legend:
-                handles, lbls = curraxis.get_legend_handles_labels()
-                curraxis.legend(handles, lbls, loc='best')
-            curraxis.set_xlabel('')
-            curraxis.set_ylabel('')
-
-        # draw suptitle (needs a figure object)
-        fig_obj = plt.gcf()
-        if suptitlegend is not None:
-            fig_obj.suptitle(suptitlegend)
-        elif hasattr(solutions, 'title'):
-            fig_obj.suptitle(solutions.title)
-
-        if ynormalize and not yrange:
-            rs = [a.get_ylim() for a in axis_set]
-            common_range = min([low for low, _ in rs]), max([h for _, h in rs])
-            for a in axis_set:
-                a.set_ylim(common_range)
-
-        # pl.tight_layout()
-
-        if save2file is not None:
-            figure.savefig(save2file)
-        if show:
-            if save2file is not None:
-                if hasattr(save2file, 'read'):
-                    save2file.close()
-            plt.show()
 
 
 def plot_estim_optimum(opt, figure=None,
@@ -514,7 +359,7 @@ nothing really usefull here
     sol = Solution().read_str(demodata)
     sol2 = Solution().read_str(demodata2)
 
-    print(sol)
+    # print(sol)
 
     example_tc = Path(expl_tcs.__path__[0]) / 'TSH2b.txt'
 
@@ -543,7 +388,7 @@ nothing really usefull here
     plt.show()
 
     custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
-                 cycler(lw=[1, 2, 3, 4]))
+                     cycler(lw=[1, 2, 3, 4]))
 
     plot_timecourse(sol,
                     title="plot with a custom cycler",
@@ -555,9 +400,9 @@ nothing really usefull here
                     title="plot, styling {'x': 'royalblue'}")
     plt.show()
 
-    st = {'x': {'c':'royalblue', 'ls': '--'}}
+    st = {'x': {'c': 'royalblue', 'ls': '--'}}
     plot_timecourse(sol, styling=st,
-                    title="plot, styling {'x': {'c':'royalblue', 'ls': '--'}}}")
+                    title=f"plot, styling {st}")
     plt.show()
 
     st = {'x': 9}
@@ -565,6 +410,18 @@ nothing really usefull here
                     title="plot, styling {'x': 9}")
     plt.show()
 
+    plot_timecourse(sol,
+                    title="plot with a custom palette (Dark2)",
+                    palette='Dark2')
+    plt.show()
+
+    custom_cycler = (cycler(ls=['-', '--', ':', '-.']) +
+                     cycler(lw=[1, 2, 4, 8]))
+
+    plot_timecourse(sol,
+                    title="plot with a custom cycler and palette",
+                    prop_cycle=custom_cycler, palette='Dark2')
+    plt.show()
     # sols = Solutions([Solution(title='the first tc').read_str(demodata),
     #                   Solution().read_str(demodata2)],
     #                  title='all time courses')
@@ -643,5 +500,3 @@ nothing really usefull here
     #               verbose=False)
     # tcs.plot(suptitlegend="read from file")
     # tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")
-
-    plt.show()
