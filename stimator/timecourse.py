@@ -1,10 +1,9 @@
-from __future__ import print_function, absolute_import, division
-import os.path
+# import os.path
 import re
+from pathlib import Path
 import numpy as np
 
-from six import StringIO
-from six.moves import getcwd
+from io import StringIO
 
 import stimator.plots as plots
 from stimator.utils import _is_string, _is_number, _is_sequence
@@ -13,6 +12,7 @@ FRAC_PATTERN = r"[-]?\d*[.]?\d+"
 REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
 ID_RE = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 REAL_RE = re.compile(REAL_PATTERN, re.IGNORECASE)
+
 
 class StimatorTCError(Exception):
 
@@ -25,6 +25,7 @@ class StimatorTCError(Exception):
 # ----------------------------------------------------------------------------
 #         THE BASIC TIMECOURSE CLASS
 # ----------------------------------------------------------------------------
+
 
 class SolutionTimeCourse(object):
     """Holds a timecourse created by ODE solvers"""
@@ -42,7 +43,6 @@ class SolutionTimeCourse(object):
         self.title = title  # a title for the solution
         self.dense = dense
 
-
     def __len__(self):
         """Retrieves the number of vars in this solution,
         NOT the len(timepoints)."""
@@ -50,7 +50,7 @@ class SolutionTimeCourse(object):
 
     def __bool__(self):
         return len(self.t) > 0
-    
+
     __nonzero__ = __bool__
 
     def __getNumberOfTimes(self):
@@ -240,7 +240,7 @@ class SolutionTimeCourse(object):
         except TypeError:
             ishandle = True
             f = destination
-        
+
         f.write(str(self))
         if not ishandle:
             f.close()
@@ -287,8 +287,14 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[np.array(newindexes, dtype=int)]
 
-    def plot(self, what=None, ax=None, prop_cycle=None, palette=None, styling=None, title=None, tight_t0=True, **kwargs):
-        plots.plot_timecourse(self, what, ax, prop_cycle, palette, styling, title, tight_t0, **kwargs)
+    def plot(self, what=None, ax=None,
+             prop_cycle=None, palette=None,
+             styling=None, title=None,
+             tight_t0=True, **kwargs):
+        plots.plot_timecourse(self, what, ax, prop_cycle,
+                              palette, styling, title,
+                              tight_t0,
+                              **kwargs)
 
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR SEVERAL TIMECOURSES
@@ -324,8 +330,8 @@ class Solutions(object):
 
     def __bool__(self):
         return len(self.solutions) > 0
-    
-    __nonzero__=__bool__
+
+    __nonzero__ = __bool__
 
     def __iadd__(self, other):
         if isinstance(other, Solutions):
@@ -354,20 +360,20 @@ class Solutions(object):
             raise StimatorTCError(msg)
 
         # check and load timecourses
-        cwd = getcwd()
+        cwd = Path.cwd()
         if filedir is None:
             filedir = ''
-        
-        plist = [os.path.join(cwd, filedir, k) for k in self.filenames]
-        plist = [os.path.abspath(p) for p in plist]
+
+        plist = [cwd / filedir / k for k in self.filenames]
+        plist = [p.absolute() for p in plist]
 
         self.data = []
         nTCsOK = 0
         if verbose:
-            print ("-- reading time courses -------------------------------")
+            print("-- reading time courses -------------------------------")
         for filename in plist:
-            if not os.path.exists(filename) or not os.path.isfile(filename):
-                raise StimatorTCError("File \n%s\ndoes not exist" % filename)
+            if not Path.exists(filename) or not Path.is_file(filename):
+                raise StimatorTCError(f"File \n{filename}\ndoes not exist")
             sol = SolutionTimeCourse()
             sol.read_from(filename, names=names)
             if sol.shape == (0, 0):
@@ -380,29 +386,29 @@ class Solutions(object):
                                                             len(sol)))
                 self.append(sol)
                 nTCsOK += 1
-        self.shortnames = [os.path.split(filename)[1] for filename in plist]
+        self.shortnames = [filename.name for filename in plist]
         for i, sol in enumerate(self.solutions):
             sol.title = self.shortnames[i]
         return nTCsOK
 
     def write_to(self, filenames, filedir=None, verbose=False):
         if len(self) == 0:
-            print ("No time courses to save!")
+            print("No time courses to save!")
             return 0
 
         # check and load timecourses
-        cwd = getcwd()
+        cwd = Path.cwd()
         if filedir is None:
             filedir = ''
         if _is_string(filenames):
             filenames = [filenames]
-        names = [os.path.join(cwd, filedir, k) for k in filenames]
-        names = [os.path.abspath(p) for p in names]
+        names = [cwd / filedir / k for k in filenames]
+        names = [p.absolute() for p in names]
 
         fstring = "{} time points for {} variables written to file {}".format
 
         if verbose:
-            print ("-------------------------------------------------------")
+            print("-------------------------------------------------------")
         for name, sol in zip(names, self.solutions):
             sol.write_to(name)
             if verbose:
@@ -417,7 +423,7 @@ class Solutions(object):
         vnames = [x for x in amodel.varnames]
         self.order_by_names(vnames)
         return self
-    
+
     def get_common_full_vars(self):
         """Return a list of names of variables that
         have full data in all timecourses."""
@@ -437,7 +443,7 @@ class Solutions(object):
 
     def plot(self, **kwargs):
         return plots.plotTCs(self, **kwargs)
-    
+
 
 def read_tc(source,
             filedir=None,
@@ -450,7 +456,7 @@ def read_tc(source,
 
     tcs = Solutions()
     tcsnames = None
-    
+
     if hasattr(source, 'metadata'):
         # retrieve info from model declaration
         stcs = source.metadata['timecourses']
@@ -461,12 +467,13 @@ def read_tc(source,
         tcs.filenames = [source]
     else:
         tcs.filenames = source
-    
+
     if names is None:
         if tcsnames is not None:
             names = tcsnames
     tcs._load_tcs(filedir, names=names, verbose=verbose)
     return tcs
+
 
 # convenient or backwards compatible aliases
 readTCs = read_tc
@@ -476,6 +483,7 @@ Solution = SolutionTimeCourse
 # ----------------------------------------------------------------------------
 #         Time course divergence metrics
 # ----------------------------------------------------------------------------
+
 
 def extendedKLdivergence(timecourses, delta_t, index_list):
     result = []
@@ -508,8 +516,9 @@ def L2_midpoint_weights(timecourses, delta_t, indexes):
     for i in range(len(timecourses) - 1):
         for j in range(i + 1, len(timecourses)):
             numResult = 0.0
-            for tc1, tc2 in zip(timecourses[i], timecourses[j]):
-                tempTC = np.float64((((tc1 - tc2)**2) / (((tc1 + tc2)/2.0)**2)) * delta_t)
+            for t1, t2 in zip(timecourses[i], timecourses[j]):
+                tempTC = np.float64((((t1 - t2)**2) / (((t1 + t2)/2.0)**2)))
+                tempTC = tempTC * delta_t
                 numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result
@@ -536,7 +545,7 @@ def _transform2array(vect):
     elif _is_sequence(vect):
         res = np.diag(np.array(vect, dtype=float))
     else:
-        res = vect # must be already an array (must be 2D)
+        res = vect  # must be already an array (must be 2D)
     return res
 
 
@@ -571,8 +580,7 @@ def get_fulltc_indexes(model, tcs):
                 continue
             vars_i.append(i)
             vars_i_model.append(model.varnames.index(tc.names[i]))
-        
+
         all_tc_indexes.append(np.array(vars_i, int))
         all_model_indexes.append(np.array(vars_i_model, int))
     return all_model_indexes, all_tc_indexes
-

@@ -4,9 +4,7 @@ The class ('StimatorParser') parses text representing a valid model.
 The result is a Model object.
 The parsing loop relies on regular expressions."""
 
-from __future__ import print_function, absolute_import
-
-from six import StringIO
+from io import StringIO
 import re
 import math
 import stimator.model as model

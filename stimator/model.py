@@ -4,7 +4,7 @@ This module defines the Model class, used to hold the structure and metadata
 of a kinetic model.
 
 """
-from __future__ import print_function, absolute_import
+
 import re
 import math
 from collections import OrderedDict

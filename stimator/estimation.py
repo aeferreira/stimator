@@ -1,17 +1,13 @@
-from __future__ import print_function, absolute_import, division
-
 import time
 
-from numpy import array, nansum, fabs, copy, empty, linspace, isnan
-from scipy import integrate
+from numpy import array, nansum, fabs, empty
 import numpy as np
 
 import stimator.de as de
-from stimator.dynamics import init2array, ModelSolver, solve, get_outputs_decl
+from stimator.dynamics import ModelSolver
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
-from stimator.utils import _is_sequence
 
 
 # ----------------------------------------------------------------------------
@@ -49,6 +45,7 @@ def getRangeVars(tcs, varnames):
             tpe = (max(yexp) - min(yexp))
             ranges[ix] = max(ranges[ix], tpe)
     return ranges
+
 
 def get_criterium(repnames, tc, weights=None):
     """Returns a function to compute the objective function given a solution and a timecourse.
@@ -118,16 +115,20 @@ class OptimumData(object):
         return res
 
     def print_info(self):
-        print (self.info())
-    
+        print(self.info())
+
     def __str__(self):
         return self.info()
 
-    def plot(self, **kwargs):
-        return plots.plot_estim_optimum(self, **kwargs)
+    # def plot(self, **kwargs):
+    #     return plots.plot_estim_optimum(self, **kwargs)
+
+    def plot(self, i, **kwargs):
+        return plots.plot_estim_optimum_timecourse(self, tc_index=i, **kwargs)
 
     def plot_generations(self, **kwargs):
         return plots.plot_generations(self, **kwargs)
+
 
 class DeODEOptimizer(de.DESolver):
     """Overides energy function and report functions.
@@ -145,7 +146,7 @@ class DeODEOptimizer(de.DESolver):
                  initial='init',
                  max_generations=200,
                  convergence_noimprovement=20):
-        #self.varnames = model.varnames
+        # self.varnames = model.varnames
         self.model = model.copy()
         self.model_solvers = []
         self.tc = tcs
@@ -167,7 +168,7 @@ class DeODEOptimizer(de.DESolver):
             optSettings['pop_size'] = optSettings['genomesize']
         if optSettings.get('max_generations', None) is None:
             optSettings['max_generations'] = optSettings['generations']
-        max_generations=optSettings['max_generations']
+        max_generations = optSettings['max_generations']
 
         de.DESolver.__init__(self, len(pars),  # number of parameters
                              int(optSettings['pop_size']),  # pop size
@@ -191,10 +192,10 @@ class DeODEOptimizer(de.DESolver):
                 X0.append(x0value)
             X0 = array(X0, dtype=float)
             ms = ModelSolver(self.model,
-                            times=tc.t.copy(),
-                            initial=X0,
-                            title=tc.title,
-                            changing_pars=self.par_names)
+                             times=tc.t.copy(),
+                             initial=X0,
+                             title=tc.title,
+                             changing_pars=self.par_names)
             self.model_solvers.append(ms)
             solnames = ms.solutions_names()
             self.criterium.append(get_criterium(solnames, tc, weights))
@@ -217,12 +218,12 @@ class DeODEOptimizer(de.DESolver):
             if p > maxInitialValue or p < minInitialValue:
                 return float('inf')
         # set parameter values from trial
-        #self.model.set_uncertain(trial)
+        # self.model.set_uncertain(trial)
 
         # compute solutions and scores
         for i in range(len(self.tc)):
             sol = self.model_solvers[i].solve(par_values=trial)
-            #sol = self.computeSolution(i, trial)
+            # sol = self.computeSolution(i, trial)
             if sol is not None:
                 self.timecourse_scores[i] = self.criterium[i](sol, self.tc[i])
             else:
@@ -233,23 +234,23 @@ class DeODEOptimizer(de.DESolver):
 
     def reportInitial(self):
         msg = "\nSolving %s..." % self.model.metadata.get('title', '')
-        #initialize stopwatch
+        # initialize stopwatch
         self.start_time = time.time()
         if self.dump_generations is not None:
             self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:
-            print (msg)
+            print(msg)
         else:
             self.msgTicker(msg)
 
     def reportGeneration(self):
         msg = "%-4d: %f" % (self.generation, float(self.best_score))
         if not self.msgTicker:
-            print (msg)
+            print(msg)
         else:
             self.msgTicker(msg)
         if self.dump_generations is not None:
-            print (self.generation_string(self.generation), file=self.dumpfile)
+            print(self.generation_string(self.generation), file=self.dumpfile)
 
     def reportFinal(self):
         if self.exitCode <= 0:
@@ -262,7 +263,7 @@ class DeODEOptimizer(de.DESolver):
         else:
             self.endTicker(outCode)
         if self.dump_generations is not None:
-            print (self.generation_string(self.generation), file=self.dumpfile)
+            print(self.generation_string(self.generation), file=self.dumpfile)
             self.dumpfile.close()
 
     def generation_string(self, generation):
@@ -386,9 +387,9 @@ def s_timate(model, timecourses=None, opt_settings=None,
         timecourses = model  # use model as source in readTCs
 
     tcs = timecourse.readTCs(timecourses,
-                            filedir=tc_dir,
-                            names=names,
-                            verbose=verbose_readingTCs)
+                             filedir=tc_dir,
+                             names=names,
+                             verbose=verbose_readingTCs)
 
     optimizer = DeODEOptimizer(model, optSettings, tcs, **kwargs)
     optimizer.run()
@@ -397,6 +398,7 @@ def s_timate(model, timecourses=None, opt_settings=None,
 
 def test():
     from stimator import read_model, Solution
+    from matplotlib import pyplot as plt
 
     # --- example 1 --------------------
 
@@ -437,14 +439,16 @@ popsize = 60     # population size in GA
     best = model.estimate(timecourses=tc)
 
     print(best)
-    best.plot()
+    best.plot(0)
+    plt.show()
 
     print('--- Modifying model ---')
     m2 = model.copy()
-    bestpars = [(n,v) for n,v,e in best.parameters]
+    bestpars = [(n, v) for n, v, _ in best.parameters]
     m2.setp(bestpars)
 
     m2.solve(tf=20.0).plot()
+    plt.show()
 
     # --- example 2 --------------------
 
@@ -478,18 +482,20 @@ timecourse TSH2b.txt
     import pathlib
     this_file = pathlib.Path(__file__)
     tcdir = pathlib.Path(this_file.parents[0], 'examples', 'timecourses')
-    #print(tcdir)
+    # print(tcdir)
 
-    optimum = s_timate(m1, tc_dir=tcdir, #timecourses=['TSH2a.txt', 'TSH2b.txt'],
+    optimum = s_timate(m1, tc_dir=tcdir,
                        names=['SDLTSH', 'HTA'],
-                       dump_generations=True) 
+                       dump_generations=True)
     # convergence_noimprovement=40)
     # ... intvarsorder=(0,2,1) ...
 
     print(optimum)
-    optimum.plot()
-    optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(9,6))
-
+    optimum.plot(0)
+    plt.show()
+    optimum.plot(1)
+    plt.show()
+    # optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(9,6))
 
     # --- example 2, fitting a transformation --------------------
 
@@ -521,11 +527,11 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 """)
 
     optimum = s_timate(mtransf, tc_dir=tcdir, timecourses=['tc_double.txt'],
-                       names=['sdlx2', 'SDLTSH', 'HTA']) 
+                       names=['sdlx2', 'SDLTSH', 'HTA'])
 
     print(optimum)
-    optimum.plot()
-
+    optimum.plot(0)
+    plt.show()
 
     # --- example 2 with unknown initial values --------------------
 
@@ -541,13 +547,15 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
     # only one time course can be used:
     # cannot fit one initial value using several timecourses!!!
 
-    optimum = s_timate(m2, timecourses=['TSH2a.txt'], 
+    optimum = s_timate(m2, timecourses=['TSH2a.txt'],
                        tc_dir=tcdir,
                        opt_settings={'pop_size': 60},
                        names=['SDLTSH', 'HTA'])
 
     print(optimum)
-    optimum.plot(show=True)
+    optimum.plot(0)
+    plt.show()
+
 
 if __name__ == "__main__":
     test()

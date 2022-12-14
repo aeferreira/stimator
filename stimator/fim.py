@@ -1,5 +1,4 @@
 """functions to compute Fisher Information Matrix"""
-from __future__ import print_function, absolute_import
 from collections import OrderedDict
 from numpy import array, diag, matrix, zeros, linalg, dstack, sum
 from stimator.dynamics import add_dSdt_to_model, solve
@@ -9,11 +8,11 @@ SYMPY_INSTALLED = True
 try:
     import sympy
 except ImportError:
-    print ('ERROR: sympy module must be installed to generate sensitivity strings')
+    print('ERROR: sympy module must be installed to generate sensitivity strings')
     SYMPY_INSTALLED = False
 
-def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
 
+def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
     """Computes FIM normalized by parameter values.
 
     model is a model object.
@@ -40,7 +39,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
     # for x in m.varnames:
     #     inits[str(x)] = 0.0
     # m.set_init(inits)
-    
+
     convert_pars = OrderedDict()
     if isinstance(pars, dict):
         pars = pars.items()
@@ -66,16 +65,16 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
 
     sols = Solutions()
     for tc in timecoursedata:
-        #set init and solve
+        # set init and solve
         m.set_init(tc.state_at(0.0))
         sols += solve(m, tf=tc.t[-1], ignore_replist=True)
 
-    #compute P
+    # compute P
 
     # P is the diagonal matrix of parameter values
     P = matrix(diag(array(list(pars.values()), dtype=float)))
 
-    #keep indexes of variables considered
+    # keep indexes of variables considered
     if vars is not None:
         vnames = m.varnames
         xindexes = []
@@ -84,7 +83,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
                 if y == vname:
                     xindexes.append(i)
         xindexes = array(xindexes)
-        #compute indexes of sensitivities
+        # compute indexes of sensitivities
         # search pattern d_<var name>_d_<parname> in variable names
         indexes = []
         for vname in vars:
@@ -102,24 +101,24 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
         ranges = [0.0 for i in range(len(vars))]
         for sol in sols:
             for i in sol.xindexes:
-                y =sol.data[i, :]
+                y = sol.data[i, :]
                 tpe = (max(y) - min(y))
                 ranges[i] = max(ranges[i], tpe)
         expCOV = constError_func([r * 0.05 for r in ranges])
 
     tcFIM = []
     for sol in sols:
-        #compute integral of ST * MVINV * S
+        # compute integral of ST * MVINV * S
         ntimes = len(sol.t)
         FIM = zeros((npars, npars))
         for i in range(1, ntimes):
-            #time step
+            # time step
             h = (sol.t[i]-sol.t[i-1])
 
-            #S matrix
+            # S matrix
             svec = sol.data[sol.indexes, i]
             S = matrix(svec.reshape((nvars, npars)))
-            SP = S * P # scale with par values
+            SP = S * P  # scale with par values
             SPT = matrix(SP.T)
 
             # MVINV is the inverse of measurement COV matrix
@@ -128,7 +127,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
             MV = matrix(error_x**2)
             MVINV = linalg.inv(MV)
 
-            #contribution at point i (rectangle's rule)
+            # contribution at point i (rectangle's rule)
             FIMpoint = h * SPT * MVINV * SP
             FIM += FIMpoint
         tcFIM.append(FIM)
@@ -136,6 +135,7 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
     sumFIM = sum(dstack(tcFIM), axis=2)
 
     return sumFIM, P
+
 
 def computeFIM(model, pars, TCs, COV, vars=None):
     FIM, P = __computeNormalizedFIM(model, pars, TCs, COV, vars)
@@ -148,6 +148,7 @@ def computeFIM(model, pars, TCs, COV, vars=None):
     # check = dot(INVFIM, realFIM)
     # TODO: MAKE THIS CHECK USEFUL
     return realFIM, INVFIM
+
 
 def test():
     from stimator.model import Model
@@ -178,45 +179,44 @@ def test():
     print(divider)
     glo_1tc_msg = 'Glyoxalase model, 1 timecourse, parameters {} and {}'.format
     glo_2tc_msg = 'Glyoxalase model, 2 timecourses, parameters {} and {}'.format
-    print (glo_1tc_msg(pars[0], pars[1]))
-    print ('Timecourse with HTA and SDLTSH')
+    print(glo_1tc_msg(pars[0], pars[1]))
+    print('Timecourse with HTA and SDLTSH')
     _, invFIM1 = computeFIM(m, parsdict, sols, errors, "HTA SDLTSH".split())
 
-    print ('\nParameters ---------------------------')
+    print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
-        print ("%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i, i]**0.5))
+        print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
     print(divider)
-    print (glo_1tc_msg(pars[0], pars[1]))
-    print ('Timecourse with SDLTSH only')
+    print(glo_1tc_msg(pars[0], pars[1]))
+    print('Timecourse with SDLTSH only')
     _, invFIM1 = computeFIM(m, parsdict, sols, errors_sdl_only, "SDLTSH".split())
-    print ('\nParameters ---------------------------')
+    print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
-        print ("%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i, i]**0.5))
-
+        print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
 
     print(divider)
     print(glo_2tc_msg(pars[0], pars[1]))
     print('Timecourses with HTA and SDLTSH')
 
-    #generate 2nd timecourse
+    # generate 2nd timecourse
     m.init.SDLTSH = 0.001246154
     m.init.HTA = 0.2688
     sols += solve(m, tf=5190.0)
 
     _, invFIM1 = computeFIM(m, parsdict, sols, errors, "HTA SDLTSH".split())
-    print ('\nParameters ---------------------------')
+    print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
-        print ("%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i, i]**0.5))
+        print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
 
     print(divider)
     print(glo_2tc_msg(pars[0], pars[1]))
-    print ('Timecourses with SDLTSH only')
+    print('Timecourses with SDLTSH only')
 
     _, invFIM1 = computeFIM(m, parsdict, sols, errors_sdl_only, ["SDLTSH"])
-    print ('\nParameters ---------------------------')
+    print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
-        print ("%7s = %.5e +- %.5e" %(p, parsdict[p], invFIM1[i, i]**0.5))
+        print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
+
 
 if __name__ == "__main__":
     test()
-

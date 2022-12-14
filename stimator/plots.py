@@ -117,20 +117,23 @@ def plot_timecourse(timecourse, what=None, ax=None,
     # find what (which columns) to plot
     cols_to_plot = _get_cols_to_plot(timecourse, what)
 
+    # keep a table of handles of lines
+    line_handles = {}
+
     # plot (as lines)
     for name in cols_to_plot:
         x = timecourse.t
         y = timecourse[name]
-        ax.plot(x, y, label=name, **kwargs)
+        line, *_ = ax.plot(x, y, label=name, **kwargs)
+        line_handles[name] = line
 
     # overide prop_cycler styles if these are specified on the styling dict
     # for some variables
     if styling is not None:
         stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
-        lines = ax.get_lines()
-        for i, name in enumerate(cols_to_plot):
+        for name in cols_to_plot:
             if name in stylingdict:
-                lines[i].set(label=name, **(stylingdict[name]))
+                line_handles[name].set(label=name, **(stylingdict[name]))
 
     # draw legend
     handles, lbls = ax.get_legend_handles_labels()
@@ -150,16 +153,94 @@ def plot_timecourse(timecourse, what=None, ax=None,
     return ax
 
 
-#     for line in lines_desc:
-#         sol = solutions[line['solution_index']]
-#         y = sol[line['var_index']]
-#         data_loc = np.logical_not(np.isnan(y))
-#         x = sol.t[data_loc]
-#         y = y[data_loc]
-#         ax.plot(x, y, ls=ls, marker=marker,
-#                 color=line['color'], label=line['name'],
-#                 clip_on=False)
-#     ax.set_title(title)
+def plot_estim_optimum_timecourse(opt, tc_index=0, exp_style=None,
+                                  opt_suffix='_pred', opt_prefix='',
+                                  **kwargs):
+    bestsols = opt.optimum_dense_tcs
+    expsols = opt.optimizer.tc
+    tcstats = opt.tcdata[tc_index]
+    expsol = expsols[tc_index]
+    symsol = bestsols[tc_index]
+
+    if exp_style is None:
+        exp_style = dict(marker='o', linestyle='none')
+
+    ax = kwargs.pop('ax', None)
+    title = kwargs.pop('title', None)
+    tight_t0 = kwargs.pop('tight_t0', True)
+
+    if ax is None:
+        ax = plt.gca()
+
+    # locally set the prop_cycler if prop_cycle or palette are given
+    prop_cycle = kwargs.pop('prop_cycle', None)
+    palette = kwargs.pop('palette', None)
+    used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
+    if used_prop_cycle is not None:
+        ax.set_prop_cycle(used_prop_cycle)
+    else:
+        used_prop_cycle = mpl.rcParams['axes.prop_cycle']
+
+    # ignore what
+    _ = kwargs.pop('what', None)
+
+    # retrieve the 'styling' argument
+    # starting with empty dict if not present
+    styling = kwargs.pop('styling', dict())
+
+    # keep a table of handles of lines
+    line_handles = {}
+    styling_exps = {}
+
+    for line in range(len(expsol)):
+        # count NaN and do not plot if they are most of the timecourse
+        yexp = expsol[line]
+        nnan = len(yexp[np.isnan(yexp)])
+        if nnan >= expsol.ntimes-1:
+            continue
+        # otherwise plot lines
+        name = expsol.names[line]
+        opt_name = opt_prefix + name + opt_suffix
+        ysim = symsol[symsol.names.index(name)]
+
+        line, *_ = ax.plot(expsol.t, yexp, label=name, **kwargs)
+        line_handles[name] = line
+        styling_exps[name] = exp_style
+        line, *_ = ax.plot(symsol.t, ysim, label=opt_name, **kwargs)
+        line_handles[opt_name] = line
+
+    # overide styling for exp variables
+
+    for key in styling_exps:
+        if key in styling:
+            styling[key].update(styling_exps[key])
+        else:
+            styling[key] = styling_exps[key]
+
+    # overide prop_cycler styles if these are specified on the styling dict
+    # for some variables
+
+    stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
+
+    for name in stylingdict:
+        line_handles[name].set(label=name, **(stylingdict[name]))
+
+    # draw legend
+    handles, lbls = ax.get_legend_handles_labels()
+    ax.legend(handles, lbls, loc='best')
+
+    # draw plot title
+    if title is not None:
+        ax.set_title(title)
+    else:
+        ax.set_title("%s (%d pt) %g" % tcstats)
+
+    # remove the left margin for the x-axis
+    # to start the plot at t0
+    if tight_t0:
+        if symsol.t[0] < symsol.t[-1]:
+            ax.set_xlim(symsol.t[0], None)
+    return ax
 
 
 def plot_estim_optimum(opt, figure=None,
@@ -342,7 +423,7 @@ nothing really usefull here
 
     demodata2 = """
 #this is demo data with a header
-t x y z
+t x2 y2 z2
 0       0.95 0         0
 0.1                  0.09
 
@@ -422,6 +503,20 @@ nothing really usefull here
                     title="plot with a custom cycler and palette",
                     prop_cycle=custom_cycler, palette='Dark2')
     plt.show()
+
+    plot_timecourse(sol,
+                    title="1st plot", palette='Dark2')
+    plot_timecourse(sol2,
+                    title="2nd plot, same axes as 1st plot", palette='Pastel2')
+    plt.show()
+
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+    plot_timecourse(sol,
+                    title="1st plot", ax=ax1, palette='Dark2')
+    plot_timecourse(sol2,
+                    title="2nd plot", ax=ax2, palette='tab10')
+    plt.show()
+
     # sols = Solutions([Solution(title='the first tc').read_str(demodata),
     #                   Solution().read_str(demodata2)],
     #                  title='all time courses')

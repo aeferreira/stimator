@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, division
 from time import time
 import numpy as np
 from scipy import integrate
@@ -10,27 +9,28 @@ from stimator.de import DESolver
 from stimator.moo.rmc import remove_most_crowded
 from stimator.moo.sorting import MOOSorter
 
+
 def dominance(vec1, vec2):
     """Compute Pareto dominance relationship."""
     d_result = 0
-    for vo,vn in zip(vec1, vec2):
+    for vo, vn in zip(vec1, vec2):
         d = vn-vo
-        if d <= 0 and d_result <=0:
+        if d <= 0 and d_result <= 0:
             d_result -= 1
-        elif d >= 0 and d_result >=0:
+        elif d >= 0 and d_result >= 0:
             d_result += 1
         else:
             return 0
     return d_result
 
-## def dominance(vec1, vec2):
-##     """Compute Pareto dominance relationship."""
-##     size = len(vec1)
-##     d = vec2 <= vec1
-##     if np.all(d): return -size
-##     d = vec2 >= vec1
-##     if np.all(d): return size
-##     return 0
+# def dominance(vec1, vec2):
+#     """Compute Pareto dominance relationship."""
+#     size = len(vec1)
+#     d = vec2 <= vec1
+#     if np.all(d): return -size
+#     d = vec2 >= vec1
+#     if np.all(d): return size
+#     return 0
 
 def nondominated_solutions(energies):
     """Returns the indexes of non-dominated solutions in a population."""
@@ -41,9 +41,9 @@ def nondominated_solutions(energies):
             d_result = 0
             for j in range(len(energies[i])):
                 d = energies[i][j] - energies[k][j]
-                if d <= 0 and d_result <=0:
+                if d <= 0 and d_result <= 0:
                     d_result -= 1
-                elif d >= 0 and d_result >=0:
+                elif d >= 0 and d_result >= 0:
                     d_result += 1
                 else:
                     d_result = 0
@@ -313,7 +313,7 @@ class GDE3Solver(DESolver):
             print ('generation took {} s'.format(timeElapsed))
             self.gen_times.append(timeElapsed)
             if self.dump_generations is not None:
-                print >> self.dumpfile, self.generation_string('0')
+                print(self.generation_string('0'), file=self.dumpfile)
         
         else: # generation >= 1
             time0 = time()

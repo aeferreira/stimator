@@ -1,28 +1,27 @@
 import pytest
 
-import os
+from pathlib import Path
 
-from six import StringIO
+from io import StringIO
 from numpy import isnan, array
 from numpy.testing import assert_array_equal
 
 from stimator import Solution, Solutions, read_tc
 from stimator.modelparser import read_model
+import stimator.examples.timecourses as expl_tcs
 
-_THIS_DIR, _ = os.path.split(os.path.abspath(__file__))
-#print(_THIS_DIR)
-_UPPER, _ = os.path.split(_THIS_DIR)
-#print(_UPPER)
-_DATADIR = os.path.join(_UPPER, 'examples')
-#print(_DATADIR)
+_DATADIR = Path(expl_tcs.__path__[0])
+
 
 def assert_almost_equal(x, y):
     if abs(x-y) < 0.0001:
         return True
     return False
 
+
 def average(x, t):
     return array((t/2.0, (x[0]+x[-1])/2.0))
+
 
 demodata = """
 #this is demo data with a header
@@ -41,9 +40,12 @@ nothing really usefull here
 0.6  - 0.5 - -
 
 """
+
+
 @pytest.fixture
 def tc_1():
     return StringIO(demodata)
+
 
 demodata_noheader = """
 #this is demo data without a header
@@ -77,6 +79,7 @@ nothing really usefull here
 0.6  - 0.4 - -
 """
 
+
 def test_read_from(tc_1):
     sol = Solution().read_from(tc_1)
     assert sol.names == ['x', 'y', 'z']
@@ -92,6 +95,7 @@ def test_read_from(tc_1):
     assert len(lines) == 9
     assert lines[0] == 't x y z'
 
+
 def test_read_str_orderByNames():
     sol = Solution().read_str(demodata)
     sol.order_by_names("z y".split())
@@ -103,6 +107,7 @@ def test_read_str_orderByNames():
     assert sol.data[0, 0] == 0
     assert sol.data[2, 3] == 0.4
     assert isnan(sol.data[-1, -1])
+
 
 def test_read_str_orderByNames2():
     sol = Solution().read_str(demodata)
@@ -116,6 +121,7 @@ def test_read_str_orderByNames2():
     assert sol.data[1, 3] == 0.4
     assert isnan(sol.data[1, -1])
 
+
 def test_read_str_bad_order_by_names():
     sol = Solution().read_str(demodata)
     sol.order_by_names("x bof z".split())
@@ -124,6 +130,7 @@ def test_read_str_bad_order_by_names():
     assert sol.t[-1] == 0.6
     assert len(sol.t) == 8
     assert sol.data.shape == (3, 8)
+
 
 def test_read_data_without_header():
     sol = Solution().read_str(demodata_noheader)
@@ -135,6 +142,7 @@ def test_read_data_without_header():
     assert sol.data[0, 0] == 1
     assert sol.data[1, 3] == 0.5
     assert isnan(sol.data[2, 1])
+
 
 def test_read_data_without_header_giving_names():
     names = ['v1', 'v2', 'v3', 'v4', 'v5']
@@ -148,6 +156,7 @@ def test_read_data_without_header_giving_names():
     assert sol.data[1, 3] == 0.5
     assert isnan(sol.data[2, 1])
 
+
 def test_read_data_without_header_giving_names2():
     names = ['v1', 'v2']
     sol = Solution().read_str(demodata_noheader, names=names)
@@ -160,19 +169,20 @@ def test_read_data_without_header_giving_names2():
     assert sol.data[1, 3] == 0.5
     assert isnan(sol.data[2, 1])
 
+
 def test_Solution_interface():
     sol = Solution().read_str(demodata)
-    
+
     # len(sol) and sol.ntimes
     assert(len(sol)) == 3
     assert sol.ntimes == 8
     assert sol.names == ['x', 'y', 'z']
-    
+
     # sol.t
     assert sol.t[0] == 0.0
     assert sol.t[-1] == 0.6
     assert len(sol.t) == 8
-    
+
     # sol.data
     assert sol.data.shape == (3, 8)
     assert sol.data[0, 0] == 0.95
@@ -181,20 +191,20 @@ def test_Solution_interface():
     # sol is an array, vectorial operators apply
     y = 2.0 * sol.data[:, -1]
     assert y[1] == 1
-    
+
     # indexing
     assert_array_equal(sol[0], sol.data[0])
     assert_array_equal(sol['x'], sol.data[0])
     with pytest.raises(ValueError):
         kseries = sol['k']
         assert kseries[0] == 0.0
-    
+
     # state_at(), returns dictionaries
     s02 = sol.state_at(0.2)
     assert isnan(s02['x'])
     assert isnan(s02['z'])
     assert assert_almost_equal(s02['y'], 0.2)
-    s045 = sol.state_at(0.45) # linear interpolation
+    s045 = sol.state_at(0.45)  # linear interpolation
     assert assert_almost_equal(s045['x'], 0.55)
     assert assert_almost_equal(s045['y'], 0.7)
     assert assert_almost_equal(s045['z'], 0.8)
@@ -208,11 +218,11 @@ def test_Solution_interface():
     assert isnan(slast['x'])
     assert isnan(slast['z'])
     assert assert_almost_equal(slast['y'], 0.5)
-    
+
     # iteration
     for series, sdata in zip(sol, sol.data):
         assert_array_equal(series, sdata)
-    
+
     # writing to file
     outfile = StringIO()
     sol.write_to(outfile)
@@ -228,6 +238,7 @@ def test_Solution_interface():
     assert sol.data[0, 0] == 0.95
     assert sol.data[0, 3] == 0.4
     assert isnan(sol.data[-1, -1])
+
 
 def test_Solution_transformation():
     sol = Solution(title='original time course').read_str(demodata)
@@ -252,8 +263,9 @@ def test_Solution_transformation():
     assert sol.data.shape == (2, 8)
     assert sol.data[0, 0] == sol.t[0] / 2.0
     assert sol.data[0, -1] == sol.t[-1] / 2.0
-    assert sol.data[1, 0] == (0.95 + 0.0)/ 2.0
+    assert sol.data[1, 0] == (0.95 + 0.0) / 2.0
     assert isnan(sol.data[1, -1])
+
 
 def test_Solution_clone_copy():
     sol = Solution(title='original time course').read_str(demodata)
@@ -310,11 +322,12 @@ def test_Solutions_construction_and_iadd():
     sols += s
     bcontext = True if sols else False
     assert bcontext
-    
+
     print_1st_line = 't x y z'
     ssols = str(sols)
     ssols = [line.strip() for line in ssols.split('\n')]
     assert print_1st_line == ssols[0]
+
 
 def test_readTCs():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
@@ -333,6 +346,7 @@ def test_readTCs():
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
+
 
 def test_readTCs_default_names():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR,
@@ -355,6 +369,7 @@ def test_readTCs_default_names():
     assert tcs[1].title == 'TSH2a.txt'
     assert tcs.get_common_full_vars() == ['SDLTSH']
 
+
 def test_readTCs_and_change_order():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
     tcs.order_by_names('HTA SDLTSH'.split())
@@ -374,9 +389,12 @@ def test_readTCs_and_change_order():
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
 
+
 def test_write_to():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
-    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir='../', verbose=False)
+    wdir = '../'
+    wpath = Path(wdir)
+    tcs.write_to(['TSH2b_2.txt', 'TSH2a_2.txt'], filedir=wdir, verbose=False)
     tcs = read_tc(['TSH2b_2.txt', 'TSH2a_2.txt'], '../', verbose=False)
     assert len(tcs) == 2
 
@@ -393,12 +411,13 @@ def test_write_to():
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].title == 'TSH2a_2.txt'
-    assert os.path.isfile('../TSH2b_2.txt')
-    assert os.path.isfile('../TSH2a_2.txt')
-    os.remove('../TSH2b_2.txt')
-    os.remove('../TSH2a_2.txt')
-    assert not os.path.isfile('../TSH2b_2.txt')
-    assert not os.path.isfile('../TSH2a_2.txt')
+    assert Path.is_file(wpath / 'TSH2b_2.txt')
+    assert Path.is_file(wpath / 'TSH2a_2.txt')
+    Path.unlink(wpath / 'TSH2b_2.txt')
+    Path.unlink(wpath / 'TSH2a_2.txt')
+    assert not Path.exists(wpath / 'TSH2b_2.txt')
+    assert not Path.exists(wpath / 'TSH2a_2.txt')
+
 
 def test_read_tc_declared_in_model():
     m = read_model("""
@@ -408,9 +427,9 @@ def test_read_tc_declared_in_model():
     timecourse TSH2a.txt
     variables SDLTSH HTA
     """)
-    
+
     tcs = read_tc(m, _DATADIR, verbose=False)
-    
+
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -426,7 +445,7 @@ def test_read_tc_declared_in_model():
     assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
-    
+
     tcs.order_by_modelvars(m)
 
     assert len(tcs) == 2
@@ -444,6 +463,3 @@ def test_read_tc_declared_in_model():
     assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
-
-if __name__ == '__main__':
-    pytest.main()

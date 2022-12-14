@@ -1,5 +1,4 @@
 import pytest
-from six import string_types, integer_types
 
 from stimator.modelparser import read_model, StimatorParserError
 
@@ -52,9 +51,11 @@ tf: 10
 
 """
 
+
 def _get_error_loc(st_parse_error):
     sp = st_parse_error.value.physloc
     return (sp.nstartline, sp.nendline, sp.startlinepos, sp.endlinepos)
+
 
 def _insert_line_and_string(textlines, i, line, replace=False):
     newlines = textlines[:]
@@ -64,6 +65,7 @@ def _insert_line_and_string(textlines, i, line, replace=False):
         newlines[i] = line
     return '\n'.join(newlines)
 
+
 @pytest.fixture
 def textlines():
     return model_text.splitlines()
@@ -71,7 +73,7 @@ def textlines():
 
 def test_valid_model():
     m = read_model(model_text)
-    assert isinstance(m.info(), string_types)
+    assert isinstance(m.info(), str)
     assert m.metadata['title'] == 'A model to test parsing.'
     assert len(m.varnames) == 6
     assert len(m.extvariables) == 0
@@ -97,8 +99,8 @@ def test_name_undef(textlines):
                 12, 'pypi = pip  #this is an error')
                 #    0....v....1....v....2....v....3
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'NameError' in spe.value.value
     assert sl == 12 and el == 12 and slp == 7 and elp == 10
@@ -109,8 +111,8 @@ def test_name_undef_in_find(textlines):
                 6, 'find pypi in [1e-5, 2 + kkk]  #this is an error')
                 #   0....v....1....v....2....v....3....v....4....v....5
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'NameError' in spe.value.value
     assert sl == 6 and el == 6 and slp == 24 and elp == 27
@@ -121,8 +123,8 @@ def test_overflow(textlines):
                 6, 'pypipip = pi*1e100**10000  #this is an overflow')
                 #   0....v....1....v....2....v....3....v....4....v....5
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'OverflowError' in spe.value.value
     assert sl == 6 and el == 6 and slp == 10 and elp == 25
@@ -133,8 +135,8 @@ def test_repeated_decl(textlines):
                 12, 'React1 : X2  + X3 -> X1, rate = 2 * X2 * X3')
                 #    0....v....1....v....2....v....3....v....4....v
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'Repeated declaration' in spe.value.value
     assert sl == 12 and el == 12 and slp == 0 and elp == 43
@@ -145,8 +147,8 @@ def test_bad_name_in_rate(textlines):
                 5, 'React1 : X2  + X3 -> X1, rate = X2*X3 / (KmX3+X32)', True)
                 #   0....v....1....v....2....v....3....v....4....v....5
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'NameError' in spe.value.value
     assert sl == 5 and el == 5 and slp == 46 and elp == 49
@@ -157,8 +159,8 @@ def test_bad_rate(textlines):
                 8, '    Vmax2*X1 / (Km2 + X1)) #reaction 2', True)
                 #   0....v....1....v....2....v....3....v....4
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'Syntax Error' in spe.value.value
     assert sl == 8 and el == 8 and slp == 4 and elp == 27
@@ -169,12 +171,8 @@ def test_bad_syntax(textlines):
                 6, 'OK!! not good...')
                 #   0....v....1....v..
     with pytest.raises(StimatorParserError) as spe:
-        m = read_model(modelText)
-    
+        _ = read_model(modelText)
+
     sl, el, slp, elp = _get_error_loc(spe)
     assert 'Invalid syntax' in spe.value.value
     assert sl == 6 and el == 6 and slp == 0 and elp == 16
-
-
-if __name__ == '__main__':
-    pytest.main()
