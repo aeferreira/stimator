@@ -287,14 +287,8 @@ class SolutionTimeCourse(object):
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[np.array(newindexes, dtype=int)]
 
-    def plot(self, what=None, ax=None,
-             prop_cycle=None, palette=None,
-             styling=None, title=None,
-             tight_t0=True, **kwargs):
-        plots.plot_timecourse(self, what, ax, prop_cycle,
-                              palette, styling, title,
-                              tight_t0,
-                              **kwargs)
+    def plot(self, **kwargs):
+        plots.plot_timecourse(self, **kwargs)
 
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR SEVERAL TIMECOURSES

@@ -1,5 +1,4 @@
 import math
-import itertools
 
 import numpy as np
 import matplotlib as mpl
@@ -62,7 +61,7 @@ MPL_QUALIT = ['Pastel1', 'Pastel2', 'Paired', 'Accent',
 MPL_QUALITATIVE_TABLE = {cm: mpl.colormaps[cm].colors for cm in MPL_QUALIT}
 
 
-def _get_list_from_palette(pname):
+def get_color_list(pname):
     """get a list of RGB values from a palette name.
 
     mpl qualitative names are accepted.
@@ -83,7 +82,7 @@ def _get_new_prop_cycle(prop_cycle, palette):
 
     # include the palette in the prop_cycler
     if palette is not None:
-        color_list = _get_list_from_palette(palette)
+        color_list = get_color_list(palette)
         color_cycle = cycler('color', color_list)
         if prop_cycle is None:
             return color_cycle
@@ -131,9 +130,8 @@ def plot_timecourse(timecourse, what=None, ax=None,
     # for some variables
     if styling is not None:
         stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
-        for name in cols_to_plot:
-            if name in stylingdict:
-                line_handles[name].set(label=name, **(stylingdict[name]))
+        for name in stylingdict:
+            line_handles[name].set(label=name, **(stylingdict[name]))
 
     # draw legend
     handles, lbls = ax.get_legend_handles_labels()
@@ -153,24 +151,21 @@ def plot_timecourse(timecourse, what=None, ax=None,
     return ax
 
 
-def plot_estim_optimum_timecourse(opt, tc_index=0, exp_style=None,
+def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, exp_style=None,
                                   opt_suffix='_pred', opt_prefix='',
                                   **kwargs):
-    bestsols = opt.optimum_dense_tcs
-    expsols = opt.optimizer.tc
+    if ax is None:
+        ax = plt.gca()
+
     tcstats = opt.tcdata[tc_index]
-    expsol = expsols[tc_index]
-    symsol = bestsols[tc_index]
+    expsol = opt.optimizer.tc[tc_index]
+    symsol = opt.optimum_dense_tcs[tc_index]
 
     if exp_style is None:
         exp_style = dict(marker='o', linestyle='none')
 
-    ax = kwargs.pop('ax', None)
     title = kwargs.pop('title', None)
     tight_t0 = kwargs.pop('tight_t0', True)
-
-    if ax is None:
-        ax = plt.gca()
 
     # locally set the prop_cycler if prop_cycle or palette are given
     prop_cycle = kwargs.pop('prop_cycle', None)
@@ -181,49 +176,49 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, exp_style=None,
     else:
         used_prop_cycle = mpl.rcParams['axes.prop_cycle']
 
-    # ignore what
-    _ = kwargs.pop('what', None)
-
     # retrieve the 'styling' argument
-    # starting with empty dict if not present
-    styling = kwargs.pop('styling', dict())
+    styling = kwargs.pop('styling', None)
+
+    # ignore 'what' (for now...)
+    _ = kwargs.pop('what', None)
 
     # keep a table of handles of lines
     line_handles = {}
-    styling_exps = {}
 
+    # find what to plot
+    what2plot = []
     for line in range(len(expsol)):
-        # count NaN and do not plot if they are most of the timecourse
+        # count NaN and do not plot if they are most of the time series
         yexp = expsol[line]
         nnan = len(yexp[np.isnan(yexp)])
         if nnan >= expsol.ntimes-1:
             continue
-        # otherwise plot lines
-        name = expsol.names[line]
-        opt_name = opt_prefix + name + opt_suffix
-        ysim = symsol[symsol.names.index(name)]
+        # otherwise keep the name
+        what2plot.append(expsol.names[line])
 
-        line, *_ = ax.plot(expsol.t, yexp, label=name, **kwargs)
+    # plot experimental data
+    ax.set_prop_cycle(used_prop_cycle)
+    for name in what2plot:
+        yexp = expsol[name]
+        newstyles = dict(kwargs)
+        newstyles.update(exp_style)
+        line, *_ = ax.plot(expsol.t, yexp, label=name, **newstyles)
         line_handles[name] = line
-        styling_exps[name] = exp_style
+
+    # plot predicted data
+    ax.set_prop_cycle(used_prop_cycle)  # reuse props
+    for name in what2plot:
+        ysim = symsol[name]
+        opt_name = opt_prefix + name + opt_suffix
         line, *_ = ax.plot(symsol.t, ysim, label=opt_name, **kwargs)
         line_handles[opt_name] = line
 
-    # overide styling for exp variables
-
-    for key in styling_exps:
-        if key in styling:
-            styling[key].update(styling_exps[key])
-        else:
-            styling[key] = styling_exps[key]
-
     # overide prop_cycler styles if these are specified on the styling dict
     # for some variables
-
-    stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
-
-    for name in stylingdict:
-        line_handles[name].set(label=name, **(stylingdict[name]))
+    if styling is not None:
+        stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
+        for name in stylingdict:
+            line_handles[name].set(label=name, **(stylingdict[name]))
 
     # draw legend
     handles, lbls = ax.get_legend_handles_labels()
@@ -243,16 +238,7 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, exp_style=None,
     return ax
 
 
-def plot_estim_optimum(opt, figure=None,
-                       axis_set=None,
-                       fig_size=None,
-                       style=None,
-                       palette=None,
-                       font="sans-serif",
-                       save2file=None,
-                       show=False):
-
-    settings = _prepare_settigs(style, palette, font, fig_size)
+def plot_estim_optimum(opt, fig_size=None):
 
     with plt.style.context(settings):
         if axis_set is None:
@@ -278,28 +264,6 @@ def plot_estim_optimum(opt, figure=None,
             symsol = bestsols[i]
 
             cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
-            cyclingcolors = itertools.cycle(cyl)
-
-            for line in range(len(expsol)):
-                # count NaN and do not plot if they are most of the timecourse
-                yexp = expsol[line]
-                nnan = len(yexp[np.isnan(yexp)])
-                if nnan >= expsol.ntimes-1:
-                    continue
-                # otherwise plot lines
-                xname = expsol.names[line]
-                ysim = symsol[symsol.names.index(xname)]
-                lsexp, mexp = 'None', 'o'
-                lssim, msim = '-', 'None'
-
-                color = next(cyclingcolors)
-
-                subplot.plot(expsol.t, yexp,
-                             marker=mexp, ls=lsexp, color=color, clip_on=False)
-                subplot.plot(symsol.t, ysim,
-                             marker=msim, ls=lssim, color=color,
-                             label='%s' % xname, clip_on=False)
-            subplot.legend(loc='best')
 
         if save2file is not None:
             figure.savefig(save2file)
@@ -399,9 +363,8 @@ def plot_generations(opt, generations=None,
 
 
 if __name__ == "__main__":
-    from pathlib import Path
+    from stimator import get_examples_path
     from stimator.timecourse import Solution, Solutions, readTCs
-    import stimator.examples.timecourses as expl_tcs
 
     demodata = """
 #this is demo data with a header
@@ -409,7 +372,7 @@ t x y z
 0       0.95 0         0
 0.1   0.1  0.5        0.2
 
-  0.2 skip 0.2 skip this
+  0.2 0.2 0.2 skip this
 nothing really usefull here
 - 0.3 0.3 this line should be skipped
 #0.4 0.4
@@ -417,7 +380,7 @@ nothing really usefull here
 0.4 0.5 0.6 0.7
 0.5 0.6 0.8 0.9
 0.55 0.7 0.85 0.95
-0.6  - 0.5 - -
+0.6  0.65 0.5 - -
 
 """
 
@@ -442,13 +405,15 @@ nothing really usefull here
 
     # print(sol)
 
-    example_tc = Path(expl_tcs.__path__[0]) / 'TSH2b.txt'
+    example_tc = get_examples_path() / 'TSH2b.txt'
 
     stsh = Solution()
     stsh.read_from(example_tc)
 
-    plot_timecourse(sol, title="simple TC plot")
+    # plot_timecourse(sol, title="simple TC plot")
+    sol.plot(title="simple TC plot")
     plt.show()
+
     plot_timecourse(sol,
                     title="plot with different lw, linewidth=10",
                     linewidth=10)
@@ -507,12 +472,12 @@ nothing really usefull here
     plot_timecourse(sol,
                     title="1st plot", palette='Dark2')
     plot_timecourse(sol2,
-                    title="2nd plot, same axes as 1st plot", palette='Pastel2')
+                    title="2nd plot, same axes as 1st plot", palette='Dark2')
     plt.show()
 
     f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
     plot_timecourse(sol,
-                    title="1st plot", ax=ax1, palette='Dark2')
+                    title="1st plot", ax=ax1, palette='Pastel2')
     plot_timecourse(sol2,
                     title="2nd plot", ax=ax2, palette='tab10')
     plt.show()

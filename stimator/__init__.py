@@ -1,10 +1,14 @@
 """S-timator package"""
-
+from pathlib import Path
 from stimator.timecourse import readTCs, read_tc, Solution, Solutions, TimeCourses
 
 from stimator.model import Model
 from stimator.modelparser import read_model
 
+
+def get_examples_path():
+    import stimator.examples.timecourses as expl_tcs
+    return Path(expl_tcs.__path__[0])
 
 __version__ = '0.9.135'
 

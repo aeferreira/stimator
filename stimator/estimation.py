@@ -123,8 +123,11 @@ class OptimumData(object):
     # def plot(self, **kwargs):
     #     return plots.plot_estim_optimum(self, **kwargs)
 
-    def plot(self, i, **kwargs):
+    def plot(self, i=0, **kwargs):
         return plots.plot_estim_optimum_timecourse(self, tc_index=i, **kwargs)
+
+
+def plot_estim_optimum_timecourse(opt, ):
 
     def plot_generations(self, **kwargs):
         return plots.plot_generations(self, **kwargs)
@@ -397,7 +400,7 @@ def s_timate(model, timecourses=None, opt_settings=None,
 
 
 def test():
-    from stimator import read_model, Solution
+    from stimator import read_model, Solution, get_examples_path
     from matplotlib import pyplot as plt
 
     # --- example 1 --------------------
@@ -439,7 +442,7 @@ popsize = 60     # population size in GA
     best = model.estimate(timecourses=tc)
 
     print(best)
-    best.plot(0)
+    best.plot(palette='Dark2')
     plt.show()
 
     print('--- Modifying model ---')
@@ -447,7 +450,7 @@ popsize = 60     # population size in GA
     bestpars = [(n, v) for n, v, _ in best.parameters]
     m2.setp(bestpars)
 
-    m2.solve(tf=20.0).plot()
+    m2.solve(tf=20.0).plot(palette='Dark2')
     plt.show()
 
     # --- example 2 --------------------
@@ -478,11 +481,8 @@ timecourse TSH2b.txt
 """)
 
     # print m1
-    # get tcdir
-    import pathlib
-    this_file = pathlib.Path(__file__)
-    tcdir = pathlib.Path(this_file.parents[0], 'examples', 'timecourses')
-    # print(tcdir)
+
+    tcdir = get_examples_path()
 
     optimum = s_timate(m1, tc_dir=tcdir,
                        names=['SDLTSH', 'HTA'],
@@ -530,7 +530,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
                        names=['sdlx2', 'SDLTSH', 'HTA'])
 
     print(optimum)
-    optimum.plot(0)
+    optimum.plot()
     plt.show()
 
     # --- example 2 with unknown initial values --------------------
@@ -553,7 +553,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
                        names=['SDLTSH', 'HTA'])
 
     print(optimum)
-    optimum.plot(0)
+    optimum.plot()
     plt.show()
 
 
