@@ -8,6 +8,7 @@ from stimator.dynamics import ModelSolver
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
+from stimator.utils import _is_number
 
 
 # ----------------------------------------------------------------------------
@@ -48,7 +49,8 @@ def getRangeVars(tcs, varnames):
 
 
 def get_criterium(repnames, tc, weights=None):
-    """Returns a function to compute the objective function given a solution and a timecourse.
+    """Returns a function to compute the objective function
+    given a solution and a timecourse.
 
     The function has signature
     criterium(Y,i)
@@ -84,7 +86,7 @@ def get_criterium(repnames, tc, weights=None):
 
 
 # ----------------------------------------------------------------------------
-#         Class to perform DE optimization for ODE systems
+#         Class to hold results of optimization
 # ----------------------------------------------------------------------------
 
 class OptimumData(object):
@@ -120,18 +122,30 @@ class OptimumData(object):
     def __str__(self):
         return self.info()
 
-    # def plot(self, **kwargs):
-    #     return plots.plot_estim_optimum(self, **kwargs)
-
     def plot(self, i=0, **kwargs):
         return plots.plot_estim_optimum_timecourse(self, tc_index=i, **kwargs)
 
+    def print_generations(self, **kwargs):
+        if not self.generations_exist:
+            return
+        for i, (pop, scores) in enumerate(zip(self.generation_populations,
+                                              self.generation_scores)):
+            print(f'GENERATION {i} --------', **kwargs)
+            for individual, indscores in zip(pop, scores):
+                print(f'{individual} : {indscores}', **kwargs)
+                # pstr = ' '.join([f'{p:>.7f}' for p in individual])
+                # score_isnumber = isinstance(indscores, np.generic)
+                # score_isnumber = score_isnumber or _is_number(indscores)
+                # if score_isnumber:
+                #     sstr = f'{indscores:>.7f}'
+                # else:
+                #     sstr = ' '.join([f'{s:>.7f}' for s in indscores])
+                # print(f'{pstr} : {sstr}', **kwargs)
 
-def plot_estim_optimum_timecourse(opt, ):
 
-    def plot_generations(self, **kwargs):
-        return plots.plot_generations(self, **kwargs)
-
+# ----------------------------------------------------------------------------
+#         Class to perform DE optimization for ODE systems
+# ----------------------------------------------------------------------------
 
 class DeODEOptimizer(de.DESolver):
     """Overides energy function and report functions.
@@ -144,7 +158,7 @@ class DeODEOptimizer(de.DESolver):
     def __init__(self, model, optSettings, tcs, weights=None,
                  aMsgTicker=None,
                  anEndComputationTicker=None,
-                 dump_generations=None,
+                 dump_generations=False,
                  dump_predictions=False,
                  initial='init',
                  max_generations=200,
@@ -156,7 +170,7 @@ class DeODEOptimizer(de.DESolver):
         self.endTicker = anEndComputationTicker
         self.msgTicker = aMsgTicker
         self.dump_predictions = dump_predictions
-        self.dump_generations = dump_generations
+        self._dump_generations = dump_generations
 
         # reorder variables according to model
         self.tc.order_by_modelvars(self.model)
@@ -177,12 +191,14 @@ class DeODEOptimizer(de.DESolver):
                              int(optSettings['pop_size']),  # pop size
                              mins, maxs,  # min and max parameter values
                              "Best2Exp",  # DE strategy
-                             0.7, 0.6, 0.0, # DiffScale, p crossover, Cut-off S
+                             # DiffScale, p crossover, Cut-off S
+                             0.7, 0.6, 0.0,
                              max_generations=max_generations,
-                             convergence_noimprovement=convergence_noimprovement)
+                             conv_noimprov=convergence_noimprovement)
 
         # cutoffEnergy is 1e-6 of deviation from data
-        self.cutoffEnergy = 1.0e-6 * sum([nansum(fabs(tc.data)) for tc in self.tc])
+        self.cutoffEnergy = sum([nansum(fabs(tc.data)) for tc in self.tc])
+        self.cutoffEnergy = 1.0e-6 * self.cutoffEnergy
 
         # create one ModelSolver per timecorse
         self.criterium = []
@@ -191,7 +207,10 @@ class DeODEOptimizer(de.DESolver):
         for tc in self.tc:
             X0 = []
             for xname in model.varnames:
-                x0value = tc[xname][0] if xname in tc.names else self.model.get_init(xname)
+                if xname in tc.names:
+                    x0value = tc[xname][0]
+                else:
+                    x0value = self.model.get_init(xname)
                 X0.append(x0value)
             X0 = array(X0, dtype=float)
             ms = ModelSolver(self.model,
@@ -217,8 +236,8 @@ class DeODEOptimizer(de.DESolver):
 
     def external_score_function(self, trial):
         # if out of bounds flag with error energy
-        for p, minInitialValue, maxInitialValue in zip(trial, self.min_values, self.max_values):
-            if p > maxInitialValue or p < minInitialValue:
+        for p, min_v, max_v in zip(trial, self.min_values, self.max_values):
+            if p > max_v or p < min_v:
                 return float('inf')
         # set parameter values from trial
         # self.model.set_uncertain(trial)
@@ -239,8 +258,10 @@ class DeODEOptimizer(de.DESolver):
         msg = "\nSolving %s..." % self.model.metadata.get('title', '')
         # initialize stopwatch
         self.start_time = time.time()
-        if self.dump_generations is not None:
-            self.dumpfile = open('generations.txt', 'w')
+        if self._dump_generations:
+            self._generation_popvalues = []
+            self._generation_score_values = []
+            # self.dumpfile = open('generations.txt', 'w')
         if not self.msgTicker:
             print(msg)
         else:
@@ -252,8 +273,8 @@ class DeODEOptimizer(de.DESolver):
             print(msg)
         else:
             self.msgTicker(msg)
-        if self.dump_generations is not None:
-            print(self.generation_string(self.generation), file=self.dumpfile)
+        if self._dump_generations:
+            self.keep_generation(self.generation)
 
     def reportFinal(self):
         if self.exitCode <= 0:
@@ -265,23 +286,12 @@ class DeODEOptimizer(de.DESolver):
             de.DESolver.reportFinal(self)
         else:
             self.endTicker(outCode)
-        if self.dump_generations is not None:
-            print(self.generation_string(self.generation), file=self.dumpfile)
-            self.dumpfile.close()
+        if self._dump_generations:
+            self.keep_generation(self.generation)
 
-    def generation_string(self, generation):
-        generation = str(generation)
-        # find if objectives is iterable
-        isiter = hasattr(self.scores[0], '__contains__')
-        res = 'generation %s -------------------------\n' % generation
-        for s, o in zip(self.pop, self.scores):
-            sstr = ' '.join([str(i) for i in s])
-            if isiter:
-                ostr = ' '.join([str(i) for i in o])
-            else:
-                ostr = str(o)
-            res = res + '%s %s\n' % (sstr, ostr)
-        return res
+    def keep_generation(self, generation):
+        self._generation_popvalues.append(self.pop)
+        self._generation_score_values.append(self.scores)
 
     def generate_optimum(self):
         # compute parameter standard errors, based on FIM-1
@@ -316,8 +326,8 @@ class DeODEOptimizer(de.DESolver):
         if not (fim.SYMPY_INSTALLED):
             best.parameters = [(p, v, 0.0) for (p, v) in parameters]
         else:
-            commonvnames = self.tc.get_common_full_vars()
-            commonvnames = set(commonvnames).intersection(set(self.model.varnames))
+            commonvnames = set(self.tc.get_common_full_vars())
+            commonvnames = commonvnames.intersection(set(self.model.varnames))
             if len(commonvnames) == 0:
                 commonvnames = self.model.varnames
                 # consterror = getRangeVars(best.optimum_tcs, commonvnames)
@@ -327,7 +337,8 @@ class DeODEOptimizer(de.DESolver):
                 # print(commonvnames)
                 consterror = getRangeVars(self.tc, commonvnames)
                 # assume 5% of range
-                consterror = timecourse.constError_func([r * 0.05 for r in consterror])
+                const_err_list = [r * 0.05 for r in consterror]
+                consterror = timecourse.constError_func(const_err_list)
 
             try:
                 _, invFIM1 = fim.computeFIM(self.model,
@@ -335,10 +346,10 @@ class DeODEOptimizer(de.DESolver):
                                             sols,
                                             consterror,
                                             commonvnames)
-                best.parameters = [(self.par_names[i],
-                                    value,
-                                    invFIM1[i, i]**0.5)
-                                    for (i, value) in enumerate(self.best)]
+                best.parameters = []
+                for (i, value) in enumerate(self.best):
+                    best.parameters.append((self.par_names[i], value,
+                                            invFIM1[i, i]**0.5))
             except:
                 best.parameters = [(p, v, 0.0) for (p, v) in parameters]
 
@@ -354,8 +365,10 @@ class DeODEOptimizer(de.DESolver):
 
         best.optimum_dense_tcs = sols
 
-        if self.dump_generations is not None:
+        if self._dump_generations:
             best.generations_exist = True
+            best.generation_populations = self._generation_popvalues
+            best.generation_scores = self._generation_score_values
         else:
             best.generations_exist = False
 
@@ -495,7 +508,8 @@ timecourse TSH2b.txt
     plt.show()
     optimum.plot(1)
     plt.show()
-    # optimum.plot_generations(pars=['V2', 'Km1'], fig_size=(9,6))
+
+    optimum.print_generations()
 
     # --- example 2, fitting a transformation --------------------
 

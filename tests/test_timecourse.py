@@ -6,11 +6,10 @@ from io import StringIO
 from numpy import isnan, array
 from numpy.testing import assert_array_equal
 
-from stimator import Solution, Solutions, read_tc
+from stimator import Solution, Solutions, read_tc, get_examples_path
 from stimator.modelparser import read_model
-import stimator.examples.timecourses as expl_tcs
 
-_DATADIR = Path(expl_tcs.__path__[0])
+_DATADIR = get_examples_path()
 
 
 def assert_almost_equal(x, y):

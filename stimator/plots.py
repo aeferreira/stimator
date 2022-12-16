@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -238,125 +236,6 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, exp_style=None,
     return ax
 
 
-def plot_estim_optimum(opt, fig_size=None):
-
-    with plt.style.context(settings):
-        if axis_set is None:
-            if figure is None:
-                figure = plt.figure()
-
-        bestsols = opt.optimum_dense_tcs
-        expsols = opt.optimizer.tc
-        tcstats = opt.tcdata
-        nplts = len(bestsols)
-        ncols = int(math.ceil(math.sqrt(nplts)))
-        nrows = int(math.ceil(float(nplts)/ncols))
-        if axis_set is None:
-            axis_set = [figure.add_subplot(nrows, ncols, i + 1) for i in range(nplts)]
-        else:
-            axis_set = axis_set
-
-        for i in range(nplts):
-            subplot = axis_set[i]
-            # subplot.set_xlabel("time")
-            subplot.set_title("%s (%d pt) %g" % tcstats[i], fontsize=12)
-            expsol = expsols[i]
-            symsol = bestsols[i]
-
-            cyl = [c['color'] for c in mpl.rcParams['axes.prop_cycle']]
-
-        if save2file is not None:
-            figure.savefig(save2file)
-        if show:
-            if save2file is not None:
-                if hasattr(save2file, 'read'):
-                    save2file.close()
-            plt.show()
-
-
-def plot_generations(opt, generations=None,
-                     pars=None, figure=None, show=False,
-                     fig_size=None,
-                     style=None, palette=None, font="sans-serif"):
-
-    if not opt.generations_exist:
-        raise IOError('file generations.txt was not generated')
-
-    settings = _prepare_settigs(style, palette, font, fig_size)
-    settings.append({'lines.markeredgewidth': 1.0})
-
-    with plt.style.context(settings):
-
-        if figure is None:
-            figure = plt.figure()
-        figure.clear()
-
-        if generations is None:
-            all_gens = list(range(opt.optimization_generations + 1))
-            dump_generations = all_gens
-
-        if pars is None:
-            first2 = opt.parameters[:2]
-            pars = [p[0] for p in first2]
-
-        pnames = [p[0] for p in opt.parameters]
-
-        colp0 = pnames.index(pars[0])
-        colp1 = pnames.index(pars[1])
-
-        scores_col = len(opt.parameters)
-
-        # ax1 = pl.subplot(1,2,1)
-        # ax2 = pl.subplot(1,2,2)
-        ax2 = plt.subplot(1, 1, 1)
-
-        # parse generations
-        gen = -1
-        f = open('generations.txt')
-        solx = []
-        soly = []
-        objx = []
-        objy = []
-        reading = False
-        for line in f:
-            line = line.strip()
-            if line == '' and reading:
-                if len(solx) > 0:
-                    # ax1.plot(solx, soly, marker='o', ls='None', label=gen)
-                    # for px, py in zip(objx, objy):
-                    #     ax2.axhline(py, xmin=px, xmax=px*0.01, color='black')
-                    ax2.axvline(objx[0], lw=0.5, color='lightgray')
-                    ax2.plot(objx, objy, '_', ls='None', label=gen)
-                    solx = []
-                    soly = []
-                    objx = []
-                    objy = []
-                    reading = False
-            elif line.startswith('generation'):
-                gen = line.split()[1]
-                igen = int(gen)
-                if igen in dump_generations:
-                    reading = True
-                    # print 'generation', gen
-            elif reading:
-                line = [float(x) for x in line.split()]
-                solx.append(line[colp0])
-                soly.append(line[colp1])
-                objx.append(igen)
-                objy.append(line[scores_col])
-            else:
-                continue
-        f.close()
-        # ax1.legend(loc=0)
-        # ax1.set_title('population')
-        # ax1.set_xlabel(pars[0])
-        # ax1.set_ylabel(pars[1])
-        ax2.set_title('scores')
-        ax2.set_yscale('log')
-        ax2.set_xlabel('generation')
-        if show:
-            plt.show()
-
 # ----------------------------------------------------------------------------
 #         TESTING CODE
 # ----------------------------------------------------------------------------
@@ -364,7 +243,7 @@ def plot_generations(opt, generations=None,
 
 if __name__ == "__main__":
     from stimator import get_examples_path
-    from stimator.timecourse import Solution, Solutions, readTCs
+    from stimator.timecourse import Solution
 
     demodata = """
 #this is demo data with a header
@@ -481,82 +360,3 @@ nothing really usefull here
     plot_timecourse(sol2,
                     title="2nd plot", ax=ax2, palette='tab10')
     plt.show()
-
-    # sols = Solutions([Solution(title='the first tc').read_str(demodata),
-    #                   Solution().read_str(demodata2)],
-    #                  title='all time courses')
-
-    # sols.plot(suptitlegend="plotting the two time courses")
-    # sols.plot(suptitlegend="with font=serif, palette='rgb'",
-    #           font_scale=1.3, font='serif', palette='rgb')
-    # p = ['crimson', 'mediumpurple', 'darkolivegreen']
-    # sols.plot(suptitlegend=f"with font=serif, palette = {p}",
-    #           font_scale=0.5, font='serif', palette=p)
-    # sols.plot(suptitlegend="with style=default", style='default')
-    # sols.plot(suptitlegend="with style=seaborn-darkgrid", style='seaborn-darkgrid')
-    # sols.plot(suptitlegend="with style=bogus", style='bogus')
-
-    # sols.plot(fig_size=(12, 6), suptitlegend="with fig_size=(12,6)")
-
-    # sols.plot(suptitlegend="with force_dense=True", force_dense=True)
-    # sols.plot(ynormalize=True, suptitlegend='with ynormalize=True')
-    # sols.plot(yrange=(0, 2), suptitlegend='with yrange=(0,2)')
-
-    # sols.plot(group=['z', 'x'], suptitlegend="with group=['z', 'x']")
-    # sols.plot(group=['z', ('x', 'y')], suptitlegend="with group=['z', ('x','y')]")
-    # sols.plot(group=['z', ('x', 'z')], suptitlegend="with group=['z', ('x','z')]")
-
-    # f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-
-    # sols.plot(suptitlegend="with given axis_set",
-    #           force_dense=True,
-    #           axis_set=[ax1, ax2])
-    # ax1.set_ylabel('variables')
-    # ax2.set_ylabel('variables')
-    # ax2.set_xlabel('time')
-
-    # sol = Solution().read_str(demodata)
-    # sol.plot(group=['z', 'x'], suptitlegend="1 tc with group=['z', 'x']")
-    # sol.plot(group=['z', ('x', 'y')],
-    #          suptitlegend="1tc with group=['z', ('x','y')]")
-    # sol.plot(group=['z', ('x', 'z')],
-    #          suptitlegend="1tc with group=['z', ('x','z')]")
-
-    # from pathlib import Path
-    # # print(Path.cwd())
-    # # print(Path(__file__).resolve())
-    # examples_loc = str(Path(__file__).resolve().parent / 'examples' /'timecourses')
-    # #print(locfile)
-
-    # # sol.read_from('examples/timecourses/TSH2b.txt')
-    # sol.read_from(examples_loc + '/TSH2b.txt')
-
-    # f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-
-    # sol.plot(suptitlegend="plotting on a given axes (1 TC)", axes=ax2)
-    # ax2.set_ylabel('concentrations')
-    # ax2.set_xlabel('time')
-
-    # print('\n!! testing transformations ----------------')
-
-    # sols = Solutions(title='all time courses')
-    # s = Solution(title='original time course').read_str(demodata2)
-    # sols += s
-
-    # def average(x, t):
-    #     # print ('applying transformation')
-    #     return np.array([t/2.0, (x[0]+x[-1])/2.0])
-
-    # s = s.transform(average,
-    #                 newnames=['t/2', 'mid point'],
-    #                 new_title='after transformation')
-    # sols += s
-
-    # sols.plot(suptitlegend="plotting original and transf", force_dense=True)
-
-    # tcs = readTCs(['TSH2b.txt', 'TSH2a.txt'],
-    #               examples_loc,
-    #               names="SDLTSH HTA".split(),
-    #               verbose=False)
-    # tcs.plot(suptitlegend="read from file")
-    # tcs.plot(group=['SDLTSH'], suptitlegend="read from file with group=['SDLTSH']")

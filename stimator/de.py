@@ -25,13 +25,13 @@ class DESolver(object):
                  crossoverProb,
                  cutoff_score,
                  max_generations=200,
-                 convergence_noimprovement=20,
+                 conv_noimprov=20,
                  useClassRandomNumberMethods=False):
 
         np.random.seed(3)
 
         self.max_generations = max_generations
-        self.convergence_noimprovement = convergence_noimprovement
+        self._conv_noimprov = conv_noimprov
         self.pars_count = pars_count
         self.pop_size = pop_size
         self.cutoff_score = cutoff_score
@@ -63,7 +63,7 @@ class DESolver(object):
         self.best = np.empty(self.pars_count)
         self.best_score = float('inf')
         self.generation = 0
-        self.generationsWithNoImprovement = 0
+        self.gen_no_improv = 0
         self.atSolution = False
         self.exitCode = 0
 
@@ -115,7 +115,7 @@ class DESolver(object):
         # TODO: parallelization here
 
         # TODO: this is for performance on non-parallelized hardware
-        if self.generationsWithNoImprovement > self.convergence_noimprovement:
+        if self.gen_no_improv > self._conv_noimprov:
             self.exitCode = 4
             return
 
@@ -134,7 +134,7 @@ class DESolver(object):
                     self.best = np.copy(self.pop[i])
             self.reportGeneration()
             if not self.atSolution:
-                self.generationsWithNoImprovement += 1
+                self.gen_no_improv += 1
 
         # no need to try another generation if we are done (energy criterium)
         if self.atSolution:
@@ -163,7 +163,7 @@ class DESolver(object):
                     # Check if all-time low
                     if score < self.best_score:
                         self.best, self.best_score = new_i, score
-                        self.generationsWithNoImprovement = 0
+                        self.gen_no_improv = 0
 
             # no need to try another i if we are done
             if self.atSolution:
@@ -174,7 +174,7 @@ class DESolver(object):
 
         self.reportGeneration()
         if not self.atSolution:
-            self.generationsWithNoImprovement += 1
+            self.gen_no_improv += 1
         return
 
     def finalize(self):
