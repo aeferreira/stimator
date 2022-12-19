@@ -21,22 +21,20 @@ Features include:
 Requirements
 ------------
 
-*S-timator* supports Python versions 2.7 and 3.3+.
+*S-timator* supports Python versions 3.6+.
 
 *S-timator* depends on the "scientific python stack". The **mandatory**
 requirements for *S-timator* are the following libraries:
 
-- ``Python (2.7 or 3.3+)``
+- ``Python 3.6 or higher``
 - ``numpy``
 - ``scipy``
 - ``matplotlib``
-- ``pip``
 
 One of the following "scientific python" distributions is recommended, **as they all provide 
 an easy installation of all requirements**:
 
 - `Anaconda <https://store.continuum.io/cshop/anaconda/>`_ (or `Miniconda <http://conda.pydata.org/miniconda.html>`_ followed by the necessary ``conda install``'s)
-- `Python (x,y) <https://code.google.com/p/pythonxy/>`_
 - `Enthought Canopy <https://www.enthought.com/products/canopy/>`_
 
 The installation of these Python libraries is optional, but strongly recommended:
