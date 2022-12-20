@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 from cycler import cycler, Cycler
+from itertools import cycle
 
 from stimator.utils import _is_string, _is_sequence
 
 
-def _get_cols_to_plot(timecourse, what):
+def _find_what_to_plot(timecourse, what):
     if what is None:
         return timecourse.names[:]
     if _is_string(what):
@@ -71,7 +73,7 @@ def get_color_list(pname):
 
 def _get_new_prop_cycle(prop_cycle, palette):
     if prop_cycle is None and palette is None:
-        return None
+        return mpl.rcParams['axes.prop_cycle']
     if prop_cycle is not None:
         if isinstance(prop_cycle, dict):
             prop_cycle = cycler(**prop_cycle)
@@ -104,32 +106,50 @@ def plot_timecourse(timecourse, what=None, ax=None,
     if ax is None:
         ax = plt.gca()
 
-    # locally set the prop_cycler if prop_cycle or palette are given
-    used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
-    if used_prop_cycle is not None:
-        ax.set_prop_cycle(used_prop_cycle)
-    else:
-        used_prop_cycle = mpl.rcParams['axes.prop_cycle']
-
     # find what (which columns) to plot
-    cols_to_plot = _get_cols_to_plot(timecourse, what)
+    cols_to_plot = _find_what_to_plot(timecourse, what)
 
-    # keep a table of handles of lines
+    # build table of Line2D handles
+    # with no data
+    # cycle through a prop_cycle obtained
+    # considering 'palette' and 'prop_cycle' arguments
+    # overide styles using the styles in 'styling'
+
     line_handles = {}
+    used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
 
-    # plot (as lines)
+    for name, stl in zip(cols_to_plot, cycle(used_prop_cycle)):
+        line_handles[name] = Line2D([], [], label=name, **kwargs.copy())
+        line_handles[name].set(**stl)
+
+    if styling is not None:
+
+        if not isinstance(styling, dict):
+            raise TypeError("'styling' parameter must be a dict")
+        props = list(used_prop_cycle)
+
+        for k, v in styling.items():
+            if isinstance(v, dict):
+                # styles_to_use[k].update(v)
+                line_handles[k].set(**v)
+            elif isinstance(v, int):
+                # styles_to_use[k].update(props[v])
+                line_handles[k].set(**props[v])
+            elif _is_string(v):
+                # styles_to_use[k].update({'color': v})
+                line_handles[k].set(color=v)
+
+            else:
+                raise ValueError(f"'{v}' is an invalid color or style ")
+
+    # plot the lines
     for name in cols_to_plot:
         x = timecourse.t
         y = timecourse[name]
-        line, *_ = ax.plot(x, y, label=name, **kwargs)
-        line_handles[name] = line
-
-    # overide prop_cycler styles if these are specified on the styling dict
-    # for some variables
-    if styling is not None:
-        stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
-        for name in stylingdict:
-            line_handles[name].set(label=name, **(stylingdict[name]))
+        line_handles[name].set_data(x, y)
+        ax.add_line(line_handles[name])
+        # line, *_ = ax.plot(x, y, label=name, **styles_to_use[name])
+    ax.autoscale(enable=None)
 
     # draw legend
     handles, lbls = ax.get_legend_handles_labels()
@@ -142,14 +162,15 @@ def plot_timecourse(timecourse, what=None, ax=None,
         ax.set_title(timecourse.title)
 
     # remove the left margin for the x-axis
-    # to start the plot at t0
+    # to start the plot at t0, if 'tight_t0'
     if tight_t0:
         if timecourse.t[0] < timecourse.t[-1]:
             ax.set_xlim(timecourse.t[0], None)
     return ax
 
 
-def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, exp_style=None,
+def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
+                                  exp_style=None, tight_t0=True,
                                   opt_suffix='_pred', opt_prefix='',
                                   **kwargs):
     if ax is None:
@@ -161,9 +182,6 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, exp_style=None,
 
     if exp_style is None:
         exp_style = dict(marker='o', linestyle='none')
-
-    title = kwargs.pop('title', None)
-    tight_t0 = kwargs.pop('tight_t0', True)
 
     # locally set the prop_cycler if prop_cycle or palette are given
     prop_cycle = kwargs.pop('prop_cycle', None)
@@ -298,8 +316,8 @@ nothing really usefull here
                     linewidth=10)
     plt.show()
     plot_timecourse(stsh,
-                    title="plot with different marker, marker='+'",
-                    tight_t0=False, marker='+')
+                    title="plot with different marker, marker='^'",
+                    tight_t0=False, marker='^')
     plt.show()
     plot_timecourse(sol, what='z',
                     title="plot with filtering, what='z'")

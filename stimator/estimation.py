@@ -8,7 +8,7 @@ from stimator.dynamics import ModelSolver
 import stimator.fim as fim
 import stimator.timecourse as timecourse
 import stimator.plots as plots
-from stimator.utils import _is_number
+# from stimator.utils import _is_number
 
 
 # ----------------------------------------------------------------------------
