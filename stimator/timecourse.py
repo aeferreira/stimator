@@ -288,7 +288,7 @@ class SolutionTimeCourse(object):
         self.data = self.data[np.array(newindexes, dtype=int)]
 
     def plot(self, **kwargs):
-        plots.plot_timecourse(self, **kwargs)
+        return plots.plot_timecourse(self, **kwargs)
 
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR SEVERAL TIMECOURSES

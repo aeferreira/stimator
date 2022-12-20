@@ -455,7 +455,7 @@ popsize = 60     # population size in GA
     best = model.estimate(timecourses=tc)
 
     print(best)
-    best.plot(palette='Dark2')
+    best.plot(palette='Dark2').set(xlabel='t')
     plt.show()
 
     print('--- Modifying model ---')
@@ -504,9 +504,10 @@ timecourse TSH2b.txt
     # ... intvarsorder=(0,2,1) ...
 
     print(optimum)
-    optimum.plot(0)
+    setts = dict(xlabel='t (s)', ylabel='conc (microM)')
+    optimum.plot(0, axes_settings=setts)
     plt.show()
-    optimum.plot(1)
+    optimum.plot(1, axes_settings=setts)
     plt.show()
 
     optimum.print_generations()

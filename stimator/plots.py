@@ -100,26 +100,20 @@ def _get_new_prop_cycle(prop_cycle, palette):
     return prop_cycle
 
 
-def plot_timecourse(timecourse, what=None, ax=None,
-                    prop_cycle=None, palette=None, styling=None,
-                    title=None, tight_t0=True, **kwargs):
-    if ax is None:
-        ax = plt.gca()
+def generate_line_handles(names, prop_cycle, palette, styling, **kwargs):
+    """build table of Line2D handles  with no data.
 
-    # find what (which columns) to plot
-    cols_to_plot = _find_what_to_plot(timecourse, what)
-
-    # build table of Line2D handles
-    # with no data
-    # cycle through a prop_cycle obtained
-    # considering 'palette' and 'prop_cycle' arguments
-    # overide styles using the styles in 'styling'
+    Cycle through a prop_cycle obtained
+    considering 'palette' and 'prop_cycle' arguments
+    Overide styles using the styles in 'styling'
+    """
 
     line_handles = {}
+
     used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
 
-    for name, stl in zip(cols_to_plot, cycle(used_prop_cycle)):
-        line_handles[name] = Line2D([], [], label=name, **kwargs.copy())
+    for name, stl in zip(names, cycle(used_prop_cycle)):
+        line_handles[name] = Line2D([], [], **kwargs.copy())
         line_handles[name].set(**stl)
 
     if styling is not None:
@@ -138,15 +132,33 @@ def plot_timecourse(timecourse, what=None, ax=None,
             elif _is_string(v):
                 # styles_to_use[k].update({'color': v})
                 line_handles[k].set(color=v)
-
             else:
                 raise ValueError(f"'{v}' is an invalid color or style ")
+    return line_handles
+
+
+def plot_timecourse(timecourse, what=None, ax=None,
+                    prop_cycle=None, palette=None, styling=None,
+                    axes_settings=None,
+                    title=None, tight_t0=True, **kwargs):
+    if ax is None:
+        ax = plt.gca()
+
+    # find what (which columns) to plot
+    cols_to_plot = _find_what_to_plot(timecourse, what)
+
+    # build table of Line2D handles with no data
+
+    line_handles = generate_line_handles(cols_to_plot,
+                                         prop_cycle, palette, styling,
+                                         **kwargs)
 
     # plot the lines
     for name in cols_to_plot:
         x = timecourse.t
         y = timecourse[name]
         line_handles[name].set_data(x, y)
+        line_handles[name].set(label=name)
         ax.add_line(line_handles[name])
         # line, *_ = ax.plot(x, y, label=name, **styles_to_use[name])
     ax.autoscale(enable=None)
@@ -166,11 +178,16 @@ def plot_timecourse(timecourse, what=None, ax=None,
     if tight_t0:
         if timecourse.t[0] < timecourse.t[-1]:
             ax.set_xlim(timecourse.t[0], None)
+
+    # apply axes settings
+    if axes_settings is not None:
+        ax.set(**axes_settings)
     return ax
 
 
 def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
                                   exp_style=None, tight_t0=True,
+                                  axes_settings=None,
                                   opt_suffix='_pred', opt_prefix='',
                                   **kwargs):
     if ax is None:
@@ -183,24 +200,13 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     if exp_style is None:
         exp_style = dict(marker='o', linestyle='none')
 
-    # locally set the prop_cycler if prop_cycle or palette are given
+    # retrieve 'prop_cycle' and 'palette' and 'styling' arguments
     prop_cycle = kwargs.pop('prop_cycle', None)
     palette = kwargs.pop('palette', None)
-    used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
-    if used_prop_cycle is not None:
-        ax.set_prop_cycle(used_prop_cycle)
-    else:
-        used_prop_cycle = mpl.rcParams['axes.prop_cycle']
-
-    # retrieve the 'styling' argument
     styling = kwargs.pop('styling', None)
 
     # ignore 'what' (for now...)
     _ = kwargs.pop('what', None)
-
-    # keep a table of handles of lines
-    line_handles = {}
-
     # find what to plot
     what2plot = []
     for line in range(len(expsol)):
@@ -212,29 +218,36 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
         # otherwise keep the name
         what2plot.append(expsol.names[line])
 
+    # build tables of Line2D handles with no data
+    line_handles = generate_line_handles(what2plot,
+                                         prop_cycle, palette, styling,
+                                         **kwargs)
+
+    exp_line_handles = generate_line_handles(what2plot,
+                                             prop_cycle, palette, styling,
+                                             **kwargs)
+    # overide the settings for experimental data
+    for name in exp_line_handles:
+        exp_line_handles[name].set(**exp_style)
+
     # plot experimental data
-    ax.set_prop_cycle(used_prop_cycle)
     for name in what2plot:
-        yexp = expsol[name]
-        newstyles = dict(kwargs)
-        newstyles.update(exp_style)
-        line, *_ = ax.plot(expsol.t, yexp, label=name, **newstyles)
-        line_handles[name] = line
+        x = expsol.t
+        y = expsol[name]
+        exp_line_handles[name].set_data(x, y)
+        exp_line_handles[name].set(label=name)
+        ax.add_line(exp_line_handles[name])
 
     # plot predicted data
-    ax.set_prop_cycle(used_prop_cycle)  # reuse props
     for name in what2plot:
-        ysim = symsol[name]
+        x = symsol.t
+        y = symsol[name]
+        line_handles[name].set_data(x, y)
         opt_name = opt_prefix + name + opt_suffix
-        line, *_ = ax.plot(symsol.t, ysim, label=opt_name, **kwargs)
-        line_handles[opt_name] = line
+        line_handles[name].set(label=opt_name)
+        ax.add_line(line_handles[name])
 
-    # overide prop_cycler styles if these are specified on the styling dict
-    # for some variables
-    if styling is not None:
-        stylingdict = _get_overiding_prop_table(styling, used_prop_cycle)
-        for name in stylingdict:
-            line_handles[name].set(label=name, **(stylingdict[name]))
+    ax.autoscale(enable=None)
 
     # draw legend
     handles, lbls = ax.get_legend_handles_labels()
@@ -251,6 +264,11 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     if tight_t0:
         if symsol.t[0] < symsol.t[-1]:
             ax.set_xlim(symsol.t[0], None)
+
+    # apply axes settings
+    if axes_settings is not None:
+        ax.set(**axes_settings)
+
     return ax
 
 
@@ -311,23 +329,36 @@ nothing really usefull here
     sol.plot(title="simple TC plot")
     plt.show()
 
+    sol.plot(title="TC plot, modifying axes").set(xlabel='t (s)',
+                                                  ylabel='concentration (mM)')
+    plt.show()
+
+    setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
+                 box_aspect=1)
+    sol.plot(title=f"TC plot, modifying axes\n{setts}",
+             axes_settings=setts)
+    plt.show()
+
     plot_timecourse(sol,
                     title="plot with different lw, linewidth=10",
                     linewidth=10)
     plt.show()
+
     plot_timecourse(stsh,
                     title="plot with different marker, marker='^'",
-                    tight_t0=False, marker='^')
+                    tight_t0=False, marker='^', ls='none')
     plt.show()
+
     plot_timecourse(sol, what='z',
                     title="plot with filtering, what='z'")
     plt.show()
+
     plot_timecourse(sol, what=[0, 'z'],
                     title="plot with filtering, what=[0, 'z']")
     plt.show()
 
-    with plt.style.context('ggplot'):
-        plot_timecourse(sol, title="simple TC plot with ggplot style")
+    with plt.style.context('grayscale'):
+        plot_timecourse(sol, title="simple TC plot with grayscale style")
     plt.show()
 
     custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
@@ -338,12 +369,12 @@ nothing really usefull here
                     prop_cycle=custom_cycler)
     plt.show()
 
-    st = {'x': 'royalblue'}
+    st = {'x': 'chocolate'}
     plot_timecourse(sol, styling=st,
-                    title="plot, styling {'x': 'royalblue'}")
+                    title="plot, styling {'x': 'chocolate'}")
     plt.show()
 
-    st = {'x': {'c': 'royalblue', 'ls': '--'}}
+    st = {'x': {'c': 'chocolate', 'ls': '--'}}
     plot_timecourse(sol, styling=st,
                     title=f"plot, styling {st}")
     plt.show()
@@ -374,7 +405,7 @@ nothing really usefull here
 
     f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
     plot_timecourse(sol,
-                    title="1st plot", ax=ax1, palette='Pastel2')
+                    title="1st plot", ax=ax1, palette='tab20')
     plot_timecourse(sol2,
                     title="2nd plot", ax=ax2, palette='tab10')
     plt.show()
