@@ -32,28 +32,6 @@ def _find_what_to_plot(timecourse, what):
     return cols2plot
 
 
-def _get_overiding_prop_table(styling, prop_cycle):
-    if styling is None:
-        return None
-    if not isinstance(styling, dict):
-        raise TypeError("'styling' parameter must be a dict")
-
-    props = list(prop_cycle)
-
-    stylingdict = {}
-
-    for k, v in styling.items():
-        if isinstance(v, dict):
-            stylingdict[k] = v
-        elif isinstance(v, int):
-            stylingdict[k] = props[v]
-        elif _is_string(v):
-            stylingdict[k] = {'color': v}
-        else:
-            raise ValueError(f"'{v}' is an invalid color or style ")
-    return stylingdict
-
-
 MPL_QUALIT = ['Pastel1', 'Pastel2', 'Paired', 'Accent',
               'Dark2', 'Set1', 'Set2', 'Set3', 'tab10',
               'tab20', 'tab20b', 'tab20c']
@@ -272,6 +250,16 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     return ax
 
 
+def prepare_grid(sols, layout_style='compact', **kwargs):
+    f, axs = plt.subplots(len(sols), 1, **kwargs)
+    return f, axs
+
+
+def plotTCs(sols, axs, grid_kwds= None, **kwargs):
+    for tc, ax in zip(sols, axs):
+        plot_timecourse(tc, ax=ax, **kwargs)
+
+
 # ----------------------------------------------------------------------------
 #         TESTING CODE
 # ----------------------------------------------------------------------------
@@ -279,7 +267,7 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
 
 if __name__ == "__main__":
     from stimator import get_examples_path
-    from stimator.timecourse import Solution
+    from stimator.timecourse import Solution, Solutions
 
     demodata = """
 #this is demo data with a header
@@ -317,7 +305,9 @@ nothing really usefull here
 """
     sol = Solution().read_str(demodata)
     sol2 = Solution().read_str(demodata2)
+    sols = Solutions([sol, sol2])
 
+    # print(sols)
     # print(sol)
 
     example_tc = get_examples_path() / 'TSH2b.txt'
@@ -325,87 +315,91 @@ nothing really usefull here
     stsh = Solution()
     stsh.read_from(example_tc)
 
-    # plot_timecourse(sol, title="simple TC plot")
-    sol.plot(title="simple TC plot")
+    f, axs = prepare_grid(sols)
+    sols.plot(axs=axs)
     plt.show()
 
-    sol.plot(title="TC plot, modifying axes").set(xlabel='t (s)',
-                                                  ylabel='concentration (mM)')
-    plt.show()
+    # # plot_timecourse(sol, title="simple TC plot")
+    # sol.plot(title="simple TC plot")
+    # plt.show()
 
-    setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
-                 box_aspect=1)
-    sol.plot(title=f"TC plot, modifying axes\n{setts}",
-             axes_settings=setts)
-    plt.show()
+    # sol.plot(title="TC plot, modifying axes").set(xlabel='t (s)',
+    #                                               ylabel='concentration (mM)')
+    # plt.show()
 
-    plot_timecourse(sol,
-                    title="plot with different lw, linewidth=10",
-                    linewidth=10)
-    plt.show()
+    # setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
+    #              box_aspect=1)
+    # sol.plot(title=f"TC plot, modifying axes\n{setts}",
+    #          axes_settings=setts)
+    # plt.show()
 
-    plot_timecourse(stsh,
-                    title="plot with different marker, marker='^'",
-                    tight_t0=False, marker='^', ls='none')
-    plt.show()
+    # plot_timecourse(sol,
+    #                 title="plot with different lw, linewidth=10",
+    #                 linewidth=10)
+    # plt.show()
 
-    plot_timecourse(sol, what='z',
-                    title="plot with filtering, what='z'")
-    plt.show()
+    # plot_timecourse(stsh,
+    #                 title="plot with different marker, marker='^'",
+    #                 tight_t0=False, marker='^', ls='none')
+    # plt.show()
 
-    plot_timecourse(sol, what=[0, 'z'],
-                    title="plot with filtering, what=[0, 'z']")
-    plt.show()
+    # plot_timecourse(sol, what='z',
+    #                 title="plot with filtering, what='z'")
+    # plt.show()
 
-    with plt.style.context('grayscale'):
-        plot_timecourse(sol, title="simple TC plot with grayscale style")
-    plt.show()
+    # plot_timecourse(sol, what=[0, 'z'],
+    #                 title="plot with filtering, what=[0, 'z']")
+    # plt.show()
 
-    custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
-                     cycler(lw=[1, 2, 3, 4]))
+    # with plt.style.context('grayscale'):
+    #     plot_timecourse(sol, title="simple TC plot with grayscale style")
+    # plt.show()
 
-    plot_timecourse(sol,
-                    title="plot with a custom cycler",
-                    prop_cycle=custom_cycler)
-    plt.show()
+    # custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
+    #                  cycler(lw=[1, 2, 3, 4]))
 
-    st = {'x': 'chocolate'}
-    plot_timecourse(sol, styling=st,
-                    title="plot, styling {'x': 'chocolate'}")
-    plt.show()
+    # plot_timecourse(sol,
+    #                 title="plot with a custom cycler",
+    #                 prop_cycle=custom_cycler)
+    # plt.show()
 
-    st = {'x': {'c': 'chocolate', 'ls': '--'}}
-    plot_timecourse(sol, styling=st,
-                    title=f"plot, styling {st}")
-    plt.show()
+    # st = {'x': 'chocolate'}
+    # plot_timecourse(sol, styling=st,
+    #                 title="plot, styling {'x': 'chocolate'}")
+    # plt.show()
 
-    st = {'x': 9}
-    plot_timecourse(sol, styling=st,
-                    title="plot, styling {'x': 9}")
-    plt.show()
+    # st = {'x': {'c': 'chocolate', 'ls': '--'}}
+    # plot_timecourse(sol, styling=st,
+    #                 title=f"plot, styling {st}")
+    # plt.show()
 
-    plot_timecourse(sol,
-                    title="plot with a custom palette (Dark2)",
-                    palette='Dark2')
-    plt.show()
+    # st = {'x': 9}
+    # plot_timecourse(sol, styling=st,
+    #                 title="plot, styling {'x': 9}")
+    # plt.show()
 
-    custom_cycler = (cycler(ls=['-', '--', ':', '-.']) +
-                     cycler(lw=[1, 2, 4, 8]))
+    # plot_timecourse(sol,
+    #                 title="plot with a custom palette (Dark2)",
+    #                 palette='Dark2')
+    # plt.show()
 
-    plot_timecourse(sol,
-                    title="plot with a custom cycler and palette",
-                    prop_cycle=custom_cycler, palette='Dark2')
-    plt.show()
+    # custom_cycler = (cycler(ls=['-', '--', ':', '-.']) +
+    #                  cycler(lw=[1, 2, 4, 8]))
 
-    plot_timecourse(sol,
-                    title="1st plot", palette='Dark2')
-    plot_timecourse(sol2,
-                    title="2nd plot, same axes as 1st plot", palette='Dark2')
-    plt.show()
+    # plot_timecourse(sol,
+    #                 title="plot with a custom cycler and palette",
+    #                 prop_cycle=custom_cycler, palette='Dark2')
+    # plt.show()
 
-    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
-    plot_timecourse(sol,
-                    title="1st plot", ax=ax1, palette='tab20')
-    plot_timecourse(sol2,
-                    title="2nd plot", ax=ax2, palette='tab10')
-    plt.show()
+    # plot_timecourse(sol,
+    #                 title="1st plot", palette='Dark2')
+    # plot_timecourse(sol2,
+    #                 title="2nd plot, same axes as 1st plot", palette='Dark2')
+    # plt.show()
+
+    # f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+    # plot_timecourse(sol,
+    #                 title="1st plot", ax=ax1, palette='tab20')
+    # plot_timecourse(sol2,
+    #                 title="2nd plot", ax=ax2, palette='tab10')
+    # plt.show()
