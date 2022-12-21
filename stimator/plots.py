@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
@@ -250,14 +251,51 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     return ax
 
 
-def prepare_grid(sols, layout_style='compact', **kwargs):
-    f, axs = plt.subplots(len(sols), 1, **kwargs)
+def prepare_grid(sols, layout_style=None, **kwargs):
+
+    subplots_kwargs = kwargs.copy()
+
+    # find how many plots
+    nplts = len(sols)
+
+    # compute shape of grid
+    if not ('nrows' in kwargs or 'ncols' in kwargs):
+        ncols = int(math.ceil(math.sqrt(nplts)))
+        nrows = int(math.ceil(float(nplts)/ncols))
+        subplots_kwargs['nrows'] = nrows
+        subplots_kwargs['ncols'] = ncols
+
+    if layout_style == 'compact':
+        subplots_kwargs['sharey'] = 'row'
+
+    f, axs = plt.subplots(**subplots_kwargs)
+
+    # hide empty axes
+    if not isinstance(axs, np.ndarray):
+        axs = np.array(axs)
+    for i, ax in enumerate(axs.flat):
+        if i >= len(sols):
+            ax.set_visible(False)
+    if layout_style == 'compact':
+        f.subplots_adjust(hspace=0, wspace=0)
     return f, axs
 
 
-def plotTCs(sols, axs, grid_kwds= None, **kwargs):
-    for tc, ax in zip(sols, axs):
+def plotTCs(sols, axs=None, grid_kwds=None, **kwargs):
+    if axs is None:
+        if grid_kwds is None:
+            grid_kwds = {}
+        f, axs = prepare_grid(sols, **grid_kwds)
+    else:
+        f = plt.gcf()
+
+    if not isinstance(axs, np.ndarray):
+        usable_axs = np.array(axs)
+    else:
+        usable_axs = axs
+    for tc, ax in zip(sols, usable_axs.flat):
         plot_timecourse(tc, ax=ax, **kwargs)
+    return f, axs
 
 
 # ----------------------------------------------------------------------------
@@ -305,7 +343,8 @@ nothing really usefull here
 """
     sol = Solution().read_str(demodata)
     sol2 = Solution().read_str(demodata2)
-    sols = Solutions([sol, sol2])
+    sols = Solutions([sol, sol2, sol, sol, sol, sol2, sol2])
+    only_sol = Solutions([sol])
 
     # print(sols)
     # print(sol)
@@ -315,91 +354,102 @@ nothing really usefull here
     stsh = Solution()
     stsh.read_from(example_tc)
 
-    f, axs = prepare_grid(sols)
-    sols.plot(axs=axs)
+    # plot_timecourse(sol, title="simple TC plot")
+    sol.plot(title="simple TC plot")
     plt.show()
 
-    # # plot_timecourse(sol, title="simple TC plot")
-    # sol.plot(title="simple TC plot")
-    # plt.show()
+    sol.plot(title="TC plot, modifying axes").set(xlabel='t (s)',
+                                                  ylabel='concentration (mM)')
+    plt.show()
 
-    # sol.plot(title="TC plot, modifying axes").set(xlabel='t (s)',
-    #                                               ylabel='concentration (mM)')
-    # plt.show()
+    setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
+                 box_aspect=1)
+    sol.plot(title=f"TC plot, modifying axes\n{setts}",
+             axes_settings=setts)
+    plt.show()
 
-    # setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
-    #              box_aspect=1)
-    # sol.plot(title=f"TC plot, modifying axes\n{setts}",
-    #          axes_settings=setts)
-    # plt.show()
+    plot_timecourse(sol,
+                    title="plot with different lw, linewidth=10",
+                    linewidth=10)
+    plt.show()
 
-    # plot_timecourse(sol,
-    #                 title="plot with different lw, linewidth=10",
-    #                 linewidth=10)
-    # plt.show()
+    plot_timecourse(stsh,
+                    title="plot with different marker, marker='^'",
+                    tight_t0=False, marker='^', ls='none')
+    plt.show()
 
-    # plot_timecourse(stsh,
-    #                 title="plot with different marker, marker='^'",
-    #                 tight_t0=False, marker='^', ls='none')
-    # plt.show()
+    plot_timecourse(sol, what='z',
+                    title="plot with filtering, what='z'")
+    plt.show()
 
-    # plot_timecourse(sol, what='z',
-    #                 title="plot with filtering, what='z'")
-    # plt.show()
+    plot_timecourse(sol, what=[0, 'z'],
+                    title="plot with filtering, what=[0, 'z']")
+    plt.show()
 
-    # plot_timecourse(sol, what=[0, 'z'],
-    #                 title="plot with filtering, what=[0, 'z']")
-    # plt.show()
+    with plt.style.context('grayscale'):
+        plot_timecourse(sol, title="simple TC plot with grayscale style")
+    plt.show()
 
-    # with plt.style.context('grayscale'):
-    #     plot_timecourse(sol, title="simple TC plot with grayscale style")
-    # plt.show()
+    custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
+                     cycler(lw=[1, 2, 3, 4]))
 
-    # custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
-    #                  cycler(lw=[1, 2, 3, 4]))
+    plot_timecourse(sol,
+                    title="plot with a custom cycler",
+                    prop_cycle=custom_cycler)
+    plt.show()
 
-    # plot_timecourse(sol,
-    #                 title="plot with a custom cycler",
-    #                 prop_cycle=custom_cycler)
-    # plt.show()
+    st = {'x': 'chocolate'}
+    plot_timecourse(sol, styling=st,
+                    title="plot, styling {'x': 'chocolate'}")
+    plt.show()
 
-    # st = {'x': 'chocolate'}
-    # plot_timecourse(sol, styling=st,
-    #                 title="plot, styling {'x': 'chocolate'}")
-    # plt.show()
+    st = {'x': {'c': 'chocolate', 'ls': '--'}}
+    plot_timecourse(sol, styling=st,
+                    title=f"plot, styling {st}")
+    plt.show()
 
-    # st = {'x': {'c': 'chocolate', 'ls': '--'}}
-    # plot_timecourse(sol, styling=st,
-    #                 title=f"plot, styling {st}")
-    # plt.show()
+    st = {'x': 9}
+    plot_timecourse(sol, styling=st,
+                    title="plot, styling {'x': 9}")
+    plt.show()
 
-    # st = {'x': 9}
-    # plot_timecourse(sol, styling=st,
-    #                 title="plot, styling {'x': 9}")
-    # plt.show()
+    plot_timecourse(sol,
+                    title="plot with a custom palette (Dark2)",
+                    palette='Dark2')
+    plt.show()
 
-    # plot_timecourse(sol,
-    #                 title="plot with a custom palette (Dark2)",
-    #                 palette='Dark2')
-    # plt.show()
+    custom_cycler = (cycler(ls=['-', '--', ':', '-.']) +
+                     cycler(lw=[1, 2, 4, 8]))
 
-    # custom_cycler = (cycler(ls=['-', '--', ':', '-.']) +
-    #                  cycler(lw=[1, 2, 4, 8]))
+    plot_timecourse(sol,
+                    title="plot with a custom cycler and palette",
+                    prop_cycle=custom_cycler, palette='Dark2')
+    plt.show()
 
-    # plot_timecourse(sol,
-    #                 title="plot with a custom cycler and palette",
-    #                 prop_cycle=custom_cycler, palette='Dark2')
-    # plt.show()
+    plot_timecourse(sol,
+                    title="1st plot", palette='Dark2')
+    plot_timecourse(sol2,
+                    title="2nd plot, same axes as 1st plot", palette='Dark2')
+    plt.show()
 
-    # plot_timecourse(sol,
-    #                 title="1st plot", palette='Dark2')
-    # plot_timecourse(sol2,
-    #                 title="2nd plot, same axes as 1st plot", palette='Dark2')
-    # plt.show()
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
+    plot_timecourse(sol,
+                    title="1st plot", ax=ax1, palette='tab20')
+    plot_timecourse(sol2,
+                    title="2nd plot", ax=ax2, palette='tab10')
+    plt.show()
 
-    # f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
-    # plot_timecourse(sol,
-    #                 title="1st plot", ax=ax1, palette='tab20')
-    # plot_timecourse(sol2,
-    #                 title="2nd plot", ax=ax2, palette='tab10')
-    # plt.show()
+    f, axs = prepare_grid(sols, figsize=(12, 10))
+    sols.plot(axs=axs)
+    plt.gcf().suptitle('plot Solutions with prepare_grid()')
+    plt.show()
+
+    f, axs = prepare_grid(only_sol)
+    only_sol.plot(axs=axs, marker='o')
+    plt.gcf().suptitle('plot Solutions with only one solution')
+    plt.show()
+
+    grid_kwds = dict(figsize=(12,10), layout_style='compact')
+    sols.plot(marker='o', grid_kwds=grid_kwds)
+    plt.gcf().suptitle('plot Solutions without prepare_grid(), "compact" style')
+    plt.show()
