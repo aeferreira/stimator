@@ -10,6 +10,7 @@ def get_examples_path():
     import stimator.examples.timecourses as expl_tcs
     return Path(expl_tcs.__path__[0])
 
+
 __version__ = '0.9.135'
 
 

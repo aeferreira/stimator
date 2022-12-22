@@ -6,6 +6,8 @@ from matplotlib.lines import Line2D
 from cycler import cycler, Cycler
 from itertools import cycle
 
+from packaging.version import Version
+
 from stimator.utils import _is_string, _is_sequence
 
 
@@ -80,7 +82,7 @@ def _get_new_prop_cycle(prop_cycle, palette):
 
 
 def generate_line_handles(names, prop_cycle, palette, styling, **kwargs):
-    """build table of Line2D handles  with no data.
+    """build table of Line2D handles with no data.
 
     Cycle through a prop_cycle obtained
     considering 'palette' and 'prop_cycle' arguments
@@ -102,23 +104,55 @@ def generate_line_handles(names, prop_cycle, palette, styling, **kwargs):
         props = list(used_prop_cycle)
 
         for k, v in styling.items():
+            # get matching handles
+            if k.strip() == '*':
+                set_handles = line_handles.values()
+            else:
+                set_handles = [line_handles[k]]
+                # TODO: allow regular expressions
             if isinstance(v, dict):
-                # styles_to_use[k].update(v)
-                line_handles[k].set(**v)
+                for handle in set_handles:
+                    handle.set(**v)
             elif isinstance(v, int):
-                # styles_to_use[k].update(props[v])
-                line_handles[k].set(**props[v])
+                for handle in set_handles:
+                    handle.set(**props[v])
             elif _is_string(v):
-                # styles_to_use[k].update({'color': v})
-                line_handles[k].set(color=v)
+                for handle in set_handles:
+                    handle.set(color=v)
             else:
                 raise ValueError(f"'{v}' is an invalid color or style ")
     return line_handles
 
 
+def draw_legend(ax, legend_argument):
+    if legend_argument is False:
+        leg = ax.get_legend()
+        if leg is not None:
+            leg.remove()
+        return
+    if legend_argument is True:
+        legend_argument = 'best'
+
+    handles, lbls = ax.get_legend_handles_labels()
+
+    if not legend_argument.startswith('out'):
+        ax.legend(handles, lbls, loc=legend_argument)
+    else:
+        ax.legend(handles, lbls, loc='upper left',
+                  bbox_to_anchor=(1.01, 1),
+                  borderaxespad=0)
+        # must use constrained layout, in this case
+        f = plt.gcf()
+        mpl_ver = Version(mpl.__version__)
+        if mpl_ver >= Version('3.6'):
+            f.set_layout_engine('constrained')
+        else:
+            f.set_constrained_layout(True)
+
+
 def plot_timecourse(timecourse, what=None, ax=None,
                     prop_cycle=None, palette=None, styling=None,
-                    axes_settings=None,
+                    axes_settings=None, legend='best',
                     title=None, tight_t0=True, **kwargs):
     if ax is None:
         ax = plt.gca()
@@ -143,8 +177,7 @@ def plot_timecourse(timecourse, what=None, ax=None,
     ax.autoscale(enable=None)
 
     # draw legend
-    handles, lbls = ax.get_legend_handles_labels()
-    ax.legend(handles, lbls, loc='best')
+    draw_legend(ax, legend)
 
     # draw plot title
     if title is not None:
@@ -166,7 +199,7 @@ def plot_timecourse(timecourse, what=None, ax=None,
 
 def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
                                   exp_style=None, tight_t0=True,
-                                  axes_settings=None,
+                                  axes_settings=None, legend='best',
                                   opt_suffix='_pred', opt_prefix='',
                                   **kwargs):
     if ax is None:
@@ -229,8 +262,7 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     ax.autoscale(enable=None)
 
     # draw legend
-    handles, lbls = ax.get_legend_handles_labels()
-    ax.legend(handles, lbls, loc='best')
+    draw_legend(ax, legend)
 
     # draw plot title
     if title is not None:
@@ -289,12 +321,18 @@ def plotTCs(sols, axs=None, grid_kwds=None, **kwargs):
     else:
         f = plt.gcf()
 
+    # get legend argument
+    # might be a sequence to cycle through
+    legends = kwargs.pop('legend', 'best')
+    if not _is_sequence(legends):
+        legends = [legends]
+
     if not isinstance(axs, np.ndarray):
         usable_axs = np.array(axs)
     else:
         usable_axs = axs
-    for tc, ax in zip(sols, usable_axs.flat):
-        plot_timecourse(tc, ax=ax, **kwargs)
+    for tc, ax, leg in zip(sols, usable_axs.flat, cycle(legends)):
+        plot_timecourse(tc, ax=ax, legend=leg, **kwargs)
     return f, axs
 
 
@@ -378,6 +416,16 @@ nothing really usefull here
                     tight_t0=False, marker='^', ls='none')
     plt.show()
 
+    plot_timecourse(sol,
+                    title="plot with legend=False",
+                    tight_t0=False, legend=False)
+    plt.show()
+
+    plot_timecourse(sol,
+                    title="plot with legend='out'",
+                    tight_t0=False, legend='out')
+    plt.show()
+
     plot_timecourse(sol, what='z',
                     title="plot with filtering, what='z'")
     plt.show()
@@ -404,6 +452,11 @@ nothing really usefull here
     plt.show()
 
     st = {'x': {'c': 'chocolate', 'ls': '--'}}
+    plot_timecourse(sol, styling=st,
+                    title=f"plot, styling {st}")
+    plt.show()
+
+    st = {'*': {'ls': '--'}}
     plot_timecourse(sol, styling=st,
                     title=f"plot, styling {st}")
     plt.show()
@@ -440,8 +493,13 @@ nothing really usefull here
     plt.show()
 
     f, axs = prepare_grid(sols, figsize=(12, 10))
-    sols.plot(axs=axs)
-    plt.gcf().suptitle('plot Solutions with prepare_grid()')
+    sols.plot(axs=axs, legend=False)
+    plt.gcf().suptitle('plot Solutions with prepare_grid(), no legend')
+    plt.show()
+
+    f, axs = prepare_grid(sols, figsize=(12, 10))
+    sols.plot(axs=axs, legend=[False, False, 'out', False, False, False])
+    plt.gcf().suptitle('plot Solutions with prepare_grid(), legend cycle')
     plt.show()
 
     f, axs = prepare_grid(only_sol)
@@ -449,7 +507,8 @@ nothing really usefull here
     plt.gcf().suptitle('plot Solutions with only one solution')
     plt.show()
 
-    grid_kwds = dict(figsize=(12,10), layout_style='compact')
+    grid_kwds = dict(figsize=(12, 10), layout_style='compact')
     sols.plot(marker='o', grid_kwds=grid_kwds)
-    plt.gcf().suptitle('plot Solutions without prepare_grid(), "compact" style')
+    title = 'Plot Solutions without prepare_grid(), "compact" style'
+    plt.gcf().suptitle(title)
     plt.show()
