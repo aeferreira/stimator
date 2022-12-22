@@ -504,10 +504,10 @@ timecourse TSH2b.txt
     # ... intvarsorder=(0,2,1) ...
 
     print(optimum)
-    setts = dict(xlabel='t (s)', ylabel='conc (microM)')
-    optimum.plot(0, axes_settings=setts)
+
+    optimum.plot(0, xlabel='t (s)', ylabel='conc (microM)')
     plt.show()
-    optimum.plot(1, axes_settings=setts)
+    optimum.plot(1, xlabel='t (s)', ylabel='conc (microM)')
     plt.show()
 
     optimum.print_generations()

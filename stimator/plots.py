@@ -81,7 +81,7 @@ def _get_new_prop_cycle(prop_cycle, palette):
     return prop_cycle
 
 
-def generate_line_handles(names, prop_cycle, palette, styling, **kwargs):
+def generate_line_handles(names, prop_cycle, palette, styling):
     """build table of Line2D handles with no data.
 
     Cycle through a prop_cycle obtained
@@ -94,7 +94,7 @@ def generate_line_handles(names, prop_cycle, palette, styling, **kwargs):
     used_prop_cycle = _get_new_prop_cycle(prop_cycle, palette)
 
     for name, stl in zip(names, cycle(used_prop_cycle)):
-        line_handles[name] = Line2D([], [], **kwargs.copy())
+        line_handles[name] = Line2D([], [])
         line_handles[name].set(**stl)
 
     if styling is not None:
@@ -152,8 +152,8 @@ def draw_legend(ax, legend_argument):
 
 def plot_timecourse(timecourse, what=None, ax=None,
                     prop_cycle=None, palette=None, styling=None,
-                    axes_settings=None, legend='best',
-                    title=None, tight_t0=True, **kwargs):
+                    legend='best', title=None, tight_t0=True,
+                    **axes_settings):
     if ax is None:
         ax = plt.gca()
 
@@ -163,8 +163,7 @@ def plot_timecourse(timecourse, what=None, ax=None,
     # build table of Line2D handles with no data
 
     line_handles = generate_line_handles(cols_to_plot,
-                                         prop_cycle, palette, styling,
-                                         **kwargs)
+                                         prop_cycle, palette, styling)
 
     # plot the lines
     for name in cols_to_plot:
@@ -173,8 +172,10 @@ def plot_timecourse(timecourse, what=None, ax=None,
         line_handles[name].set_data(x, y)
         line_handles[name].set(label=name)
         ax.add_line(line_handles[name])
-        # line, *_ = ax.plot(x, y, label=name, **styles_to_use[name])
     ax.autoscale(enable=None)
+
+    # apply axes settings
+    ax.set(**axes_settings)
 
     # draw legend
     draw_legend(ax, legend)
@@ -190,18 +191,13 @@ def plot_timecourse(timecourse, what=None, ax=None,
     if tight_t0:
         if timecourse.t[0] < timecourse.t[-1]:
             ax.set_xlim(timecourse.t[0], None)
-
-    # apply axes settings
-    if axes_settings is not None:
-        ax.set(**axes_settings)
     return ax
 
 
 def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
-                                  exp_style=None, tight_t0=True,
-                                  axes_settings=None, legend='best',
+                                  exp_style=None, tight_t0=True, legend='best',
                                   opt_suffix='_pred', opt_prefix='',
-                                  **kwargs):
+                                  **axes_settings):
     if ax is None:
         ax = plt.gca()
 
@@ -213,12 +209,12 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
         exp_style = dict(marker='o', linestyle='none')
 
     # retrieve 'prop_cycle' and 'palette' and 'styling' arguments
-    prop_cycle = kwargs.pop('prop_cycle', None)
-    palette = kwargs.pop('palette', None)
-    styling = kwargs.pop('styling', None)
+    prop_cycle = axes_settings.pop('prop_cycle', None)
+    palette = axes_settings.pop('palette', None)
+    styling = axes_settings.pop('styling', None)
 
     # ignore 'what' (for now...)
-    _ = kwargs.pop('what', None)
+    _ = axes_settings.pop('what', None)
     # find what to plot
     what2plot = []
     for line in range(len(expsol)):
@@ -232,12 +228,10 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
 
     # build tables of Line2D handles with no data
     line_handles = generate_line_handles(what2plot,
-                                         prop_cycle, palette, styling,
-                                         **kwargs)
+                                         prop_cycle, palette, styling)
 
     exp_line_handles = generate_line_handles(what2plot,
-                                             prop_cycle, palette, styling,
-                                             **kwargs)
+                                             prop_cycle, palette, styling)
     # overide the settings for experimental data
     for name in exp_line_handles:
         exp_line_handles[name].set(**exp_style)
@@ -261,6 +255,9 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
 
     ax.autoscale(enable=None)
 
+    # apply axes settings
+    ax.set(**axes_settings)
+
     # draw legend
     draw_legend(ax, legend)
 
@@ -275,10 +272,6 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     if tight_t0:
         if symsol.t[0] < symsol.t[-1]:
             ax.set_xlim(symsol.t[0], None)
-
-    # apply axes settings
-    if axes_settings is not None:
-        ax.set(**axes_settings)
 
     return ax
 
@@ -402,18 +395,12 @@ nothing really usefull here
 
     setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
                  box_aspect=1)
-    sol.plot(title=f"TC plot, modifying axes\n{setts}",
-             axes_settings=setts)
+    sol.plot(title=f"TC plot, modifying axes\n{setts}", **setts)
     plt.show()
 
-    plot_timecourse(sol,
-                    title="plot with different lw, linewidth=10",
-                    linewidth=10)
-    plt.show()
-
-    plot_timecourse(stsh,
-                    title="plot with different marker, marker='^'",
-                    tight_t0=False, marker='^', ls='none')
+    plot_timecourse(stsh, styling={'*': dict(marker='^', ls='none')},
+                    title="plot with :different marker, marker='^'",
+                    tight_t0=False)
     plt.show()
 
     plot_timecourse(sol,
@@ -503,12 +490,13 @@ nothing really usefull here
     plt.show()
 
     f, axs = prepare_grid(only_sol)
-    only_sol.plot(axs=axs, marker='o')
+    st = {'*': dict(marker='o')}
+    only_sol.plot(axs=axs, styling=st)
     plt.gcf().suptitle('plot Solutions with only one solution')
     plt.show()
 
     grid_kwds = dict(figsize=(12, 10), layout_style='compact')
-    sols.plot(marker='o', grid_kwds=grid_kwds)
+    sols.plot(styling=st, grid_kwds=grid_kwds)
     title = 'Plot Solutions without prepare_grid(), "compact" style'
     plt.gcf().suptitle(title)
     plt.show()
