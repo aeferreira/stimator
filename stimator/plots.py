@@ -1,10 +1,11 @@
 import math
+from itertools import cycle
+from string import Template
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from cycler import cycler, Cycler
-from itertools import cycle
 
 from packaging.version import Version
 
@@ -182,7 +183,8 @@ def plot_timecourse(timecourse, what=None, ax=None,
 
     # draw plot title
     if title is not None:
-        ax.set_title(title)
+        if title is not False:
+            ax.set_title(title)
     elif timecourse.title:
         ax.set_title(timecourse.title)
 
@@ -196,7 +198,8 @@ def plot_timecourse(timecourse, what=None, ax=None,
 
 def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
                                   exp_style=None, tight_t0=True, legend='best',
-                                  opt_suffix='_pred', opt_prefix='',
+                                  opt_label_fmt='Predicted ${name}',
+                                  exp_label_fmt='$name',
                                   **axes_settings):
     if ax is None:
         ax = plt.gca()
@@ -236,12 +239,20 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     for name in exp_line_handles:
         exp_line_handles[name].set(**exp_style)
 
+    # defaults for line labels
+    if exp_label_fmt is None:
+        exp_label_fmt = '$name'
+    if opt_label_fmt is None:
+        opt_label_fmt = '${name}_pred'
+
     # plot experimental data
     for name in what2plot:
         x = expsol.t
         y = expsol[name]
         exp_line_handles[name].set_data(x, y)
-        exp_line_handles[name].set(label=name)
+        mapping = {'plot_indx': 0, 'name': name}
+        explabel = Template(exp_label_fmt).safe_substitute(mapping)
+        exp_line_handles[name].set(label=explabel)
         ax.add_line(exp_line_handles[name])
 
     # plot predicted data
@@ -249,7 +260,8 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
         x = symsol.t
         y = symsol[name]
         line_handles[name].set_data(x, y)
-        opt_name = opt_prefix + name + opt_suffix
+        mapping = {'plot_indx': 1, 'name': name}
+        opt_name = Template(opt_label_fmt).safe_substitute(mapping)
         line_handles[name].set(label=opt_name)
         ax.add_line(line_handles[name])
 
@@ -273,6 +285,65 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
         if symsol.t[0] < symsol.t[-1]:
             ax.set_xlim(symsol.t[0], None)
 
+    return ax
+
+
+def one_plot(time_courses, what=None, ax=None, label_fmt='${title}: ${name}',
+             prop_cycle=None, palette=None, styling=None,
+             legend='best', title=None, tight_t0=True,
+             **axes_settings):
+
+    if ax is None:
+        ax = plt.gca()
+
+    # find what (which columns) to plot
+    cols_to_plot = []
+    for tc in time_courses:
+        cols_to_plot.append(_find_what_to_plot(tc, what))
+
+    # generate names for the dict of handles with tc ref
+    all_names = []
+    for i, cols in enumerate(cols_to_plot):
+        icols = [f'{i}:::{c}' for c in cols]
+        all_names.extend(icols)
+
+    # build table of Line2D handles with no data
+
+    line_handles = generate_line_handles(all_names,
+                                         prop_cycle, palette, styling)
+
+    # plot the lines
+    for fullname in all_names:
+        # find tc index and name
+        tc_index, name = fullname.split(':::', 1)
+        tc_index = int(tc_index)
+        timecourse = time_courses[tc_index]
+        x = timecourse.t
+        y = timecourse[name]
+        line_handles[fullname].set_data(x, y)
+        mapping = {'plot_indx': tc_index,
+                   'title': timecourse.title,
+                   'name': name}
+        label = Template(label_fmt).safe_substitute(mapping)
+        line_handles[fullname].set(label=label)
+        ax.add_line(line_handles[fullname])
+    ax.autoscale(enable=None)
+
+    # apply axes settings
+    ax.set(**axes_settings)
+
+    # draw legend
+    draw_legend(ax, legend)
+
+    # draw plot title
+    if title is not None:
+        ax.set_title(title)
+
+    # remove the left margin for the x-axis
+    # to start the plot at t0, if 'tight_t0'
+    if tight_t0:
+        if time_courses[0].t[0] < time_courses[0].t[-1]:
+            ax.set_xlim(time_courses[0].t[0], None)
     return ax
 
 
@@ -306,7 +377,7 @@ def prepare_grid(sols, layout_style=None, **kwargs):
     return f, axs
 
 
-def plotTCs(sols, axs=None, grid_kwds=None, **kwargs):
+def plotTCs(sols, axs=None, grid_kwds=None, titles=True, **kwargs):
     if axs is None:
         if grid_kwds is None:
             grid_kwds = {}
@@ -320,10 +391,17 @@ def plotTCs(sols, axs=None, grid_kwds=None, **kwargs):
     if not _is_sequence(legends):
         legends = [legends]
 
+    is_compact = False
+    if grid_kwds is not None:
+        layout = grid_kwds.get('layout_style', '')
+        is_compact = (layout == 'compact')
+
     if not isinstance(axs, np.ndarray):
         usable_axs = np.array(axs)
     else:
         usable_axs = axs
+    if titles is False or is_compact:
+        kwargs['title'] = False
     for tc, ax, leg in zip(sols, usable_axs.flat, cycle(legends)):
         plot_timecourse(tc, ax=ax, legend=leg, **kwargs)
     return f, axs
@@ -374,6 +452,8 @@ nothing really usefull here
 """
     sol = Solution().read_str(demodata)
     sol2 = Solution().read_str(demodata2)
+    sol.title = 'TC 1'
+    sol2.title = 'TC 2'
     sols = Solutions([sol, sol2, sol, sol, sol, sol2, sol2])
     only_sol = Solutions([sol])
 
@@ -384,6 +464,7 @@ nothing really usefull here
 
     stsh = Solution()
     stsh.read_from(example_tc)
+    stsh.title = 'TSH2b.txt'
 
     # plot_timecourse(sol, title="simple TC plot")
     sol.plot(title="simple TC plot")
@@ -472,6 +553,10 @@ nothing really usefull here
                     title="2nd plot, same axes as 1st plot", palette='Dark2')
     plt.show()
 
+    two_tcs = [sol, sol2]
+    one_plot(two_tcs, title='one_plot of 2 TCs')
+    plt.show()
+
     f, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
     plot_timecourse(sol,
                     title="1st plot", ax=ax1, palette='tab20')
@@ -491,7 +576,7 @@ nothing really usefull here
 
     f, axs = prepare_grid(only_sol)
     st = {'*': dict(marker='o')}
-    only_sol.plot(axs=axs, styling=st)
+    only_sol.plot(axs=axs, styling=st, titles=False)
     plt.gcf().suptitle('plot Solutions with only one solution')
     plt.show()
 

@@ -438,6 +438,9 @@ class Solutions(object):
     def plot(self, **kwargs):
         return plots.plotTCs(self, **kwargs)
 
+    def one_plot(self, **kwargs):
+        return plots.one_plot(self, **kwargs)
+
 
 def read_tc(source,
             filedir=None,
