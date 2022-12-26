@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 
 print('S-timator version', __version__)
 
+# --- example 1 --------------------
+
 example_data = """
 t   x1   x2
 0   0   0
@@ -17,11 +19,10 @@ t   x1   x2
 18   1.977904321   3.098886165
 20   2.126776717   3.463202683
 """
-
 tc = Solution.read_str(example_data)
 
 mdl = """# Example model
-title Example 2
+title Model for parameter estimation
 
 vin  : -> x1     , rate = k1
 v2   : x1 ->  x2 , rate = k2 * x1
@@ -33,27 +34,28 @@ find k1 in [0, 2]
 find k2 in [0, 2]
 find k3 in [0, 2]
 
-!! x2 x1
+!! x1 x2
 
 popsize = 60     # population size in GA
 """
-m1 = read_model(mdl)
-print(mdl)
 
-best = m1.estimate(tc)
+model = read_model(mdl)
+
+best = model.estimate(timecourses=tc)
 
 print(best)
-best.plot()
-plt.show()
 
 print('--- Modifying model ---')
-m2 = m1.copy()
-bestpars = [(n, v) for n, v, e in best.parameters]
+m2 = model.copy()
+bestpars = [(n, v) for n, v, _ in best.parameters]
+print(dict(bestpars))
+
 m2.setp(bestpars)
-print('ok')
 
-f, (ax1, ax2) = plt.subplots(1, 2)
-m2.solve(tf=20.0).plot(axes=ax2)
+# plot side by side
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
+best.plot(ax=ax1, palette='Dark2', xlabel='t')
+m2.solve(tf=20.0).plot(ax=ax2, palette='Dark2', xlabel='t')
 
 plt.show()

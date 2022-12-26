@@ -2,6 +2,7 @@
 
 from stimator import read_model, Solutions
 from stimator.dynamics import add_dSdt_to_model
+from matplotlib import pyplot as plt
 
 print(__doc__, '\n')
 print("""Sensitivity ODEs are added to model, according to formula:
@@ -27,7 +28,7 @@ m = read_model(glos)
 print(m)
 
 print('\nAdding sensitivity ODEs -------------------------')
-#pars = ["B", "k1", "K3"] # for calcium model
+# pars = ["B", "k1", "K3"] # for calcium model
 pars = "V1 Km1".split()
 npars = len(pars)
 print('npars =', npars)
@@ -37,14 +38,24 @@ nsens = npars * nvars
 print('nsens =', nsens)
 
 add_dSdt_to_model(m, pars)
-#print m
+# print m
 
 print('\nSolving with sensitivities...')
 sol = m.solve(tf=4030.0)
-plots = Solutions([sol.copy(names = "HTA SDLTSH", newtitle = 'X')])
+
+plots = Solutions([sol.copy(names="HTA SDLTSH", newtitle='X')])
+
 for p in pars:
-    plots.append(sol.copy(names = 'd_HTA_d_%s d_SDLTSH_d_%s'%(p,p), 
-                          newtitle ='dX/d'+p))
+    plots.append(sol.copy(names='d_HTA_d_%s d_SDLTSH_d_%s' % (p, p),
+                          newtitle='dX/d' + p))
+
+plt.style.use(['seaborn-whitegrid',
+               {'xaxis.labellocation': 'right',
+                'legend.frameon': True,
+                'legend.facecolor': 'white'}])
+
+_, axs = plt.subplots(1, 3, figsize=(13, 4.5))
+plots.plot(axs=axs, box_aspect=1)
+plt.show()
 
 print('\nDONE!')
-plots.plot(show=True)
