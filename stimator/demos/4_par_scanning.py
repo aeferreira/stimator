@@ -47,7 +47,7 @@ def run_normal():
     plt.show()
 
     s.one_plot(what='Ca', title=title, xlabel='$t$ (min)',
-               palette='tab20', ylim=(0, 2), xlim=(0,10), label_fmt='$title')
+               palette='tab20', ylim=(0, 2), xlim=(0, 10), label_fmt='$title')
     plt.show()
 
 
