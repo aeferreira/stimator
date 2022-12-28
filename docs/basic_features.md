@@ -14,9 +14,10 @@ kernelspec:
 ```{code-cell} ipython3
 %matplotlib inline
 from matplotlib import pyplot as plt
-plt.style.use(['seaborn-whitegrid',
+plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
               {'xaxis.labellocation': 'right',
                'legend.frameon': True,
+               'figure.figsize': (10, 8),
                'legend.facecolor': 'white'}])
 ```
 

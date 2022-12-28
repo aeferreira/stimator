@@ -152,16 +152,12 @@ def draw_legend(ax, legend_argument):
     if not legend_argument.startswith('out'):
         ax.legend(handles, lbls, loc=legend_argument)
     else:
+        # must use tight layout, in this case
+        f = ax.get_figure()
+        f.set_tight_layout(True)
         ax.legend(handles, lbls, loc='upper left',
                   bbox_to_anchor=(1.01, 1),
                   borderaxespad=0)
-        # must use constrained layout, in this case
-        f = plt.gcf()
-        mpl_ver = Version(mpl.__version__)
-        if mpl_ver >= Version('3.6'):
-            f.set_layout_engine('constrained')
-        else:
-            f.set_constrained_layout(True)
 
 
 def plot_timecourse(timecourse, what=None, ax=None,
