@@ -55,7 +55,7 @@ optimum.print_generations()
 
 print('=================================================')
 print('Parameter estimation: glyoxalase system example')
-print('-------- an example with ta transformation --------------')
+print('-------- an example with a transformation --------------')
 
 mtransf = read_model("""
 title example 2, fitting a transformation

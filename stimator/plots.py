@@ -36,11 +36,24 @@ def _find_what_to_plot(timecourse, what):
     return cols2plot
 
 
-MPL_QUALIT = ['Pastel1', 'Pastel2', 'Paired', 'Accent',
-              'Dark2', 'Set1', 'Set2', 'Set3', 'tab10',
-              'tab20', 'tab20b', 'tab20c']
+_MPL_QUALIT = ['Pastel1', 'Pastel2', 'Paired', 'Accent',
+               'Dark2', 'Set1', 'Set2', 'Set3', 'tab10',
+               'tab20', 'tab20b', 'tab20c']
 
-MPL_QUALITATIVE_TABLE = {cm: mpl.colormaps[cm].colors for cm in MPL_QUALIT}
+
+def _get_colormap_colortable():
+    mpl_ver = Version(mpl.__version__)
+    if mpl_ver >= Version('3.5'):
+        return {cm: mpl.colormaps[cm].colors for cm in _MPL_QUALIT}
+    cm_table = {}
+    for cm in _MPL_QUALIT:
+        cm_obj = mpl.cm.get_cmap(name=cm, lut=None)
+        colors = [cm_obj(i) for i in range(cm_obj.N)]
+        cm_table[cm] = colors
+    return cm_table
+
+
+MPL_QUALITATIVE_TABLE = _get_colormap_colortable()
 
 
 def get_color_list(pname):
@@ -48,7 +61,7 @@ def get_color_list(pname):
 
     mpl qualitative names are accepted.
     TODO: accept seaborn and palettable generated palettes as pname"""
-    if pname in MPL_QUALIT:
+    if pname in _MPL_QUALIT:
         return MPL_QUALITATIVE_TABLE[pname]
     raise ValueError(f'palette name {pname} not found')
 

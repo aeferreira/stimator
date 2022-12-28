@@ -120,9 +120,3 @@ This produces the following output::
     Name		Points		Score
     ex2data.txt	11	0.300713
 
-
-Summary of road map
--------------------
-
-- Improve documentation
-- I/O to other model description formats (SBML, etc)
