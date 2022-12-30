@@ -11,7 +11,7 @@ kernelspec:
   name: python3
 ---
 
-# Solving ODE models (`dynamics.py`).
+# Solving ODE models.
 
 ```{code-cell} ipython3
 %matplotlib inline
@@ -20,6 +20,7 @@ plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
               {'xaxis.labellocation': 'right',
                'legend.frameon': True,
                'figure.figsize': (10, 8),
+               'figure.titlesize': 16,
                'legend.facecolor': 'white'}])
 ```
 
@@ -45,7 +46,8 @@ print(mdl)
 m1 = read_model(mdl)
 
 s = m1.solve(tf=4030.0)
-s.plot()
+
+s.plot(xlabel='$t$ (min)');
 
 print('==== Last time point ====')
 print('At t = %g'% s.t[-1])
@@ -65,7 +67,7 @@ m2 = read_model(mdl)
 
 times = append(linspace(0.0, 5.0, 500), linspace(5.0, 10.0, 500))
 
-m2.solve(tf=10.0, times=times).plot()
+m2.solve(tf=10.0, times=times).plot();
 ```
 
 ## Example 3: Calcium spikes: CICR model
@@ -76,7 +78,7 @@ mdl = examples.models.ca.text
 print(mdl)
 
 #chaining functions...
-read_model(mdl).solve(tf=8.0, npoints=2000).plot()
+read_model(mdl).solve(tf=8.0, npoints=2000).plot();
 ```
 
 ## Example 4: Rossler chaotic system
@@ -112,7 +114,7 @@ s = m5.scan(ivs, tf=25.0, npoints=20000, outputs=['x'], titles=titles)
 
 f, ax = plt.subplots(figsize=(12, 8))
 s.one_plot(what='x', ax=ax, label_fmt='$title');
-f.suptitlegend=m5.metadata['title'],
+f.suptitle(m5.metadata['title']);
 ```
 
 ## Example 6: parameter scanning in the CICR model
@@ -137,10 +139,11 @@ titles = [f'$\\beta$ = {b:g}' for b in bvalues]
 s = m.scan({'B': bvalues}, tf=8.0, npoints=1000, titles=titles)
 suptitlegend="Dynamics of cytosolic $Ca^{2+}$ as a function of stimulus"
 
-f, axs = prepare_grid(s, figsize=(16,16))
+f, axs = prepare_grid(s, figsize=(16,16), constrained_layout=True)
 
 s.plot(ylim=(0,1.5), axs=axs, legend=False, xlabel='$t$ (min)')
-f.suptitlegend = suptitlegend
+
+f.suptitle(suptitlegend, fontsize=20);
 ```
 
 Several time courses in the same plot
