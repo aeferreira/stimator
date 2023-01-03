@@ -359,6 +359,9 @@ def one_plot(time_courses, what=None, ax=None, label_fmt='${title}: ${name}',
 def prepare_grid(sols, layout_style=None, **kwargs):
 
     subplots_kwargs = kwargs.copy()
+    has_tight_layout = subplots_kwargs.get('tight_layout', None)
+    if has_tight_layout is None:
+        subplots_kwargs['tight_layout'] = True
 
     # find how many plots
     nplts = len(sols)
@@ -580,7 +583,7 @@ nothing really usefull here
 
     f, axs = prepare_grid(sols, figsize=(12, 10))
     sols.plot(axs=axs, legend=[False, False, 'out', False, False, False])
-    plt.gcf().suptitle('plot Solutions with prepare_grid(), legend cycle')
+    plt.gcf().suptitle('plot Solutions with prepare_grid(), legend "out"')
     plt.show()
 
     f, axs = prepare_grid(only_sol)

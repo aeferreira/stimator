@@ -40,7 +40,7 @@ def run_normal():
                    'legend.frameon': True,
                    'legend.facecolor': 'white'}])
 
-    f, axs = prepare_grid(s, figsize=(14, 10))
+    f, axs = prepare_grid(s, figsize=(14, 8))
     s.plot(axs=axs, what='Ca', legend=False,
            ylim=[0, 1.5], xlabel='$t$ (min)', box_aspect=1)
     f.suptitle(title, fontsize=16)
