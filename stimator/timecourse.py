@@ -301,12 +301,7 @@ class Solutions(object):
     def __init__(self, aList=None, title=""):
         self.title = title
         self.solutions = []
-        self.shortnames = []
-        self.filenames = []
-        self.basedir = None
-        self.defaultnames = None  # list of names to use if headers are missing
-        # aList argument must be an iterable
-        # TODO: throw Exception if it isn't
+
         if aList is not None:
             for s in aList:
                 self.append(s)
@@ -316,7 +311,10 @@ class Solutions(object):
         return '\n'.join(output)
 
     def __getitem__(self, key):
-        """retrieves a series by index"""
+        """retrieves a solution by index or Solutions object if a slice"""
+        if isinstance(key, slice):
+            sols = self.solutions[key]
+            return Solutions(sols, title=self.title)
         return self.solutions.__getitem__(key)
 
     def __len__(self):
@@ -346,44 +344,6 @@ class Solutions(object):
 
     def append(self, other):
         return self.__iadd__(other)
-
-    def _load_tcs(self, filedir=None, names=None, verbose=False):
-        if len(self.filenames) == 0:
-            msg = "No time courses to load!"
-            msg += "Please indicate time courses with 'timecourse <filename>'"
-            raise StimatorTCError(msg)
-
-        # check and load timecourses
-        cwd = Path.cwd()
-        if filedir is None:
-            filedir = ''
-
-        plist = [cwd / filedir / k for k in self.filenames]
-        plist = [p.absolute() for p in plist]
-
-        self.data = []
-        nTCsOK = 0
-        if verbose:
-            print("-- reading time courses -------------------------------")
-        for filename in plist:
-            if not Path.exists(filename) or not Path.is_file(filename):
-                raise StimatorTCError(f"File \n{filename}\ndoes not exist")
-            sol = SolutionTimeCourse()
-            sol.read_from(filename, names=names)
-            if sol.shape == (0, 0):
-                error_msg = "File\n%s\ndoes not contain valid data" % filename
-                raise StimatorTCError(error_msg)
-            else:
-                if verbose:
-                    print("file %s:" % (filename))
-                    print("%d time points, %d variables" % (sol.ntimes,
-                                                            len(sol)))
-                self.append(sol)
-                nTCsOK += 1
-        self.shortnames = [filename.name for filename in plist]
-        for i, sol in enumerate(self.solutions):
-            sol.title = self.shortnames[i]
-        return nTCsOK
 
     def write_to(self, filenames, filedir=None, verbose=False):
         if len(self) == 0:
@@ -445,30 +405,76 @@ class Solutions(object):
 def read_tc(source,
             filedir=None,
             names=None,
+            title=None,
             verbose=False):
+    tcs = None
     if isinstance(source, Solutions):
-        return source
+        tcs = Solutions
     elif isinstance(source, SolutionTimeCourse):
-        return Solutions([source])
+        tcs = Solutions([source])
+    if tcs is not None:
+        if title is not None:
+            tcs.title = title
+        return tcs
 
-    tcs = Solutions()
     tcsnames = None
-
     if hasattr(source, 'metadata'):
         # retrieve info from model declaration
         stcs = source.metadata['timecourses']
-        tcs.filenames = stcs['filenames']
+        filenames = stcs['filenames']
         if 'defaultnames' in stcs:
             tcsnames = stcs['defaultnames']
     elif _is_string(source):
-        tcs.filenames = [source]
+        filenames = [source]
     else:
-        tcs.filenames = source
+        filenames = source
 
     if names is None:
         if tcsnames is not None:
             names = tcsnames
-    tcs._load_tcs(filedir, names=names, verbose=verbose)
+
+    # raise Exception if there are no files to read
+    if len(filenames) == 0:
+        msg = "No time courses to load!"
+        msg += "Please indicate time courses with 'timecourse <filename>'"
+        raise StimatorTCError(msg)
+
+    # construct absolute paths
+    # check and load timecourses
+    cwd = Path.cwd()
+    if filedir is None:
+        filedir = ''
+
+    plist = [cwd / filedir / k for k in filenames]
+    plist = [p.absolute() for p in plist]
+
+    # raise Exception if files do not exist
+    for filename in plist:
+        if not Path.exists(filename) or not Path.is_file(filename):
+            raise StimatorTCError(f"File \n{filename}\ndoes not exist")
+
+    if title is None:
+        title = ''
+    tcs = Solutions(title=title)
+
+    if verbose:
+        print("-- reading time courses -------------------------------")
+    for filename in plist:
+        sol = SolutionTimeCourse()
+        sol.read_from(filename, names=names)
+        if sol.shape == (0, 0):
+            error_msg = "File\n%s\ndoes not contain valid data" % filename
+            raise StimatorTCError(error_msg)
+        else:
+            if verbose:
+                print("file %s:" % (filename))
+                print("%d time points, %d variables" % (sol.ntimes,
+                                                        len(sol)))
+            tcs.append(sol)
+
+    shortnames = [filename.name for filename in plist]
+    for i, sol in enumerate(tcs.solutions):
+        sol.title = shortnames[i]
     return tcs
 
 

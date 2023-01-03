@@ -328,8 +328,36 @@ def test_Solutions_construction_and_iadd():
     assert print_1st_line == ssols[0]
 
 
+def test_Solutions_indexing():
+    sols = Solutions(title='all time courses')
+    s = Solution(title='1st time course').read_str(demodata)
+    sols += s
+    s = Solution(title='2nd time course').read_str(demodata_noheader)
+    sols += s
+    bcontext = True if sols else False
+    assert bcontext
+
+    one_sol = sols[0]
+    assert isinstance(one_sol, Solution)
+
+    print_1st_line = 't x y z'
+    ssols = str(one_sol)
+    ssols = [line.strip() for line in ssols.split('\n')]
+    assert print_1st_line == ssols[0]
+
+    two_sols = sols[0:]
+    assert isinstance(two_sols, Solutions)
+    assert two_sols.title == 'all time courses'
+
+    print_1st_line = 't x y z'
+    ssols = str(two_sols)
+    ssols = [line.strip() for line in ssols.split('\n')]
+    assert print_1st_line == ssols[0]
+
+
 def test_readTCs():
-    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR,
+                  title='read solutions', verbose=False)
     assert len(tcs) == 2
 
     assert tcs[0].shape == (2, 347)
@@ -345,6 +373,7 @@ def test_readTCs():
     assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
     assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
+    assert tcs.title == 'read solutions'
 
 
 def test_readTCs_default_names():
