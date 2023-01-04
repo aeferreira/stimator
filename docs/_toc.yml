@@ -4,7 +4,6 @@
 format: jb-book
 root: index
 chapters:
-- file: introduction
 - file: basic_features
 - file: models
 - file: solving

@@ -21,11 +21,12 @@ plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
                'legend.facecolor': 'white'}])
 ```
 
-# 1 - Basics
+(basic-features)=
+# Basic features
 
 +++
 
-## 1.1 - Models
+## Models
 
 +++
 
@@ -93,7 +94,7 @@ At the bare minimum, a kinetic model is built by stating:
 
 +++
 
-## 1.2 - Describing models in S-timator
+## Describing models
 
 +++
 
@@ -107,7 +108,7 @@ As we will see in a moment, this is one of the most fundamental functions of the
 import stimator as st
 ```
 
-In S-timator, models are described inside a *Python* `string`:
+In S-timator, models are described inside a *Python string*:
 
 ```{code-cell} ipython3
 model_description = """
@@ -126,7 +127,7 @@ init: (A = 1)
 """
 ```
 
-This (multi-line) *Python* `string` contains a set of declarations about the model that are quite straightforward to learn and use.
+This (multi-line) *Python string* contains a set of declarations about the model that are quite straightforward to learn and use.
 
 Let us examine them:
 
@@ -145,7 +146,7 @@ Note that, in this example, reaction 1 was named `r1` and the reactions 2 and 3 
 
 +++
 
-After writting the `string` that describes the model, this `string` must be transformed into a special *Python* object using function `read_model()`.
+After writting the *string* that describes the model, this *string* must be transformed into a special *Python* object using function `read_model()`.
 
 The result of `read_model()` is a **`Model`** object, one of the fundamental data structures in S-timator.
 
@@ -169,7 +170,7 @@ Just a few notes:
 
 +++
 
-## 1.3 - Solving and plotting
+## Solving and plotting
 
 +++
 
@@ -184,19 +185,17 @@ Two functions are involved:
 m.solve(tf=20.0).plot(xlabel='time');
 ```
 
-Where did this graph came from?
+To produce this plot, S-timator took the initial state of your model, as defined in `init`, and generated an estimate of the values of the concentrations of the variables throughout time.
 
-S-timator took the initial state of your model, as defined in `init`, and generated an estimate of the values of the concentrations of the variables throughout time. This is called a **time course** or a **time series**.
+This is called a **time course** or a **time series**.
 
-Function `plot()` just produces a graph of those values, where the **x-axis represents time**.
+The Function `plot()` just produces a graph of those values, where the **x-axis represents time**.
 
 The two functions were *chained* together: the result of `solve()` can call the function `plot()` just by using the dot.
 
 +++
 
-**Why is it called `solve()`?**
-
-This is because the underlying mathematical expression of the model is a **system of ordinary differential equations (SODE)**. 
+Why is it called `solve()`? This is because the underlying mathematical expression of the model is a **system of ordinary differential equations (SODE)**. 
 
 For our two-reaction example, this system is
 
@@ -204,7 +203,7 @@ $$ \begin{array}{ccl} \frac{d A}{dt} & = & - k_1 \cdot A \\
 \frac{d B}{dt} & = & k_1 \cdot A - k_2 \cdot B + k_3 \cdot C \\
 \frac{d C}{dt} & = & k_2 \cdot B - k_3 \cdot C \end{array} $$
 
-Computing the time course of the concentrations, starting from the initial state, is done by solving this system of equations numerically, that is, computing $A(t)$, $B(t)$ and $C(t)$ as functions of time, from the knowledge of their derivatives. Hence the name `solve()`.
+Computing the time course of the concentrations, starting from the initial state, is done by *solving* this system of equations numerically, that is, computing $A(t)$, $B(t)$ and $C(t)$ as functions of time, from the knowledge of their derivatives. Hence the name `solve()`.
 
 The result of function `solve()` is called a *solution* of the SODE.
 
@@ -215,11 +214,11 @@ The argument `tf` in function `solve()` indicates that the solution should be co
 Let's change this value
 
 ```{code-cell} ipython3
-s = m.solve(tf=100.0)
-s.plot(xlabel='time', legend='out');
+tc = m.solve(tf=100.0)
+tc.plot(xlabel='time', legend='out');
 ```
 
-Here the two functions, `solve()` and `plot()` were separated. The result of `solve()` (a time course) was assigned to the variable _s_ and then `s.plot()` was called.
+Notice that the two functions, `solve()` and `plot()` can be separated. The result of `solve()` is a *time course* that assigned the name `tc` and then `tc.plot()` was called.
 
 Looking at the plot, we can see that, given enough time, species $A$ is completely consumed and the total mass (1.0) is distributed among $B$ and $C$, which settle into a chemical equilibrium.
 
@@ -235,7 +234,7 @@ s.last
 
 +++
 
-## 1.4 - Inflows and outflows
+## Inflows and outflows
 
 +++
 
@@ -273,12 +272,12 @@ m = st.read_model(model_description)
 Repeating the analysis for this example, we get very different results.
 
 ```{code-cell} ipython3
-s = m.solve(tf=100.0)
-s.last
+tc = m.solve(tf=100.0)
+tc.last
 ```
 
 ```{code-cell} ipython3
-s.plot(xlabel='time');
+tc.plot(xlabel='time');
 ```
 
 Here the three variables settle into a different state characterized by the steady flow of mass throughout the system (a *steady state*). Notice that $A$ no longer vanishes to zero.
@@ -288,12 +287,12 @@ Here the three variables settle into a different state characterized by the stea
 It is also interesting to plot the **rates** of the four reactions. We can achieve this by using argument `outputs` of function `solve()`: the "glyph" `->` indicates that the rates should be computed, instead of the variables (`>>` or `>` could also have been used).
 
 ```{code-cell} ipython3
-s = m.solve(tf=100.0, outputs='->')
-s.last
+tc = m.solve(tf=100.0, outputs='->')
+tc.last
 ```
 
 ```{code-cell} ipython3
-s.plot(ylim=(0, 0.55), xlabel='time', legend='out', palette='Dark2');
+tc.plot(ylim=(0, 0.55), xlabel='time', legend='out', palette='Dark2');
 ```
 
 Not only the concentrations become constant but the **values of the rates also become constant and equal to the inflow of mass into the system**.

@@ -11,6 +11,7 @@ kernelspec:
   name: python3
 ---
 
+(solving_models)=
 # Solving ODE models.
 
 ```{code-cell} ipython3
@@ -117,6 +118,7 @@ s.one_plot(what='x', ax=ax, label_fmt='$title');
 f.suptitle(m5.metadata['title']);
 ```
 
+(scanning)=
 ## Example 6: parameter scanning in the CICR model
 
 ```{code-cell} ipython3

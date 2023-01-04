@@ -21,7 +21,7 @@ plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
                'legend.facecolor': 'white'}])
 ```
 
-# 2 - More on models and model description
+# Models and model description
 
 +++
 
