@@ -154,10 +154,11 @@ def draw_legend(ax, legend_argument):
     else:
         # must use tight layout, in this case
         f = ax.get_figure()
-        f.set_tight_layout(True)
+        if not (f.get_constrained_layout() or f.get_tight_layout()):
+            f.set_tight_layout(True)
         ax.legend(handles, lbls, loc='upper left',
-                  bbox_to_anchor=(1.01, 1),
-                  borderaxespad=0)
+                bbox_to_anchor=(1.01, 1),
+                borderaxespad=0)
 
 
 def plot_timecourse(timecourse, what=None, ax=None,
@@ -358,10 +359,16 @@ def one_plot(time_courses, what=None, ax=None, label_fmt='${title}: ${name}',
 
 def prepare_grid(sols, layout_style=None, **kwargs):
 
+    is_more35 = Version(mpl.__version__) >= Version('3.5')
     subplots_kwargs = kwargs.copy()
-    has_tight_layout = subplots_kwargs.get('tight_layout', None)
-    if has_tight_layout is None:
-        subplots_kwargs['tight_layout'] = True
+    has_layoutkwds = 'tight_layout' in subplots_kwargs
+    has_layoutkwds = has_layoutkwds or ('constrained_layout' in subplots_kwargs)
+    has_layoutkwds = has_layoutkwds or ('layout' in subplots_kwargs)
+    if not has_layoutkwds:
+        if is_more35:
+            subplots_kwargs['layout'] = 'tight'
+        else:
+            subplots_kwargs['tight_layout'] = True
 
     # find how many plots
     nplts = len(sols)
@@ -374,7 +381,13 @@ def prepare_grid(sols, layout_style=None, **kwargs):
         subplots_kwargs['ncols'] = ncols
 
     if layout_style == 'compact':
-        subplots_kwargs['sharey'] = 'row'
+        subplots_kwargs['sharey'] = 'all'
+        subplots_kwargs['sharex'] = 'all'
+        if is_more35:
+            subplots_kwargs['layout'] = None
+        else:
+            subplots_kwargs['constrained_layout'] = False
+            subplots_kwargs['tight_layout'] = False
 
     f, axs = plt.subplots(**subplots_kwargs)
 
