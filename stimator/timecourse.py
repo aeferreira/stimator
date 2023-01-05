@@ -440,9 +440,8 @@ def read_tc(source,
 
     # raise Exception if there are no files to read
     if len(filenames) == 0:
-        msg = "No time courses to load!"
-        msg += "Please indicate time courses with 'timecourse <filename>'"
-        raise StimatorTCError(msg)
+        msg = "No time courses to read!"
+        raise FileNotFoundError(msg)
 
     # construct absolute paths
     # check and load timecourses
@@ -450,36 +449,32 @@ def read_tc(source,
     if filedir is None:
         filedir = ''
 
-    plist = [cwd / filedir / k for k in filenames]
-    plist = [p.absolute() for p in plist]
-
-    # raise Exception if files do not exist
-    for filename in plist:
-        if not Path.exists(filename) or not Path.is_file(filename):
-            raise StimatorTCError(f"File \n{filename}\ndoes not exist")
-
     if title is None:
         title = ''
     tcs = Solutions(title=title)
 
     if verbose:
         print("-- reading time courses -------------------------------")
-    for filename in plist:
+
+    # raise Exception if files do not exist
+    for filename in filenames:
+        abspath = cwd / filedir / filename
+        abspath = abspath.absolute()
+        if not Path.exists(abspath) or not Path.is_file(abspath):
+            raise FileNotFoundError(f"File \n{abspath}\ndoes not exist")
+
         sol = SolutionTimeCourse()
-        sol.read_from(filename, names=names)
+        sol.read_from(abspath, names=names)
         if sol.shape == (0, 0):
-            error_msg = "File\n%s\ndoes not contain valid data" % filename
+            error_msg = "File\n%s\ndoes not contain valid data" % abspath
             raise StimatorTCError(error_msg)
         else:
             if verbose:
-                print("file %s:" % (filename))
-                print("%d time points, %d variables" % (sol.ntimes,
-                                                        len(sol)))
+                print("file %s:" % (abspath))
+                print(f"{sol.ntimes} time points, {len(sol)} variables")
+            sol.title = abspath.name
             tcs.append(sol)
 
-    shortnames = [filename.name for filename in plist]
-    for i, sol in enumerate(tcs.solutions):
-        sol.title = shortnames[i]
     return tcs
 
 

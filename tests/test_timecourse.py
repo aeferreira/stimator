@@ -376,6 +376,20 @@ def test_readTCs():
     assert tcs.title == 'read solutions'
 
 
+def test_badname_readTCs():
+    with pytest.raises(OSError):
+        tcs = read_tc(['%%%@@@@\n\n\ntttt\t\t\t/qqq.txt'],
+                      title='read solutions', verbose=False)
+        assert len(tcs) == 1
+
+
+def test_nofile_readTCs():
+    with pytest.raises(OSError):
+        tcs = read_tc(['TSH2b.txt', 'TSH10.txt'], _DATADIR,
+                      title='read solutions', verbose=False)
+        assert len(tcs) == 1
+
+
 def test_readTCs_default_names():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR,
                   names="SDLTSH HTA".split(),
