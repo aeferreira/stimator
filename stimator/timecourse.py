@@ -326,15 +326,15 @@ class Solutions(object):
     __nonzero__ = __bool__
 
     def __iadd__(self, other):
-        if isinstance(other, Solutions):
+        if isinstance(other, SolutionTimeCourse):
+            self.solutions.append(other)
+        elif isinstance(other, Solutions):
             self.solutions.extend(other.solutions)
-        elif isinstance(other, list) or isinstance(other, tuple):
+        elif isinstance(other, list) or isinstance(other, tuple) or isinstance(other, set):
             for s in other:
                 if not isinstance(s, SolutionTimeCourse):
                     raise TypeError("Must add a solution or a set of them")
             self.solutions.extend(list(other))
-        elif isinstance(other, SolutionTimeCourse):
-            self.solutions.append(other)
         else:
             raise TypeError("Must add a solution or a set of solutions")
         return self
@@ -401,17 +401,22 @@ class Solutions(object):
     def one_plot(self, **kwargs):
         return plots.one_plot(self, **kwargs)
 
+    def prepare_grid(self, **kwargs):
+        return plots.prepare_grid(self, **kwargs)
+
 
 def read_tc(source,
             filedir=None,
             names=None,
             title=None,
             verbose=False):
-    tcs = None
+
     if isinstance(source, Solutions):
         tcs = Solutions
     elif isinstance(source, SolutionTimeCourse):
         tcs = Solutions([source])
+    else:
+        tcs = None
     if tcs is not None:
         if title is not None:
             tcs.title = title
