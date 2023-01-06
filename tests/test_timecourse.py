@@ -432,6 +432,44 @@ def test_readTCs_and_change_order():
     assert tcs[1].title == 'TSH2a.txt'
 
 
+def test_readTCs_mixtypes(tc_1):
+    sol = Solution().read_from(tc_1)
+    sol.title = 'the last one'
+    tcs = read_tc(['TSH2b.txt', 'TSH2a.txt', demodata2, sol], _DATADIR,
+                  names="SDLTSH HTA".split(),
+                  verbose=False)
+    assert len(tcs) == 4
+
+    assert tcs[0].shape == (2, 347)
+    assert tcs[0].names == ['SDLTSH', 'HTA']
+    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
+    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
+    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert isnan(tcs[0].last['HTA'])
+    assert tcs[0].title == 'TSH2b.txt'
+
+    assert tcs[1].shape == (1, 244)
+    assert tcs[1].names == ['SDLTSH']
+    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
+    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].title == 'TSH2a.txt'
+
+    assert tcs[2].shape == (3, 8)
+    assert tcs[2].title == 'timecourse 2'
+    assert assert_almost_equal(tcs[2].init['x'], 0.95)
+    assert assert_almost_equal(tcs[2].last['y'], 0.4)
+
+    assert tcs[3].title == 'the last one'
+    assert tcs[3].names == ['x', 'y', 'z']
+    assert tcs[3].t[0] == 0.0
+    assert tcs[3].t[-1] == 0.6
+    assert len(tcs[3].t) == 8
+    assert tcs[3].data.shape == (3, 8)
+    assert tcs[3].data[0, 0] == 0.95
+    assert tcs[3].data[0, 3] == 0.4
+    assert isnan(tcs[3].data[-1, -1])
+
+
 def test_write_to():
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt'], _DATADIR, verbose=False)
     wdir = '../'

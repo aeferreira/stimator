@@ -215,6 +215,8 @@ class SolutionTimeCourse(object):
                 for i in range(smallindx):
                     header[i + 1] = names[i]
         data = np.array(rows)
+        if len(data.shape) != 2 or data.shape[0] < 1 or data.shape[1] < 1:
+            raise StimatorTCError('tc data has a wrong format')
         self.names = header[1:]
         self.t = data[:, 0].T
         self.data = data[:, 1:].T
@@ -426,20 +428,20 @@ def read_tc(source,
     if hasattr(source, 'metadata'):
         # retrieve info from model declaration
         stcs = source.metadata['timecourses']
-        filenames = stcs['filenames']
+        objs = stcs['filenames']
         if 'defaultnames' in stcs:
             tcsnames = stcs['defaultnames']
     elif _is_string(source):
-        filenames = [source]
+        objs = [source]
     else:
-        filenames = source
+        objs = source
 
     if names is None:
         if tcsnames is not None:
             names = tcsnames
 
     # raise Exception if there are no files to read
-    if len(filenames) == 0:
+    if len(objs) == 0:
         msg = "No time courses to read!"
         raise FileNotFoundError(msg)
 
@@ -456,25 +458,47 @@ def read_tc(source,
     if verbose:
         print("-- reading time courses -------------------------------")
 
-    # raise Exception if files do not exist
-    for filename in filenames:
-        abspath = cwd / filedir / filename
-        abspath = abspath.absolute()
-        if not Path.exists(abspath) or not Path.is_file(abspath):
-            raise FileNotFoundError(f"File \n{abspath}\ndoes not exist")
-
-        sol = SolutionTimeCourse()
-        sol.read_from(abspath, names=names)
-        if sol.shape == (0, 0):
-            error_msg = "File\n%s\ndoes not contain valid data" % abspath
-            raise StimatorTCError(error_msg)
-        else:
+    for iobj, obj in enumerate(objs):
+        if isinstance(obj, Solutions):
+            for sol in obj:
+                tcs.append(sol)
             if verbose:
-                print("file %s:" % (abspath))
-                print(f"{sol.ntimes} time points, {len(sol)} variables")
-            sol.title = abspath.name
-            tcs.append(sol)
+                print(f"{len(obj)} time courses added")
+        elif isinstance(obj, SolutionTimeCourse):
+            tcs.append(obj)
+            if verbose:
+                print(f"timecourse {obj.title}:")
+                print(f"{obj.ntimes} time points, {len(obj)} variables")
+        else:  # must be string or Path
+            from_path = False
+            sol = SolutionTimeCourse()
+            if _is_string(obj):
+                try:
+                    f2read = StringIO(obj)
+                    fname = f'timecourse {iobj}'
+                    sol.read_from(f2read, names=names)
+                    if sol.shape == (0, 0):
+                        raise StimatorTCError('no data')
+                except StimatorTCError:
+                    from_path = True
+            if from_path:
+                abspath = cwd / filedir / obj
+                abspath = abspath.absolute()
+                # raise Exception if files do not exist
+                if not Path.exists(abspath) or not Path.is_file(abspath):
+                    msg = f"File \n{abspath}\ndoes not exist"
+                    raise FileNotFoundError(msg)
+                fname = abspath
+                sol.read_from(abspath, names=names)
 
+            if verbose:
+                print(f"file {fname}:")
+                print(f"{sol.ntimes} time points, {len(sol)} variables")
+            if from_path:
+                sol.title = abspath.name
+            else:
+                sol.title = fname
+            tcs.append(sol)
     return tcs
 
 
