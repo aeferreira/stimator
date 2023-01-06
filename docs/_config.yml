@@ -34,3 +34,5 @@ sphinx:
   config:
     #language: "pt_PT"
     nb_merge_streams: true
+    html_theme_options:
+      launch_buttons: {}

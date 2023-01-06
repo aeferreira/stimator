@@ -432,7 +432,7 @@ t   x1   x2
 18   1.977904321   3.098886165
 20   2.126776717   3.463202683
 """
-    tc = Solution.read_str(example1_data)
+    #tc = Solution.read_str(example1_data)
 
     mdl1 = """# Example model
 title Example 1
@@ -452,7 +452,7 @@ find k3 in [0, 2]
 popsize = 60     # population size in GA
 """
     model = read_model(mdl1)
-    best = model.estimate(timecourses=tc)
+    best = model.estimate(timecourses=example1_data)
 
     print(best)
     best.plot(palette='Dark2').set(xlabel='t')
@@ -541,7 +541,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 
 """)
 
-    optimum = s_timate(mtransf, tc_dir=tcdir, timecourses=['tc_double.txt'],
+    optimum = s_timate(mtransf, tc_dir=tcdir, timecourses='tc_double.txt',
                        names=['sdlx2', 'SDLTSH', 'HTA'])
 
     print(optimum)
@@ -562,7 +562,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
     # only one time course can be used:
     # cannot fit one initial value using several timecourses!!!
 
-    optimum = s_timate(m2, timecourses=['TSH2a.txt'],
+    optimum = s_timate(m2, timecourses='TSH2a.txt',
                        tc_dir=tcdir,
                        opt_settings={'pop_size': 60},
                        names=['SDLTSH', 'HTA'])

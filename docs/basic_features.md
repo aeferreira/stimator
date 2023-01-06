@@ -14,7 +14,11 @@ kernelspec:
 ```{code-cell} ipython3
 %matplotlib inline
 from matplotlib import pyplot as plt
-plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
+if 'seaborn-whitegrid' in plt.style.available:
+    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
+else:
+    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
+plt.style.use([seaborn_whitegrid, seaborn_talk,
               {'xaxis.labellocation': 'right',
                'legend.frameon': True,
                'figure.figsize': (10, 8),
@@ -100,13 +104,15 @@ At the bare minimum, a kinetic model is built by stating:
 
 How can we use S-timator to analyze this simple two-reaction example?
 
-We must start by importing function `read_model()` from the S-timator package.
-
-As we will see in a moment, this is one of the most fundamental functions of the package.
+Conventionally, stimator should be imported as the whole module with the abbreviation `st`:
 
 ```{code-cell} ipython3
 import stimator as st
 ```
+
+Within **S-timator**, the function `read_model()` is one of the most fundamental
+functions of the module. It allows to read an ODE model written in [S-timator's model
+description language](models).
 
 In S-timator, models are described inside a *Python string*:
 
@@ -133,9 +139,11 @@ Let us examine them:
 
 - The **title** is a line is that begins with the word `title` and is supposed to contain a small description of the model.
 - The **processes** are lines that describe the processes by indicating the "stoichiometry" of the the processes (that is, how they connect the variables of the model) and the rates of those processes. In this example, consider the line
+
 ```
 r1: A -> B, rate = k1 * A
 ```
+
 The format of these lines is: **the name of the process** (`r1`), followed by a **collon**, followed by the **"stoichiometry"** of the process ("`A -> B`") followed by a **comma** and a statement of the **rate** ("`rate = k1 * A`"). So, this line says that reaction `r1` transforms `A` into `B` with rate  `k1 *A`.
 
 - The **parameters** are lines that indicate the values of the parameters of the model. The format is, simply, the **name** of the parameter, followed by an equal sign, followed by the **value** of the parameter.
@@ -227,7 +235,7 @@ Looking at the plot, we can see that, given enough time, species $A$ is complete
 We can obtain the final values of the time course, using attribute `last` of the solution object:
 
 ```{code-cell} ipython3
-s.last
+tc.last
 ```
 
 `last` is returned as a *Python dictionary*.

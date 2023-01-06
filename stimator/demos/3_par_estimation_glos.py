@@ -85,7 +85,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 """)
 
 optimum = mtransf.estimate(tc_dir=tcdir,
-                           timecourses=['tc_double.txt'],
+                           timecourses='tc_double.txt',
                            names=['sdlx2', 'SDLTSH', 'HTA'])
 
 print(optimum)
@@ -109,7 +109,7 @@ m2.reset_bounds('Km2')
 # cannot fit one initial value using several timecourses!!!
 # change the default pop_size(80) to 60
 
-optimum = m2.estimate(timecourses=['TSH2a.txt'],
+optimum = m2.estimate(timecourses='TSH2a.txt',
                       tc_dir=tcdir,
                       opt_settings={'pop_size': 60},
                       names=['SDLTSH', 'HTA'])

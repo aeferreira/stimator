@@ -1,11 +1,11 @@
-from stimator import read_model, __version__, Solution
+from stimator import read_model, __version__
 from matplotlib import pyplot as plt
 
 print('S-timator version', __version__)
 
 # --- example 1 --------------------
 
-example_data = """
+tc = """
 t   x1   x2
 0   0   0
 2   1.403812093   0.48351624
@@ -19,7 +19,7 @@ t   x1   x2
 18   1.977904321   3.098886165
 20   2.126776717   3.463202683
 """
-tc = Solution.read_str(example_data)
+#tc = Solution.read_str(example_data)
 
 mdl = """# Example model
 title Model for parameter estimation

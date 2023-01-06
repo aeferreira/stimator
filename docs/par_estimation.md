@@ -16,7 +16,11 @@ kernelspec:
 ```{code-cell} ipython3
 %matplotlib inline
 from matplotlib import pyplot as plt
-plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
+if 'seaborn-whitegrid' in plt.style.available:
+    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
+else:
+    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
+plt.style.use([seaborn_whitegrid, seaborn_talk,
               {'xaxis.labellocation': 'right',
                'legend.frameon': True,
                'figure.figsize': (10, 8),
@@ -26,12 +30,15 @@ plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
 The **estimation.py** module combines ODE solving with the DE (differential evolution) genetic optimizer.
 
 ```{code-cell} ipython3
-from stimator import read_model, read_tc, Solution, get_examples_path
+from stimator import read_model, get_examples_path
 ```
 
 ##  Linear pathway with three reactions
 
 ```{code-cell} ipython3
+
+# ----------- Model ------------------------
+
 mdl = """# Example file for S-timator
 title Example 1
 
@@ -50,12 +57,9 @@ find k3 in [0, 2]
 popsize = 60     # population size in GA
 """
 
-print('----------- Model ------------------------')
-print(mdl)
-
 m1 = read_model(mdl)
 
-print('----------- Time course -------------------')
+# ----------- Time course -------------------
 
 example_data = """
 t   x1   x2
@@ -71,12 +75,10 @@ t   x1   x2
 18   1.977904321   3.098886165
 20   2.126776717   3.463202683
 """
-tc = Solution.read_str(example_data)
-print(tc)
 ```
 
 ```{code-cell} ipython3
-best = m1.estimate(timecourses=tc)
+best = m1.estimate(timecourses=example_data)
 
 print(best)
 ```
@@ -146,8 +148,8 @@ print(optimum)
 #plt.style.use('bmh')
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), sharey='row')
-optimum.plot(0, ax=ax1, xlabel='t (s)', ylabel='conc (microM)')
-optimum.plot(1, ax=ax2, xlabel='t (s)', ylabel='conc (microM)');
+optimum.plot(0, ax=ax1, ylabel='conc (microM)')
+optimum.plot(1, ax=ax2, xlabel='t (s)');
 ```
 
 -----------
@@ -171,7 +173,9 @@ m2.parameters.Km2 = 0.0980973
 # only one time course can be used: 
 # cannot fit one initial value using several timecourses!
 
-best = m2.estimate(['TSH2a.txt'], names=['SDLTSH', 'HTA'], tc_dir=tcdir, opt_settings=dict(pop_size=60))
+best = m2.estimate('TSH2a.txt',
+                  names=['SDLTSH', 'HTA'], tc_dir=tcdir,
+                  opt_settings=dict(pop_size=60))
 
 print(best)
 ```
@@ -211,7 +215,7 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 """)
 
 optimum = mtransf.estimate(tc_dir=tcdir,
-                           timecourses=['tc_double.txt'],
+                           timecourses='tc_double.txt',
                            names=['sdlx2', 'SDLTSH', 'HTA'])
 
 print(optimum)

@@ -14,7 +14,11 @@ kernelspec:
 ```{code-cell} ipython3
 %matplotlib inline
 from matplotlib import pyplot as plt
-plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
+if 'seaborn-whitegrid' in plt.style.available:
+    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
+else:
+    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
+plt.style.use([seaborn_whitegrid, seaborn_talk,
               {'xaxis.labellocation': 'right',
                'legend.frameon': True,
                'figure.figsize': (10, 8),
