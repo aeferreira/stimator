@@ -1,6 +1,6 @@
 title: stimator
 author: António Ferreira
-copyright: "2022"
+copyright: "2023 by António Ferreira"
 logo: newlogo.png
 
 only_build_toc_files: true
@@ -31,8 +31,11 @@ html:
   use_launch_button: false
 
 sphinx:
+  recursive_update: true
   config:
+    project: "S-timator"
     #language: "pt_PT"
+    html_theme: pydata_sphinx_theme
     nb_merge_streams: true
     html_theme_options:
-      launch_buttons: {}
+      github_url: https://github.com/aeferreira/stimator
