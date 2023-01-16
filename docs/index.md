@@ -1,6 +1,6 @@
 # S-timator: ODE dynamical systems modelling in python
 
-## Global description
+## Description
 
 `S-timator` is a Python module to analyse **ODE-based models**
 (also known as *dynamic* or *kinetic* models).
@@ -12,8 +12,8 @@ Some of the features that `S-timator` offers are
 
 - [A mini language used to describe models](models): models can be input as plain text 
   following a very simple and human-readable language.
-- **Basic analysis**: [numerical solution](solving_models) of ODE's, [parameter scanning](scanning).
-- [Parameter estimation](par_estimation) and **model selection**: given experimental data in
+- [numerical solution](solving_models) of ODE's, [parameter scanning](scanning).
+- [Parameter estimation](par_estimation) and *model selection*: given experimental data in
   the form of time series and constrains on model operating ranges,
   built-in numerical optimizers can find parameter values and assist you in the
   experimental design for model selection.

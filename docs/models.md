@@ -29,7 +29,9 @@ plt.style.use([seaborn_whitegrid, seaborn_talk,
 
 +++
 
-This chapter will focus on the "mini-language" used to describe models in S-timator and also on the model objects created by function `read_model()`
+This chapter will focus on the "mini-language" used to describe models in S-timator.
+
+As we saw in the last chapter, we should start by importing `S-timator`:
 
 ```{code-cell} ipython3
 import stimator as st
@@ -70,25 +72,31 @@ m = st.read_model(model_description)
 print(m)
 ```
 
-## 2.1 - Reactions
-
 +++
 
-You can iterate over the reactions of a model:
+## Reactions
+
+`Model` objects, resulting from the function `read_model()`, expose different ways to extract information from a model.
+
+For instance, we can iterate over the *reactions* of a model:
 
 ```{code-cell} ipython3
 for v in m.reactions:
     print (v)
 ```
 
-Or, just to get the names:
+Or, just to get the names of those *reactions*:
 
 ```{code-cell} ipython3
 for v in m.reactions:
     print (v.name)
 ```
 
-A reaction has a lot of attributes:
+A single reaction can be retrieved as an attribute of `reactions`.
+
+Furtermore, a single reaction has, in turn, a lot of attributes.
+
+Exploring these attributes for reaction `r1` we get:
 
 ```{code-cell} ipython3
 v = m.reactions.r1
@@ -100,19 +108,28 @@ print (v.stoichiometry)
 print (v())
 ```
 
-`Model.varnames` is a list of variable names and `Model.parameters` can be used to iterate over the parameters of a model.
+## Variable names and parameters
+
+`Model.varnames` is a list of variable names and `Model.parameters` can be used to iterate over the parameters of a model, in a way similar to `Model.reactions`:
 
 ```{code-cell} ipython3
 print (m.varnames)
-for p in m.parameters:
-    print ('%6s = %g' % (p.name, p))
 ```
 
-## 2.2 - Transformations
+```{code-cell} ipython3
+for p in m.parameters:
+    print (f'{p.name} = {p}')
+```
 
 +++
 
-Transformations are declared starting a line with a `~`. These are quantities that vary over time but are not decribed by differential equations. In this example `total` is a transformation.
+## Transformations
+
+Transformations are quantities that vary over time but are not decribed by differential equations.
+
+Transformations are declared starting a line with a `~`.
+
+In the following modification to our model we add `total` as a transformation. It represents the "pool" `A + B + C`
 
 ```{code-cell} ipython3
 model_description = """
@@ -138,19 +155,23 @@ m = st.read_model(model_description)
 print(m)
 ```
 
+Transformations can be computed as part of the solution of a model:
+
 ```{code-cell} ipython3
 m.solve(tf=50.0, outputs=["total", 'A', 'B', 'C']).plot();
 ```
 
-## 2.3 - Local parameters in processes
-
 +++
 
-Parameters can also "belong", that is, being local, to processes. 
+## Local parameters in processes
 
-In this example, both `r1` and `r2` have local parameters
+Parameters are, generally, "global" to the model and can be used in the definitions of rates of reactions and transformations.
 
-Notice how thes paraemters are listed and refered to in `print m`:
+Parameters can also "belong", be "local" to processes. 
+
+In the following example, both `r1` and `r2` have *local* parameters
+
+Notice how these parameters are listed and refered to in `print(m)`:
 
 ```{code-cell} ipython3
 model_description = """
@@ -173,26 +194,28 @@ m = st.read_model(model_description)
 print(m)
 ```
 
-But this model is exactly the same has the previous model. The parameters were just made local. (`plot()` produces the same results).
+This model is exactly the same has the previous model. The parameters were just made local. (`solve()`and `plot()` produce the same result).
 
 ```{code-cell} ipython3
-m.solve(tf=50.0, outputs=["total", 'A', 'B', 'C']).plot(xlabel='$t$', ylabel='concentrations');
+tc = m.solve(tf=50.0, outputs=["total", 'A', 'B', 'C'])
+
+tc.plot(xlabel='$t$', ylabel='concentrations');
 ```
 
-The iteration of the parameters is now different:
+The iteration of the parameters is now a bit different. Notice the change in the names:
 
 ```{code-cell} ipython3
 for p in m.parameters:
     print(p.name, p)
 ```
 
-## 2.4 - External variables
-
 +++
+
+## External variables
 
 An external variable is a parameter that appears in the stoichiometry of a reaction. It is treated as a constant.
 
-In this example, `D` is an external variable:
+In this example, `D` is an external variable. It appears in the stoichiometry of `inflow` but it also has a value declared as a parameter, `D = 1`.
 
 ```{code-cell} ipython3
 m = st.read_model("""
@@ -219,11 +242,14 @@ print(m)
 m.solve(tf=50.0, outputs=['A', 'B', 'C', 'D', 'E']).plot();
 ```
 
-## 2.5 - Declaration of outputs
-
 +++
 
-You can use `!!` to specify what should go into the solution of the model:
+## Declaration of outputs
+
+**outputs**, the entities that are computed and retained in the solution time course, can be specified in the
+`outputs` argument of function `solve()`.
+
+They can also be declared in the model definition by using `!!` followed by a list of names of what should go into the solution of the model:
 
 ```{code-cell} ipython3
 m = st.read_model("""
@@ -245,10 +271,11 @@ init: (A = 0, B = 0, C = 0)
 
 !! C D E
 """)
+
 m.solve(tf=50.0).plot();
 ```
 
-Or use the `outputs` argument to the `solve()` function (in the form of a list of desired outputs):
+Using the `outputs` argument of `solve()` overides the list declared in the model:
 
 ```{code-cell} ipython3
 m.solve(tf=50.0, outputs=['total', 'A']).plot();
@@ -260,7 +287,11 @@ m.solve(tf=50.0, outputs=['total', 'A']).plot();
 m.solve(tf=50.0, outputs=['->', 'D']).plot(palette='Set1');
 ```
 
-## 2.6 - Explicit differential equations
+## Explicit differential equations
+
+Instead of using "reactions", we can specify the rates of change by explicitly declaring the ODE of a variable.
+
+We just need to append `'` to the name of the variable to indicate that the rhs is the expression for the ODE of a variable:
 
 ```{code-cell} ipython3
 m = st.read_model("""
@@ -277,8 +308,11 @@ k = 1
 
 init: x = 1
 """)
+
 m.solve(tf=10.0).plot();
 ```
+
+Another example:
 
 ```{code-cell} ipython3
 m = st.read_model("""
@@ -296,10 +330,16 @@ b = 0.5
 
 init: x = 1
 """)
+
 m.solve(tf=10.0).plot();
 ```
 
-## 2.7 - Forcing functions
+## Forcing functions
+
+**Forcing functions** are time-varying functions that can be used to impose an explicit variation as part of the definition of the rate of a reaction or transformation.
+
+In the following example we use the forcing function `step()` to simulate the sudden change of the inflow rate in the
+*two-reaction* example. `step()` is a function of time `t` and has two other arguments, the time at which the step is applied and the new value of the function (a zero value before that time is implied).
 
 ```{code-cell} ipython3
 m = st.read_model("""
@@ -319,6 +359,8 @@ init: (A = 0, B = 0, C = 0)
 
 !! inflow A B C E
 """)
-m.solve(tf=80).plot(palette='Set1', legend='out', xlim=(0, 80));
+tc = m.solve(tf=80)
+
+tc.plot(palette='Set1', legend='out', xlim=(0, 80));
 ```
 

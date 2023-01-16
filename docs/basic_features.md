@@ -14,11 +14,7 @@ kernelspec:
 ```{code-cell} ipython3
 %matplotlib inline
 from matplotlib import pyplot as plt
-if 'seaborn-whitegrid' in plt.style.available:
-    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
-else:
-    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
-plt.style.use([seaborn_whitegrid, seaborn_talk,
+plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
               {'xaxis.labellocation': 'right',
                'legend.frameon': True,
                'figure.figsize': (10, 8),
@@ -36,7 +32,7 @@ plt.style.use([seaborn_whitegrid, seaborn_talk,
 
 **Kinetic models** are at the heart of S-timator. These models are conceptual descriptions of real systems that are characterized by stating the rates of change of entities.
 
-Generically, a kinetic model is a set of *processes* that produce or consume several *variables*. Variables are required to be associated with a value of *amount* or *concentration*.
+Generically, a kinetic model is a set of **processes** that produce or consume several **variables**. Variables are required to be associated with a value of *amount* or *concentration*.
 
 Examples of **processes**, from various scientific fields, are:
 
@@ -54,7 +50,9 @@ Examples of **variables** are:
 - the charge of a capacitor
 - the ammount of mRNA transcribed from a gene.
 
-**A key requirement in the formulation of a kinetic model is that the rate the processes is known or can be assigned in advance**. These rates usually depend on the concentrations of variables and, in turn, affect the concentrations of the variables that are "connected" by them.
+**A key requirement in the formulation of a kinetic model is that the rate the processes is known or can be assigned in advance**.
+
+These rates usually depend on the concentrations of variables and, in turn, affect the concentrations of the variables that are "connected" by them.
 
 But modelling (the act of formulating a model) is **not** about the study of the kinetics of the individual processes.
 
@@ -104,15 +102,11 @@ At the bare minimum, a kinetic model is built by stating:
 
 How can we use S-timator to analyze this simple two-reaction example?
 
-Conventionally, stimator should be imported as the whole module with the abbreviation `st`:
+We must start by importing the `S-timator` module. We can import and create a simple alias for `stimator`, say `st`.
 
 ```{code-cell} ipython3
 import stimator as st
 ```
-
-Within **S-timator**, the function `read_model()` is one of the most fundamental
-functions of the module. It allows to read an ODE model written in [S-timator's model
-description language](models).
 
 In S-timator, models are described inside a *Python string*:
 
@@ -139,11 +133,9 @@ Let us examine them:
 
 - The **title** is a line is that begins with the word `title` and is supposed to contain a small description of the model.
 - The **processes** are lines that describe the processes by indicating the "stoichiometry" of the the processes (that is, how they connect the variables of the model) and the rates of those processes. In this example, consider the line
-
 ```
 r1: A -> B, rate = k1 * A
 ```
-
 The format of these lines is: **the name of the process** (`r1`), followed by a **collon**, followed by the **"stoichiometry"** of the process ("`A -> B`") followed by a **comma** and a statement of the **rate** ("`rate = k1 * A`"). So, this line says that reaction `r1` transforms `A` into `B` with rate  `k1 *A`.
 
 - The **parameters** are lines that indicate the values of the parameters of the model. The format is, simply, the **name** of the parameter, followed by an equal sign, followed by the **value** of the parameter.
@@ -156,15 +148,15 @@ Note that, in this example, reaction 1 was named `r1` and the reactions 2 and 3 
 
 After writting the *string* that describes the model, this *string* must be transformed into a special *Python* object using function `read_model()`.
 
-The result of `read_model()` is a **`Model`** object, one of the fundamental data structures in S-timator.
-
-`Model` objects expose a lot of functionality realted to the computational study of kinetic models.
-
 ```{code-cell} ipython3
 m = st.read_model(model_description)
 ```
 
-We can `print` a `Model` object, generating a small report of the components of the model.
+The result of `read_model()` is a **`Model`** object, one of the fundamental data structures in `S-timator`.
+
+`Model` objects expose a lot of functionality related to the computational study of kinetic models.
+
+We can `print()` a `Model` object, generating a small report of the components of the model.
 
 ```{code-cell} ipython3
 print(m)
@@ -186,14 +178,14 @@ One of the most basic procedures that one can do with a model is to "solve" it a
 
 Two functions are involved:
 
-- `solve()`
-- `plot()`
+- `solve()`, a function of the `Model` object
+- `plot()`, a function of the object resulting from `solve()`
 
 ```{code-cell} ipython3
 m.solve(tf=20.0).plot(xlabel='time');
 ```
 
-To produce this plot, S-timator took the initial state of your model, as defined in `init`, and generated an estimate of the values of the concentrations of the variables throughout time.
+To produce this plot, `S-timator` took the initial state of your model, as defined in `init`, and generated an estimate of the values of the concentrations of the variables throughout time.
 
 This is called a **time course** or a **time series**.
 
@@ -232,7 +224,7 @@ Looking at the plot, we can see that, given enough time, species $A$ is complete
 
 +++
 
-We can obtain the final values of the time course, using attribute `last` of the solution object:
+We can obtain the final values of the time course, using attribute `last` of the time course "object":
 
 ```{code-cell} ipython3
 tc.last

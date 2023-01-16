@@ -19,9 +19,6 @@ latex:
 #bibtex_bibfiles:
 #  - references.bib
 
-# Add GitHub buttons to your book
-# See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
-
 repository:
   url: https://github.com/aeferreira/stimator
 
@@ -39,3 +36,5 @@ sphinx:
     nb_merge_streams: true
     html_theme_options:
       github_url: https://github.com/aeferreira/stimator
+      secondary_sidebar_items:
+        - page-toc
