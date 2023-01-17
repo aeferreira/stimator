@@ -11,20 +11,6 @@ kernelspec:
   name: python3
 ---
 
-```{code-cell} ipython3
-%matplotlib inline
-from matplotlib import pyplot as plt
-if 'seaborn-whitegrid' in plt.style.available:
-    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
-else:
-    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
-plt.style.use([seaborn_whitegrid, seaborn_talk,
-              {'xaxis.labellocation': 'right',
-               'legend.frameon': True,
-               'figure.figsize': (10, 8),
-               'legend.facecolor': 'white'}])
-```
-
 # Models and model description
 
 +++
@@ -156,6 +142,11 @@ print(m)
 ```
 
 Transformations can be computed as part of the solution of a model:
+
+```{code-cell} ipython3
+%matplotlib inline
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
+```
 
 ```{code-cell} ipython3
 m.solve(tf=50.0, outputs=["total", 'A', 'B', 'C']).plot();

@@ -13,24 +13,10 @@ kernelspec:
 
 # Parameter estimation.
 
-```{code-cell} ipython3
-%matplotlib inline
-from matplotlib import pyplot as plt
-if 'seaborn-whitegrid' in plt.style.available:
-    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
-else:
-    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
-plt.style.use([seaborn_whitegrid, seaborn_talk,
-              {'xaxis.labellocation': 'right',
-               'legend.frameon': True,
-               'figure.figsize': (10, 8),
-               'legend.facecolor': 'white'}])
-```
-
 The **estimation.py** module combines ODE solving with the DE (differential evolution) genetic optimizer.
 
 ```{code-cell} ipython3
-from stimator import read_model, get_examples_path
+import stimator as st
 ```
 
 ##  Linear pathway with three reactions
@@ -57,7 +43,7 @@ find k3 in [0, 2]
 popsize = 60     # population size in GA
 """
 
-m1 = read_model(mdl)
+m1 = st.read_model(mdl)
 
 # ----------- Time course -------------------
 
@@ -92,8 +78,16 @@ m2.setp(bestpars)
 dict(bestpars)
 ```
 
+A bit of styling of the plots:
+
 ```{code-cell} ipython3
-# plot side by side
+%matplotlib inline
+from matplotlib import pyplot as plt
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
+```
+
+```{code-cell} ipython3
+# plotting side by side
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
 best.plot(ax=ax1, palette='Dark2', xlabel='time')
@@ -133,12 +127,12 @@ init : (SDLTSH = 7.69231E-05, HTA = 0.1357)
 timecourse TSH2a.txt
 timecourse TSH2b.txt
 """
-m1 = read_model(mdl)
+m1 = st.read_model(mdl)
 print(mdl)
 ```
 
 ```{code-cell} ipython3
-tcdir = get_examples_path()
+tcdir = st.get_examples_path()
 
 optimum = m1.estimate(tc_dir=tcdir, names=['SDLTSH', 'HTA'])
 print(optimum)
@@ -187,7 +181,7 @@ best.plot();
 ### An example with a transformation
 
 ```{code-cell} ipython3
-mtransf = read_model("""
+mtransf = st.read_model("""
 title example 2, fitting a transformation
 
 glx1 : HTA -> SDLTSH, V1*HTA/(Km1 + HTA)

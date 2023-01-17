@@ -14,23 +14,6 @@ kernelspec:
 (solving_models)=
 # Solving ODE models.
 
-```{code-cell} ipython3
-%matplotlib inline
-from matplotlib import pyplot as plt
-if 'seaborn-whitegrid' in plt.style.available:
-    seaborn_whitegrid, seaborn_talk = 'seaborn-whitegrid', 'seaborn-talk'
-else:
-    seaborn_whitegrid, seaborn_talk ='seaborn-v0_8-whitegrid', 'seaborn-v0_8-talk'
-plt.style.use([seaborn_whitegrid, seaborn_talk,
-              {'xaxis.labellocation': 'right',
-               'legend.frameon': True,
-               'figure.figsize': (10, 8),
-               'figure.titlesize': 16,
-               'legend.facecolor': 'white'}])
-```
-
-+++
-
 This notebook shows how to use 4 of the most common **S-timator** functions:
 
 - `read_model()`, reads a _string_ that conforms to a model description language, returning a `Model` object
@@ -39,8 +22,17 @@ This notebook shows how to use 4 of the most common **S-timator** functions:
 - `plot()`, draws a graph of the results returned from `solve()` or `scan()`.
 
 ```{code-cell} ipython3
-from stimator import read_model, examples, Solutions
+import stimator as st
+from stimator import examples, Solutions
 from stimator.plots import prepare_grid
+```
+
+Before we begin, a bit of styling of the plots:
+
+```{code-cell} ipython3
+%matplotlib inline
+from matplotlib import pyplot as plt
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 ```
 
 ## Example 1: Glyoxalase system
@@ -48,7 +40,7 @@ from stimator.plots import prepare_grid
 ```{code-cell} ipython3
 mdl = examples.models.glyoxalases.text
 print(mdl)
-m1 = read_model(mdl)
+m1 = st.read_model(mdl)
 
 s = m1.solve(tf=4030.0)
 
@@ -68,7 +60,7 @@ mdl = examples.models.branched.text
 
 print(mdl)
 
-m2 = read_model(mdl)
+m2 = st.read_model(mdl)
 
 times = append(linspace(0.0, 5.0, 500), linspace(5.0, 10.0, 500))
 
@@ -83,14 +75,14 @@ mdl = examples.models.ca.text
 print(mdl)
 
 #chaining functions...
-read_model(mdl).solve(tf=8.0, npoints=2000).plot();
+st.read_model(mdl).solve(tf=8.0, npoints=2000).plot();
 ```
 
 ## Example 4: Rossler chaotic system
 
 ```{code-cell} ipython3
 mdl = examples.models.rossler.text; print (mdl)
-m4 = read_model(mdl)
+m4 = st.read_model(mdl)
 
 s = m4.solve(tf=100.0, npoints=2000, outputs="x1 x2 x3".split())
 
@@ -110,7 +102,7 @@ s.plot();
 ```{code-cell} ipython3
 mdl = examples.models.lorentz.text
 print (mdl)
-m5 = read_model(mdl)
+m5 = st.read_model(mdl)
 
 ivs = {'init.x':(1.0, 1.01, 1.02)}
 titles = ['$x(0)$ = %g' % v for v in ivs['init.x']]
@@ -126,7 +118,7 @@ f.suptitle(m5.metadata['title']);
 ## Example 6: parameter scanning in the CICR model
 
 ```{code-cell} ipython3
-m = read_model("""
+m = st.read_model("""
 title Calcium Spikes
 v0         = -> Ca, 1
 v1         = -> Ca, k1*B*step(t, 1.0)

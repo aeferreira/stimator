@@ -4,6 +4,7 @@ from stimator.timecourse import readTCs, read_tc, Solution, Solutions, TimeCours
 
 from stimator.model import Model
 from stimator.modelparser import read_model
+import stimator.style as style
 
 
 def get_examples_path():

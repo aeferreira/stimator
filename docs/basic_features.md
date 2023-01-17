@@ -11,16 +11,6 @@ kernelspec:
   name: python3
 ---
 
-```{code-cell} ipython3
-%matplotlib inline
-from matplotlib import pyplot as plt
-plt.style.use(['seaborn-whitegrid', 'seaborn-talk',
-              {'xaxis.labellocation': 'right',
-               'legend.frameon': True,
-               'figure.figsize': (10, 8),
-               'legend.facecolor': 'white'}])
-```
-
 (basic-features)=
 # Basic features
 
@@ -172,7 +162,6 @@ Just a few notes:
 
 ## Solving and plotting
 
-+++
 
 One of the most basic procedures that one can do with a model is to "solve" it and then plot the results.
 
@@ -180,6 +169,23 @@ Two functions are involved:
 
 - `solve()`, a function of the `Model` object
 - `plot()`, a function of the object resulting from `solve()`
+
+But, before we begin, let's customize a little bit the style of plots
+that will be produced.
+
+We will be using **matplotlib**. We first must signal that plots will be inserted inline
+if we are using a Jupyter notebook. Next, we can set styles for the plots. Matplotlib docs provide
+more information concerning the [use of styles](https://matplotlib.org/stable/tutorials/introductory/customizing.html).
+
+```{code-cell} ipython3
+# the following line should be used in notebooks only
+%matplotlib inline
+
+# s-timator can set styles for plots
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
+```
+
+Now, let's "solve" or "run" the model and then plot the result:
 
 ```{code-cell} ipython3
 m.solve(tf=20.0).plot(xlabel='time');

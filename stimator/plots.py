@@ -10,6 +10,7 @@ from cycler import cycler, Cycler
 from packaging.version import Version
 
 from stimator.utils import _is_string, _is_sequence
+import stimator as st
 
 
 def _find_what_to_plot(timecourse, what):
@@ -157,8 +158,8 @@ def draw_legend(ax, legend_argument):
         if not (f.get_constrained_layout() or f.get_tight_layout()):
             f.set_tight_layout(True)
         ax.legend(handles, lbls, loc='upper left',
-                bbox_to_anchor=(1.01, 1),
-                borderaxespad=0)
+                  bbox_to_anchor=(1.01, 1),
+                  borderaxespad=0)
 
 
 def plot_timecourse(timecourse, what=None, ax=None,
@@ -529,6 +530,12 @@ nothing really usefull here
 
     with plt.style.context('grayscale'):
         plot_timecourse(sol, title="simple TC plot with grayscale style")
+    plt.show()
+
+    styles = ['st-seaborn-whitegrid', 'seaborn-talk']
+    with st.style.context(styles):
+        plot_timecourse(sol, title=f"plot with styles \n {styles}",
+                        xlabel='time (s)')
     plt.show()
 
     custom_cycler = (cycler(color=['c', 'm', 'y', 'k']) +
