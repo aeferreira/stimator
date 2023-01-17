@@ -5,6 +5,8 @@
    - simple format of h:m:s from seconds
 """
 
+import collections.abc
+
 
 def _args_2_dict(*p, **pdict):
     """Transform arguments to a dict, as in dict() plus f(a,b) -> {a:b}."""
@@ -19,9 +21,10 @@ def make_dict_from_args(*args, **kwargs):
 
 
 def _is_sequence(arg):
-    isstring = isinstance(arg, str)
-    isothersequences = hasattr(arg, "__getitem__") or hasattr(arg, "__iter__")
-    return not isstring and isothersequences
+    "test if arg is a sequence, but not a string"
+    if isinstance(arg, str):
+        return False
+    return isinstance(arg, collections.abc.Sequence)
 
 
 def _is_string(a):
@@ -63,7 +66,10 @@ def s2HMS(seconds):
 
 
 if __name__ == '__main__':
-    for t in ['ok ok', u'pppp', 123.4, 12, (1, 2, 'oo'), [4, 5, 'OO']]:
+    for t in ['ok ok', u'pppp', 123.4, 12,
+              (1, 2, 'oo'), [4, 5, 'OO'],
+              dict(a=2, b=3)]:
+        print(f'Object is {t}\nof type {type(t)}')
         if _is_string(t):
             print('{} is a string'.format(t))
         else:
@@ -78,4 +84,4 @@ if __name__ == '__main__':
             print('{} is a sequence'.format(t))
         else:
             print('{} is not a sequence'.format(t))
-        print()
+        print('----------')

@@ -9,9 +9,10 @@ import re
 import math
 import stimator.model as model
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
 identifierpattern = r"[_a-z]\w*"
 reppattern = r"([_a-z]\w*|>{1,2}|~|->|\.{1,3})"
 multdotidspattern = r"[_a-z]\w*(\.[_a-z]\w*)*"
@@ -85,9 +86,10 @@ dispatchers = [(emptyline, "emptyLineParse"),
 hascontpattern = r"^.*\\$"
 hascontinuation = re.compile(hascontpattern)
 
+
 def logicalLines(textlines):
     """generator that parses logical lines of input text.
-    
+
     The backslash is a continuation character
     """
     linenum = -1
@@ -120,28 +122,31 @@ def logicalLines(textlines):
             continuing = False
     return
 
+
 class _Physical_Line(object):
     def __init__(self, start, startline, nstartline, startlinepos, end, endline, nendline, endlinepos):
         self.start = start        # start pos, relative to whole text
         self.nstartline = nstartline   # start line number
         self.startline = startline    # start line
-        self.startlinepos = startlinepos # start pos, relative to start line
+        self.startlinepos = startlinepos  # start pos, relative to start line
         self.end = end          # end relative to whole text
         self.nendline = nendline     # end line number
         self.endline = endline      # end line
         self.endlinepos = endlinepos   # end pos, relative to end line
 
+
 class _Logical_Line(object):
     def __init__(self, nline, start, end, linestart, lineend):
-        self.nline = nline # logical line
-        self.start = start # start relative to logical line
+        self.nline = nline  # logical line
+        self.start = start  # start relative to logical line
         self.end = end   # end relative to logical line
-        self.linestart = linestart # start of logical line
+        self.linestart = linestart  # start of logical line
         self.lineend = lineend   # end of logical line
+
 
 def _line_from_logical_line(textlines, logpos):
     """Computes a physical line from a logical line."""
-    
+
     textlines = _get_text_as_file(textlines)
 
     physstart = logpos.start + logpos.linestart
@@ -170,8 +175,10 @@ class StimatorParserError(Exception):
         self.value = value
         self.physloc = physloc
         self.logloc = logloc
+
     def __str__(self):
         return str(self.value)
+
 
 def _get_text_as_file(text):
     # try to open in case it is a pathname
@@ -185,6 +192,7 @@ def _get_text_as_file(text):
     textlines = StringIO(str(text))
     return textlines
 
+
 def read_model(text):
     parser = StimatorParser()
     parser.parse(text)
@@ -196,9 +204,11 @@ def read_model(text):
     ppos = _line_from_logical_line(text, logloc)
     raise StimatorParserError(parser.error, ppos, logloc)
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         The core StimatorParser class
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
+
 class StimatorParser(object):
     def __init__(self):
         self.reset()
@@ -215,10 +225,9 @@ class StimatorParser(object):
         # optimizer configuration
         self.optSettings = {}
 
-        self.tclines = []  #location of timecourse def lines for error reporting
+        self.tclines = []  # location of timecourse def lines for error reporting
         self.vname = []
-        self.rateloc = []  #location of rate def for error reporting, a list of _Logical_Line's
-
+        self.rateloc = []  # location of rate def for error reporting, a list of _Logical_Line's
 
     def parse(self, text):
         "Parses a model definition text line by line"
@@ -227,9 +236,9 @@ class StimatorParser(object):
 
         self.textlines = _get_text_as_file(text)
 
-        #parse the lines of text using matches and dispatch to *Parse functions
+        # parse the lines of text using matches and dispatch to *Parse functions
         for (line, nline, start, end) in logicalLines(self.textlines):
-            #package _Logical_Line
+            # package _Logical_Line
             loc = _Logical_Line(nline, 0, len(line), start, end)
 
             matchfound = False
@@ -239,11 +248,11 @@ class StimatorParser(object):
                     output_function = getattr(StimatorParser, d[1])
                     output_function(self, line, loc, matchresult)
                     if self.error:
-                        return #quit on first error. Needs revision!
+                        return  # quit on first error. Needs revision!
                     matchfound = True
-                    break #do not try any more patterns
+                    break  # do not try any more patterns
             if not matchfound:
-                self.setError("Invalid syntax:\n%s"% line, loc)
+                self.setError("Invalid syntax:\n%s" % line, loc)
                 return
 
         # check the validity of rate laws
@@ -253,7 +262,7 @@ class StimatorParser(object):
             if m:
                 inrate = m.group('inrate')
                 msg = "Syntax Error: bad math expression \n%s" % inrate
-            #get name of transformation with offending rate
+            # get name of transformation with offending rate
             m = inRateErrormatch.match(msg)
             if m:
                 vn = m.group('name')
@@ -327,19 +336,19 @@ class StimatorParser(object):
         return rate, pardict
 
     def rateDefParse(self, line, loc, match):
-        #process name
+        # process name
         name = match.group('name')
-        if name in self.model.reactions: #repeated declaration
+        if name in self.model.reactions:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
-        #process rate
+        # process rate
         rate = match.group('rate').strip()
         stoich = match.group('stoich').strip()
         rate_loc = _Logical_Line(loc.nline,
-                              match.start('rate'),
-                              match.start('rate')+len(rate),
-                              loc.linestart,
-                              loc.lineend)
+                                 match.start('rate'),
+                                 match.start('rate')+len(rate),
+                                 loc.linestart,
+                                 loc.lineend)
 
         rate, pardict = self._process_consts_in_rate(rate, rate_loc)
         if rate is None:
@@ -355,15 +364,15 @@ class StimatorParser(object):
                 self.setIfNameError(resstring, rate, loc)
                 return
             else:
-                rate = float(value) # it will be a float and mass action kinetics will be assumed
+                rate = float(value)  # it will be a float and mass action kinetics will be assumed
 
         try:
-            #setattr(self.model, name, model.Model.react(stoich, rate, pars=pardict))
+            # setattr(self.model, name, model.Model.react(stoich, rate, pars=pardict))
             self.model.set_reaction(name, stoich, rate, pars=pardict)
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end = match.end('stoich')
-            self.setError("'%s' is an invalid stoichiometry expression"% stoich, loc)
+            self.setError("'%s' is an invalid stoichiometry expression" % stoich, loc)
             return
         loc.start = match.start('rate')
         loc.end = match.end('rate')
@@ -372,20 +381,20 @@ class StimatorParser(object):
 
     def dxdtDefParse(self, line, loc, match):
         name = match.group('name')
-        dxdtname = "d_%s_dt"%name
-        if dxdtname in self.model.reactions: #repeated declaration
+        dxdtname = "d_%s_dt" % name
+        if dxdtname in self.model.reactions:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
         rate_loc = _Logical_Line(loc.nline,
-                              match.start('value'),
-                              match.start('value')+len(expr),
-                              loc.linestart,
-                              loc.lineend)
+                                 match.start('value'),
+                                 match.start('value')+len(expr),
+                                 loc.linestart,
+                                 loc.lineend)
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
-        #setattr(self.model, name, model.variable(expr, pars=pardict))
+        # setattr(self.model, name, model.variable(expr, pars=pardict))
         self.model.set_variable_dXdt(name, expr, pars=pardict)
         loc.start = match.start('value')
         loc.end = match.end('value')
@@ -394,15 +403,15 @@ class StimatorParser(object):
 
     def transfDefParse(self, line, loc, match):
         name = match.group('name')
-        if name in self.model.transformations: #repeated declaration
+        if name in self.model.transformations:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
         rate_loc = _Logical_Line(loc.nline,
-                              match.start('value'),
-                              match.start('value') + len(expr),
-                              loc.linestart,
-                              loc.lineend)
+                                 match.start('value'),
+                                 match.start('value') + len(expr),
+                                 loc.linestart,
+                                 loc.lineend)
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
@@ -414,15 +423,15 @@ class StimatorParser(object):
 
     def invarDefParse(self, line, loc, match):
         name = match.group('name')
-        if name in self.model.input_variables: #repeated declaration
+        if name in self.model.input_variables:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
         expr = match.group('value').strip()
         rate_loc = _Logical_Line(loc.nline,
-                              match.start('value'),
-                              match.start('value') + len(expr),
-                              loc.linestart,
-                              loc.lineend)
+                                 match.start('value'),
+                                 match.start('value') + len(expr),
+                                 loc.linestart,
+                                 loc.lineend)
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
@@ -446,9 +455,9 @@ class StimatorParser(object):
         state = state.replace('state', 'self.model.set_init')
 
         try:
-            value = eval(state)
+            _ = eval(state)
         except Exception:
-            self.setError("Bad '%s' state definition"%name, loc)
+            self.setError("Bad '%s' state definition" % name, loc)
             return
 
     def initDefParse(self, line, loc, match):
@@ -456,19 +465,19 @@ class StimatorParser(object):
         state = match.group('value')
         if state[0] == '(' and state[-1] == ')':
             state = state[1:-1]
-        state = 'self.model.set_init(%s)'%state
+        state = 'self.model.set_init(%s)' % state
 
         try:
-            value = eval(state)
+            _ = eval(state)
         except Exception:
-            self.setError("Bad '%s' state definition"%name, loc)
+            self.setError("Bad '%s' state definition" % name, loc)
             return
 
     def constDefParse(self, line, loc, match):
         name = match.group('name')
         valueexpr = match.group('value').rstrip()
 
-        if name in self.model.parameters: #repeated declaration
+        if name in self.model.parameters:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
 
@@ -490,10 +499,10 @@ class StimatorParser(object):
             self.model.setp(name, value)
 
     def atDefParse(self, line, nline, match):
-        pass # for now
+        pass  # for now
 
     def varListParse(self, line, loc, match):
-        if 'defaultnames' in self.tc: #repeated declaration
+        if 'defaultnames' in self.tc:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
 
@@ -521,16 +530,19 @@ class StimatorParser(object):
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
         self.model.metadata['title'] = title
+
     def tfDefParse(self, line, loc, match):
         title = match.group('tf')
         self.model.metadata['tf'] = title
+
     def repListDefParse(self, line, loc, match):
         title = match.group('names')
         self.model.metadata['!!'] = title
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #         TESTING CODE
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
 
 def try2read_model(text):
     try:
@@ -538,21 +550,21 @@ def try2read_model(text):
         tc = m.metadata['timecourses']
         titleformat = '\n-------- Model {} successfuly read -----------'.format
         print(titleformat(m.metadata['title']))
-        print (m)
+        print(m)
         if len(tc['filenames']) > 0:
-            print ("the timecourses to load are {}".format(tc['filenames']))
+            print("the timecourses to load are {}".format(tc['filenames']))
             if 'defaultnames' in tc:
-                print ("\nthe default names to use in timecourses are {}".format(tc['defaultnames']))
+                print("\nthe default names to use in timecourses are {}".format(tc['defaultnames']))
         print()
         return
     except StimatorParserError as expt:
-        print ("\n*****************************************")
+        print("\n*****************************************")
 
         if expt.physloc.nstartline == expt.physloc.nendline:
             locmsg = "Error in line %d of model definition" % (expt.physloc.nendline)
         else:
             locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline, expt.physloc.nendline)
-        print (locmsg)
+        print(locmsg)
 
         ppos = expt.physloc
         if ppos.nstartline != ppos.nendline:
@@ -570,6 +582,6 @@ def try2read_model(text):
             caretline[ppos.endlinepos] = "^"
             caretline = ''.join(caretline)
             value = "%s\n%s" % (ppos.startline.rstrip(), caretline)
-        print (value)
+        print(value)
 
-        print (expt)
+        print(expt)

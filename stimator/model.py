@@ -1020,8 +1020,7 @@ class Model(ModelObject):
                 res.append('%s = ?(%g, %g)' % (u.name,
                                                u.bounds.lower,
                                                u.bounds.upper))
-        for k in self.metadata:
-            o = self.metadata[k]
+        for k, o in self.metadata.items():
             # skip title and empty container metadata
             if k == 'title' or (hasattr(o, '__len__') and len(o) == 0):
                 continue
