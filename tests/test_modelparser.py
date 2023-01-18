@@ -88,10 +88,10 @@ def test_valid_model():
     assert m.parameters.KmX3 == 0.1
     assert m.parameters.Km2.bounds.upper == 1
     assert m.metadata['optSettings']['max_generations'] == 400
-    assert len(m.metadata['timecourses']['filenames']) == 2
-    assert m.metadata['timecourses']['filenames'][-1] == 'anotherfile.txt'
-    assert len(m.metadata['timecourses']['defaultnames']) == 3
-    assert m.metadata['timecourses']['defaultnames'][-1] == 'X3'
+    assert len(m.metadata['timecourses']) == 2
+    assert m.metadata['timecourses'][-1] == 'anotherfile.txt'
+    assert len(m.metadata['defaultnames']) == 3
+    assert m.metadata['defaultnames'][-1] == 'X3'
 
 
 def test_name_undef(textlines):

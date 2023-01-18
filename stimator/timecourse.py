@@ -427,10 +427,8 @@ def read_tc(source,
     tcsnames = None
     if hasattr(source, 'metadata'):
         # retrieve info from model declaration
-        stcs = source.metadata['timecourses']
-        objs = stcs['filenames']
-        if 'defaultnames' in stcs:
-            tcsnames = stcs['defaultnames']
+        objs = source.metadata.get('timecourses', [])
+        tcsnames =  source.metadata.get('defaultnames', None)
     elif _is_string(source):
         objs = [source]
     else:

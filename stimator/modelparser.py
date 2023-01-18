@@ -124,7 +124,8 @@ def logicalLines(textlines):
 
 
 class _Physical_Line(object):
-    def __init__(self, start, startline, nstartline, startlinepos, end, endline, nendline, endlinepos):
+    def __init__(self, start, startline, nstartline, startlinepos,
+                 end, endline, nendline, endlinepos):
         self.start = start        # start pos, relative to whole text
         self.nstartline = nstartline   # start line number
         self.startline = startline    # start line
@@ -166,7 +167,9 @@ def _line_from_logical_line(textlines, logpos):
             nendline = iline
             endline = line
             endlinepos = physend - line_start_pos
-            return _Physical_Line(physstart, startline, nstartline, startlinepos, physend, endline, nendline, endlinepos)
+            return _Physical_Line(physstart, startline, nstartline,
+                                  startlinepos, physend,
+                                  endline, nendline, endlinepos)
     return None
 
 
@@ -197,7 +200,10 @@ def read_model(text):
     parser = StimatorParser()
     parser.parse(text)
     if parser.error is None:
-        parser.model.metadata['timecourses'] = parser.tc
+        if len(parser.tc['filenames']) > 0:
+            parser.model.metadata['timecourses'] = parser.tc['filenames']
+        if 'defaultnames' in parser.tc:
+            parser.model.metadata['defaultnames'] = parser.tc['defaultnames']
         parser.model.metadata['optSettings'] = parser.optSettings
         return parser.model
     logloc = parser.errorloc
@@ -225,9 +231,11 @@ class StimatorParser(object):
         # optimizer configuration
         self.optSettings = {}
 
-        self.tclines = []  # location of timecourse def lines for error reporting
+        # location of timecourse def lines for error reporting
+        self.tclines = []
         self.vname = []
-        self.rateloc = []  # location of rate def for error reporting, a list of _Logical_Line's
+        # location of rate def for error reporting, a list of _Logical_Line's
+        self.rateloc = []
 
     def parse(self, text):
         "Parses a model definition text line by line"
@@ -372,7 +380,8 @@ class StimatorParser(object):
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end = match.end('stoich')
-            self.setError("'%s' is an invalid stoichiometry expression" % stoich, loc)
+            self.setError(f"'{stoich}' is an invalid stoichiometry expression",
+                          loc)
             return
         loc.start = match.start('rate')
         loc.end = match.end('rate')
