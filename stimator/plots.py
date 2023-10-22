@@ -123,7 +123,7 @@ def generate_line_handles(names, prop_cycle, palette, styling):
             if k.strip() == '*':
                 set_handles = line_handles.values()
             else:
-                set_handles = [line_handles[k]]
+                set_handles = [line_handles[n] for n in line_handles if n == k]
                 # TODO: allow regular expressions
             if isinstance(v, dict):
                 for handle in set_handles:
@@ -496,18 +496,18 @@ nothing really usefull here
     sol.plot(title="simple TC plot")
     plt.show()
 
-    sol.plot(title="TC plot, modifying axes").set(xlabel='t (s)',
-                                                  ylabel='concentration (mM)')
-    plt.show()
-
     setts = dict(xlabel='t (s)', ylabel='concentration (mM)',
                  box_aspect=1)
-    sol.plot(title=f"TC plot, modifying axes\n{setts}", **setts)
+    sol.plot(title=f"TC plot, with settings\n{setts}", **setts)
     plt.show()
 
+    ttt = "TC plot, modifying axes, using .set() on return value"
+    sol.plot(title=ttt).set(xlabel='t (s)', ylabel='concentration (mM)')
+    plt.show()
+
+    ttt = "plot with styling={'*': dict(marker='^', ls='none'), tight_t0=False"
     plot_timecourse(stsh, styling={'*': dict(marker='^', ls='none')},
-                    title="plot with :different marker, marker='^'",
-                    tight_t0=False)
+                    title=ttt, tight_t0=False)
     plt.show()
 
     plot_timecourse(sol,
@@ -548,7 +548,12 @@ nothing really usefull here
 
     st = {'x': 'chocolate'}
     plot_timecourse(sol, styling=st,
-                    title="plot, styling {'x': 'chocolate'}")
+                    title="plot, styling={'x': 'chocolate'}")
+    plt.show()
+
+    st = {'x_absent': 'chocolate'}
+    plot_timecourse(sol, styling=st,
+                    title="plot, styling={'x_absent': 'chocolate'}")
     plt.show()
 
     st = {'x': {'c': 'chocolate', 'ls': '--'}}
