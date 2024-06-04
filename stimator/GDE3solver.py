@@ -89,7 +89,7 @@ class ModelSolver(object):
 
         # check that the names exist as variables in the model
         for name in self.optvars+self.observed:
-            if not (name in self.names):
+            if name not in self.names:
                 raise AttributeError('%s is not a variable in model' % name)
 
         self.optvars_indexes = np.array([self.names.index(name) for name in self.optvars])
