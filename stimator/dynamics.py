@@ -1,5 +1,6 @@
 import re
 from itertools import chain
+from matplotlib import pyplot as plt
 
 import numpy as np
 from scipy import integrate
@@ -7,6 +8,7 @@ import sympy
 
 from stimator.timecourse import SolutionTimeCourse, Solutions
 from stimator.utils import _is_string, _is_sequence
+from stimator.plots import prepare_grid
 
 from stimator.examples import models
 
@@ -124,7 +126,7 @@ def _gen_canonical_symbmap(m, extra_id_list=None):
 
 def _replace_exprs2canonical(s, symbmap):
     for symb in symbmap:
-        symbesc = symb.replace('.', '\.')
+        symbesc = symb.replace('.', r'\.')
         s = re.sub(r"(?<![_.])\b%s\b(?![_.\[])" % symbesc, symbmap[symb], s)
     return s
 
@@ -471,13 +473,14 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
        and returns an nvars x nvars numpy array
        IMPORTANT: sympy module must be installed!"""
 
-    Jstrings = Jacobian_strings(m, _scale=scale)
-    nvars = len(Jstrings)
+    Jstrs = Jacobian_strings(m, _scale=scale)
+    nvars = len(Jstrs)
+    avail_f = m._usable_functions
 
     # compile rate laws
     symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
-    ratestrs = [[calc_string(col, symbmap) for col in line] for line in Jstrings]
-    ratebytecode = [[compile(col, '<string>', 'eval') for col in line] for line in ratestrs]
+    r_strs = [[calc_string(c, symbmap) for c in row] for row in Jstrs]
+    r_bcode = [[compile(c, '<string>', 'eval') for c in row] for row in r_strs]
     Jarray = np.empty((nvars, nvars), float)
 
     def Jfunc(variables, t):
@@ -485,7 +488,7 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
         t = t*scale + t0
         for i in range(nvars):
             for j in range(nvars):
-                Jarray[i, j] = eval(ratebytecode[i][j], m._usable_functions, locals())
+                Jarray[i, j] = eval(r_bcode[i][j], avail_f, locals())
         return Jarray
     return Jfunc
 
@@ -666,8 +669,10 @@ class ModelSolver(object):
                 mapinit2pars.append((ix, i))
             self.model.set_bounds(parname, (0, 1))  # bogus bounds
 
-        self.pars_initindexes = np.array([j for (i, j) in mapinit2pars], dtype=int)
-        self.vars_initindexes = np.array([i for (i, j) in mapinit2pars], dtype=int)
+        self.pars_initindexes = np.array([j for (i, j) in mapinit2pars],
+                                         dtype=int)
+        self.vars_initindexes = np.array([i for (i, j) in mapinit2pars],
+                                         dtype=int)
 
         self.f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0)
 
@@ -969,13 +974,12 @@ init: B = 0.4, A = 1
 
     solution1 = solve(m1, tf=50, title='two enzymes, use !! A C ~')
     solution1a = solve(m1, tf=50, outputs='A B C sum'.split(),
-                       title='explicit outputs=[A B C sum]')
+                       title='explicit outputs=[A, B, C, sum]')
     solution1v = solve(m1, tf=100, outputs='>>',
                        title='outputs=">>"')
 
     print('--- Last time point ----')
     print('At t =', solution1.t[-1])
-    # print solution1.last
     for x in solution1.last:
         print("%-8s= %f" % (x, solution1.last[x]))
 
@@ -1018,12 +1022,12 @@ init: B = 0.4, A = 1
     # t4 = time.time()
     # print 'took', t4 - t3
 
-    # savingfile = open('examples/analysis.png', 'w+b')
-    # savingfile = 'examples/analysis.png'
     sols = Solutions([solution1, solution1a, solution1v,
                       solution3,
                       solution4b, solution4])
-    sols.plot()  # save2file=savingfile)
+    f, axs = prepare_grid(sols, figsize=(9, 6))
+    sols.plot(axs=axs)
+    plt.show()
 
     # print 'END of plotting first 4 examples'
     # tplot = time.time()
@@ -1039,7 +1043,14 @@ init: B = 0.4, A = 1
     # tscancomp = time.time()
     # print 'took', tscancomp - tplot
 
-    sols2.plot(legend=True, ynormalize=True, group=['Ca'], fig_size=(10, 6))
+    # sols2.plot(legend=True, ynormalize=True, group=['Ca'], fig_size=(10, 6))
+    f, axs = prepare_grid(sols2, figsize=(9, 6))
+    sols2.plot(what='Ca',
+               axs=axs,
+               legend=False, ylim=(0, 1.5), xlabel='$t$ (min)')
+    suptitle = "Cytosolic $Ca^{2+}$ as a function of stimulus strength"
+    f.suptitle(suptitle)
+    plt.show()
 
     # print 'END of PLOTTING SCANNING EXAMPLE'
     # tscan = time.time()
@@ -1067,7 +1078,10 @@ init: B = 0.4, A = 1
     # tstairway = time.time()
     # print 'took', tstairway - tscan
 
-    solstairs.plot(fig_size=(9, 6), show=True)
+    f, ax = plt.subplots(figsize=(9, 6))
+
+    solstairs.plot(legend='out')
+    plt.show()
 
     # print 'END of STAIRWAY PLOTTING'
     # tstairwayplot = time.time()
