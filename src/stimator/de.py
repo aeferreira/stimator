@@ -142,7 +142,7 @@ class DESolver(object):
             return
 
         # return if whole population "converged"
-        if (self.scores.ptp()/self.scores.mean()) < 1.0E-2:
+        if (np.ptp(self.scores)/self.scores.mean()) < 1.0E-2:
             self.exitCode = 5
             return
 

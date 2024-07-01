@@ -1,6 +1,5 @@
 """S-timator : DEMO of  parameter scanning."""
-from stimator import read_model
-from stimator.plots import prepare_grid
+import stimator as st
 from matplotlib import pyplot as plt
 
 
@@ -24,7 +23,7 @@ def run_normal():
     """
 
     print(mdl)
-    m = read_model(mdl)
+    m = st.read_model(mdl)
 
     title = "CICR model: Effect of stimulus ($\\beta$) on citosolic calcium"
 
@@ -34,13 +33,11 @@ def run_normal():
 
     s = m.scan({'B': Bvalues}, tf=10, npoints=1000, titles=titles)
 
-    plt.style.use(['seaborn',
+    st.style.use(['st-seaborn',
                   {'figure.figsize': (12, 8),
-                   'xaxis.labellocation': 'right',
-                   'legend.frameon': True,
-                   'legend.facecolor': 'white'}])
+                   'xaxis.labellocation': 'right',}])
 
-    f, axs = prepare_grid(s, figsize=(14, 8))
+    f, axs = st.plots.prepare_grid(s, figsize=(14, 8))
     s.plot(axs=axs, what='Ca', legend=False,
            ylim=[0, 1.5], xlabel='$t$ (min)', box_aspect=1)
     f.suptitle(title, fontsize=16)

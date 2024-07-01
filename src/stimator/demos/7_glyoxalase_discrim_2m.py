@@ -86,7 +86,7 @@ def compute(obj):
     solver.run()
 
     print('-----------------------------------------------\nFinal front:')
-    with open('glos_2m_{}_final_pop.txt'.format(obj), 'w') as f:
+    with open(f'glos_2m_{obj}_final_pop.txt', 'w') as f:
         sstr = ' '.join(solver.toOptKeys)
         ostr = ' '.join([str(d) for d in solver.model_indexes])
         print(f'{sstr} ----> {ostr}')

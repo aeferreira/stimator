@@ -1,6 +1,6 @@
 """S-timator : DEMO of dynamic sensitivities."""
 
-from stimator import read_model, Solutions
+import stimator as st
 from stimator.dynamics import add_dSdt_to_model
 from matplotlib import pyplot as plt
 
@@ -24,7 +24,7 @@ Km2 = 0.0980973
 
 init: SDLTSH = 7.69231E-05, HTA = 0.1357
 """
-m = read_model(glos)
+m = st.read_model(glos)
 print(m)
 
 print('\nAdding sensitivity ODEs -------------------------')
@@ -43,16 +43,13 @@ add_dSdt_to_model(m, pars)
 print('\nSolving with sensitivities...')
 sol = m.solve(tf=4030.0)
 
-plots = Solutions([sol.copy(names="HTA SDLTSH", newtitle='X')])
+plots = st.Solutions([sol.copy(names="HTA SDLTSH", newtitle='X')])
 
 for p in pars:
     plots.append(sol.copy(names='d_HTA_d_%s d_SDLTSH_d_%s' % (p, p),
                           newtitle='dX/d' + p))
 
-plt.style.use(['seaborn-whitegrid',
-               {'xaxis.labellocation': 'right',
-                'legend.frameon': True,
-                'legend.facecolor': 'white'}])
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 
 _, axs = plt.subplots(1, 3, figsize=(13, 4.5))
 plots.plot(axs=axs, box_aspect=1)

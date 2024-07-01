@@ -4,11 +4,13 @@
 /stimator/examples/TSH2b_pred.txt
 .idea
 pred_*.*
+glos_2m*
 
 .vscode/
 depot/
 depot/exps
 doc/
+controls/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,5 +1,5 @@
 """S-timator : DEMO of dX/dt solution."""
-from stimator import read_model, Solutions
+import stimator as st
 from stimator.dynamics import getdXdt
 from matplotlib import pyplot as plt
 
@@ -12,7 +12,7 @@ sdxdt.apply_transf(transformation)
 -----------------------------------------------------------
 """)
 
-m = read_model("""
+m = st.read_model("""
 title Calcium Spikes
 v0         = -> Ca, 1
 v1         = -> Ca, k1*B*step(t, 1.0)
@@ -28,11 +28,12 @@ v3         = CaComp -> Ca, \
 init       : Ca = 0.1, CaComp = 0.63655
 """)
 
-plt.style.use([{'figure.figsize': (12, 6), 'xaxis.labellocation': 'right'}])
-
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
+f, axs = plt.subplots(1, 2, figsize=(12, 6))
 solution = m.solve(tf=6.0, npoints=5000, title='$X$')
 dxdt = solution.copy(newtitle='$dX / dt$').apply_transf(getdXdt(m))
 
-Solutions([solution, dxdt]).plot(xlabel='$t$ (min)', box_aspect=1)
+st.Solutions([solution, dxdt]).plot(xlabel='$t$ (min)', axs=axs,
+                                    box_aspect=1, legend='out')
 
 plt.show()
