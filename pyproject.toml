@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "stimator"
 dynamic = ["version"]
 description = "Analysis of ODE models with focus on model selection and parameter estimation."
 readme = "README.rst"
-requires-python = ">=3.7"
-license = {file = "LICENSE"}
+requires-python = ">=3.8"
+license = "BSD-3-Clause"
+license-files = { paths = ["LICENSE"] }
 authors = [
     { name = "António Ferreira", email = "aeferreira@fc.ul.pt" },
 ]
@@ -18,18 +19,19 @@ keywords = [
     "estimation",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Life",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Chemistry",
@@ -42,9 +44,6 @@ dependencies = [
     "sympy",
     "packaging"
 ]
-
-[project.optional-dependencies]
-test = ["pytest"]
 
 [project.urls]
 Homepage = "http://webpages.fc.ul.pt/~aeferreira/stimator"
