@@ -1,5 +1,6 @@
 import pytest
-from stimator import read_model
+import numpy as np
+import stimator as st
 from stimator import dynamics as dyn
 
 demomodel = """
@@ -24,11 +25,26 @@ init: B = 0.4, A = 1
 
 @pytest.fixture
 def m():
-    return read_model(demomodel)
+    return st.read_model(demomodel)
 
 def test_genStoichiometryMatrix(m):
     N = dyn.genStoichiometryMatrix(m)
     nreactions = len(m.reactions) 
     nvars = len(m.varnames)
+    # Stoichiometry matrix:
+    #    v1  v2
+    # A [-1.  0.]
+    # B [ 1. -1.]
+    assert isinstance(N, np.ndarray)
     assert N.shape == (nvars, nreactions)
+    assert N[0, 0] == -1
+    assert N[1, 1] == -1
+    assert N[0, 1] == 0
+    assert N[1, 0] == 1
+
+def test_state2array(m):
+    v = dyn.init2array(m)
+    nvars = len(m.varnames)
+    assert isinstance(v, np.ndarray)
+    assert v.shape == (nvars, )
 

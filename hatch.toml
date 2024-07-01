@@ -3,4 +3,3 @@ path = "src/stimator/__init__.py"
 
 [build.targets.wheel]
 packages = ["src/stimator"]
-exclude = ["*/.gitignore",]

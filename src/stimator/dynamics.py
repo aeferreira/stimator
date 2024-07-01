@@ -813,18 +813,7 @@ init: B = 0.4, A = 1
 
     print(m1_text)
 
-    print('\n********** Testing stoichiometry matrix ********************')
-    print('Stoichiometry matrix:')
-    N = genStoichiometryMatrix(m)
-    print('  ', '  '.join([v.name for v in m.reactions]))
-    for i, x in enumerate(m.varnames):
-        print(x, N[i, :])
-    print()
-    print('********** Testing state2array()****************************')
-    print('state2array(m):')
-    v = init2array(m)
-    print(v, 'of type', type(v))
-    print()
+
     print('********** Testing rate and dXdt strings *******************')
     print('rates_strings(fully_qualified = False): ---')
     print(rates_strings(m, fully_qualified=False))
