@@ -839,7 +839,8 @@ class Model(ModelObject):
         ----------
         name : str
             The name of the parameter. "Dot" access to parameters of reactions
-            or transformations, for example ``model.setp('v1.k', 2)`` is allowed.
+            or transformations, for example
+            ``model.setp('v1.k', 2)`` is allowed.
         value : number or str that can be transformed to a float.
             The value of the parameter.
         """

@@ -25,9 +25,9 @@ class BadRateError(Exception):
 identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 
 
-def identifiersInExpr(_expr):
-    iterator = identifier.finditer(_expr)
-    return [_expr[m.span()[0]:m.span()[1]] for m in iterator]
+def identifiersInExpr(expr):
+    iterator = identifier.finditer(expr)
+    return [expr[m.span()[0]:m.span()[1]] for m in iterator]
 
 
 def init2array(model):
@@ -813,24 +813,10 @@ init: B = 0.4, A = 1
 
     print(m1_text)
 
-
-    print('********** Testing rate and dXdt strings *******************')
-    print('rates_strings(fully_qualified = False): ---')
-    print(rates_strings(m, fully_qualified=False))
-    print('\nrates_strings(): -------------------------')
-    print(rates_strings(m))
-    print('\ndXdt_strings(): --------------------------')
-    dxdt_strs = dXdt_strings(m)
-    for x in m.varnames:
-        print('(d%s/dt) =' % (x), dxdt_strs[x])
-
     print('********** Testing differentiation of strings *******************')
     print('\n---------- Testing _gen_canonical_symbmap(m) --------------')
     symbols = _gen_canonical_symbmap(m)
     symbmap, _ = symbols['s_table'], symbols['sympy_s_table']
-    print('symbmap')
-    for k in symbmap:
-        print('{:8} --> {}'.format(k, symbmap[k]))
     print('\n---------- Differentiation --------------')
 
     dxdt_strs = dXdt_strings(m)
