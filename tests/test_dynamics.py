@@ -70,8 +70,6 @@ def test_rate_strings(m):
 
 def test_dXdt_strings(m):
     dxdt_strs = dyn.dXdt_strings(m)
-    # (dA/dt) = -v1.V/(A + Km1)
-    # (dB/dt) = -B**3*V*c2 + v1.V/(A + Km1)
     assert dxdt_strs['A'] == '-v1.V/(A + Km1)'
     assert dxdt_strs['B'] == '-B**3*V*c2 + v1.V/(A + Km1)'
 
@@ -82,3 +80,24 @@ def test_gen_canonical_symbmap(m):
     for name in 'A B V Km1 c2 v1.Km v1.V'.split():
         assert name in symbmap
         assert symbmap[name].startswith('_symbol_Id')
+
+def test_string_differentiation(m):
+    symbols = dyn._gen_canonical_symbmap(m)
+    dif = dyn._differentiate_expr
+    dxdt_strs = dyn.dXdt_strings(m)
+    expA = dxdt_strs['A']
+    assert expA == '-v1.V/(A + Km1)'
+    # variable A 
+    # expression = -v1.V/(A + Km1)
+    # d / d A = v1.V/(A + Km1)**2
+    # d / d B = 0.0
+    # ---
+    # d / d V = 0.0
+    # d / d Km1 = v1.V/(A + Km1)**2
+    # d / d c2 = 0.0
+    # d / d v1.Km = 0.0
+    # d / d v1.V = -1/(A + Km1)
+    assert dif(expA, 'A', symbols) == "v1.V/(A + Km1)**2"
+    assert dif(expA, 'B', symbols) == "0.0"
+    assert dif(expA, 'v1.V', symbols) == "-1/(A + Km1)"
+    assert dif(expA, 'c2', symbols) == "0.0"

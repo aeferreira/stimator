@@ -813,24 +813,6 @@ init: B = 0.4, A = 1
 
     print(m1_text)
 
-    print('********** Testing differentiation of strings *******************')
-    print('\n---------- Testing _gen_canonical_symbmap(m) --------------')
-    symbols = _gen_canonical_symbmap(m)
-    symbmap, _ = symbols['s_table'], symbols['sympy_s_table']
-    print('\n---------- Differentiation --------------')
-
-    dxdt_strs = dXdt_strings(m)
-    for x in m.varnames:
-        expr = dxdt_strs[x]
-        print('\nexpression =', expr)
-        for x in m.varnames:
-            dexpr = _differentiate_expr(expr, x, symbols)
-            print('d / d', x, '=', dexpr)
-        print('---')
-        for p in m.parameters:
-            dexpr = _differentiate_expr(expr, p.name, symbols)
-            print('d / d', p.name, '=', dexpr)
-
     print('\nJacobian_strings(): -------------------------')
     vnames = m.varnames
     for i, vec in enumerate(Jacobian_strings(m)):
@@ -838,7 +820,7 @@ init: B = 0.4, A = 1
             print('(d d%s/dt / d %s) =' % (vnames[i], vnames[j]), dxdx)
     print('\ndfdp_strings(m, parnames): ------------------')
     parnames = "c2 v1.V".split()
-    print('parnames = {}\n'.format(parnames))
+    print(f'parnames = {parnames}\n')
     vnames = m.varnames
     for i, vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
@@ -930,83 +912,6 @@ init: B = 0.4, A = 1
     for x in vnames:
         print(x, m.get_init(x))
         print('   d {} / dt = {}'.format(x, dxdtstrs[x]))
-
-    print('---------------- EXAMPLE 1 ------------------')
-    mtext = """
-    title a simple 2 enzyme system
-    v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
-    v2 : B -> C, rate = V*B/(Km + B), V = sqrt(4.0), Km = 20
-
-    init : A = 1
-    ~ sum = A + B + C
-    ~ sumAB = A + B
-    -> Vin = 0.1 * step(t, 10)
-    !! A B C ~
-    """
-    print(mtext)
-
-    m1 = read_model(mtext)
-
-    solution1 = solve(m1, tf=50, title='two enzymes, use !! A C ~')
-    solution1a = solve(m1, tf=50, outputs='A B C sum'.split(),
-                       title='explicit outputs=[A, B, C, sum]')
-    solution1v = solve(m1, tf=100, outputs='>>',
-                       title='outputs=">>"')
-
-    print('--- Last time point ----')
-    print('At t =', solution1.t[-1])
-    for x in solution1.last:
-        print("%-8s= %f" % (x, solution1.last[x]))
-
-    # print 'END of EXAMPLES 1'
-    # t1 = time.time()
-    # print 'took', t1 - t0
-
-    print('---------------- EXAMPLE 3 ------------------')
-    m3 = read_model(models.ca.text)
-
-    print(models.ca.text)
-    ms = ModelSolver(m3, tf=8.0, npoints=2000)
-    solution3 = ms.solve()
-    # solution3 = solve(m3, tf = 8.0, npoints = 2000)
-
-    # print 'END of EXAMPLES 3'
-    # t3 = time.time()
-    # print 'took', t3 - t1
-
-    print('---------------- EXAMPLE 4 ------------------')
-    m4 = read_model(models.rossler.text)
-
-    print(m4)
-
-    solution4 = solve(m4, tf=100.0, npoints=2000,
-                      outputs="x1 x2 x3".split())
-    solution4b = solve(m4, tf=100.0, npoints=2000, outputs="~",
-                       title='Rossler, outputs="~"')
-
-    def transformation(vars, t):
-        if t > 40.0:
-            return (vars[0]-5.0, vars[1], vars[2])
-        else:
-            return (-5.0, vars[1], vars[2])
-
-    solution4.apply_transf(transformation,
-                           new_title='Rossler, after a transformation')
-
-    # print 'END of EXAMPLES 4'
-    # t4 = time.time()
-    # print 'took', t4 - t3
-
-    sols = Solutions([solution1, solution1a, solution1v,
-                      solution3,
-                      solution4b, solution4])
-    f, axs = prepare_grid(sols, figsize=(9, 6))
-    sols.plot(axs=axs)
-    plt.show()
-
-    # print 'END of plotting first 4 examples'
-    # tplot = time.time()
-    # print 'took', tplot - t4
 
     print('---------------- scanning example ------------------')
     m3 = read_model(models.ca.text)
