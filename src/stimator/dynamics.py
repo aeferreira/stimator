@@ -3,11 +3,8 @@ from itertools import chain
 
 import numpy as np
 import sympy
-from matplotlib import pyplot as plt
 from scipy import integrate
 
-from stimator.examples import models
-from stimator.plots import prepare_grid
 from stimator.timecourse import Solutions, SolutionTimeCourse
 from stimator.utils import _is_sequence, _is_string
 
@@ -832,13 +829,6 @@ init: B = 0.4, A = 1
 
     m = read_model(m1_text)
 
-    print(m1_text)
-
-    print("\nJacobian_strings(): -------------------------")
-    vnames = m.varnames
-    for i, vec in enumerate(Jacobian_strings(m)):
-        for j, dxdx in enumerate(vec):
-            print("(d d%s/dt / d %s) =" % (vnames[i], vnames[j]), dxdx)
     print("\ndfdp_strings(m, parnames): ------------------")
     parnames = "c2 v1.V".split()
     print(f"parnames = {parnames}\n")
@@ -939,54 +929,6 @@ init: B = 0.4, A = 1
     for x in vnames:
         print(x, m.get_init(x))
         print("   d {} / dt = {}".format(x, dxdtstrs[x]))
-
-    print("---------------- scanning example ------------------")
-    m3 = read_model(models.ca.text)
-    scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
-    # scans_k1 = 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
-
-    sols2 = scan(m3, {"B": scans}, tf=10.0)
-    # print 'END of SCANNING EXAMPLE'
-    # tscancomp = time.time()
-    # print 'took', tscancomp - tplot
-
-    # sols2.plot(legend=True, ynormalize=True, group=['Ca'], fig_size=(10, 6))
-    f, axs = prepare_grid(sols2, figsize=(9, 6))
-    sols2.plot(
-        what="Ca", axs=axs, legend=False, ylim=(0, 1.5), xlabel="$t$ (min)"
-    )
-    suptitle = "Cytosolic $Ca^{2+}$ as a function of stimulus strength"
-    f.suptitle(suptitle)
-    plt.show()
-
-    # print 'END of PLOTTING SCANNING EXAMPLE'
-    # tscan = time.time()
-    # print 'took', tscan - tscancomp
-
-    print("---------------- stairway example ------------------")
-    mtext = """
-    title a simple 2 enzyme system
-    v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
-    v2 : B -> C, rate = V*B/(Km + B), V = 10, Km = 20
-    v3 : C ->, rate = kout * C, kout = 1
-    A = 1
-
-    init : B = 0, C = 0
-
-    -> Vin = stairway(t, [50, 100, 150, 200, 250], [1, 2, 3, 4, 5])
-    !! Vin B C
-    """
-    # print(mtext)
-
-    mstair = read_model(mtext)
-
-    solstairs = solve(mstair, tf=300, title="stairway")
-
-    f, ax = plt.subplots(figsize=(9, 6))
-
-    solstairs.plot(legend="out")
-    plt.show()
-
 
 if __name__ == "__main__":
     test()

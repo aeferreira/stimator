@@ -101,3 +101,18 @@ def test_string_differentiation(m):
     assert dif(expA, 'B', symbols) == "0.0"
     assert dif(expA, 'v1.V', symbols) == "-1/(A + Km1)"
     assert dif(expA, 'c2', symbols) == "0.0"
+
+def test_Jacobian_strings(m):
+    nvars = len(m.varnames)
+    j_strings = dyn.Jacobian_strings(m)
+    # assert j_strings.shape == (len(vnames), len(vnames))
+    assert len(j_strings) == nvars
+    assert len(j_strings[0]) == nvars
+    # (d dA/dt / d A) = v1.V/(A + Km1)**2
+    # (d dA/dt / d B) = 0.0
+    # (d dB/dt / d A) = -v1.V/(A + Km1)**2
+    # (d dB/dt / d B) = -3*B**2*V*c2
+    assert j_strings[0][0] == "v1.V/(A + Km1)**2"
+    assert j_strings[0][1] == "0.0"
+    assert j_strings[1][0] == "-v1.V/(A + Km1)**2"
+    assert j_strings[1][1] == "-3*B**2*V*c2"
