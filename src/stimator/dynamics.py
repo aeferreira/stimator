@@ -1,16 +1,15 @@
 import re
 from itertools import chain
-from matplotlib import pyplot as plt
 
 import numpy as np
-from scipy import integrate
 import sympy
-
-from stimator.timecourse import SolutionTimeCourse, Solutions
-from stimator.utils import _is_string, _is_sequence
-from stimator.plots import prepare_grid
+from matplotlib import pyplot as plt
+from scipy import integrate
 
 from stimator.examples import models
+from stimator.plots import prepare_grid
+from stimator.timecourse import Solutions, SolutionTimeCourse
+from stimator.utils import _is_sequence, _is_string
 
 # -----------------------------------------
 # BadRateError Exception
@@ -27,15 +26,15 @@ identifier = re.compile(r"[_a-z]\w*", re.IGNORECASE)
 
 def identifiersInExpr(expr):
     iterator = identifier.finditer(expr)
-    return [expr[m.span()[0]:m.span()[1]] for m in iterator]
+    return [expr[m.span()[0] : m.span()[1]] for m in iterator]
 
 
 def init2array(model):
     """Transforms a state object into a numpy.array object.
 
-       This is necessary for most numerical functions of numpy+scipy.
-       Can accept the name of a state (must exist in Model) or state object.
-       Values are returned in the order of model variables.
+    This is necessary for most numerical functions of numpy+scipy.
+    Can accept the name of a state (must exist in Model) or state object.
+    Values are returned in the order of model variables.
     """
     return np.array([model.get_init(var) for var in model.varnames])
 
@@ -61,8 +60,8 @@ def genStoichiometryMatrix(model):
 def rates_strings(model, fully_qualified=True):
     """Generate a dictionary of name: rate.
 
-       'name' is the name of a reaction
-       'rate' is the string of the rate of the reaction.
+    'name' is the name of a reaction
+    'rate' is the string of the rate of the reaction.
     """
     check, msg = model.checkRates()
     if not check:
@@ -74,8 +73,8 @@ def rates_strings(model, fully_qualified=True):
 def dXdt_strings(model):
     """Generate a dictionary of name: rhs.
 
-       'name' is the name of a variable
-       'rhs' is the string of the rhs of that variable in the SODE.
+    'name' is the name of a variable
+    'rhs' is the string of the rhs of that variable in the SODE.
     """
 
     check, msg = model.checkRates()
@@ -86,18 +85,18 @@ def dXdt_strings(model):
     N = genStoichiometryMatrix(model)
     res = {}
     for i, name in enumerate(model.varnames):
-        dXdtstring = ''
+        dXdtstring = ""
         for j, v in enumerate(model.reactions):
             coef = N[i, j]
             if coef == 0.0:
                 continue
-            ratestring = '(%s)' % v(fully_qualified=True)
+            ratestring = f"({v(fully_qualified=True):s})"
             if coef == 1.0:
-                ratestring = '+' + ratestring
+                ratestring = f"+{ratestring:s}"
             else:
-                ratestring = "%g*%s" % (coef, ratestring)
+                ratestring = f"{coef:g}*{ratestring:s}"
                 if coef > 0.0:
-                    ratestring = '%s%s' % ('+', ratestring)
+                    ratestring = f"+{ratestring:s}"
             dXdtstring += ratestring
         dXdtstring = _simplify_expr(dXdtstring, symbols)
         res[name] = dXdtstring
@@ -117,16 +116,16 @@ def _gen_canonical_symbmap(m, extra_id_list=None):
         extra_id_list = []
 
     for i, x in enumerate(chain(m.varnames, par_names, extra_id_list)):
-        name = '_symbol_Id%d' % i
+        name = "_symbol_Id%d" % i
         symbmap[x] = name
         sympysymbs[name] = sympy.Symbol(name)
 
-    return {'s_table': symbmap, 'sympy_s_table': sympysymbs}
+    return {"s_table": symbmap, "sympy_s_table": sympysymbs}
 
 
 def _replace_exprs2canonical(s, symbmap):
     for symb in symbmap:
-        symbesc = symb.replace('.', r'\.')
+        symbesc = symb.replace(".", r"\.")
         s = re.sub(r"(?<![_.])\b%s\b(?![_.\[])" % symbesc, symbmap[symb], s)
     return s
 
@@ -138,40 +137,40 @@ def _replace_canonical2exprs(s, symbmap):
 
 
 def _differentiate_expr(expr, wrt, symbols, _scale=1.0):
-    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
+    symbmap, sympysymbs = symbols["s_table"], symbols["sympy_s_table"]
 
     texpr = _replace_exprs2canonical(expr, symbmap)
     if wrt not in symbmap:
-        return '0.0'
+        return "0.0"
     varsymb = symbmap[wrt]
     ids = identifiersInExpr(texpr)
     if len(ids) == 0 or varsymb not in ids:
-        return '0.0'
+        return "0.0"
 
     res = eval(texpr, None, sympysymbs)
     if _scale != 1.0:
         res = res * _scale
     dres = str(sympy.diff(res, varsymb))
-    if dres == '0':
-        dres = '0.0'
+    if dres == "0":
+        dres = "0.0"
     dres = _replace_canonical2exprs(dres, symbmap)
     return dres
 
 
 def _simplify_expr(expr, symbols):
-    symbmap, sympysymbs = symbols['s_table'], symbols['sympy_s_table']
+    symbmap, sympysymbs = symbols["s_table"], symbols["sympy_s_table"]
     resstr = _replace_exprs2canonical(expr, symbmap)
     # make sympy reduce the expression using sympysymbs dictionary
     dres = str(eval(resstr, None, sympysymbs))
-    if dres == '0':
-        dres = '0.0'
+    if dres == "0":
+        dres = "0.0"
     dres = _replace_canonical2exprs(dres, symbmap)
     return dres
 
 
 def Jacobian_strings(m, _scale=1.0, symbols=None):
     """Generate a matrix (list of lists) of strings
-       to compute the jacobian for this model."""
+    to compute the jacobian for this model."""
 
     dxdtstrings = dXdt_strings(m)
 
@@ -192,9 +191,9 @@ def Jacobian_strings(m, _scale=1.0, symbols=None):
 
 def dfdp_strings(m, parnames, _scale=1.0, symbols=None):
     """Generate a matrix (list of lists) of strings
-       to compute the partial derivatives of rhs of SODE
-       with respect to a list of parameters.
-       parnames is a list of parameter names."""
+    to compute the partial derivatives of rhs of SODE
+    with respect to a list of parameters.
+    parnames is a list of parameter names."""
 
     dxdtstrings = dXdt_strings(m)
 
@@ -207,8 +206,7 @@ def dfdp_strings(m, parnames, _scale=1.0, symbols=None):
     for x in vnames:
         dlist = []
         for p in parnames:
-            dexpr = _differentiate_expr(dxdtstrings[x], p,
-                                        symbols, _scale)
+            dexpr = _differentiate_expr(dxdtstrings[x], p, symbols, _scale)
             dlist.append(dexpr)
         dxdp_strs.append(dlist)
     return dxdp_strs
@@ -227,8 +225,8 @@ def add_dSdt_to_model(m, pars):
     init_of = []
     for p in pars:
         init_of.append(None)
-        if '.' in p:
-            tks = p.split('.')
+        if "." in p:
+            tks = p.split(".")
             if tks[1] in m.init:
                 init_of[-1] = tks[1]
 
@@ -239,7 +237,7 @@ def add_dSdt_to_model(m, pars):
     for x in vnames:
         new_row = []
         for p in pars:
-            Sname = "d_%s_d_%s" % (x, p.replace('.', '_'))
+            Sname = "d_%s_d_%s" % (x, p.replace(".", "_"))
             new_row.append(Sname)
             Snames.append((x, p, Sname))
         Smatrix.append(new_row)
@@ -258,7 +256,7 @@ def add_dSdt_to_model(m, pars):
         x = m.varnames[i]
         for j in range(npars):
             # compute string for dS/dt
-            resstr = dfdpstrs[i][j] if init_of[j] is None else ''
+            resstr = dfdpstrs[i][j] if init_of[j] is None else ""
             # matrix multiplication with strings:
             for k in range(nvars):
                 resstr = resstr + "+(%s)*(%s)" % (J[i][k], Smatrix[k][j])
@@ -308,7 +306,7 @@ def compile_dxdt(model, with_uncertain=False):
     dxdtstrings = dXdt_strings(model)
     symbmap = _gen_calc_symbmap(model, with_uncertain=with_uncertain)
     dxdt_exprs = [calc_string(expr, symbmap) for expr in dxdtstrings]
-    return [compile(expr, '<string>', 'eval') for expr in dxdt_exprs]
+    return [compile(expr, "<string>", "eval") for expr in dxdt_exprs]
 
 
 def compile_all_rates(model, with_uncertain=False):
@@ -316,9 +314,9 @@ def compile_all_rates(model, with_uncertain=False):
     input_rates = [calc_string(v.qrate, sm) for v in model.input_variables]
     rate_rates = [calc_string(v.qrate, sm) for v in model.reactions]
     transf_rates = [calc_string(v.qrate, sm) for v in model.transformations]
-    input_bc = [compile(v, '<string>', 'eval') for v in input_rates]
-    rate_bc = [compile(v, '<string>', 'eval') for v in rate_rates]
-    transf_bc = [compile(v, '<string>', 'eval') for v in transf_rates]
+    input_bc = [compile(v, "<string>", "eval") for v in input_rates]
+    rate_bc = [compile(v, "<string>", "eval") for v in rate_rates]
+    transf_bc = [compile(v, "<string>", "eval") for v in transf_rates]
     return input_bc, rate_bc, transf_bc
 
 
@@ -328,9 +326,9 @@ def _get_rates_function(model, with_uncertain):
         raise BadRateError(msg)
 
     # compile all changing variables
-    (input_bc,
-     rate_bc,
-     transf_bc) = compile_all_rates(model, with_uncertain=with_uncertain)
+    (input_bc, rate_bc, transf_bc) = compile_all_rates(
+        model, with_uncertain=with_uncertain
+    )
 
     # create arrays to hold computed values
     input_variables = np.empty(len(model.input_variables))
@@ -361,9 +359,9 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
         raise BadRateError(msg)
 
     # compile all changing variables
-    (input_bc,
-     rate_bc,
-     transf_bc) = compile_all_rates(model, with_uncertain=with_uncertain)
+    (input_bc, rate_bc, transf_bc) = compile_all_rates(
+        model, with_uncertain=with_uncertain
+    )
 
     # create arrays to hold computed values
     input_variables = np.empty(len(model.input_variables))
@@ -378,8 +376,8 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
 
         for i, p in enumerate(model.with_bounds):
             if p.name == name:
-                c_str = 'm_Parameters[{}]'.format(i)
-                out_bytecode.append(compile(c_str, '<string>', 'eval'))
+                c_str = "m_Parameters[{}]".format(i)
+                out_bytecode.append(compile(c_str, "<string>", "eval"))
                 exist = True
                 break
         if exist:
@@ -387,7 +385,7 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
         for p in model.parameters:
             if p.name == name:
                 c_str = str(model.getp(name))
-                out_bytecode.append(compile(c_str, '<string>', 'eval'))
+                out_bytecode.append(compile(c_str, "<string>", "eval"))
                 exist = True
                 break
         if exist:
@@ -398,8 +396,8 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
             continue
         try:
             i = model._Model__variables.index(name)
-            c_str = 'variables[{}]'.format(i)
-            out_bytecode.append(compile(c_str, '<string>', 'eval'))
+            c_str = "variables[{}]".format(i)
+            out_bytecode.append(compile(c_str, "<string>", "eval"))
             continue
         except ValueError:
             pass
@@ -409,11 +407,11 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
             continue
         i = model._Model__invars.iget(name)
         if i is not None:
-            c_str = 'input_variables[{}]'.format(i)
-            out_bytecode.append(compile(c_str, '<string>', 'eval'))
+            c_str = "input_variables[{}]".format(i)
+            out_bytecode.append(compile(c_str, "<string>", "eval"))
             continue
         if not exist:
-            error_msg = '{} is not a component in this model'.format(name)
+            error_msg = "{} is not a component in this model".format(name)
             raise AttributeError(error_msg)
 
     _out_rates = np.empty(len(out_bytecode))
@@ -433,12 +431,12 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
 def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rate vector for this model.
 
-       Function has signature f(variables, t)"""
+    Function has signature f(variables, t)"""
 
     get_rates = _get_rates_function(m, with_uncertain=with_uncertain)
 
     def fout(variables, t):
-        t = t*scale + t0
+        t = t * scale + t0
         return get_rates(variables, t)
 
     return fout
@@ -447,8 +445,8 @@ def all_rates_func(m, with_uncertain=False, scale=1.0, t0=0.0):
 def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute rhs of SODE for this model.
 
-       Function has signature f(variables, t)
-       This is compatible with scipy.integrate.odeint"""
+    Function has signature f(variables, t)
+    This is compatible with scipy.integrate.odeint"""
 
     f_rates = _get_rates_function(model, with_uncertain=with_uncertain)
 
@@ -459,19 +457,20 @@ def getdXdt(model, with_uncertain=False, scale=1.0, t0=0.0):
     dxdt = np.empty(len(model.varnames))
 
     def fout(variables, t):
-        t = t*scale + t0
+        t = t * scale + t0
         _, v, _ = f_rates(variables, t)
         np.dot(v, NT, dxdt)
         return dxdt
+
     return fout
 
 
 def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
     """Generate function to compute the jacobian for this model.
 
-       Function has signature J(variables, t)
-       and returns an nvars x nvars numpy array
-       IMPORTANT: sympy module must be installed!"""
+    Function has signature J(variables, t)
+    and returns an nvars x nvars numpy array
+    IMPORTANT: sympy module must be installed!"""
 
     Jstrs = Jacobian_strings(m, _scale=scale)
     nvars = len(Jstrs)
@@ -480,21 +479,22 @@ def getJacobian(m, with_uncertain=False, scale=1.0, t0=0.0):
     # compile rate laws
     symbmap = _gen_calc_symbmap(m, with_uncertain=with_uncertain)
     r_strs = [[calc_string(c, symbmap) for c in row] for row in Jstrs]
-    r_bcode = [[compile(c, '<string>', 'eval') for c in row] for row in r_strs]
+    r_bcode = [[compile(c, "<string>", "eval") for c in row] for row in r_strs]
     Jarray = np.empty((nvars, nvars), float)
 
     def Jfunc(variables, t):
         m_Parameters = m._Model__m_Parameters
-        t = t*scale + t0
+        t = t * scale + t0
         for i in range(nvars):
             for j in range(nvars):
                 Jarray[i, j] = eval(r_bcode[i][j], avail_f, locals())
         return Jarray
+
     return Jfunc
 
 
 def get_outputs_decl(model, ignore_replist=False):
-    decl = model.metadata.get('!!', None)
+    decl = model.metadata.get("!!", None)
 
     if decl is not None and not ignore_replist:
         names = decl.strip().split()
@@ -508,11 +508,11 @@ def process_outputs_list(names, model):
         return None
     if _is_string(names):
         names = [names.strip()]
-    special_transf = ['~']
-    special_rates = ['>', '>>', '->']
+    special_transf = ["~"]
+    special_rates = [">", ">>", "->"]
 
     if not _is_sequence(names):
-        raise TypeError('outputs must be a sequence of names.')
+        raise TypeError("outputs must be a sequence of names.")
 
     if len(names) == 0:
         return None
@@ -520,7 +520,7 @@ def process_outputs_list(names, model):
     out_names = []
     for a in names:
         if not _is_string(a):
-            raise TypeError(str(a) + ' must be a string')
+            raise TypeError(str(a) + " must be a string")
         if a in special_transf:
             out_names.extend([x.name for x in model.transformations])
         elif a in special_rates:
@@ -530,16 +530,17 @@ def process_outputs_list(names, model):
     return out_names
 
 
-def solve(model,
-          tf=None,
-          npoints=500,
-          t0=0.0,
-          initial=None,
-          times=None,
-          outputs=None,
-          title=None,
-          ignore_replist=False):
-
+def solve(
+    model,
+    tf=None,
+    npoints=500,
+    t0=0.0,
+    initial=None,
+    times=None,
+    outputs=None,
+    title=None,
+    ignore_replist=False,
+):
     # solver = integrate._odepack.odeint
     solver = integrate.odeint
     names = [x for x in model.varnames]
@@ -550,7 +551,7 @@ def solve(model,
     else:
         y0 = np.copy(initial)
     if tf is None:
-        tf = float(model.metadata.get('tf', None))
+        tf = float(model.metadata.get("tf", None))
         if tf is None:
             tf = 1.0
     if times is None:
@@ -575,35 +576,39 @@ def solve(model,
         transf_f = get_outputs_function(model, out_names=out_names)
         transf_f.names = out_names
 
-    t = np.copy((times-t0)/scale)  # this scales time points
+    t = np.copy((times - t0) / scale)  # this scales time points
 
-    output = solver(f, y0, t,
-                    args=(),
-                    Dfun=None,
-                    col_deriv=0,
-                    full_output=True,
-                    ml=None,
-                    rtol=None,
-                    mu=None,
-                    atol=None,
-                    tcrit=None,
-                    h0=0.0,
-                    hmax=0.0,
-                    hmin=0.0,
-                    ixpr=0,
-                    mxstep=0,
-                    mxhnil=0,
-                    mxordn=12,
-                    mxords=5)  # , tfirst=False)
-    out_message = output[1]['message'].strip()
-    if out_message != 'Integration successful.':
-        print('Solution failed:', out_message)
+    output = solver(
+        f,
+        y0,
+        t,
+        args=(),
+        Dfun=None,
+        col_deriv=0,
+        full_output=True,
+        ml=None,
+        rtol=None,
+        mu=None,
+        atol=None,
+        tcrit=None,
+        h0=0.0,
+        hmax=0.0,
+        hmin=0.0,
+        ixpr=0,
+        mxstep=0,
+        mxhnil=0,
+        mxordn=12,
+        mxords=5,
+    )  # , tfirst=False)
+    out_message = output[1]["message"].strip()
+    if out_message != "Integration successful.":
+        print("Solution failed:", out_message)
         return None
 
     Y = output[0]
 
     if title is None:
-        title = model.metadata.get('title', '')
+        title = model.metadata.get("title", "")
     Y = np.copy(Y.T)
 
     sol = SolutionTimeCourse(times, Y, names, title, dense=True)
@@ -615,18 +620,19 @@ def solve(model,
 
 
 class ModelSolver(object):
-    def __init__(self,
-                 model,
-                 tf=1.0,
-                 npoints=500,
-                 t0=0.0,
-                 initial=None,
-                 times=None,
-                 outputs=None,
-                 title=None,
-                 ignore_replist=False,
-                 changing_pars=None):
-
+    def __init__(
+        self,
+        model,
+        tf=1.0,
+        npoints=500,
+        t0=0.0,
+        initial=None,
+        times=None,
+        outputs=None,
+        title=None,
+        ignore_replist=False,
+        changing_pars=None,
+    ):
         self.model = model.copy()
         # reset all bounds
         bnames = [p.name for p in self.model.with_bounds]
@@ -636,7 +642,7 @@ class ModelSolver(object):
         self.names = [x for x in self.model.varnames]
         self.title = title
         if self.title is None:
-            self.title = self.model.metadata.get('title', '')
+            self.title = self.model.metadata.get("title", "")
 
         # get initial values
         if initial is None:
@@ -651,7 +657,7 @@ class ModelSolver(object):
         # scale times to maximum time in data
         t0 = self.times[0]
         scale = float(self.times[-1] - t0)
-        self.t = (self.times-t0)/scale  # this scales time points
+        self.t = (self.times - t0) / scale  # this scales time points
 
         # store names of changing parameters
         if changing_pars is None:
@@ -663,16 +669,18 @@ class ModelSolver(object):
         # find initial values in changing parameters
         mapinit2pars = []
         for i, parname in enumerate(self.changing_pars):
-            if parname.startswith('init'):
-                varname = parname.split('.')[-1]
+            if parname.startswith("init"):
+                varname = parname.split(".")[-1]
                 ix = self.model.varnames.index(varname)
                 mapinit2pars.append((ix, i))
             self.model.set_bounds(parname, (0, 1))  # bogus bounds
 
-        self.pars_initindexes = np.array([j for (i, j) in mapinit2pars],
-                                         dtype=int)
-        self.vars_initindexes = np.array([i for (i, j) in mapinit2pars],
-                                         dtype=int)
+        self.pars_initindexes = np.array(
+            [j for (i, j) in mapinit2pars], dtype=int
+        )
+        self.vars_initindexes = np.array(
+            [i for (i, j) in mapinit2pars], dtype=int
+        )
 
         self.f = getdXdt(self.model, with_uncertain=True, scale=scale, t0=t0)
 
@@ -685,9 +693,9 @@ class ModelSolver(object):
         out_names = process_outputs_list(out_names, model)
 
         if out_names is not None:
-            self.transf_f = get_outputs_function(model,
-                                                 with_uncertain=True,
-                                                 out_names=out_names)
+            self.transf_f = get_outputs_function(
+                model, with_uncertain=True, out_names=out_names
+            )
             self.transf_f.names = out_names
 
     def solutions_names(self):
@@ -696,7 +704,6 @@ class ModelSolver(object):
         return self.model.varnames
 
     def solve(self, title=None, par_values=None, npoints=None):
-
         # set initial values
         y0 = np.copy(self.y0)
 
@@ -712,27 +719,31 @@ class ModelSolver(object):
         else:
             tpoints = self.t
 
-        output = integrate.odeint(self.f, y0, tpoints,
-                                  args=(),
-                                  Dfun=None,
-                                  col_deriv=0,
-                                  full_output=True,
-                                  ml=None,
-                                  rtol=None,
-                                  mu=None,
-                                  atol=None,
-                                  tcrit=None,
-                                  h0=0.0,
-                                  hmax=0.0,
-                                  hmin=0.0,
-                                  ixpr=0,
-                                  mxstep=0,
-                                  mxhnil=0,
-                                  mxordn=12,
-                                  mxords=5)  # , tfirst=False)
-        out_message = output[1]['message'].strip()
-        if out_message != 'Integration successful.':
-            print('Solution failed:', out_message)
+        output = integrate.odeint(
+            self.f,
+            y0,
+            tpoints,
+            args=(),
+            Dfun=None,
+            col_deriv=0,
+            full_output=True,
+            ml=None,
+            rtol=None,
+            mu=None,
+            atol=None,
+            tcrit=None,
+            h0=0.0,
+            hmax=0.0,
+            hmin=0.0,
+            ixpr=0,
+            mxstep=0,
+            mxhnil=0,
+            mxordn=12,
+            mxords=5,
+        )  # , tfirst=False)
+        out_message = output[1]["message"].strip()
+        if out_message != "Integration successful.":
+            print("Solution failed:", out_message)
             return None
 
         Y = output[0]
@@ -753,16 +764,18 @@ class ModelSolver(object):
         return sol
 
 
-def scan(model, plan,
-         tf=1.0,
-         npoints=500,
-         t0=0.0,
-         initial=None,
-         times=None,
-         outputs=None,
-         titles=None,
-         changing_pars=None):
-
+def scan(
+    model,
+    plan,
+    tf=1.0,
+    npoints=500,
+    t0=0.0,
+    initial=None,
+    times=None,
+    outputs=None,
+    titles=None,
+    changing_pars=None,
+):
     """Wrapper around ModelSolver."""
 
     plan = dict(plan)
@@ -773,12 +786,19 @@ def scan(model, plan,
     if titles is None:
         titles = []
         for run_values in scan_values:
-            pairs = ['%s = %g' % (n, v) for (n, v) in zip(names, run_values)]
-            titles.append(', '.join(pairs))
+            pairs = ["%s = %g" % (n, v) for (n, v) in zip(names, run_values)]
+            titles.append(", ".join(pairs))
 
-    ms = ModelSolver(model, tf=tf, npoints=npoints, t0=t0,
-                     initial=initial, times=times, outputs=outputs,
-                     changing_pars=names)
+    ms = ModelSolver(
+        model,
+        tf=tf,
+        npoints=npoints,
+        t0=t0,
+        initial=initial,
+        times=times,
+        outputs=outputs,
+        changing_pars=names,
+    )
 
     s = Solutions()
     for title, run_values in zip(titles, scan_values):
@@ -790,6 +810,7 @@ def scan(model, plan,
 def test():
     # import time
     from stimator import read_model
+
     m1_text = """
 title a simple 2 step system
 v1: A -> B, rate = V / (Km1 + A), V = 1, Km = 1
@@ -813,66 +834,72 @@ init: B = 0.4, A = 1
 
     print(m1_text)
 
-    print('\nJacobian_strings(): -------------------------')
+    print("\nJacobian_strings(): -------------------------")
     vnames = m.varnames
     for i, vec in enumerate(Jacobian_strings(m)):
         for j, dxdx in enumerate(vec):
-            print('(d d%s/dt / d %s) =' % (vnames[i], vnames[j]), dxdx)
-    print('\ndfdp_strings(m, parnames): ------------------')
+            print("(d d%s/dt / d %s) =" % (vnames[i], vnames[j]), dxdx)
+    print("\ndfdp_strings(m, parnames): ------------------")
     parnames = "c2 v1.V".split()
-    print(f'parnames = {parnames}\n')
+    print(f"parnames = {parnames}\n")
     vnames = m.varnames
     for i, vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
-            print('(d d%s/dt / d %s) =' % (vnames[i], parnames[j]), dxdx)
+            print("(d d%s/dt / d %s) =" % (vnames[i], parnames[j]), dxdx)
     print()
 
-    print('dfdp_strings(m, parnames): (with unknown pars)')
+    print("dfdp_strings(m, parnames): (with unknown pars)")
     parnames = "c3 v1.V".split()
-    print('parnames = {}\n'.format(parnames))
+    print("parnames = {}\n".format(parnames))
     vnames = m.varnames
     for i, vec in enumerate(dfdp_strings(m, parnames)):
         for j, dxdx in enumerate(vec):
-            print('(d d%s/dt / d %s) =' % (vnames[i], parnames[j]), dxdx)
+            print("(d d%s/dt / d %s) =" % (vnames[i], parnames[j]), dxdx)
 
-    print('\n********** Testing _gen_calc_symbmap(m) *******************')
-    print('_gen_calc_symbmap(m, with_uncertain = False):')
+    print("\n********** Testing _gen_calc_symbmap(m) *******************")
+    print("_gen_calc_symbmap(m, with_uncertain = False):")
     # print(_gen_calc_symbmap(m))
     for k, v in _gen_calc_symbmap(m).items():
-        print('{:8} --> {}'.format(k, v))
+        print("{:8} --> {}".format(k, v))
 
-    print('\n_gen_calc_symbmap(m, with_uncertain = True):')
+    print("\n_gen_calc_symbmap(m, with_uncertain = True):")
     # print(_gen_calc_symbmap(m, with_uncertain=True))
     for k, v in _gen_calc_symbmap(m, with_uncertain=True).items():
-        print('{:8} --> {}'.format(k, v))
+        print("{:8} --> {}".format(k, v))
 
-    print('\n********** Testing calc_string **************************')
+    print("\n********** Testing calc_string **************************")
     symbmap = _gen_calc_symbmap(m, with_uncertain=False)
     symbmap2 = _gen_calc_symbmap(m, with_uncertain=True)
-    for v in (m.reactions.v1,
-              m.reactions.v2,
-              m.transformations.t1,
-              m.transformations.t2,
-              m.input_variables.vin):
+    for v in (
+        m.reactions.v1,
+        m.reactions.v2,
+        m.transformations.t1,
+        m.transformations.t2,
+        m.input_variables.vin,
+    ):
         vstr = v(fully_qualified=True)
-        print('calcstring for %s = %s\n   ' % (v.name, vstr),
-              calc_string(vstr, symbmap))
-    print('calcstring for v2 with uncertain parameters:\n\t',
-          calc_string(m.reactions.v2(fully_qualified=True), symbmap2))
+        print(
+            "calcstring for %s = %s\n   " % (v.name, vstr),
+            calc_string(vstr, symbmap),
+        )
+    print(
+        "calcstring for v2 with uncertain parameters:\n\t",
+        calc_string(m.reactions.v2(fully_qualified=True), symbmap2),
+    )
 
-    print('\n********** Testing rate and dXdt generating functions ******')
-    print('Operating point --------------------------------')
+    print("\n********** Testing rate and dXdt generating functions ******")
+    print("Operating point --------------------------------")
     varvalues = [1.0, 0.4]
     pars = [0.4]
     t = 0.0
 
     print("t =", t)
-    print('variables:')
+    print("variables:")
     print(dict((n, value) for n, value in zip(m.varnames, varvalues)))
-    print('parameters:')
+    print("parameters:")
     print(dict((p.name, p) for p in m.parameters))
 
-    print('\n---- rates using all_rates_func(m) -------------------------')
+    print("\n---- rates using all_rates_func(m) -------------------------")
     func = all_rates_func(m)
     ivs, vs, ts = func(varvalues, t)
     frmtstr = "%s = %-25s = %s"
@@ -883,7 +910,7 @@ init: B = 0.4, A = 1
     for v, r in zip(m.input_variables, ivs):
         print(frmtstr % (v.name, v(fully_qualified=True), r))
 
-    print('---- same, at t = 2.0 --')
+    print("---- same, at t = 2.0 --")
     ivs, vs, ts = func(varvalues, 2.0)
     for v, r in zip(m.reactions, vs):
         print(frmtstr % (v.name, v(fully_qualified=True), r))
@@ -892,42 +919,42 @@ init: B = 0.4, A = 1
     for v, r in zip(m.input_variables, ivs):
         print(frmtstr % (v.name, v(fully_qualified=True), r))
 
-    print('\n********** Testing add_dSdt_to_model() ***************')
-    print('------ in original model')
-    print('variables')
+    print("\n********** Testing add_dSdt_to_model() ***************")
+    print("------ in original model")
+    print("variables")
     vnames = m.varnames
     dxdtstrs = dXdt_strings(m)
     for x in vnames:
         print(x, m.get_init(x))
-        print('   d {} / dt = {}'.format(x, dxdtstrs[x]))
-    print('---------------------')
+        print("   d {} / dt = {}".format(x, dxdtstrs[x]))
+    print("---------------------")
     pars = "Km2 v1.V init.B".split()
-    print('pars =', pars)
+    print("pars =", pars)
     Snames = add_dSdt_to_model(m, pars)
-    print('Snames = \n', Snames)
-    print('------ in augmented model')
-    print('variables')
+    print("Snames = \n", Snames)
+    print("------ in augmented model")
+    print("variables")
     vnames = m.varnames
     dxdtstrs = dXdt_strings(m)
     for x in vnames:
         print(x, m.get_init(x))
-        print('   d {} / dt = {}'.format(x, dxdtstrs[x]))
+        print("   d {} / dt = {}".format(x, dxdtstrs[x]))
 
-    print('---------------- scanning example ------------------')
+    print("---------------- scanning example ------------------")
     m3 = read_model(models.ca.text)
     scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
     # scans_k1 = 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
 
-    sols2 = scan(m3, {'B': scans}, tf=10.0)
+    sols2 = scan(m3, {"B": scans}, tf=10.0)
     # print 'END of SCANNING EXAMPLE'
     # tscancomp = time.time()
     # print 'took', tscancomp - tplot
 
     # sols2.plot(legend=True, ynormalize=True, group=['Ca'], fig_size=(10, 6))
     f, axs = prepare_grid(sols2, figsize=(9, 6))
-    sols2.plot(what='Ca',
-               axs=axs,
-               legend=False, ylim=(0, 1.5), xlabel='$t$ (min)')
+    sols2.plot(
+        what="Ca", axs=axs, legend=False, ylim=(0, 1.5), xlabel="$t$ (min)"
+    )
     suptitle = "Cytosolic $Ca^{2+}$ as a function of stimulus strength"
     f.suptitle(suptitle)
     plt.show()
@@ -936,7 +963,7 @@ init: B = 0.4, A = 1
     # tscan = time.time()
     # print 'took', tscan - tscancomp
 
-    print('---------------- stairway example ------------------')
+    print("---------------- stairway example ------------------")
     mtext = """
     title a simple 2 enzyme system
     v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
@@ -953,19 +980,12 @@ init: B = 0.4, A = 1
 
     mstair = read_model(mtext)
 
-    solstairs = solve(mstair, tf=300, title='stairway')
-    # print 'END of STAIRWAY EXAMPLE'
-    # tstairway = time.time()
-    # print 'took', tstairway - tscan
+    solstairs = solve(mstair, tf=300, title="stairway")
 
     f, ax = plt.subplots(figsize=(9, 6))
 
-    solstairs.plot(legend='out')
+    solstairs.plot(legend="out")
     plt.show()
-
-    # print 'END of STAIRWAY PLOTTING'
-    # tstairwayplot = time.time()
-    # print 'took', tstairwayplot - tstairway
 
 
 if __name__ == "__main__":
