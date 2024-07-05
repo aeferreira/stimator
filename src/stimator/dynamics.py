@@ -829,34 +829,6 @@ init: B = 0.4, A = 1
 
     m = read_model(m1_text)
 
-    print("\ndfdp_strings(m, parnames): ------------------")
-    parnames = "c2 v1.V".split()
-    print(f"parnames = {parnames}\n")
-    vnames = m.varnames
-    for i, vec in enumerate(dfdp_strings(m, parnames)):
-        for j, dxdx in enumerate(vec):
-            print("(d d%s/dt / d %s) =" % (vnames[i], parnames[j]), dxdx)
-    print()
-
-    print("dfdp_strings(m, parnames): (with unknown pars)")
-    parnames = "c3 v1.V".split()
-    print("parnames = {}\n".format(parnames))
-    vnames = m.varnames
-    for i, vec in enumerate(dfdp_strings(m, parnames)):
-        for j, dxdx in enumerate(vec):
-            print("(d d%s/dt / d %s) =" % (vnames[i], parnames[j]), dxdx)
-
-    print("\n********** Testing _gen_calc_symbmap(m) *******************")
-    print("_gen_calc_symbmap(m, with_uncertain = False):")
-    # print(_gen_calc_symbmap(m))
-    for k, v in _gen_calc_symbmap(m).items():
-        print("{:8} --> {}".format(k, v))
-
-    print("\n_gen_calc_symbmap(m, with_uncertain = True):")
-    # print(_gen_calc_symbmap(m, with_uncertain=True))
-    for k, v in _gen_calc_symbmap(m, with_uncertain=True).items():
-        print("{:8} --> {}".format(k, v))
-
     print("\n********** Testing calc_string **************************")
     symbmap = _gen_calc_symbmap(m, with_uncertain=False)
     symbmap2 = _gen_calc_symbmap(m, with_uncertain=True)
