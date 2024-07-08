@@ -135,6 +135,7 @@ def test_dfdp_strings(m: st.Model):
     assert dfdp_strs[1][0] == "-B**3*V"
     assert dfdp_strs[1][1] == "1/(A + Km1)"
 
+
 def test_dfdp_strings_with_unknown(m: st.Model):
     parnames = "c3 v1.V".split()
     dfdp_strs = dyn.dfdp_strings(m, parnames)
@@ -172,6 +173,7 @@ def test_gen_calc_symbmap(m: st.Model):
         assert name in symbmap
         assert isinstance(float(symbmap[name]), float)
 
+
 def test_gen_calc_symbmap_with_uncertain(m: st.Model):
     symbmap = dyn._gen_calc_symbmap(m, with_uncertain=True)
     assert len(symbmap) == 8
@@ -192,19 +194,6 @@ def test_gen_calc_symbmap_with_uncertain(m: st.Model):
     for name in "V Km1 v1.Km v1.V".split():
         assert isinstance(float(symbmap[name]), float)
 
-# ********** Testing calc_string **************************
-# calcstring for v1 = v1.V / (Km1 + A)
-#     1 / (1 + variables[0])
-# calcstring for v2 = V * c2 * B**3
-#     2 * 0.2 * variables[1]**3
-# calcstring for t1 = A + B + vin
-#     variables[0] + variables[1] + input_variables[0]
-# calcstring for t2 = v1.V * A * step(t, 1.0)
-#     1 * variables[0] * step(t, 1.0)
-# calcstring for vin = 2 * A * v1.Km
-#     2 * variables[0] * 1
-# calcstring for v2 with uncertain parameters:
-#          2 * m_Parameters[0] * variables[1]**3
 
 def test_calc_string(m: st.Model):
     symbmap = dyn._gen_calc_symbmap(m, with_uncertain=False)
@@ -218,3 +207,17 @@ def test_calc_string(m: st.Model):
     ):
         vstr = v(fully_qualified=True)
         calc_strs[v.name] = dyn.calc_string(vstr, symbmap)
+    # v1 = v1.V / (Km1 + A)
+    # v2 = V * c2 * B**3
+    # calcstring for t1 = A + B + vin
+    # calcstring for t2 = v1.V * A * step(t, 1.0)
+    # calcstring for vin = 2 * A * v1.Km
+    # calcstring for v2 with uncertain parameters:
+    #          2 * m_Parameters[0] * variables[1]**3
+    assert calc_strs["v1"] == "1 / (1 + variables[0])"
+    assert calc_strs["v2"] == "2 * 0.2 * variables[1]**3"
+    assert (
+        calc_strs["t1"] == "variables[0] + variables[1] + input_variables[0]"
+    )
+    assert calc_strs["t2"] == "1 * variables[0] * step(t, 1.0)"
+    assert calc_strs["vin"] == "2 * variables[0] * 1"
