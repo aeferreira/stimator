@@ -829,26 +829,6 @@ init: B = 0.4, A = 1
 
     m = read_model(m1_text)
 
-    print("\n********** Testing calc_string **************************")
-    symbmap = _gen_calc_symbmap(m, with_uncertain=False)
-    symbmap2 = _gen_calc_symbmap(m, with_uncertain=True)
-    for v in (
-        m.reactions.v1,
-        m.reactions.v2,
-        m.transformations.t1,
-        m.transformations.t2,
-        m.input_variables.vin,
-    ):
-        vstr = v(fully_qualified=True)
-        print(
-            "calcstring for %s = %s\n   " % (v.name, vstr),
-            calc_string(vstr, symbmap),
-        )
-    print(
-        "calcstring for v2 with uncertain parameters:\n\t",
-        calc_string(m.reactions.v2(fully_qualified=True), symbmap2),
-    )
-
     print("\n********** Testing rate and dXdt generating functions ******")
     print("Operating point --------------------------------")
     varvalues = [1.0, 0.4]

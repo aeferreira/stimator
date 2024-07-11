@@ -212,8 +212,6 @@ def test_calc_string(m: st.Model):
     # calcstring for t1 = A + B + vin
     # calcstring for t2 = v1.V * A * step(t, 1.0)
     # calcstring for vin = 2 * A * v1.Km
-    # calcstring for v2 with uncertain parameters:
-    #          2 * m_Parameters[0] * variables[1]**3
     assert calc_strs["v1"] == "1 / (1 + variables[0])"
     assert calc_strs["v2"] == "2 * 0.2 * variables[1]**3"
     assert (
@@ -221,3 +219,20 @@ def test_calc_string(m: st.Model):
     )
     assert calc_strs["t2"] == "1 * variables[0] * step(t, 1.0)"
     assert calc_strs["vin"] == "2 * variables[0] * 1"
+
+
+def test_calc_string_uncertain(m: st.Model):
+    symbmap = dyn._gen_calc_symbmap(m, with_uncertain=True)
+    unc_v2 = dyn.calc_string(m.reactions.v2(fully_qualified=True), symbmap)
+
+    # calcstring for v2 with uncertain parameters:
+    #          2 * m_Parameters[0] * variables[1]**3
+    assert unc_v2 == "2 * m_Parameters[0] * variables[1]**3"
+
+# ********** Testing rate and dXdt generating functions ******
+# Operating point --------------------------------
+# t = 0.0
+# variables:
+# {'A': 1.0, 'B': 0.4}
+# parameters:
+# {'V': 2.0, 'Km1': 1.0, 'c2': 0.2, 'v1.Km': 1.0, 'v1.V': 1.0}
