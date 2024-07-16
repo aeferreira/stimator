@@ -28,6 +28,26 @@ def m():
     return st.read_model(demomodel)
 
 
+class dummy:
+    pass
+
+
+v1 = dummy()
+v1.V = 1.01
+
+TVs_FULLY = {
+    s: 1.01
+    for s in ("V", "Km1", "A", "V", "c2", "B", "d_A_d_init_B", "d_B_d_init_B")
+}
+TVs_FULLY["v1"] = v1
+
+
+def same_expr(expr1, expr2):
+    v1 = eval(expr1, TVs_FULLY)
+    v2 = eval(expr2, TVs_FULLY)
+    return v1 == pytest.approx(v2)
+
+
 def test_genStoichiometryMatrix(m: st.Model):
     N = dyn.genStoichiometryMatrix(m)
     nreactions = len(m.reactions)
@@ -61,17 +81,17 @@ def test_identifiersInExpr():
 
 def test_rate_strings(m: st.Model):
     rs = dyn.rates_strings(m, fully_qualified=False)
-    assert rs["v1"] == "V / (Km1 + A)"
-    assert rs["v2"] == "V * c2 * B**3"
+    assert same_expr(rs["v1"], "V / (Km1 + A)")
+    assert same_expr(rs["v2"], "V * c2 * B**3")
     rs = dyn.rates_strings(m, fully_qualified=True)
-    assert rs["v1"] == "v1.V / (Km1 + A)"
-    assert rs["v2"] == "V * c2 * B**3"
+    assert same_expr(rs["v1"], "v1.V / (Km1 + A)")
+    assert same_expr(rs["v2"], "V * c2 * B**3")
 
 
 def test_dXdt_strings(m: st.Model):
     dxdt_strs = dyn.dXdt_strings(m)
-    assert dxdt_strs["A"] == "-v1.V/(A + Km1)"
-    assert dxdt_strs["B"] == "-B**3*V*c2 + v1.V/(A + Km1)"
+    assert same_expr(dxdt_strs["A"], "-v1.V/(A + Km1)")
+    assert same_expr(dxdt_strs["B"], "-B**3*V*c2 + v1.V/(A + Km1)")
 
 
 def test_gen_canonical_symbmap(m: st.Model):
@@ -87,7 +107,7 @@ def test_string_differentiation(m: st.Model):
     dif = dyn._differentiate_expr
     dxdt_strs = dyn.dXdt_strings(m)
     expA = dxdt_strs["A"]
-    assert expA == "-v1.V/(A + Km1)"
+    assert same_expr(expA, "-v1.V/(A + Km1)")
     # variable A
     # expression = -v1.V/(A + Km1)
     # d / d A = v1.V/(A + Km1)**2
@@ -98,26 +118,25 @@ def test_string_differentiation(m: st.Model):
     # d / d c2 = 0.0
     # d / d v1.Km = 0.0
     # d / d v1.V = -1/(A + Km1)
-    assert dif(expA, "A", symbols) == "v1.V/(A + Km1)**2"
-    assert dif(expA, "B", symbols) == "0.0"
-    assert dif(expA, "v1.V", symbols) == "-1/(A + Km1)"
-    assert dif(expA, "c2", symbols) == "0.0"
+    assert same_expr(dif(expA, "A", symbols), "v1.V/(A + Km1)**2")
+    assert same_expr(dif(expA, "B", symbols), "0.0")
+    assert same_expr(dif(expA, "v1.V", symbols), "-1/(A + Km1)")
+    assert same_expr(dif(expA, "c2", symbols), "0.0")
 
 
 def test_Jacobian_strings(m: st.Model):
     nvars = len(m.varnames)
     j_strings = dyn.Jacobian_strings(m)
-    # assert j_strings.shape == (len(vnames), len(vnames))
     assert len(j_strings) == nvars
     assert len(j_strings[0]) == nvars
     # (d dA/dt / d A) = v1.V/(A + Km1)**2
     # (d dA/dt / d B) = 0.0
     # (d dB/dt / d A) = -v1.V/(A + Km1)**2
     # (d dB/dt / d B) = -3*B**2*V*c2
-    assert j_strings[0][0] == "v1.V/(A + Km1)**2"
-    assert j_strings[0][1] == "0.0"
-    assert j_strings[1][0] == "-v1.V/(A + Km1)**2"
-    assert j_strings[1][1] == "-3*B**2*V*c2"
+    assert same_expr(j_strings[0][0], "v1.V/(A + Km1)**2")
+    assert same_expr(j_strings[0][1], "0.0")
+    assert same_expr(j_strings[1][0], "-v1.V/(A + Km1)**2")
+    assert same_expr(j_strings[1][1], "-3*B**2*V*c2")
 
 
 def test_dfdp_strings(m: st.Model):
@@ -130,10 +149,10 @@ def test_dfdp_strings(m: st.Model):
     # (d dA/dt / d v1.V) = -1/(A + Km1)
     # (d dB/dt / d c2) = -B**3*V
     # (d dB/dt / d v1.V) = 1/(A + Km1)
-    assert dfdp_strs[0][0] == "0.0"
-    assert dfdp_strs[0][1] == "-1/(A + Km1)"
-    assert dfdp_strs[1][0] == "-B**3*V"
-    assert dfdp_strs[1][1] == "1/(A + Km1)"
+    assert same_expr(dfdp_strs[0][0], "0.0")
+    assert same_expr(dfdp_strs[0][1], "-1/(A + Km1)")
+    assert same_expr(dfdp_strs[1][0], "-B**3*V")
+    assert same_expr(dfdp_strs[1][1], "1/(A + Km1)")
 
 
 def test_dfdp_strings_with_unknown(m: st.Model):
@@ -146,10 +165,10 @@ def test_dfdp_strings_with_unknown(m: st.Model):
     # (d dA/dt / d v1.V) = -1/(A + Km1)
     # (d dB/dt / d c3) = 0.0
     # (d dB/dt / d v1.V) = 1/(A + Km1)
-    assert dfdp_strs[0][0] == "0.0"
-    assert dfdp_strs[0][1] == "-1/(A + Km1)"
-    assert dfdp_strs[1][0] == "0.0"
-    assert dfdp_strs[1][1] == "1/(A + Km1)"
+    assert same_expr(dfdp_strs[0][0], "0.0")
+    assert same_expr(dfdp_strs[0][1], "-1/(A + Km1)")
+    assert same_expr(dfdp_strs[1][0], "0.0")
+    assert same_expr(dfdp_strs[1][1], "1/(A + Km1)")
 
 
 def test_gen_calc_symbmap(m: st.Model):
@@ -224,15 +243,54 @@ def test_calc_string(m: st.Model):
 def test_calc_string_uncertain(m: st.Model):
     symbmap = dyn._gen_calc_symbmap(m, with_uncertain=True)
     unc_v2 = dyn.calc_string(m.reactions.v2(fully_qualified=True), symbmap)
-
-    # calcstring for v2 with uncertain parameters:
-    #          2 * m_Parameters[0] * variables[1]**3
     assert unc_v2 == "2 * m_Parameters[0] * variables[1]**3"
 
-# ********** Testing rate and dXdt generating functions ******
-# Operating point --------------------------------
-# t = 0.0
-# variables:
-# {'A': 1.0, 'B': 0.4}
-# parameters:
-# {'V': 2.0, 'Km1': 1.0, 'c2': 0.2, 'v1.Km': 1.0, 'v1.V': 1.0}
+
+def test_all_rates_func(m: st.Model):
+    func = dyn.all_rates_func(m)
+    # Operating point
+    varvalues = 1.0, 0.4
+    # at t == 0
+    t = 0.0
+    ivs, vs, ts = func(varvalues, t)
+    assert vs == pytest.approx((0.5, 0.0256))
+    assert ts == pytest.approx((3.4, 0.0))
+    assert ivs == pytest.approx((2.0,))
+    # at t == 2.0
+    t = 2.0
+    ivs, vs, ts = func(varvalues, t)
+    assert vs == pytest.approx((0.5, 0.0256))
+    assert ts == pytest.approx((3.4, 1.0))
+    assert ivs == pytest.approx((2.0,))
+
+
+def test_add_dSdt_to_model(m: st.Model):
+    vnames = m.varnames
+    dxdtstrs = dyn.dXdt_strings(m)
+    # before adding sensitivities
+    assert len(vnames) == 2
+    assert m.get_init("A") == 1.0
+    assert m.get_init("B") == 0.4
+    assert same_expr(dxdtstrs["A"], "-v1.V/(A + Km1)")
+    assert same_expr(dxdtstrs["B"], "-B**3*V*c2 + v1.V/(A + Km1)")
+    # after adding sensitivities
+    pars = "Km2 v1.V init.B".split()
+    Snames = dyn.add_dSdt_to_model(m, pars)
+    assert len(Snames) == 2 * 3
+    assert ("A", "v1.V", "d_A_d_v1_V") in Snames
+    vnames = m.varnames
+    dxdtstrs = dyn.dXdt_strings(m)
+    assert len(vnames) == 2 + 2 * 3
+    assert m.get_init("A") == 1.0
+    assert m.get_init("B") == 0.4
+    assert m.get_init("d_A_d_init_B") == 0.0
+    assert m.get_init("d_B_d_init_B") == 1.0
+    assert same_expr(dxdtstrs["A"], "-v1.V/(A + Km1)")
+    assert same_expr(dxdtstrs["B"], "-B**3*V*c2 + v1.V/(A + Km1)")
+    assert same_expr(
+        dxdtstrs["d_A_d_init_B"], "v1.V*d_A_d_init_B/(A + Km1)**2"
+    )
+    assert same_expr(
+        dxdtstrs["d_B_d_init_B"],
+        "-3*B**2*c2*d_B_d_init_B*V - v1.V*d_A_d_init_B/(A + Km1)**2",
+    )
