@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import stimator as st
 from stimator import dynamics as dyn
+from stimator.examples import models
 
 demomodel = """
 title a simple 2 step system
@@ -26,6 +27,43 @@ init: B = 0.4, A = 1
 @pytest.fixture
 def m():
     return st.read_model(demomodel)
+
+
+solve_mdl = """title Example 1
+
+vin  : -> x1     , rate = k1
+v2   : x1 ->  x2 , rate = k2 * x1
+vout : x2 ->     , rate = k3 * x2
+
+# parameters and initial state
+k1 = 1
+k2 = 2
+k3 = 1
+init: (x1=0, x2=0)
+"""
+
+
+@pytest.fixture
+def m_for_solving():
+    return st.read_model(solve_mdl)
+
+
+solve_mdl2 = """
+title a simple 2 enzyme system
+v1 : A -> B, rate = Vin*A/(Km + A), V = 0.1, Km = 1
+v2 : B -> C, rate = V*B/(Km + B), V = sqrt(4.0), Km = 20
+
+init : A = 1
+~ sum = A + B + C
+~ sumAB = A + B
+-> Vin = 0.1 * step(t, 10)
+!! A B C ~
+"""
+
+
+@pytest.fixture
+def m_for_solving2():
+    return st.read_model(solve_mdl2)
 
 
 class dummy:
@@ -294,3 +332,28 @@ def test_add_dSdt_to_model(m: st.Model):
         dxdtstrs["d_B_d_init_B"],
         "-3*B**2*c2*d_B_d_init_B*V - v1.V*d_A_d_init_B/(A + Km1)**2",
     )
+
+
+def test_solve(m_for_solving: st.Model):
+    final = m_for_solving.solve(tf=20.0).last
+    assert final["x1"] == pytest.approx(0.5)
+    assert final["x2"] == pytest.approx(1.0)
+
+
+def test_solve_with_forcing_and_constraints(m_for_solving2: st.Model):
+    tc = m_for_solving2.solve(tf=50, outputs="A B C sum".split())
+    after20 = tc.state_at(20)
+    assert after20["sum"] == pytest.approx(1.0)
+    assert 0.5 < after20["A"] < 0.6
+    assert 0.1 < after20["C"] < 0.2
+
+def test_scan():
+    m3 = st.read_model(models.ca.text)
+    scans = 0.0, 0.1, 0.3, 0.5, 0.8, 1.0
+    solutions = m3.scan({"B": scans}, tf=10.0)
+    sol = solutions[2]
+    assert sol.title == 'B = 0.3'
+    assert sol.state_at(3.41)['Ca'] > 0.6  # peak
+    assert sol.state_at(4.0)['Ca'] < 0.4  # low
+    assert sol.state_at(7.63)['Ca'] > 0.6  # peak
+    assert sol.state_at(8.0)['Ca'] < 0.4  # low
