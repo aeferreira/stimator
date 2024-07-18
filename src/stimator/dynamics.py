@@ -12,7 +12,6 @@ from stimator.utils import _is_sequence, _is_string
 # BadRateError Exception
 # -----------------------------------------
 
-
 class BadRateError(Exception):
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)

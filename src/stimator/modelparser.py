@@ -6,8 +6,8 @@ The parsing loop relies on regular expressions."""
 
 from io import StringIO
 import re
-import math
 import stimator.model as model
+from stimator.model import _test_with_consts
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
@@ -300,23 +300,6 @@ class StimatorParser(object):
             loc.end = pos+len(undefname)
             self.setError(text, loc)
 
-    def _test_with_consts(self, valueexpr):
-        """Uses builtin eval function to check for the validity of a math expression.
-
-           Constants previously defined can be used"""
-        locs = {}
-        for (name, value) in self.model._genlocs4rate():
-            locs[name] = value
-        try:
-            value = float(eval(valueexpr, vars(math), locs))
-        except Exception as e:
-            excpt_type = str(e.__class__.__name__)
-            excpt_msg = str(e)
-            if excpt_type == "SyntaxError":
-                excpt_msg = "Bad math expression"
-            return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
-        return ("", value)
-
     def _process_consts_in_rate(self, rate, loc):
         pardict = {}
         decls = rate.split(',')
@@ -328,7 +311,7 @@ class StimatorParser(object):
                 name = match.group('name')
                 valueexpr = match.group('value').rstrip()
 
-                resstring, value = self._test_with_consts(valueexpr)
+                resstring, value = _test_with_consts(self.model, valueexpr)
                 if resstring != "":
                     loc.start = loc.start + rate.index(valueexpr)
                     loc.end = loc.start + len(valueexpr)
@@ -364,7 +347,7 @@ class StimatorParser(object):
 
         if rate.endswith('..'):
             rate = rate[:-2]
-            resstring, value = self._test_with_consts(rate)
+            resstring, value = _test_with_consts(self.model, rate)
             if resstring != "":
                 loc.start = match.start('rate')
                 loc.end = match.start('rate')+len(rate)
@@ -372,10 +355,10 @@ class StimatorParser(object):
                 self.setIfNameError(resstring, rate, loc)
                 return
             else:
-                rate = float(value)  # it will be a float and mass action kinetics will be assumed
+                # it will be a float and mass action kinetics will be assumed
+                rate = float(value)
 
         try:
-            # setattr(self.model, name, model.Model.react(stoich, rate, pars=pardict))
             self.model.set_reaction(name, stoich, rate, pars=pardict)
         except model.BadStoichError:
             loc.start = match.start('stoich')
@@ -490,7 +473,7 @@ class StimatorParser(object):
             self.setError("Repeated declaration", loc)
             return
 
-        resstring, value = self._test_with_consts(valueexpr)
+        resstring, value = _test_with_consts(self.model, valueexpr)
         if resstring != "":
             loc.start = match.start('value')
             loc.end = match.start('value')+len(valueexpr)
@@ -526,7 +509,7 @@ class StimatorParser(object):
         flulist = []
         for k in lulist:
             valueexpr = match.group(k)
-            resstring, v = self._test_with_consts(valueexpr)
+            resstring, v = _test_with_consts(self.model, valueexpr)
             if resstring != "":
                 loc.start = match.start(k)
                 loc.end = match.end(k)

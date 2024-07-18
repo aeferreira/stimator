@@ -1188,19 +1188,9 @@ class Model(ModelObject):
                             self.__variables.append(vname)
 
     def checkRates(self):
-        self._refreshVars()
-        # Reset input variables
-        for v in self.__invars:
-            v._value = None
-        for v in chain(self.__invars, self.__reactions, self.__transf):
-            msg, value = self._test_with_everything(v(), v)
-            if msg != "":
-                return False, f"{msg:s}\nin rate of {v.name}: {v()}"
-            else:
-                v._value = value
-        return True, "OK"
+        return checkRates(self)
 
-    def _genlocs4rate(self, obj=None):
+    def _generate_local_dict(self, obj=None):
         # global model parameters
         for p in self._ownparameters.items():
             yield p
@@ -1219,56 +1209,6 @@ class Model(ModelObject):
         if (obj is not None) and (len(obj._ownparameters) > 0):
             for p in obj._ownparameters.items():
                 yield p
-
-    def _test_with_everything(self, expr, obj):
-        locs = dict(self._genlocs4rate(obj))
-
-        # print '\nChecking {}, expr = {}'.format(obj.name, expr)
-        # print "---locs"
-        # for k in locs:
-        #     if k in self.input_variables:
-        #         pf = '{} is a {}, value = {}'
-        #         print (pf.format(k, 'Input var', locs[k]))
-        #     elif isinstance(locs[k], _Has_Parameters_Accessor):
-        #         pf = '{} is a {}'
-        #         if k in self.reactions:
-        #             ttt = 'Reaction'
-        #         elif k in self.transformations:
-        #             ttt = 'Transformation'
-        #         else:
-        #             ttt = 'Something with parameters'
-        #         print (pf.format(k, ttt))
-        #     else:
-        #         print k, '=', locs[k]
-
-        # print '\nfirst pass...'
-
-        # part 1: nonpermissive, except for NameError
-        try:
-            value = float(eval(expr, self._usable_functions, locs))
-        except NameError:
-            pass
-        except TypeError:
-            return ("Invalid use of a rate in expression", 0.0)
-        except Exception as e:
-            # print('failed on first pass')
-            return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-        # print('second pass...')
-        # part 2: permissive, with dummy values (1.0) for vars
-        vardict = {}
-        for i in self.__variables:
-            vardict[i] = 1.0
-        vardict["t"] = 1.0
-        locs.update(vardict)
-        try:
-            value = float(eval(expr, self._usable_functions, locs))
-        except (ArithmeticError, ValueError):
-            pass  # might fail but we don't know the values of vars
-        except Exception as e:
-            # print('failed on second pass...')
-            return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-        # print('VALUE = ', value)
-        return "", value
 
 
 class QueriableList(list):
@@ -1301,3 +1241,72 @@ class BadRateError(Exception):
 
 class BadTypeComponent(Exception):
     """Flags an assignment of a model component to a wrong type object"""
+
+# functions for handling and testing expressions
+
+
+def checkRates(model):
+    model._refreshVars()
+    # Reset input variables
+    for v in model.input_variables:
+        v._value = None
+    for v in chain(
+        model.input_variables, model.reactions, model.transformations
+    ):
+        msg, value = _test_with_everything(model, v(), v)
+        if msg != "":
+            return False, f"{msg:s}\nin rate of {v.name}: {v()}"
+        else:
+            v._value = value
+    return True, "OK"
+
+
+def _test_with_everything(model, expr, obj):
+    locs = dict(model._generate_local_dict(obj))
+
+    # print '\nfirst pass...'
+
+    # part 1: nonpermissive, except for NameError
+    try:
+        value = float(eval(expr, model._usable_functions, locs))
+    except NameError:
+        pass
+    except TypeError:
+        return ("Invalid use of a rate in expression", 0.0)
+    except Exception as e:
+        # print('failed on first pass')
+        return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+    # print('second pass...')
+    # part 2: permissive, with dummy values (1.0) for vars
+    vardict = {}
+    for i in model.varnames:
+        vardict[i] = 1.0
+    vardict["t"] = 1.0
+    locs.update(vardict)
+    try:
+        value = float(eval(expr, model._usable_functions, locs))
+    except (ArithmeticError, ValueError):
+        pass  # might fail but we don't know the values of vars
+    except Exception as e:
+        # print('failed on second pass...')
+        return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+    # print('VALUE = ', value)
+    return "", value
+
+
+def _test_with_consts(model, valueexpr):
+    """Uses builtin eval function to check for the validity
+    of a math expression.
+
+        Constants previously defined can be used"""
+    locs = dict(model._generate_local_dict())
+    try:
+        value = float(eval(valueexpr, vars(math), locs))
+    except Exception as e:
+        excpt_type = str(e.__class__.__name__)
+        excpt_msg = str(e)
+        if excpt_type == "SyntaxError":
+            excpt_msg = "Bad math expression"
+        return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
+    return ("", value)
+
