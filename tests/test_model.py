@@ -3,12 +3,6 @@ from stimator import Model
 import stimator.model as model
 
 
-def assert_almost_equal(x, y):
-    if abs(x-y) < 0.0001:
-        return True
-    return False
-
-
 def conservation(total, A):
     return total - A
 
@@ -52,12 +46,12 @@ def test_set_reaction1():
     assert m.reactions.v4.name == 'v4'
     assert m.reactions.v5.name == 'v5'
     cd = {'A': 3.14, 'B': 2*3.14, 'C': 3.0*3.14, 'D': 4*3.14}
-    assert_almost_equal(eval('4.0*A', cd), eval(m.reactions.v1(), cd))
-    assert_almost_equal(eval('2.0*B', cd), eval(m.reactions.v2(), cd))
-    assert_almost_equal(eval('2.0*C**2.0', cd), eval(m.reactions.v3(), cd))
-    assert_almost_equal(eval('2.0*D**2', cd), eval(m.reactions.v4(), cd))
-    assert_almost_equal(eval('2.0', cd), eval(m.reactions.v5(), cd))
-    check, msg = m.checkRates()
+    assert eval('4.0*A', cd) == pytest.approx(eval(m.reactions.v1(), cd))
+    assert eval('2.0*B', cd) == pytest.approx(eval(m.reactions.v2(), cd))
+    assert eval('2.0*C**2.0', cd) == pytest.approx(eval(m.reactions.v3(), cd))
+    assert eval('2.0*D**2', cd) == pytest.approx(eval(m.reactions.v4(), cd))
+    assert eval('2.0', cd) == pytest.approx(eval(m.reactions.v5(), cd))
+    check, _ = m.checkRates()
     assert check
     assert 'v1' in m.reactions
     assert 'x1' not in m.reactions
@@ -747,14 +741,17 @@ def test_iter_parameters():
     m.set_init(A=1.0, C=1, D=1)
     pp = m.parameters
     assert len(pp) == 4
-    names = [x.name for x in m.parameters]
-    assert names.sort() == ['B', 'myconstant', 'v3.Km3', 'v3.V3'].sort()
-    values = [x for x in m.parameters]
-    values.sort()
-    should_values = [2.2, 4.0, 0.5, 4.0]
-    should_values.sort()
-    for v1, v2 in zip(values, should_values):
-        assert_almost_equal(v1, v2)
+    pardict = {x.name: x for x in m.parameters}
+    the_names = ['B', 'myconstant', 'v3.Km3', 'v3.V3']
+    for name in the_names:
+        assert name in pardict
+    should_values = [2.2, 4.0, 4.0, 0.5]
+    should_values = dict(zip(the_names, should_values))
+    for name in the_names:
+        # pytest.approx() is strict comparing floats
+        # does not work with float subclasses
+        # a cast to float is necessary here
+        assert float(pardict[name]) == pytest.approx(should_values[name])
 
 
 def test_iter_uncertain():
@@ -783,8 +780,8 @@ def test_iter_uncertain():
         assert n in names
     should_values = {'V3': (0.1, 1.0), 'Km3': (0.0, 5.0), 'init.A': (1.0, 3.0)}
     for b in uu:
-        assert_almost_equal(b.bounds.lower, should_values[b.name][0])
-        assert_almost_equal(b.bounds.upper, should_values[b.name][1])
+        assert b.bounds.lower == pytest.approx(should_values[b.name][0])
+        assert b.bounds.upper == pytest.approx(should_values[b.name][1])
 
 
 def test_reassignment2():
@@ -852,7 +849,3 @@ def test_meta1():
     assert m.metadata.get('nonexistent', None) is None
     del m.metadata['where']
     assert m.metadata.get('where', None) is None
-
-
-if __name__ == '__main__':
-    pytest.main()
