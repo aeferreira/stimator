@@ -9,6 +9,7 @@ import re
 import math
 from itertools import chain
 from collections import OrderedDict
+import sympy
 from stimator.utils import _args_2_dict, _is_sequence, _is_number
 import stimator.kinetics as kinetics
 import stimator.dynamics as dynamics
@@ -1301,7 +1302,7 @@ def _test_with_consts(model, valueexpr):
         Constants previously defined can be used"""
     locs = dict(model._generate_local_dict())
     try:
-        value = float(eval(valueexpr, vars(math), locs))
+        value = float(eval(valueexpr, model._usable_functions, locs))
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)

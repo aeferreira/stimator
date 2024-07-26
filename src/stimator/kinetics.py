@@ -1,3 +1,4 @@
+import sympy
 
 def step(t, at, top=1.0):
     if t < at:
@@ -34,3 +35,15 @@ def stairway(t, times, values):
 
 
 stairway.is_rate = True
+
+def allowed_sympy_funcs():
+    funcs = {}
+    return funcs
+
+def main():
+    allowed = allowed_sympy_funcs()
+    for n, v in allowed.items():
+        print(f'{n:>10} ----> {v}')
+
+if __name__ == '__main__':
+    main()
