@@ -37,13 +37,16 @@ def stairway(t, times, values):
 stairway.is_rate = True
 
 def allowed_sympy_funcs():
-    funcs = {}
+    funcs = {"sin": sympy.sin,
+             "cos": sympy.cos,
+             "log": sympy.log,
+             "exp": sympy.exp}
     return funcs
 
 def main():
     allowed = allowed_sympy_funcs()
     for n, v in allowed.items():
-        print(f'{n:>10} ----> {v}')
+        print(f'{n:>10} ----> {v} , type: {type(v)}')
 
 if __name__ == '__main__':
     main()

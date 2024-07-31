@@ -535,6 +535,55 @@ class StimatorParser(object):
 #         TESTING CODE
 # ----------------------------------------------------------------------------
 
+model_text = """
+#This is an example of a valid model:
+title: A model to test parsing.
+variables: X1 X2 X3
+
+React1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((KmX3+X3)*(KmX2+X2))
+leak : X3 -> 4.2 X3out, 10 ..
+reaction React2 : X1 ->  2  OutVar,  \\
+    step(t, 2.0, Vmax2*X1 / (Km2 + X1)) #reaction 2
+kout_global = 3.14
+export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global
+
+in i1 = 20 - X2
+-> i2 = i1 * 15
+input i3 = i1 + i2
+
+~ totX = X2 + X1
+~ OutVarmult = mult * OutVar,      mult = (kout_global/export.kout) * 2
+pi   = 3.1416
+pi2  = 2*pi
+pypi = pi**2  #this is pi square
+KmX3 = sqrt(1e-2)
+Vmax1 = 0.0001
+find Vmax1 in [1e-9, 1e-3]
+find   KmX3  in [1e-5, 1]
+find KmX2 in [1e-5, pi/pi]
+
+find Km2   in [1e-5, 1]
+find Vmax2 in (1e-9, 1e-3)
+
+find export.kout in (3,4)
+
+@ 3.4 pi = 2*pi
+x' = X3/2
+#init  = state(X2 = 0.1, X3 = 0.63655, X1 = 0.0, x = 0)
+init: X2 = 0.1, X3 = 0.63655, X1 = 0.0, x = 0
+
+genomesize = 50 #should be enough
+generations = 400
+popsize = 20
+
+timecourse my file.txt  # this is a timecourse filename
+timecourse anotherfile.txt
+#timecourse stillanotherfile.txt
+tf: 10
+!! X1 > X2 -> ~ ..
+
+"""
+
 
 def try2read_model(text):
     try:
@@ -543,8 +592,8 @@ def try2read_model(text):
         titleformat = '\n-------- Model {} successfuly read -----------'.format
         print(titleformat(m.metadata['title']))
         print(m)
-        if len(tc['filenames']) > 0:
-            print("the timecourses to load are {}".format(tc['filenames']))
+        if len(m.metadata['filenames']) > 0:
+            print("the timecourses to load are {}".format(m.metadata['filenames']))
             if 'defaultnames' in tc:
                 print("\nthe default names to use in timecourses are {}".format(tc['defaultnames']))
         print()
@@ -577,3 +626,6 @@ def try2read_model(text):
         print(value)
 
         print(expt)
+
+if __name__ == '__main__':
+    try2read_model(model_text)

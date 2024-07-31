@@ -1301,6 +1301,9 @@ def _test_with_consts(model, valueexpr):
 
         Constants previously defined can be used"""
     locs = dict(model._generate_local_dict())
+    print(f'---- parsing exprs with constants: {valueexpr}')
+    for name, value in locs.items():
+        print(f'{name} ----> {value}')
     try:
         value = float(eval(valueexpr, model._usable_functions, locs))
     except Exception as e:
@@ -1310,4 +1313,3 @@ def _test_with_consts(model, valueexpr):
             excpt_msg = "Bad math expression"
         return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
     return ("", value)
-
