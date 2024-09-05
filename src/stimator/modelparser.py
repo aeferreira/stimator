@@ -592,10 +592,10 @@ def try2read_model(text):
         titleformat = '\n-------- Model {} successfuly read -----------'.format
         print(titleformat(m.metadata['title']))
         print(m)
-        if len(m.metadata['filenames']) > 0:
-            print("the timecourses to load are {}".format(m.metadata['filenames']))
+        if len(m.metadata['timecourses']) > 0:
+            print(f"the timecourses to load are {m.metadata['timecourses']}")
             if 'defaultnames' in tc:
-                print("\nthe default names to use in timecourses are {}".format(tc['defaultnames']))
+                print(f"\nthe default names to use in timecourses are {tc['defaultnames']}")
         print()
         return
     except StimatorParserError as expt:
