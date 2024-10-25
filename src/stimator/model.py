@@ -1293,23 +1293,3 @@ def _test_with_everything(model, expr, obj):
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
     # print('VALUE = ', value)
     return "", value
-
-
-def _test_with_consts(model, valueexpr):
-    """Uses builtin eval function to check for the validity
-    of a math expression.
-
-        Constants previously defined can be used"""
-    locs = dict(model._generate_local_dict())
-    print(f'---- parsing exprs with constants: {valueexpr}')
-    for name, value in locs.items():
-        print(f'{name} ----> {value}')
-    try:
-        value = float(eval(valueexpr, model._usable_functions, locs))
-    except Exception as e:
-        excpt_type = str(e.__class__.__name__)
-        excpt_msg = str(e)
-        if excpt_type == "SyntaxError":
-            excpt_msg = "Bad math expression"
-        return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
-    return ("", value)

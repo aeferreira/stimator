@@ -7,11 +7,33 @@ The parsing loop relies on regular expressions."""
 from io import StringIO
 import re
 import stimator.model as model
-from stimator.model import _test_with_consts
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
 # ----------------------------------------------------------------------------
+
+def _test_with_consts(model, valueexpr):
+    """Uses builtin eval function to check for the validity
+    of a math expression.
+
+        Constants previously defined can be used"""
+    print('--------- function _test_with_consts()')
+    print(f'---- parsing expression {valueexpr}')
+    locs = dict(model._generate_local_dict())
+    print('locs dict:')
+    for name, value in locs.items():
+        print(f'{name} ----> {value}')
+    try:
+        value = float(eval(valueexpr, model._usable_functions, locs))
+        print('expr value:', value)
+    except Exception as e:
+        excpt_type = str(e.__class__.__name__)
+        excpt_msg = str(e)
+        if excpt_type == "SyntaxError":
+            excpt_msg = "Bad math expression"
+        return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
+    return ("", value)
+
 
 identifierpattern = r"[_a-z]\w*"
 reppattern = r"([_a-z]\w*|>{1,2}|~|->|\.{1,3})"
@@ -540,7 +562,7 @@ model_text = """
 title: A model to test parsing.
 variables: X1 X2 X3
 
-React1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((KmX3+X3)*(KmX2+X2))
+React1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((KmX3+X3)*(KmX2+X2)), KmX3 = sqrt(1e-2)
 leak : X3 -> 4.2 X3out, 10 ..
 reaction React2 : X1 ->  2  OutVar,  \\
     step(t, 2.0, Vmax2*X1 / (Km2 + X1)) #reaction 2
@@ -556,7 +578,7 @@ input i3 = i1 + i2
 pi   = 3.1416
 pi2  = 2*pi
 pypi = pi**2  #this is pi square
-KmX3 = sqrt(1e-2)
+
 Vmax1 = 0.0001
 find Vmax1 in [1e-9, 1e-3]
 find   KmX3  in [1e-5, 1]
@@ -586,6 +608,10 @@ tf: 10
 
 
 def try2read_model(text):
+    print('try2read_model')
+    print('-------------- MODEL TEXT')
+    print(text)
+    print('--------------')
     try:
         m = read_model(text)
         tc = m.metadata['timecourses']
