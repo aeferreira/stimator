@@ -7,6 +7,7 @@ The parsing loop relies on regular expressions."""
 from io import StringIO
 import re
 import stimator.model as model
+from stimator.model import _Has_Parameters_Accessor as HPA
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
@@ -17,12 +18,17 @@ def _test_with_consts(model, valueexpr):
     of a math expression.
 
         Constants previously defined can be used"""
-    print('--------- function _test_with_consts()')
-    print(f'---- parsing expression {valueexpr}')
+    print('\n--------- function _test_with_consts()')
+    print(f'---- parsing expression {valueexpr}\n')
     locs = dict(model._generate_local_dict())
-    print('locs dict:')
+    print('+++++ locs dict:')
     for name, value in locs.items():
-        print(f'{name} ----> {value}')
+        if not isinstance(value, HPA):
+            print(f'{name} ----> {value}')
+        elif (value is not None) and (len(value) > 0):
+            for p, innervalue in value._haspar_obj._ownparameters.items():
+                print(f'{name}.{p} ----> {innervalue}')
+    print('++++++++++++++++')
     try:
         value = float(eval(valueexpr, model._usable_functions, locs))
         print('expr value:', value)
@@ -562,22 +568,24 @@ model_text = """
 title: A model to test parsing.
 variables: X1 X2 X3
 
-React1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((KmX3+X3)*(KmX2+X2)), KmX3 = sqrt(1e-2)
+r1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((k1_1+X3)*(KmX2+X2)), k1_1 = sqrt(1e-2)
 leak : X3 -> 4.2 X3out, 10 ..
 reaction React2 : X1 ->  2  OutVar,  \\
     step(t, 2.0, Vmax2*X1 / (Km2 + X1)) #reaction 2
 kout_global = 3.14
-export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global
+export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global, k9 = 2 * r1.k1_1
 
 in i1 = 20 - X2
 -> i2 = i1 * 15
 input i3 = i1 + i2
 
 ~ totX = X2 + X1
-~ OutVarmult = mult * OutVar,      mult = (kout_global/export.kout) * 2
+~ OutVarmult = mult * OutVar,  mult = (kout_global/export.kout) * 2
 pi   = 3.1416
 pi2  = 2*pi
 pypi = pi**2  #this is pi square
+
+another_const = r1.k1_1 ** 3
 
 Vmax1 = 0.0001
 find Vmax1 in [1e-9, 1e-3]
