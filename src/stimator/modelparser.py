@@ -13,13 +13,13 @@ from stimator.model import _Has_Parameters_Accessor as HPA
 #         Regular expressions for grammar elements and dispatchers
 # ----------------------------------------------------------------------------
 
-def _test_with_consts(model, valueexpr):
+def _test_with_consts(model, parsed_name, valueexpr):
     """Uses builtin eval function to check for the validity
     of a math expression.
 
         Constants previously defined can be used"""
     print('\n--------- function _test_with_consts()')
-    print(f'---- parsing expression {valueexpr}\n')
+    print(f'---- parsing {parsed_name}\nwith expression {valueexpr}')
     locs = dict(model._generate_local_dict())
     print('+++++ locs dict:')
     for name, value in locs.items():
@@ -36,7 +36,7 @@ def _test_with_consts(model, valueexpr):
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)
         if excpt_type == "SyntaxError":
-            excpt_msg = "Bad math expression"
+            excpt_msg = "Bad expression"
         return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
     return ("", value)
 
@@ -339,7 +339,7 @@ class StimatorParser(object):
                 name = match.group('name')
                 valueexpr = match.group('value').rstrip()
 
-                resstring, value = _test_with_consts(self.model, valueexpr)
+                resstring, value = _test_with_consts(self.model, name, valueexpr)
                 if resstring != "":
                     loc.start = loc.start + rate.index(valueexpr)
                     loc.end = loc.start + len(valueexpr)
@@ -374,8 +374,8 @@ class StimatorParser(object):
             return
 
         if rate.endswith('..'):
-            rate = rate[:-2]
-            resstring, value = _test_with_consts(self.model, rate)
+            rate = rate.rstrip('..')
+            resstring, value = _test_with_consts(self.model, name, rate)
             if resstring != "":
                 loc.start = match.start('rate')
                 loc.end = match.start('rate')+len(rate)
@@ -501,7 +501,7 @@ class StimatorParser(object):
             self.setError("Repeated declaration", loc)
             return
 
-        resstring, value = _test_with_consts(self.model, valueexpr)
+        resstring, value = _test_with_consts(self.model, name, valueexpr)
         if resstring != "":
             loc.start = match.start('value')
             loc.end = match.start('value')+len(valueexpr)
@@ -537,7 +537,7 @@ class StimatorParser(object):
         flulist = []
         for k in lulist:
             valueexpr = match.group(k)
-            resstring, v = _test_with_consts(self.model, valueexpr)
+            resstring, v = _test_with_consts(self.model, name, valueexpr)
             if resstring != "":
                 loc.start = match.start(k)
                 loc.end = match.end(k)
