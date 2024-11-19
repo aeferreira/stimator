@@ -9,7 +9,6 @@ import re
 import math
 from itertools import chain
 from collections import OrderedDict
-import sympy
 from stimator.utils import _args_2_dict, _is_sequence, _is_number
 import stimator.kinetics as kinetics
 import stimator.dynamics as dynamics
@@ -1191,26 +1190,6 @@ class Model(ModelObject):
     def checkRates(self):
         return checkRates(self)
 
-    def _generate_local_dict(self, obj=None):
-        # global model parameters
-        for p in self._ownparameters.items():
-            yield p
-
-        # values of input variables
-        for v in self.__invars:
-            yield (v.name, v._value)
-
-        # parameters own by reactions or transformations
-        collections = chain(self.__reactions, self.__transf)
-        for v in collections:
-            yield (v.name, _Has_Parameters_Accessor(v))
-
-        # own parameters of obj
-        # this may overide (correctely) other parameters with the same name
-        if (obj is not None) and (len(obj._ownparameters) > 0):
-            for p in obj._ownparameters.items():
-                yield p
-
 
 class QueriableList(list):
     def get(self, aname):
@@ -1262,8 +1241,29 @@ def checkRates(model):
     return True, "OK"
 
 
+def _generate_local_dict(model, obj=None):
+    # global model parameters
+    for p in model._ownparameters.items():
+        yield p
+
+    # values of input variables
+    for v in model.input_variables:
+        yield (v.name, v._value)
+
+    # parameters own by reactions or transformations
+    collections = chain(model.reactions, model.transformations)
+    for v in collections:
+        yield (v.name, _Has_Parameters_Accessor(v))
+
+    # own parameters of obj
+    # this may overide (correctely) other parameters with the same name
+    if (obj is not None) and (len(obj._ownparameters) > 0):
+        for p in obj._ownparameters.items():
+            yield p
+
+
 def _test_with_everything(model, expr, obj):
-    locs = dict(model._generate_local_dict(obj))
+    locs = dict(_generate_local_dict(model, obj))
 
     # print '\nfirst pass...'
 

@@ -6,12 +6,35 @@ The parsing loop relies on regular expressions."""
 
 from io import StringIO
 import re
+from itertools import chain
 import stimator.model as model
 from stimator.model import _Has_Parameters_Accessor as HPA
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
 # ----------------------------------------------------------------------------
+
+
+def _generate_local_dict(model, obj=None):
+    # global model parameters
+    for p in model._ownparameters.items():
+        yield p
+
+    # values of input variables
+    for v in model.input_variables:
+        yield (v.name, v._value)
+
+    # parameters own by reactions or transformations
+    collections = chain(model.reactions, model.transformations)
+    for v in collections:
+        yield (v.name, HPA(v))
+
+    # own parameters of obj
+    # this may overide (correctely) other parameters with the same name
+    if (obj is not None) and (len(obj._ownparameters) > 0):
+        for p in obj._ownparameters.items():
+            yield p
+
 
 def _test_with_consts(model, parsed_name, valueexpr):
     """Uses builtin eval function to check for the validity
@@ -20,7 +43,7 @@ def _test_with_consts(model, parsed_name, valueexpr):
         Constants previously defined can be used"""
     print('\n--------- function _test_with_consts()')
     print(f'---- parsing {parsed_name}\nwith expression {valueexpr}')
-    locs = dict(model._generate_local_dict())
+    locs = dict(_generate_local_dict(model))
     print('+++++ locs dict:')
     for name, value in locs.items():
         if not isinstance(value, HPA):
@@ -616,14 +639,14 @@ tf: 10
 
 
 def try2read_model(text):
-    print('try2read_model')
-    print('-------------- MODEL TEXT')
-    print(text)
-    print('--------------')
     try:
         m = read_model(text)
         tc = m.metadata['timecourses']
         titleformat = '\n-------- Model {} successfuly read -----------'.format
+        print('try2read_model')
+        print('-------------- MODEL TEXT')
+        print(text)
+        print('--------------')
         print(titleformat(m.metadata['title']))
         print(m)
         if len(m.metadata['timecourses']) > 0:
