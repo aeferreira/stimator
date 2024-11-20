@@ -8,6 +8,7 @@ from io import StringIO
 import re
 from types import SimpleNamespace
 from itertools import chain
+from dotmap import DotMap
 import stimator.model as model
 from stimator.model import _Has_Parameters_Accessor as HPA
 
