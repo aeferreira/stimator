@@ -16,30 +16,25 @@ from stimator.model import _Has_Parameters_Accessor as HPA
 #         Regular expressions for grammar elements and dispatchers
 # ----------------------------------------------------------------------------
 
-def insert_constants(model, pardict=None):
-    if pardict is None or len(pardict) == 0:
-        return
-    for name, value in pardict.items():
-        if '.' in name:
-            owner, parname = name.strip().split('.', 1)
-            if owner not in model._all_constants:
-                space = SimpleNamespace()
-                model._all_constants[owner] = space
-            else:
-                space = model._all_constants[owner]
-            setattr(space, parname, value)
-        else:
-            model._all_constants[name] = value
+def insert_constant(model, name, value):
+    nested_attrs = name.strip().split('.')
+    into = model._all_constants
+    for nested in nested_attrs[0:-1]: # last not inserted
+        if nested not in into:
+            into[nested] = DotMap()
+        into = into[nested]
+    into[nested_attrs[-1]] = value
 
 
 def get_constant(model, name):
-    if '.' in name:
-        owner, parname = name.strip().split('.', 1)
-        level1 = model._all_constants.get(owner, None)
-        if level1 is None:
+    nested_attrs = name.strip().split('.')
+    container = model._all_constants
+    for nested in nested_attrs:
+        value = container.get(nested, None)
+        if value is None:
             return None
-        return getattr(level1, parname, None)
-    return model._all_constants.get(name, None)
+        container = value
+    return value
 
 
 def _generate_local_dict(model, obj=None):
@@ -68,8 +63,8 @@ def _test_with_consts(model, parsed_name, valueexpr):
     of a math expression.
 
         Constants previously defined can be used"""
-    print('\n--------- function _test_with_consts()')
-    print(f'---- parsing {parsed_name}\nwith expression {valueexpr}')
+
+    print(f'\n---- parsing {parsed_name}\nwith expression {valueexpr}')
     # locs = dict(_generate_local_dict(model))
     # print('+++++ locs dict:')
     # for name, value in locs.items():
@@ -80,13 +75,13 @@ def _test_with_consts(model, parsed_name, valueexpr):
     #             print(f'{name}.{p} ----> {innervalue}')
     # print('++++++++++++++++')
     print('all constants namespace ======')
-    print(model._all_constants)
+    model._all_constants.pprint()
     print('==============================')
     try:
         value = float(eval(valueexpr,
                            model._usable_functions,
-                           model._all_constants))
-        print('expr value:', value)
+                           dict(model._all_constants)))
+        print('resulting value:', value)
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)
@@ -310,7 +305,8 @@ class StimatorParser(object):
         self.errorloc = None
 
         self.model = model.Model()
-        self.model._all_constants = dict()
+        # self.model._all_constants = dict()
+        self.model._all_constants = DotMap()
         self.tc = {'filenames': []}
         # optimizer configuration
         self.optSettings = {}
@@ -444,8 +440,8 @@ class StimatorParser(object):
 
         try:
             self.model.set_reaction(name, stoich, rate, pars=pardict)
-            dict2insert = {f'{name}.{p}': v for p, v in pardict.items()}
-            insert_constants(self.model, pardict=dict2insert)
+            for parname, parvalue in pardict.items():
+                insert_constant(self.model, f'{name}.{parname}', parvalue)
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end = match.end('stoich')
@@ -494,8 +490,8 @@ class StimatorParser(object):
         if expr is None:
             return
         self.model.set_transformation(name, expr, pars=pardict)
-        dict2insert = {f'{name}.{p}': v for p, v in pardict.items()}
-        insert_constants(self.model, pardict=dict2insert)
+        for parname, parvalue in pardict.items():
+            insert_constant(self.model, f'{name}.{parname}', parvalue)
         loc.start = match.start('value')
         loc.end = match.end('value')
         self.rateloc.append(loc)
@@ -577,7 +573,7 @@ class StimatorParser(object):
             self.optSettings['pop_size'] = int(value)
         else:
             self.model.setp(name, value)
-            insert_constants(self.model, pardict={name: value})
+            insert_constant(self.model, name, value)
 
     def atDefParse(self, line, nline, match):
         pass  # for now
@@ -610,7 +606,7 @@ class StimatorParser(object):
         if name not in self.model._all_constants:
             half = sum((flulist[0], flulist[1])) / 2.0
             if get_constant(self.model, name) is None:
-                insert_constants(self.model, pardict= {name: half})
+                insert_constant(self.model, name, half)
 
     def titleDefParse(self, line, loc, match):
         title = match.group('title')
