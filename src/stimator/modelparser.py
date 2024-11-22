@@ -6,9 +6,11 @@ The parsing loop relies on regular expressions."""
 
 from io import StringIO
 import re
-from types import SimpleNamespace
 from itertools import chain
+
 from dotmap import DotMap
+from sympy.parsing.sympy_parser import parse_expr, T
+
 import stimator.model as model
 from stimator.model import _Has_Parameters_Accessor as HPA
 
@@ -58,7 +60,7 @@ def _generate_local_dict(model, obj=None):
             yield p
 
 
-def _test_with_consts(model, parsed_name, valueexpr):
+def parse_const(model, parsed_name, valueexpr):
     """Uses builtin eval function to check for the validity
     of a math expression.
 
@@ -74,14 +76,20 @@ def _test_with_consts(model, parsed_name, valueexpr):
     #         for p, innervalue in value._haspar_obj._ownparameters.items():
     #             print(f'{name}.{p} ----> {innervalue}')
     # print('++++++++++++++++')
-    print('all constants namespace ======')
+    print('constants namespace ======')
     model._all_constants.pprint()
-    print('==============================')
+    print('==========================')
     try:
-        value = float(eval(valueexpr,
-                           model._usable_functions,
-                           dict(model._all_constants)))
-        print('resulting value:', value)
+        # value = float(eval(valueexpr,
+        #                    model._usable_functions,
+        #                    dict(model._all_constants)))
+        value = parse_expr(valueexpr, dict(model._all_constants),
+                           transformations=T[4])
+        print('Resulting value:')
+        print(value)
+        print('resulting type:', type(value))
+        print('--------------------------')
+        # value = float(value)
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)
@@ -324,7 +332,8 @@ class StimatorParser(object):
 
         self.textlines = _get_text_as_file(text)
 
-        # parse the lines of text using matches and dispatch to *Parse functions
+        # parse the lines of text using matches
+        # and dispatch to *Parse functions
         for (line, nline, start, end) in logicalLines(self.textlines):
             # package _Logical_Line
             loc = _Logical_Line(nline, 0, len(line), start, end)
@@ -391,7 +400,7 @@ class StimatorParser(object):
                 name = match.group('name')
                 valueexpr = match.group('value').rstrip()
 
-                resstring, value = _test_with_consts(self.model, name, valueexpr)
+                resstring, value = parse_const(self.model, name, valueexpr)
                 if resstring != "":
                     loc.start = loc.start + rate.index(valueexpr)
                     loc.end = loc.start + len(valueexpr)
@@ -427,7 +436,7 @@ class StimatorParser(object):
 
         if rate.endswith('..'):
             rate = rate.rstrip('..')
-            resstring, value = _test_with_consts(self.model, name, rate)
+            resstring, value = parse_const(self.model, name, rate)
             if resstring != "":
                 loc.start = match.start('rate')
                 loc.end = match.start('rate')+len(rate)
@@ -439,9 +448,10 @@ class StimatorParser(object):
                 rate = float(value)
 
         try:
-            self.model.set_reaction(name, stoich, rate, pars=pardict)
             for parname, parvalue in pardict.items():
                 insert_constant(self.model, f'{name}.{parname}', parvalue)
+            pardict = {n: float(v) for (n,v) in pardict.items()}
+            self.model.set_reaction(name, stoich, rate, pars=pardict)
         except model.BadStoichError:
             loc.start = match.start('stoich')
             loc.end = match.end('stoich')
@@ -489,9 +499,10 @@ class StimatorParser(object):
         expr, pardict = self._process_consts_in_rate(expr, rate_loc)
         if expr is None:
             return
-        self.model.set_transformation(name, expr, pars=pardict)
         for parname, parvalue in pardict.items():
             insert_constant(self.model, f'{name}.{parname}', parvalue)
+        pardict = {n: float(v) for (n,v) in pardict.items()}
+        self.model.set_transformation(name, expr, pars=pardict)
         loc.start = match.start('value')
         loc.end = match.end('value')
         self.rateloc.append(loc)
@@ -557,7 +568,7 @@ class StimatorParser(object):
             self.setError("Repeated declaration", loc)
             return
 
-        resstring, value = _test_with_consts(self.model, name, valueexpr)
+        resstring, value = parse_const(self.model, name, valueexpr)
         if resstring != "":
             loc.start = match.start('value')
             loc.end = match.start('value')+len(valueexpr)
@@ -572,7 +583,7 @@ class StimatorParser(object):
             self.optSettings['genomesize'] = int(value)
             self.optSettings['pop_size'] = int(value)
         else:
-            self.model.setp(name, value)
+            self.model.setp(name, float(value))
             insert_constant(self.model, name, value)
 
     def atDefParse(self, line, nline, match):
@@ -594,7 +605,7 @@ class StimatorParser(object):
         flulist = []
         for k in lulist:
             valueexpr = match.group(k)
-            resstring, v = _test_with_consts(self.model, name, valueexpr)
+            resstring, v = parse_const(self.model, name, valueexpr)
             if resstring != "":
                 loc.start = match.start(k)
                 loc.end = match.end(k)
@@ -629,12 +640,14 @@ model_text = """
 title: A model to test parsing.
 variables: X1 X2 X3
 
-r1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((k1_1+X3)*(KmX2+X2)), k1_1 = sqrt(1e-2)
+r1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((k1_1+X3)*(KmX2+X2)), \\
+    k1_1 = sqrt(1e-2)
 leak : X3 -> 4.2 X3out, 10 ..
 reaction React2 : X1 ->  2  OutVar,  \\
     step(t, 2.0, Vmax2*X1 / (Km2 + X1)) #reaction 2
 kout_global = 3.14
-export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global, k9 = 2 * r1.k1_1
+export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global,\\
+    k9 = 2 * r1.k1_1
 
 in i1 = 20 - X2
 -> i2 = i1 * 15
@@ -648,7 +661,8 @@ pypi = pi**2  #this is pi square
 
 another_const = r1.k1_1 ** 3
 
-Vmax1 = 0.0001
+#Vmax1 = 0.0001**100**1000
+Vmax1 = 10**1000**1000
 find Vmax1 in [1e-9, 1e-3]
 find   KmX3  in [1e-5, 1]
 find KmX2 in [1e-5, pi/pi]
@@ -697,7 +711,7 @@ def try2read_model(text):
         print("\n*****************************************")
 
         if expt.physloc.nstartline == expt.physloc.nendline:
-            locmsg = "Error in line %d of model definition" % (expt.physloc.nendline)
+            locmsg = f"Error in line {expt.physloc.nendline} of model definition"
         else:
             locmsg = "Error in lines %d-%d of model definition" % (expt.physloc.nstartline, expt.physloc.nendline)
         print(locmsg)
