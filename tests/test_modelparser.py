@@ -130,6 +130,18 @@ def test_overflow(textlines):
     assert sl == 6 and el == 6 and slp == 10 and elp == 25
 
 
+def test_overflow2(textlines):
+    modelText = _insert_line_and_string(textlines,
+                7, 'pypipip2 = 100**10000  #this is an overflow')
+                #   0....v....1....v....2....v....3....v....4....v....5
+    with pytest.raises(StimatorParserError) as spe:
+        _ = read_model(modelText)
+
+    sl, el, slp, elp = _get_error_loc(spe)
+    assert 'OverflowError' in spe.value.value
+    assert sl == 7 and el == 7 and slp == 11 and elp == 21
+
+
 def test_repeated_decl(textlines):
     modelText = _insert_line_and_string(textlines,
                 12, 'React1 : X2  + X3 -> X1, rate = 2 * X2 * X3')

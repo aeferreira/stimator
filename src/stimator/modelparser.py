@@ -83,13 +83,11 @@ def parse_const(model, parsed_name, valueexpr):
         # value = float(eval(valueexpr,
         #                    model._usable_functions,
         #                    dict(model._all_constants)))
-        value = parse_expr(valueexpr, dict(model._all_constants),
+        value = parse_expr(f'float({valueexpr})', dict(model._all_constants),
                            transformations=T[4])
         print('Resulting value:')
         print(value)
-        print('resulting type:', type(value))
         print('--------------------------')
-        # value = float(value)
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)
@@ -661,8 +659,11 @@ pypi = pi**2  #this is pi square
 
 another_const = r1.k1_1 ** 3
 
-#Vmax1 = 0.0001**100**1000
-Vmax1 = 10**1000**1000
+Vmax = 0.0001
+#Vmax = pi*1e100**10000
+#Vmax1 = 0.0001**10000
+#Vmax = 100**10000
+#Vmax = 100**1000**1000
 find Vmax1 in [1e-9, 1e-3]
 find   KmX3  in [1e-5, 1]
 find KmX2 in [1e-5, pi/pi]
