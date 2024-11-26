@@ -6,55 +6,11 @@ The parsing loop relies on regular expressions."""
 
 import re
 from io import StringIO
-from itertools import chain
 
-from dotmap import DotMap
 from sympy.parsing.sympy_parser import T, parse_expr
 
 import stimator.model as model
-from stimator.model import _Has_Parameters_Accessor as HPA
-
-
-def insert_constant(model, name, value):
-    nested_attrs = name.strip().split(".")
-    into = model._all_constants
-    for nested in nested_attrs[0:-1]:  # last not inserted
-        if nested not in into:
-            into[nested] = DotMap()
-        into = into[nested]
-    into[nested_attrs[-1]] = value
-
-
-def get_constant(model, name):
-    nested_attrs = name.strip().split(".")
-    container = model._all_constants
-    for nested in nested_attrs:
-        value = container.get(nested, None)
-        if value is None:
-            return None
-        container = value
-    return value
-
-
-def _generate_local_dict(model, obj=None):
-    # global model parameters
-    for p in model._ownparameters.items():
-        yield p
-
-    # values of input variables
-    for v in model.input_variables:
-        yield (v.name, v._value)
-
-    # parameters own by reactions or transformations
-    collections = chain(model.reactions, model.transformations)
-    for v in collections:
-        yield (v.name, HPA(v))
-
-    # own parameters of obj
-    # this may overide (correctely) other parameters with the same name
-    if (obj is not None) and (len(obj._ownparameters) > 0):
-        for p in obj._ownparameters.items():
-            yield p
+from stimator.model import (dotmap_insert, dotmap_contains)
 
 
 def parse_const(model, parsed_name, valueexpr):
@@ -63,19 +19,10 @@ def parse_const(model, parsed_name, valueexpr):
 
         Constants previously defined can be used"""
 
-    print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
-    # locs = dict(_generate_local_dict(model))
-    # print('+++++ locs dict:')
-    # for name, value in locs.items():
-    #     if not isinstance(value, HPA):
-    #         print(f'{name} ----> {value}')
-    #     elif (value is not None) and (len(value) > 0):
-    #         for p, innervalue in value._haspar_obj._ownparameters.items():
-    #             print(f'{name}.{p} ----> {innervalue}')
-    # print('++++++++++++++++')
-    print("constants namespace ======")
-    model._all_constants.pprint()
-    print("==========================")
+    # print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
+    # print("constants namespace ======")
+    # model._all_constants.pprint()
+    # print("==========================")
     try:
         # value = float(eval(valueexpr,
         #                    model._usable_functions,
@@ -85,9 +32,9 @@ def parse_const(model, parsed_name, valueexpr):
             dict(model._all_constants),
             transformations=T[4],
         )
-        print("Resulting value:")
-        print(value)
-        print("--------------------------")
+        # print("Resulting value:")
+        # print(value)
+        # print("--------------------------")
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)
@@ -373,7 +320,7 @@ class StimatorParser(object):
 
         self.model = model.Model()
         # self.model._all_constants = dict()
-        self.model._all_constants = DotMap()
+        self.model._clear_constants()
         self.tc = {"filenames": []}
         # optimizer configuration
         self.optSettings = {}
@@ -510,7 +457,9 @@ class StimatorParser(object):
 
         try:
             for parname, parvalue in pardict.items():
-                insert_constant(self.model, f"{name}.{parname}", parvalue)
+                dotmap_insert(
+                    self.model._all_constants, f"{name}.{parname}", parvalue
+                )
             pardict = {n: float(v) for (n, v) in pardict.items()}
             self.model.set_reaction(name, stoich, rate, pars=pardict)
         except model.BadStoichError:
@@ -566,7 +515,9 @@ class StimatorParser(object):
         if expr is None:
             return
         for parname, parvalue in pardict.items():
-            insert_constant(self.model, f"{name}.{parname}", parvalue)
+            dotmap_insert(
+                self.model._all_constants, f"{name}.{parname}", parvalue
+            )
         pardict = {n: float(v) for (n, v) in pardict.items()}
         self.model.set_transformation(name, expr, pars=pardict)
         loc.start = match.start("value")
@@ -652,7 +603,7 @@ class StimatorParser(object):
             self.optSettings["pop_size"] = int(value)
         else:
             self.model.setp(name, float(value))
-            insert_constant(self.model, name, value)
+            dotmap_insert(self.model._all_constants, name, value)
 
     def atDefParse(self, line, nline, match):
         pass  # for now
@@ -684,8 +635,8 @@ class StimatorParser(object):
         self.model.set_bounds(name, (flulist[0], flulist[1]))
         if name not in self.model._all_constants:
             half = sum((flulist[0], flulist[1])) / 2.0
-            if get_constant(self.model, name) is None:
-                insert_constant(self.model, name, half)
+            if not dotmap_contains(self.model._all_constants, name):
+                dotmap_insert(self.model._all_constants, name, half)
 
     def titleDefParse(self, line, loc, match):
         title = match.group("title")
@@ -765,12 +716,10 @@ tf: 10
 def try2read_model(text):
     try:
         m = read_model(text)
-        titleformat = "\n-------- Model {} successfuly read -----------".format
         print("try2read_model")
         print("-------------- MODEL TEXT")
         print(text)
-        print("--------------")
-        print(titleformat(m.metadata["title"]))
+        print(f"\n-- Model '{m.metadata["title"]}' successfuly read:\n")
         print(m)
         print("-----------------------------------\n")
         return

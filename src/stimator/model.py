@@ -5,14 +5,49 @@ of a kinetic model.
 
 """
 
-import re
 import math
-from itertools import chain
+import re
 from collections import OrderedDict
-from stimator.utils import _args_2_dict, _is_sequence, _is_number
-import stimator.kinetics as kinetics
+from itertools import chain
+
+from dotmap import DotMap
+
 import stimator.dynamics as dynamics
 import stimator.estimation as estimation
+import stimator.kinetics as kinetics
+from stimator.utils import _args_2_dict, _is_number, _is_sequence
+
+# ----------------------------------------------------------------------------
+#         DotMap functions to recursively insert, get and test inclusion
+# ----------------------------------------------------------------------------
+
+
+def dotmap_insert(map, name, value):
+    nested_attrs = name.strip().split(".")
+    for nested in nested_attrs[0:-1]:  # last not inserted
+        if nested not in map:
+            map[nested] = DotMap()
+        map = map[nested]
+    map[nested_attrs[-1]] = value
+
+
+def dotmap_get(map, name):
+    nested_attrs = name.strip().split(".")
+    for nested in nested_attrs:
+        if (value := map.get(nested, None)) is None:
+            return None
+        map = value
+    return value
+
+
+def dotmap_contains(map, name):
+    nested_attrs = name.strip().split(".")
+    for nested in nested_attrs:
+        if (value := map.get(nested, None)) is None:
+            return False
+        map = value
+    return True
+
 
 # ----------------------------------------------------------------------------
 #         Functions to check the validity of math expressions
@@ -321,8 +356,7 @@ class _HasOwnParameters(ModelObject):
             raise AttributeError(name + " is not a parameter of " + self.name)
 
     def getp(self, name):
-        o = self._get_parameter(name)
-        return o
+        return self._get_parameter(name)
 
     def setp(self, name, value):
         _set_par(self, name, value)
@@ -745,6 +779,11 @@ class Model(ModelObject):
         self.parameters = _Parameters_Accessor(self)
         self.with_bounds = _With_Bounds_Accessor(self)
         self._usable_functions = get_allowed_f()
+
+        self._all_constants = DotMap()
+
+    def _clear_constants(self):
+        self._all_constants = DotMap()
 
     def set_reaction(self, name, stoichiometry, rate=0.0, pars=None):
         """Insert or modify a reaction in the model.
@@ -1221,6 +1260,7 @@ class BadRateError(Exception):
 
 class BadTypeComponent(Exception):
     """Flags an assignment of a model component to a wrong type object"""
+
 
 # functions for handling and testing expressions
 
