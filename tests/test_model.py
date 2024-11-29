@@ -289,7 +289,7 @@ def test_par_in_rates1c():
 def test_par_in_rates1d():
     """testing bad parameters 'local' to reactions with getp()"""
     m = Model("My first model")
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1': 'bb'})
         m.setp('p2', 3.0)
         m.setp('v1.p1', 5)

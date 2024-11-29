@@ -213,8 +213,7 @@ def to_const_or_bounds(name, value, is_bounds=False):
         # just return None to caller
         return None
     if not is_bounds:
-        vv = float(value)  # can raise ValueError
-        return create_const_value(vv, name=name)
+        return ConstValue(float(value), name, bounds=None)
 
     # seeking proper bounds pair
     lv = len(value)  # can raise TypeError
@@ -222,30 +221,21 @@ def to_const_or_bounds(name, value, is_bounds=False):
     # value has len...
     # must be exactely two
     if lv != 2:
-        raise TypeError("{} is not a pair of numbers".format(value))
+        raise TypeError(f"{value} is not a pair of numbers")
     vv0 = float(value[0])  # can raise ValueError
     vv1 = float(value[1])  # can raise ValueError
     return Bounds(name, vv0, vv1)
-
-
-def create_const_value(value=None, name="?", bounds=None):
-    if _is_number(value):
-        v = float(value)
-        res = ConstValue(v, name, bounds)
-    else:
-        raise TypeError("{} is not a number".format(value))
-    return res
 
 
 def _set_par(obj, name, value, is_bounds=False):
     try:
         vv = to_const_or_bounds(name, value, is_bounds)
     except (TypeError, ValueError):
-        ms = "Can not assign {} to {}.{}"
         if is_bounds:
-            raise BadTypeComponent(ms.format(value, obj.name, name) + "bounds")
+            ms = f"Can not assign {value} to {obj.name}.{name} bounds"
         else:
-            raise BadTypeComponent(ms.format(value, obj.name, name))
+            ms = f"Can not assign {value} to {obj.name}.{name}"
+        raise BadTypeComponent(ms)
 
     c = obj.__dict__["_ownparameters"]
     already_exists = name in c
@@ -257,7 +247,7 @@ def _set_par(obj, name, value, is_bounds=False):
             newvalue = vv
         else:  # Bounds object
             nvalue = (float(vv.lower) + float(vv.upper)) / 2.0
-            newvalue = create_const_value(nvalue, name=name, bounds=vv)
+            newvalue = ConstValue(nvalue, name, bounds=vv)
     else:  # aready exists
         if vv is None:
             if is_bounds:
@@ -269,7 +259,7 @@ def _set_par(obj, name, value, is_bounds=False):
             newvalue = vv
             newvalue.set_bounds(c[name].bounds)
         else:  # Bounds object
-            newvalue = create_const_value(c[name], name=name, bounds=vv)
+            newvalue = ConstValue(float(c[name]), name, bounds=vv)
     c[name] = newvalue
 
 
@@ -285,7 +275,7 @@ class ConstValue(float, ModelObject):
         name = self.name
         if new_name is not None:
             name = new_name
-        r = create_const_value(self, name)
+        r = ConstValue(self, name)
         if self.bounds:
             r.bounds = Bounds(self.name, self.bounds.lower, self.bounds.upper)
             if new_name is not None:
@@ -347,7 +337,7 @@ class _HasOwnParameters(ModelObject):
         if not isinstance(parvalues, dict):
             parvalues = dict(parvalues)
         for k, v in parvalues.items():
-            self._ownparameters[k] = create_const_value(value=v, name=k)
+            self._ownparameters[k] = ConstValue(float(v), k)
 
     def _get_parameter(self, name):
         if name in self._ownparameters:
@@ -384,7 +374,7 @@ class _HasOwnParameters(ModelObject):
     def _copy_pars(self):
         ret = {}
         for k, v in self._ownparameters.items():
-            ret[k] = create_const_value(value=v, name=k, bounds=v.bounds)
+            ret[k] = ConstValue(float(v), k, bounds=v.bounds)
         return ret
 
     def __eq__(self, other):
