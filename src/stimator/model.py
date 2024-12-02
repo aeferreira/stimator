@@ -305,7 +305,15 @@ class ConstValue(float, ModelObject):
             b = value
         else:
             try:
-                b = to_const_or_bounds(self.name, value, is_bounds=True)
+                # seeking proper bounds pair
+                lv = len(value)  # can raise TypeError
+                # value has len...
+                # must be exactely two
+                if lv != 2:
+                    raise TypeError(f"{value} is not a pair of numbers")
+                vv0 = float(value[0])  # can raise ValueError
+                vv1 = float(value[1])  # can raise ValueError
+                b = Bounds(self.name, vv0, vv1)
             except (TypeError, ValueError):
                 msg = f"Can not use {str(value)} in {self.name}.bounds"
                 raise BadTypeComponent(msg)
@@ -770,10 +778,10 @@ class Model(ModelObject):
         self.with_bounds = _With_Bounds_Accessor(self)
         self._usable_functions = get_allowed_f()
 
-        self._all_constants = DotMap()
+        self._all_constants = DotMap(_dynamic=False)
 
     def _clear_constants(self):
-        self._all_constants = DotMap()
+        self._all_constants = DotMap(_dynamic=False)
 
     def set_reaction(self, name, stoichiometry, rate=0.0, pars=None):
         """Insert or modify a reaction in the model.
