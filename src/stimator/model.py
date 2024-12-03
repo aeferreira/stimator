@@ -208,28 +208,24 @@ class ModelObject(object):
         return True
 
 
-def to_const_or_bounds(name, value, is_bounds=False):
-    if value is None:
-        # just return None to caller
-        return None
-    if not is_bounds:
-        return ConstValue(float(value), name, bounds=None)
-
-    # seeking proper bounds pair
-    lv = len(value)  # can raise TypeError
-
-    # value has len...
-    # must be exactely two
-    if lv != 2:
-        raise TypeError(f"{value} is not a pair of numbers")
-    vv0 = float(value[0])  # can raise ValueError
-    vv1 = float(value[1])  # can raise ValueError
-    return Bounds(name, vv0, vv1)
-
-
 def _set_par(obj, name, value, is_bounds=False):
     try:
-        vv = to_const_or_bounds(name, value, is_bounds)
+        if value is None:
+            vv = None
+        elif not is_bounds:
+            vv = ConstValue(float(value), name, bounds=None)
+        else:
+            # seeking proper bounds pair
+            lv = len(value)  # can raise TypeError
+
+            # value has len...
+            # must be exactely two
+            if lv != 2:
+                raise TypeError(f"{value} is not a pair of numbers")
+            vv0 = float(value[0])  # can raise ValueError
+            vv1 = float(value[1])  # can raise ValueError
+            vv = Bounds(name, vv0, vv1)
+        # vv = to_const_or_bounds(name, value, is_bounds)
     except (TypeError, ValueError):
         if is_bounds:
             ms = f"Can not assign {value} to {obj.name}.{name} bounds"
