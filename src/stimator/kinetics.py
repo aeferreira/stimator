@@ -1,4 +1,5 @@
 import sympy
+from sympy.abc import x
 
 def step(t, at, top=1.0):
     if t < at:
@@ -6,6 +7,10 @@ def step(t, at, top=1.0):
     else:
         return top
 
+
+def newstep(t, at, top=1.0):
+    piece_step = sympy.Piecewise((0.0, x < at), (top, x >= at))
+    return piece_step.subs(x, t)
 
 step.is_rate = True
 
@@ -39,8 +44,15 @@ stairway.is_rate = True
 def allowed_sympy_funcs():
     funcs = {"sin": sympy.sin,
              "cos": sympy.cos,
+             "tan": sympy.tan,
+             "cot": sympy.cot,
              "log": sympy.log,
-             "exp": sympy.exp}
+             "exp": sympy.exp,
+             "sign": sympy.sign,
+             "abs": sympy.Abs,
+             "root": sympy.root,
+             "sqrt": sympy.sqrt,
+             "step": step}
     return funcs
 
 def main():
