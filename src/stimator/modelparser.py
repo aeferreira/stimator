@@ -7,11 +7,31 @@ The parsing loop relies on regular expressions."""
 import re
 from io import StringIO
 
+import sympy
 from sympy.parsing.sympy_parser import T, parse_expr
 
 import stimator.model as model
 from stimator.model import (dotmap_insert, dotmap_contains)
 
+from stimator.kinetics import step
+
+def allowed_sympy_funcs():
+    funcs = {"sin": sympy.sin,
+             "cos": sympy.cos,
+             "tan": sympy.tan,
+             "cot": sympy.cot,
+             "log": sympy.log,
+             "exp": sympy.exp,
+             "sign": sympy.sign,
+             "abs": sympy.Abs,
+             "root": sympy.root,
+             "sqrt": sympy.sqrt,
+             "pi":sympy.pi,
+             "step": step}
+    return funcs
+
+
+globals2useinparse = allowed_sympy_funcs()
 
 def parse_const(model, parsed_name, valueexpr):
     """Uses builtin eval function to check for the validity
@@ -19,10 +39,10 @@ def parse_const(model, parsed_name, valueexpr):
 
         Constants previously defined can be used"""
 
-    # print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
-    # print("constants namespace ======")
-    # model._all_constants.pprint()
-    # print("==========================")
+    print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
+    print("constants namespace ======")
+    model._all_constants.pprint()
+    print("==========================")
     try:
         # value = float(eval(valueexpr,
         #                    model._usable_functions,
@@ -30,11 +50,12 @@ def parse_const(model, parsed_name, valueexpr):
         value = parse_expr(
             f"float({valueexpr})",
             dict(model._all_constants),
+            global_dict=globals2useinparse,
             transformations=T[4],
         )
-        # print("Resulting value:")
-        # print(value)
-        # print("--------------------------")
+        print("Resulting value:")
+        print(value)
+        print("--------------------------")
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)
@@ -665,7 +686,7 @@ r1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((k1_1+X3)*(KmX2+X2)), \\
 leak : X3 -> 4.2 X3out, 10 ..
 reaction React2 : X1 ->  2  OutVar,  \\
     step(t, 2.0, Vmax2*X1 / (Km2 + X1)) #reaction 2
-kout_global = 3.14
+kout_global = 3.14 * sign(5)
 export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global,\\
     k9 = 2 * r1.k1_1
 
@@ -675,7 +696,7 @@ input i3 = i1 + i2
 
 ~ totX = X2 + X1
 ~ OutVarmult = mult * OutVar,  mult = (kout_global/export.kout) * 2
-pi   = 3.1416
+pi   = 3.1416 * step(6, 1)
 pi2  = 2*pi
 pypi = pi**2  #this is pi square
 
