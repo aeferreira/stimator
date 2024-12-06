@@ -12,8 +12,11 @@ from itertools import chain
 
 from dotmap import DotMap
 
+from sympy.parsing.sympy_parser import T, parse_expr
+
 import stimator.dynamics as dynamics
 import stimator.estimation as estimation
+from stimator.kinetics import (allowed_sympy_funcs, allowed_math_funcs)
 import stimator.kinetics as kinetics
 from stimator.utils import _args_2_dict, _is_number, _is_sequence
 
@@ -772,7 +775,8 @@ class Model(ModelObject):
         self.init = _init_Accessor(self)
         self.parameters = _Parameters_Accessor(self)
         self.with_bounds = _With_Bounds_Accessor(self)
-        self._usable_functions = get_allowed_f()
+        # self._usable_functions = get_allowed_f()
+        self._usable_functions = allowed_math_funcs
 
         self._all_constants = DotMap(_dynamic=False)
 
@@ -1327,3 +1331,37 @@ def _test_with_everything(model, expr, obj):
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
     # print('VALUE = ', value)
     return "", value
+
+
+def parse_const(model, parsed_name, valueexpr):
+    """Uses sympy to check for the validity and value of a math expression.
+
+        Constants previously defined can be used"""
+
+    print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
+    print("constants namespace ======")
+    model._all_constants.pprint()
+    print("==========================")
+    try:
+        # value = float(eval(valueexpr,
+        #                    model._usable_functions,
+        #                    dict(model._all_constants)))
+        value = parse_expr(
+            f"float({valueexpr})",
+            dict(model._all_constants),
+            global_dict=allowed_sympy_funcs,
+            transformations=T[4],
+        )
+        print("Resulting value:")
+        print(value)
+        print("--------------------------")
+    except Exception as e:
+        excpt_type = str(e.__class__.__name__)
+        excpt_msg = str(e)
+        if excpt_type == "SyntaxError":
+            excpt_msg = "Bad expression"
+        return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
+    return ("", value)
+
+
+

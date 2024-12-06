@@ -1,17 +1,26 @@
+import math
 import sympy
-from sympy.abc import x
+from sympy.codegen.cfunctions import log10 as symlog10
+# from sympy.abc import t, a, x
+# from sympy import lambdify, Piecewise
+
+def cotangent(x):
+    return 1.0 / math.tan(x)
+
+
+def msign(x):
+    return math.copysign(1.0, x)
+
 
 def step(t, at, top=1.0):
-    if t < at:
-        return 0.0
-    else:
-        return top
+    return top if t >= at else 0.0
 
 
-def newstep(t, at, top=1.0):
-    piece_step = sympy.Piecewise((0.0, x < at), (top, x >= at))
-    return piece_step.subs(x, t)
+# def newstep(t, at, top=1.0):
+#     piece_step = sympy.Piecewise((0.0, x < at), (top, x >= at))
+#     return piece_step.subs(x, t)
 
+# step = lambdify([t, a], Piecewise((0, t < a), (1, t >= a)))
 step.is_rate = True
 
 
@@ -41,22 +50,45 @@ def stairway(t, times, values):
 
 stairway.is_rate = True
 
-def allowed_sympy_funcs():
-    funcs = {"sin": sympy.sin,
-             "cos": sympy.cos,
-             "tan": sympy.tan,
-             "cot": sympy.cot,
-             "log": sympy.log,
-             "exp": sympy.exp,
-             "sign": sympy.sign,
-             "abs": sympy.Abs,
-             "root": sympy.root,
-             "sqrt": sympy.sqrt,
-             "step": step}
-    return funcs
+
+allowed_sympy_funcs = { "sin": sympy.sin,
+                        "cos": sympy.cos,
+                        "tan": sympy.tan,
+                        "cot": sympy.cot,
+                        "log": sympy.log,
+                        "log10": symlog10,
+                        "exp": sympy.exp,
+                        "sign": sympy.sign,
+                        "abs": sympy.Abs,
+                        "sqrt": sympy.sqrt,
+                        "pi": math.pi,
+                        "e": math.e,
+                        "step": step,
+                        "stairway": stairway,
+                        "sqrpulse": sqrpulse,
+                        }
+
+
+allowed_math_funcs = { "sin": math.sin,
+                        "cos": math.cos,
+                        "tan": math.tan,
+                        "cot": cotangent,
+                        "log": math.log,
+                        "log10": symlog10,
+                        "exp": math.exp,
+                        "sign": msign,
+                        "abs": abs,
+                        "sqrt": math.sqrt,
+                        "pi": math.pi,
+                        "e": math.e,
+                        "step": step,
+                        "stairway": stairway,
+                        "sqrpulse": sqrpulse,
+                        }
+
 
 def main():
-    allowed = allowed_sympy_funcs()
+    allowed = allowed_sympy_funcs
     for n, v in allowed.items():
         print(f'{n:>10} ----> {v} , type: {type(v)}')
 

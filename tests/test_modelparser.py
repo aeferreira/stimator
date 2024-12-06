@@ -10,7 +10,7 @@ variables: X1 X2 X3
 React1 : X2  + X3 -> X1, rate = Vmax1*X2*X3 / ((KmX3+X3)*(KmX2+X2))
 leak : X3 -> 4.2 X3out, 10 ..
 reaction React2 : X1 ->  2  OutVar,  \\
-    step(t, 2.0, Vmax2*X1 / (Km2 + X1)) #reaction 2
+    Vmax2*X1 / (Km2 + X1) * step(t, 2.0) #reaction 2
 kout_global = 3.14
 export: OutVar ->, kout * OutVar, kout = sqrt(4.0)/2.0 * kout_global
 
