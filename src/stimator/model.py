@@ -1310,37 +1310,36 @@ def _parse_rate(model, rate):
     # print('==========================\n')
     # print '\nfirst pass...'
     # part 1: nonpermissive, except for NameError
+    # try:
+    #     value = float(eval(expr, model._usable_functions, locs))
+    # except NameError:
+    #     pass
+    # except TypeError:
+    #     return ("Invalid use of a rate in expression", 0.0)
+    # except Exception as e:
+    #     # print('failed on first pass')
+    #     return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
+    # # print('second pass...')
+    # # part 2: permissive, with dummy values (1.0) for vars
+    # vardict = {name: 1.0 for name in model.varnames}
+    # vardict["t"] = 1.0
+    # locs.update(vardict)
     try:
-        value = float(eval(expr, model._usable_functions, locs))
-    except NameError:
-        pass
-    except TypeError:
-        return ("Invalid use of a rate in expression", 0.0)
-    except Exception as e:
-        # print('failed on first pass')
-        return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-    # print('second pass...')
-    # part 2: permissive, with dummy values (1.0) for vars
-    vardict = {name: 1.0 for name in model.varnames}
-    vardict["t"] = 1.0
-    locs.update(vardict)
-    try:
-        # vardict = {name: sympy.Symbol(name) for name in model.varnames}
-        # vardict["t"] = sympy.Symbol('t')
-        # locs.update(vardict)
-        # value = parse_expr(
-        # expr,
-        # locs,
-        # global_dict=allowed_sympy_funcs,
-        # transformations=T[4],
-        # )
-        value = float(eval(expr, model._usable_functions, locs))
-    except (ArithmeticError, ValueError):
-        pass  # might fail but we don't know the values of vars
+        vardict = {name: sympy.Symbol(name) for name in model.varnames}
+        vardict["t"] = sympy.Symbol('t')
+        locs.update(vardict)
+        value = parse_expr(
+        expr,
+        locs,
+        global_dict=allowed_sympy_funcs,
+        transformations=T[4],
+        )
+        # value = float(eval(expr, model._usable_functions, locs))
+    # except (ArithmeticError, ValueError):
+    #     pass  # might fail but we don't know the values of vars
     except Exception as e:
         # print('failed on second pass...')
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-    # print('VALUE = ', value)
     return "", value
 
 
@@ -1360,7 +1359,7 @@ def parse_const(model, parsed_name, valueexpr):
         value = parse_expr(
             f"float({valueexpr})",
             dict(model._all_constants),
-            global_dict=allowed_sympy_funcs,
+            global_dict=allowed_math_funcs,
             transformations=T[4],
         )
         # print("Resulting value:")

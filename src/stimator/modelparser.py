@@ -641,6 +641,7 @@ in i1 = 20 - X2
 input i3 = i1 + i2
 
 ~ totX = X2 + X1
+~ stairs = X1 * step(t, 8)
 ~ OutVarmult = mult * OutVar,  mult = (kout_global/export.kout) * 2
 pi   = 3.1416 * step(6, 1)
 pi2  = 2*pi

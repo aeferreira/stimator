@@ -16,12 +16,11 @@ def step(t, at, top=1.0):
     return top if t >= at else 0.0
 
 
-# def newstep(t, at, top=1.0):
-#     piece_step = sympy.Piecewise((0.0, x < at), (top, x >= at))
-#     return piece_step.subs(x, t)
-
-# step = lambdify([t, a], Piecewise((0, t < a), (1, t >= a)))
 step.is_rate = True
+
+
+def sympystep(t, at, top=1.0):
+    return sympy.Piecewise((0.0, t < at), (top, t >= at))
 
 
 def sqrpulse(t, aton, atoff, top=1.0):
@@ -34,6 +33,12 @@ def sqrpulse(t, aton, atoff, top=1.0):
 
 
 sqrpulse.is_rate = True
+
+
+def sympysqrpulse(t, aton, atoff, top=1.0):
+    return sympy.Piecewise((0.0, t < aton),
+                           (top, aton <= t <= atoff),
+                           (0.0, t > atoff))
 
 
 def stairway(t, times, values):
@@ -63,9 +68,9 @@ allowed_sympy_funcs = { "sin": sympy.sin,
                         "sqrt": sympy.sqrt,
                         "pi": math.pi,
                         "e": math.e,
-                        "step": step,
+                        "step": sympystep,
                         "stairway": stairway,
-                        "sqrpulse": sqrpulse,
+                        "sqrpulse": sympysqrpulse,
                         }
 
 
