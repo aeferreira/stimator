@@ -12,6 +12,7 @@ from itertools import chain
 
 from dotmap import DotMap
 
+import sympy
 from sympy.parsing.sympy_parser import T, parse_expr
 
 import stimator.dynamics as dynamics
@@ -1225,7 +1226,7 @@ class Model(ModelObject):
                             self.__variables.append(vname)
 
     def checkRates(self):
-        return checkRates(self)
+        return check_rates(self)
 
 
 class QueriableList(list):
@@ -1263,7 +1264,7 @@ class BadTypeComponent(Exception):
 # functions for handling and testing expressions
 
 
-def checkRates(model):
+def check_rates(model):
     model._refreshVars()
     # Reset input variables
     for v in model.input_variables:
@@ -1271,7 +1272,7 @@ def checkRates(model):
     for v in chain(
         model.input_variables, model.reactions, model.transformations
     ):
-        msg, value = _test_with_everything(model, v(), v)
+        msg, value = _parse_rate(model, v)
         if msg != "":
             return False, f"{msg:s}\nin rate of {v.name}: {v()}"
         else:
@@ -1300,11 +1301,14 @@ def _generate_local_dict(model, obj=None):
             yield p
 
 
-def _test_with_everything(model, expr, obj):
-    locs = dict(_generate_local_dict(model, obj))
-
+def _parse_rate(model, rate):
+    expr = rate()
+    locs = dict(_generate_local_dict(model, rate))
+    # print('\n==========================')
+    # print(f"parsing rate {rate.name}")
+    # print(f"with expression {expr}")
+    # print('==========================\n')
     # print '\nfirst pass...'
-
     # part 1: nonpermissive, except for NameError
     try:
         value = float(eval(expr, model._usable_functions, locs))
@@ -1317,12 +1321,19 @@ def _test_with_everything(model, expr, obj):
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
     # print('second pass...')
     # part 2: permissive, with dummy values (1.0) for vars
-    vardict = {}
-    for i in model.varnames:
-        vardict[i] = 1.0
+    vardict = {name: 1.0 for name in model.varnames}
     vardict["t"] = 1.0
     locs.update(vardict)
     try:
+        # vardict = {name: sympy.Symbol(name) for name in model.varnames}
+        # vardict["t"] = sympy.Symbol('t')
+        # locs.update(vardict)
+        # value = parse_expr(
+        # expr,
+        # locs,
+        # global_dict=allowed_sympy_funcs,
+        # transformations=T[4],
+        # )
         value = float(eval(expr, model._usable_functions, locs))
     except (ArithmeticError, ValueError):
         pass  # might fail but we don't know the values of vars
@@ -1338,10 +1349,10 @@ def parse_const(model, parsed_name, valueexpr):
 
         Constants previously defined can be used"""
 
-    print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
-    print("constants namespace ======")
-    model._all_constants.pprint()
-    print("==========================")
+    # print(f"\n---- parsing {parsed_name}\nwith expression {valueexpr}")
+    # print("constants namespace ======")
+    # model._all_constants.pprint()
+    # print("==========================")
     try:
         # value = float(eval(valueexpr,
         #                    model._usable_functions,
@@ -1352,9 +1363,9 @@ def parse_const(model, parsed_name, valueexpr):
             global_dict=allowed_sympy_funcs,
             transformations=T[4],
         )
-        print("Resulting value:")
-        print(value)
-        print("--------------------------")
+        # print("Resulting value:")
+        # print(value)
+        # print("--------------------------")
     except Exception as e:
         excpt_type = str(e.__class__.__name__)
         excpt_msg = str(e)

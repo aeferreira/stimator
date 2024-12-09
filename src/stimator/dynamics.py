@@ -99,19 +99,19 @@ def dXdt_strings(model):
     return res
 
 
-def _gen_canonical_symbmap(m, extra_id_list=None):
-    check, msg = m.checkRates()
+def _gen_canonical_symbmap(model, extra_id_list=None):
+    check, msg = model.checkRates()
     if not check:
         raise BadRateError(msg)
 
     symbmap = {}
     sympysymbs = {}
 
-    par_names = [p.name for p in m.parameters]
+    par_names = [p.name for p in model.parameters]
     if extra_id_list is None:
         extra_id_list = []
 
-    for i, x in enumerate(chain(m.varnames, par_names, extra_id_list)):
+    for i, x in enumerate(chain(model.varnames, par_names, extra_id_list)):
         name = "_symbol_Id%d" % i
         symbmap[x] = name
         sympysymbs[name] = sympy.Symbol(name)
