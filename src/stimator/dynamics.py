@@ -36,7 +36,7 @@ def init2array(model):
 
 
 def genStoichiometryMatrix(model):
-    check, msg = model.checkRates()
+    check, msg = model.check_rates()
     if not check:
         raise BadRateError(msg)
 
@@ -59,7 +59,7 @@ def rates_strings(model, fully_qualified=True):
     'name' is the name of a reaction
     'rate' is the string of the rate of the reaction.
     """
-    check, msg = model.checkRates()
+    check, msg = model.check_rates()
     if not check:
         raise BadRateError(msg)
     res = {v.name: v(fully_qualified=fully_qualified) for v in model.reactions}
@@ -73,7 +73,7 @@ def dXdt_strings(model):
     'rhs' is the string of the rhs of that variable in the SODE.
     """
 
-    check, msg = model.checkRates()
+    check, msg = model.check_rates()
     if not check:
         raise BadRateError(msg)
     symbols = _gen_canonical_symbmap(model)
@@ -100,7 +100,7 @@ def dXdt_strings(model):
 
 
 def _gen_canonical_symbmap(model, extra_id_list=None):
-    check, msg = model.checkRates()
+    check, msg = model.check_rates()
     if not check:
         raise BadRateError(msg)
 
@@ -317,7 +317,7 @@ def compile_all_rates(model, with_uncertain=False):
 
 
 def _get_rates_function(model, with_uncertain):
-    check, msg = model.checkRates()
+    check, msg = model.check_rates()
     if not check:
         raise BadRateError(msg)
 
@@ -350,7 +350,7 @@ def _get_rates_function(model, with_uncertain):
 
 
 def get_outputs_function(model, with_uncertain=False, out_names=None):
-    check, msg = model.checkRates()
+    check, msg = model.check_rates()
     if not check:
         raise BadRateError(msg)
 

@@ -37,7 +37,7 @@ sqrpulse.is_rate = True
 
 def sympysqrpulse(t, aton, atoff, top=1.0):
     return sympy.Piecewise((0.0, t < aton),
-                           (top, aton <= t <= atoff),
+                           (top, t <= atoff),
                            (0.0, t > atoff))
 
 
@@ -56,6 +56,13 @@ def stairway(t, times, values):
 stairway.is_rate = True
 
 
+def sympystairway(t, times, values):
+    args = [(0.0, t < times[0])]
+    for i, time in enumerate(times[1:]):
+        args.append((values[i+1], t < time))
+    return sympy.Piecewise(*args)
+
+
 allowed_sympy_funcs = { "sin": sympy.sin,
                         "cos": sympy.cos,
                         "tan": sympy.tan,
@@ -66,10 +73,10 @@ allowed_sympy_funcs = { "sin": sympy.sin,
                         "sign": sympy.sign,
                         "abs": sympy.Abs,
                         "sqrt": sympy.sqrt,
-                        "pi": math.pi,
-                        "e": math.e,
+                        "pi": sympy.pi,
+                        "e": sympy.E,
                         "step": sympystep,
-                        "stairway": stairway,
+                        "stairway": sympystairway,
                         "sqrpulse": sympysqrpulse,
                         }
 

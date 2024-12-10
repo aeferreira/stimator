@@ -326,7 +326,7 @@ class StimatorParser(object):
                 return
 
         # check the validity of rate laws
-        check, msg = self.model.checkRates()
+        check, msg = self.model.check_rates()
         if not check:
             m = syntaxErrormatch.match(msg)
             if m:
@@ -641,7 +641,7 @@ in i1 = 20 - X2
 input i3 = i1 + i2
 
 ~ totX = X2 + X1
-~ stairs = X1 * step(t, 8)
+~ stairs = X1 * step(t, 8) * sqrpulse(t, 6, 10) * stairway(t, [4,5], [2, 5])
 ~ OutVarmult = mult * OutVar,  mult = (kout_global/export.kout) * 2
 pi   = 3.1416 * step(6, 1)
 pi2  = 2*pi

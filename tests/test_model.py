@@ -51,7 +51,7 @@ def test_set_reaction1():
     assert eval('2.0*C**2.0', cd) == pytest.approx(eval(m.reactions.v3(), cd))
     assert eval('2.0*D**2', cd) == pytest.approx(eval(m.reactions.v4(), cd))
     assert eval('2.0', cd) == pytest.approx(eval(m.reactions.v5(), cd))
-    check, _ = m.checkRates()
+    check, _ = m.check_rates()
     assert check
     assert 'v1' in m.reactions
     assert 'x1' not in m.reactions
@@ -73,7 +73,7 @@ def test_set_reaction1b():
     _ = m.reactions.v3.stoichiometry_string
     _ = m.reactions.v4.stoichiometry
     _ = m.reactions.v4.stoichiometry_string
-    check, _ = m.checkRates()
+    check, _ = m.check_rates()
     assert check
 
 
@@ -86,7 +86,7 @@ def test_set_reaction2():
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "p2*A/(p1+A)-B"
     assert m.reactions.v1(fully_qualified=True) == "v1.p2*A/(p1+A)-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -108,7 +108,7 @@ def test_set_reaction2b():
     assert (m.reactions.v1.name) == 'v1'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "4*sqrt(A)/(p1+sin(A))-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -120,7 +120,7 @@ def test_set_reaction2c():
     assert (m.reactions.v1.name) == 'v1'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "4*A*step(t,1.0)"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -146,7 +146,7 @@ def test_set_reaction4():
     assert (m.reactions.v1.name) == 'v1'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "4*A/(p2+A)-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert not check
 
 
@@ -158,7 +158,7 @@ def test_set_reaction5():
     assert (m.reactions.v1.name) == 'v1'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "4*A/(p1+A-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert not check
 
 
@@ -170,7 +170,7 @@ def test_set_reaction6():
     assert (m.reactions.v1.name) == 'v1'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "1e100**10000 * 4*A/(p1+A)-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert not check
 
 
@@ -245,7 +245,7 @@ def test_par_in_rates1():
     assert (m.reactions.v1.name) == 'v1'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v1() == "p2*A/(p1+A)-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     assert isinstance(m.parameters.v1.p1, model.ConstValue)
     assert (m.parameters.v1.p1.name) == "p1"
@@ -262,7 +262,7 @@ def test_par_in_rates1b():
     m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1': 4})
     m.setp('p2', 3.0)
     m.setp('v1.p1', 5)
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     with pytest.raises(AttributeError):
         assert (m.parameters.v1.p1.name) == "p1"
@@ -277,7 +277,7 @@ def test_par_in_rates1c():
     m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1': 4})
     m.setp('p2', 3.0)
     m.setp('v1.p1', 5)
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     with pytest.raises(AttributeError):
         assert (m.parameters.v1.p1.name) == "p1"
@@ -293,7 +293,7 @@ def test_par_in_rates1d():
         m.set_reaction('v1', "A->B", " p2*A/(p1+A)-B ", pars={'p1': 'bb'})
         m.setp('p2', 3.0)
         m.setp('v1.p1', 5)
-        check, msg = m.checkRates()
+        check, msg = m.check_rates()
         assert check
         assert (m.parameters.v1.p1.name) == "p1"
         assert (m.parameters.p2.name) == "p2"
@@ -311,7 +311,7 @@ def test_par_from_rates1():
     assert (m.reactions.v2.name) == 'v2'
     assert isinstance(m.reactions.v1, model.Reaction)
     assert m.reactions.v2() == "2*v1.p1*B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     assert len(m.parameters.v1) == 2
     assert 'p1' in m.parameters.v1
@@ -426,7 +426,7 @@ def test_transf1():
     assert (m.transformations.t2.name) == 't2'
     assert m.transformations.t1() == str(float(4))
     assert m.transformations.t2() == str(float(2.0))
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -439,7 +439,7 @@ def test_transf2():
     assert isinstance(m.transformations.t1, model.Transformation)
     assert (m.transformations.t1.name) == 't1'
     assert m.transformations.t1() == "p2*A/(p1+A)-B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     assert isinstance(m.parameters.t1.p2, model.ConstValue)
     assert (m.parameters.t1.p2.name) == "p2"
@@ -462,7 +462,7 @@ def test_set_input_var():
     assert (m.input_variables.p2.name) == 'p2'
     assert isinstance(m.input_variables.p2, model.Input_Variable)
     assert m.input_variables.p2() == "2.0"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -795,7 +795,7 @@ def test_reassignment2():
     assert (m.reactions.v2.name) == 'v2'
     assert m.reactions.v1() == str(float(4)) + "*A"
     assert m.reactions.v2() == str(float(2.0)) + "*B"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     m.set_reaction('v2', "D->C", 2.0)
     assert isinstance(m.reactions.v1, model.Reaction)
@@ -804,7 +804,7 @@ def test_reassignment2():
     assert (m.reactions.v2.name) == 'v2'
     assert m.reactions.v1() == str(float(4)) + "*A"
     assert m.reactions.v2() == str(float(2.0)) + "*D"
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -815,13 +815,13 @@ def test_reassignment3():
     m.set_reaction('v2', "B -> C", 2.0)
     assert len(m.varnames) == 3
     assert m.varnames == ['A', 'B', 'C']
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     m.set_reaction('v2', "B->D", 2.0)
     xx = m.varnames
     assert len(xx) == 3
     assert xx == ['A', 'B', 'D']
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
 
 
@@ -839,7 +839,7 @@ def test_meta1():
     m = Model("My first model")
     m.set_reaction('v1', "A->B", 4)
     m.set_reaction('v2', "B->C", 2.0)
-    check, msg = m.checkRates()
+    check, msg = m.check_rates()
     assert check
     m.metadata['where'] = 'in model'
     m.metadata['for what'] = 'testing'

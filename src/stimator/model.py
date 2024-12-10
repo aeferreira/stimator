@@ -1053,7 +1053,7 @@ class Model(ModelObject):
         """
         self._refreshVars()
         if not no_check:
-            check, msg = self.checkRates()
+            check, msg = self.check_rates()
             if not check:
                 raise BadRateError(msg)
 
@@ -1204,10 +1204,8 @@ class Model(ModelObject):
     def register_kin_func(self, f):
         f.is_rate = True
         self._usable_functions[f.__name__] = f
-        # globals()[f.__name__] = f
 
     def _refreshVars(self):
-        # can't use self.__variables=[] Triggers __setattr__
         del self.__variables[:]
         del self.__extvariables[:]
         for v in self.__reactions:
@@ -1225,8 +1223,8 @@ class Model(ModelObject):
                         else:
                             self.__variables.append(vname)
 
-    def checkRates(self):
-        return check_rates(self)
+    def check_rates(self):
+        return _check_rates(self)
 
 
 class QueriableList(list):
@@ -1264,7 +1262,7 @@ class BadTypeComponent(Exception):
 # functions for handling and testing expressions
 
 
-def check_rates(model):
+def _check_rates(model):
     model._refreshVars()
     # Reset input variables
     for v in model.input_variables:
