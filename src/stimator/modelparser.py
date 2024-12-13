@@ -687,7 +687,8 @@ def try2read_model(text):
         print("try2read_model")
         print("-------------- MODEL TEXT")
         print(text)
-        print(f"\n-- Model '{m.metadata["title"]}' successfuly read:\n")
+        model_title = m.metadata["title"]
+        print(f"\n-- Model '{model_title}' successfuly read:\n")
         print(m)
         print("-----------------------------------\n")
         return
