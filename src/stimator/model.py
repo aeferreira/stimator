@@ -1259,7 +1259,7 @@ class BadTypeComponent(Exception):
     """Flags an assignment of a model component to a wrong type object"""
 
 
-# functions for handling and testing expressions
+# functions for handling or testing expressions
 
 
 def _check_rates(model):
@@ -1299,33 +1299,15 @@ def _generate_local_dict(model, obj=None):
             yield p
 
 
-def _parse_rate(model, rate):
-    expr = rate()
-    locs = dict(_generate_local_dict(model, rate))
-    # print('\n==========================')
-    # print(f"parsing rate {rate.name}")
-    # print(f"with expression {expr}")
-    # print('==========================\n')
-    # print '\nfirst pass...'
-    # part 1: nonpermissive, except for NameError
-    # try:
-    #     value = float(eval(expr, model._usable_functions, locs))
-    # except NameError:
-    #     pass
-    # except TypeError:
-    #     return ("Invalid use of a rate in expression", 0.0)
-    # except Exception as e:
-    #     # print('failed on first pass')
-    #     return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
-    # # print('second pass...')
-    # # part 2: permissive, with dummy values (1.0) for vars
-    # vardict = {name: 1.0 for name in model.varnames}
-    # vardict["t"] = 1.0
-    # locs.update(vardict)
+def _parse_rate(model, rate_obj):
+    expr = rate_obj()
+    locs = dict(_generate_local_dict(model, rate_obj))
+
     try:
         vardict = {name: sympy.Symbol(name) for name in model.varnames}
         vardict["t"] = sympy.Symbol('t')
         locs.update(vardict)
+
         value = parse_expr(
         expr,
         locs,
@@ -1333,10 +1315,7 @@ def _parse_rate(model, rate):
         transformations=T[4],
         )
         # value = float(eval(expr, model._usable_functions, locs))
-    # except (ArithmeticError, ValueError):
-    #     pass  # might fail but we don't know the values of vars
     except Exception as e:
-        # print('failed on second pass...')
         return ("%s : %s" % (str(e.__class__.__name__), str(e)), 0.0)
     return "", value
 
@@ -1351,9 +1330,6 @@ def parse_const(model, parsed_name, valueexpr):
     # model._all_constants.pprint()
     # print("==========================")
     try:
-        # value = float(eval(valueexpr,
-        #                    model._usable_functions,
-        #                    dict(model._all_constants)))
         value = parse_expr(
             f"float({valueexpr})",
             dict(model._all_constants),
