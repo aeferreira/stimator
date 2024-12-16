@@ -3,3 +3,9 @@ path = "src/stimator/__init__.py"
 
 [build.targets.wheel]
 packages = ["src/stimator"]
+
+[envs.docs]
+dependencies = [
+  "mkdocs-material",
+  "markdown-exec[ansi]"
+]

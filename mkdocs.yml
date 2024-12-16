@@ -1,0 +1,9 @@
+site_name: S-timator
+site_url: https://aeferreira.github.io/mmhyperfit/
+theme:
+  name: material
+
+nav:
+  - Introduction: 'index.md'
+  - 'Basic features': 'basic_features.md'
+  - Defining models: 'models.md'
