@@ -1,27 +1,14 @@
----
-jupytext:
-  text_representation:
-    extension: .md
-    format_name: myst
-    format_version: 0.13
-    jupytext_version: 1.11.5
-kernelspec:
-  display_name: Python 3 (ipykernel)
-  language: python
-  name: python3
----
-
 # Parameter estimation.
 
 The **estimation.py** module combines ODE solving with the DE (differential evolution) genetic optimizer.
 
-```{code-cell} ipython3
+```py
 import stimator as st
 ```
 
 ##  Linear pathway with three reactions
 
-```{code-cell} ipython3
+```py
 
 # ----------- Model ------------------------
 
@@ -63,7 +50,7 @@ t   x1   x2
 """
 ```
 
-```{code-cell} ipython3
+```py
 best = m1.estimate(timecourses=example_data)
 
 print(best)
@@ -71,7 +58,7 @@ print(best)
 
 One can update the model parameters to the best fit values and obtain the same timecourse
 
-```{code-cell} ipython3
+```py
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.setp(bestpars)
@@ -80,13 +67,13 @@ dict(bestpars)
 
 A bit of styling of the plots:
 
-```{code-cell} ipython3
+```py
 %matplotlib inline
 from matplotlib import pyplot as plt
 st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 ```
 
-```{code-cell} ipython3
+```py
 # plotting side by side
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
@@ -102,7 +89,7 @@ plt.show()
 
 ### An example with **two time courses**
 
-```{code-cell} ipython3
+```py
 mdl = """
 title example 2: Glyoxalase system in L. Infantum
 
@@ -131,14 +118,14 @@ m1 = st.read_model(mdl)
 print(mdl)
 ```
 
-```{code-cell} ipython3
+```py
 tcdir = st.get_examples_path()
 
 optimum = m1.estimate(tc_dir=tcdir, names=['SDLTSH', 'HTA'])
 print(optimum)
 ```
 
-```{code-cell} ipython3
+```py
 #plt.style.use('bmh')
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), sharey='row')
@@ -150,7 +137,7 @@ optimum.plot(1, ax=ax2, xlabel='t (s)');
 
 ### An example with an *unknown initial value*
 
-```{code-cell} ipython3
+```py
 m2 = m1.copy()
 
 # Assume init.HTA is uncertain
@@ -174,13 +161,13 @@ best = m2.estimate('TSH2a.txt',
 print(best)
 ```
 
-```{code-cell} ipython3
+```py
 best.plot();
 ```
 
 ### An example with a transformation
 
-```{code-cell} ipython3
+```py
 mtransf = st.read_model("""
 title example 2, fitting a transformation
 

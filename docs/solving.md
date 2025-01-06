@@ -1,17 +1,3 @@
----
-jupytext:
-  text_representation:
-    extension: .md
-    format_name: myst
-    format_version: 0.13
-    jupytext_version: 1.11.5
-kernelspec:
-  display_name: Python 3 (ipykernel)
-  language: python
-  name: python3
----
-
-(solving_models)=
 # Solving ODE models.
 
 This notebook shows how to use 4 of the most common **S-timator** functions:
@@ -21,7 +7,7 @@ This notebook shows how to use 4 of the most common **S-timator** functions:
 - `scan()`, calls Model.solve() several times, scanning a model parameter in a range of values.
 - `plot()`, draws a graph of the results returned from `solve()` or `scan()`.
 
-```{code-cell} ipython3
+```py
 import stimator as st
 from stimator import examples, Solutions
 from stimator.plots import prepare_grid
@@ -29,7 +15,7 @@ from stimator.plots import prepare_grid
 
 Before we begin, a bit of styling of the plots:
 
-```{code-cell} ipython3
+```py
 %matplotlib inline
 from matplotlib import pyplot as plt
 st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
@@ -37,7 +23,7 @@ st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 
 ## Example 1: Glyoxalase system
 
-```{code-cell} ipython3
+```py
 mdl = examples.models.glyoxalases.text
 print(mdl)
 m1 = st.read_model(mdl)
@@ -54,7 +40,7 @@ for x in s.last:
 
 ## Example 2: Branched pathway
 
-```{code-cell} ipython3
+```py
 from numpy import append, linspace
 mdl = examples.models.branched.text
 
@@ -69,7 +55,7 @@ m2.solve(tf=10.0, times=times).plot();
 
 ## Example 3: Calcium spikes: CICR model
 
-```{code-cell} ipython3
+```py
 mdl = examples.models.ca.text
 
 print(mdl)
@@ -80,7 +66,7 @@ st.read_model(mdl).solve(tf=8.0, npoints=2000).plot();
 
 ## Example 4: Rossler chaotic system
 
-```{code-cell} ipython3
+```py
 mdl = examples.models.rossler.text; print (mdl)
 m4 = st.read_model(mdl)
 
@@ -99,7 +85,7 @@ s.plot();
 
 ## Example 5: Lorentz system (sensitivity to initial conditions)
 
-```{code-cell} ipython3
+```py
 mdl = examples.models.lorentz.text
 print (mdl)
 m5 = st.read_model(mdl)
@@ -114,10 +100,11 @@ s.one_plot(what='x', ax=ax, label_fmt='$title');
 f.suptitle(m5.metadata['title']);
 ```
 
-(scanning)=
-## Example 6: parameter scanning in the CICR model
+## Parameter scanning
 
-```{code-cell} ipython3
+### Example 6: parameter scanning in the CICR model
+
+```py
 m = st.read_model("""
 title Calcium Spikes
 v0         = -> Ca, 1
@@ -146,7 +133,7 @@ f.suptitle(suptitlegend, fontsize=20);
 
 Several time courses in the same plot
 
-```{code-cell} ipython3
+```py
 sols = Solutions([s[i] for i in range(0, len(s), 3)])
 sols.one_plot(ylim=(0,1.5),
               legend='out',

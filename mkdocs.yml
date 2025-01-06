@@ -2,8 +2,34 @@ site_name: S-timator
 site_url: https://aeferreira.github.io/mmhyperfit/
 theme:
   name: material
+  features:
+    - content.code.copy
 
 nav:
   - Introduction: 'index.md'
   - 'Basic features': 'basic_features.md'
   - Defining models: 'models.md'
+  - "Solving ODE's": 'solving.md'
+  - Parameter estimation: 'par_estimation.md'
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - toc
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+- search
+- markdown-exec

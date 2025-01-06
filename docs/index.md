@@ -10,23 +10,23 @@ Engineering.
 
 Some of the features that `S-timator` offers are
 
-- [A mini language used to describe models](models): models can be input as plain text 
+- [A mini language used to describe models](models.md): models can be input as plain text 
   following a very simple and human-readable language.
-- [numerical solution](solving_models) of ODE's, [parameter scanning](scanning).
-- [Parameter estimation](par_estimation) and *model selection*: given experimental data in
+- [numerical solution](solving.md) of ODE's, [parameter scanning](solving.md#parameter-scanning).
+- [Parameter estimation](par_estimation.md) and *model selection*: given experimental data in
   the form of time series and constrains on model operating ranges,
   built-in numerical optimizers can find parameter values and assist you in the
   experimental design for model selection.
 
 `S-timator` is in an **alpha stage**: many new features will be available soon.
 
-For a brief introduction check out the [basic features](basic-features) mini-tutorial.
+For a brief introduction check out the [basic features](basic_features.md) mini-tutorial.
 
 ## Installation
 
-The latest stable version of *S-timator* can be installed from the [Python Package Index](https://pypi.python.org/pypi), with `pip`:`
+The latest stable version of *S-timator* can be installed from the [Python Package Index](https://pypi.python.org/pypi), with `pip`:
 
-```
+``` bash
 pip install stimator
 ```
 
@@ -36,7 +36,7 @@ programming language.
 
 The "scientific Python" requirements are:
 
-- Python, version 3.6 and above
+- Python, version 3.8 and above
 - numpy
 - scipy
 - matplotlib

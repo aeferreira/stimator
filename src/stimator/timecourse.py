@@ -91,7 +91,7 @@ class SolutionTimeCourse(object):
             y = yl + m * (t - tl)
         else:
             y = self.data[:, ileft]
-        return dict([(x, value) for (x, value) in zip(self.names, y)])
+        return dict([(x, float(value)) for (x, value) in zip(self.names, y)])
 
     def i_time(self, t):
         """Retrieves the closest index for time t."""
