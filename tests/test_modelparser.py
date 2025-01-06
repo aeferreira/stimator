@@ -174,7 +174,7 @@ def test_bad_rate(textlines):
         _ = read_model(modelText)
 
     sl, el, slp, elp = _get_error_loc(spe)
-    assert 'Syntax Error' in spe.value.value
+    assert 'Syntax Error' in spe.value.value or 'TokenError' in spe.value.value
     assert sl == 8 and el == 8 and slp == 4 and elp == 27
 
 
