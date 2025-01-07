@@ -156,25 +156,27 @@ st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 Now, let's "solve" or "run" the model and then plot the result:
 
 ```py
-
-m.solve(tf=20.0).plot(xlabel='time')
-
-plt.show()
+m.solve(tf=20.0).plot(xlabel='time');
+# plt.show() (1)
 ```
 
+1.  This command, `plt.show()`, is necessary if you are plotting from a Python script,
+    but it is optional if you are using a Jupyter notebook rendering system.
+
+    **It will not be shown** in the code for any of plotting examples that follow.
 
 ```py exec="true" session="basicdemo" html="1"
-from io import StringIO
-import matplotlib.pyplot as plt
+from io import StringIO  # markdown-exec: hide
 
-f, ax = plt.subplots()
-m.solve(tf=20.0).plot(xlabel='time', ax=ax)
+f, ax = plt.subplots()  # markdown-exec: hide
+m.solve(tf=20.0).plot(xlabel='time');
+# plt.show()
+# (1)!
 
-buffer = StringIO()
-f.savefig(buffer, format="svg")
-print(buffer.getvalue())
+buffer = StringIO() # markdown-exec: hide
+f.savefig(buffer, format="svg") # markdown-exec: hide
+print(buffer.getvalue()) # markdown-exec: hide
 ```
-
 
 To produce this plot, `S-timator` took the initial state of your model, as defined in `init`, and generated an estimate of the values of the concentrations of the variables throughout time.
 
@@ -198,23 +200,17 @@ The result of function `solve()` is called a *solution* of the SODE.
 
 The argument `tf` in function `solve()` indicates that the solution should be computed up to the value of `tf`.
 
-Let's change this value
+Let's change this value:
 
-```py
+```py exec="true" session="basicdemo" html="1" source="above"
+plt.close()  # markdown-exec: hide
+f, ax2 = plt.subplots()  # markdown-exec: hide
 tc = m.solve(tf=100.0)
-tc.plot(xlabel='time', legend='out')
-plt.show()
-```
+tc.plot(xlabel='time', legend='out');
 
-```py exec="true" session="basicdemo" html="1"
-plt.close()
-f, ax2 = plt.subplots()
-tc = m.solve(tf=100.0)
-tc.plot(xlabel='time', legend='out')
-
-buffer = StringIO()
-f.savefig(buffer, format="svg")
-print(buffer.getvalue())
+buffer = StringIO()  # markdown-exec: hide
+f.savefig(buffer, format="svg")  # markdown-exec: hide
+print(buffer.getvalue())  # markdown-exec: hide
 ```
 
 Notice that the two functions, `solve()` and `plot()` can be separated. The result of `solve()` is a *time course* that assigned the name `tc` and then `tc.plot()` was called.
@@ -270,19 +266,14 @@ tc = m.solve(tf=100.0)
 print(tc.last)
 ```
 
-```py
-tc.plot(xlabel='time')
+```py exec="true" session="basicdemo" html="1" source="above"
+plt.close()  # markdown-exec: hide
+f, ax3 = plt.subplots()  # markdown-exec: hide
+tc.plot(xlabel='time');
 
-plt.show()
-```
-
-```py exec="true" session="basicdemo" html="1"
-f, ax3 = plt.subplots()
-tc.plot(xlabel='time', ax=ax3)
-
-buffer = StringIO()
-f.savefig(buffer, format="svg")
-print(buffer.getvalue())
+buffer = StringIO()  # markdown-exec: hide
+f.savefig(buffer, format="svg")  # markdown-exec: hide
+print(buffer.getvalue())  # markdown-exec: hide
 ```
 
 Here the three variables settle into a different state characterized by the steady flow of mass throughout the system (a *steady state*). Notice that $A$ no longer vanishes to zero.
@@ -290,23 +281,22 @@ Here the three variables settle into a different state characterized by the stea
 It is also interesting to plot the **rates** of the four reactions. We can achieve this by using argument `outputs` of function `solve()`: the "glyph" `->` indicates that the rates should be computed, instead of the variables (`>>` or `>` could also have been used).
 
 ```py exec="true" source="above" session="basicdemo" result="txt"
-tc = m.solve(tf=100.0, outputs='->')
-print(tc.last)
+tc = m.solve(tf=100, outputs='->')
+
+# print(tc.last)
+print("Last value:")
+for name, value in tc.last.items():
+    print(f"{name} = {value:.2f}")
 ```
 
-```py
+```py exec="true" session="basicdemo" html="1" source="above"
+plt.close()  # markdown-exec: hide
+f, ax4 = plt.subplots()  # markdown-exec: hide
 tc.plot(ylim=(0, 0.55), xlabel='time', legend='out', palette='Dark2')
 
-plt.show()
+buffer = StringIO()  # markdown-exec: hide
+f.savefig(buffer, format="svg")  # markdown-exec: hide
+print(buffer.getvalue())  # markdown-exec: hide
 ```
 
-```py exec="true" session="basicdemo" html="1"
-f, ax4 = plt.subplots()
-tc.plot(ylim=(0, 0.55), xlabel='time', legend='out', palette='Dark2', ax=ax4)
-
-buffer = StringIO()
-f.savefig(buffer, format="svg")
-print(buffer.getvalue())
-```
-
-Not only the concentrations become constant but the **values of the rates also become constant and equal to the inflow of mass into the system**.
+Note that not only the concentrations become constant but the **values of the rates also become constant and equal to the inflow of mass into the system**.

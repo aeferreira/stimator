@@ -1,9 +1,5 @@
 site_name: S-timator
 site_url: https://aeferreira.github.io/mmhyperfit/
-theme:
-  name: material
-  features:
-    - content.code.copy
 
 nav:
   - Introduction: 'index.md'
@@ -25,6 +21,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.arithmatex:
       generic: true
+  - attr_list
+  - md_in_html
 
 extra_javascript:
   - javascripts/mathjax.js
@@ -33,3 +31,11 @@ extra_javascript:
 plugins:
 - search
 - markdown-exec
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.top
+    - navigation.footer

@@ -2,13 +2,13 @@
 
 The **estimation.py** module combines ODE solving with the DE (differential evolution) genetic optimizer.
 
-```py
+```py exec="true" source="above" session="parst"
 import stimator as st
 ```
 
 ##  Linear pathway with three reactions
 
-```py
+```py exec="true" source="above" session="parst"
 
 # ----------- Model ------------------------
 
@@ -50,7 +50,7 @@ t   x1   x2
 """
 ```
 
-```py
+```py exec="true" source="above" session="parst" result="txt"
 best = m1.estimate(timecourses=example_data)
 
 print(best)
@@ -58,38 +58,38 @@ print(best)
 
 One can update the model parameters to the best fit values and obtain the same timecourse
 
-```py
+```py exec="true" source="above" session="parst" result="txt"
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.setp(bestpars)
-dict(bestpars)
+print(dict(bestpars))
 ```
 
 A bit of styling of the plots:
 
-```py
-%matplotlib inline
+```py exec="true" source="above" session="parst"
+from io import StringIO # markdown-exec: hide
 from matplotlib import pyplot as plt
 st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 ```
 
-```py
+```py exec="true" source="above" session="parst" html="1"
 # plotting side by side
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+f, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
 best.plot(ax=ax1, palette='Dark2', xlabel='time')
 m2.solve(tf=20.0).plot(ax=ax2, palette='Dark2', xlabel='time')
+buffer = StringIO() # markdown-exec: hide
+f.savefig(buffer, format="svg") # markdown-exec: hide
+print(buffer.getvalue()) # markdown-exec: hide
 
-plt.show()
 ```
 
-##  Glyoxalase system
+## An example with **two time courses**
 
-+++
+### Glyoxalase system
 
-### An example with **two time courses**
-
-```py
+```py exec="true" source="above" session="parst" result="txt"
 mdl = """
 title example 2: Glyoxalase system in L. Infantum
 
@@ -118,26 +118,27 @@ m1 = st.read_model(mdl)
 print(mdl)
 ```
 
-```py
+```py exec="true" source="above" session="parst" result="txt"
 tcdir = st.get_examples_path()
 
 optimum = m1.estimate(tc_dir=tcdir, names=['SDLTSH', 'HTA'])
 print(optimum)
 ```
 
-```py
-#plt.style.use('bmh')
+```py exec="true" source="above" session="parst" html="1"
+plt.close() # markdown-exec: hide
 
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), sharey='row')
+f, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), sharey='row')
 optimum.plot(0, ax=ax1, ylabel='conc (microM)')
 optimum.plot(1, ax=ax2, xlabel='t (s)');
+buffer = StringIO() # markdown-exec: hide
+f.savefig(buffer, format="svg") # markdown-exec: hide
+print(buffer.getvalue()) # markdown-exec: hide
 ```
-
------------
 
 ### An example with an *unknown initial value*
 
-```py
+```py exec="true" source="above" session="parst" result="txt"
 m2 = m1.copy()
 
 # Assume init.HTA is uncertain
@@ -150,7 +151,7 @@ m2.parameters.Km1 = 0.252531
 m2.parameters.Km2 = 0.0980973
 
 
-# VERY IMPORTANT:
+# IMPORTANT:
 # only one time course can be used: 
 # cannot fit one initial value using several timecourses!
 
@@ -161,13 +162,19 @@ best = m2.estimate('TSH2a.txt',
 print(best)
 ```
 
-```py
+```py exec="true" source="above" session="parst" html="1"
+plt.close() # markdown-exec: hide
+f, ax = plt.subplots() # markdown-exec: hide
+
 best.plot();
+buffer = StringIO() # markdown-exec: hide
+f.savefig(buffer, format="svg") # markdown-exec: hide
+print(buffer.getvalue()) # markdown-exec: hide
 ```
 
 ### An example with a transformation
 
-```py
+```py exec="true" source="above" session="parst" result="txt"
 mtransf = st.read_model("""
 title example 2, fitting a transformation
 
@@ -200,6 +207,14 @@ optimum = mtransf.estimate(tc_dir=tcdir,
                            names=['sdlx2', 'SDLTSH', 'HTA'])
 
 print(optimum)
+```
+
+```py exec="true" source="above" session="parst" html="1"
+plt.close() # markdown-exec: hide
+f, ax = plt.subplots() # markdown-exec: hide
+
 optimum.plot()
-plt.show()
+buffer = StringIO() # markdown-exec: hide
+f.savefig(buffer, format="svg") # markdown-exec: hide
+print(buffer.getvalue()) # markdown-exec: hide
 ```
