@@ -4,6 +4,7 @@ from numpy import array, nansum, fabs, empty
 import numpy as np
 
 import stimator.de as de
+from stimator import utils as utils
 from stimator.dynamics import ModelSolver
 import stimator.fim as fim
 import stimator.timecourse as timecourse
@@ -223,6 +224,7 @@ class DeODEOptimizer(de.DESolver):
             self.criterium.append(get_criterium(solnames, tc, weights))
 
         self.timecourse_scores = empty(len(self.tc))
+        self._progress_msgs = []
 
     def computeSolution(self, i, trial, dense=None):
         """Computes solution for timecourse i, given parameters trial."""
@@ -262,6 +264,7 @@ class DeODEOptimizer(de.DESolver):
             self._generation_popvalues = []
             self._generation_score_values = []
             # self.dumpfile = open('generations.txt', 'w')
+        self._progress_msgs.append(msg)
         if not self.msgTicker:
             print(msg)
         else:
@@ -269,6 +272,7 @@ class DeODEOptimizer(de.DESolver):
 
     def reportGeneration(self):
         msg = "%-4d: %f" % (self.generation, float(self.best_score))
+        self._progress_msgs.append(msg)
         if not self.msgTicker:
             print(msg)
         else:
@@ -283,11 +287,24 @@ class DeODEOptimizer(de.DESolver):
             outCode = self.exitCode
             self.generate_optimum()
         if not self.endTicker:
-            de.DESolver.reportFinal(self)
+            ttime = time.time() - self.start_time
+            code = de.DESolver.exitCodeStrings[self.exitCode]
+            res = ['Done already!',
+                '%s in %d generations.' % (code, self.generation),
+                'best score = %f' % self.best_score,
+                'best solution: %s' % self.best]
+            res = '\n' + '\n'.join(res)
+            took_msg = '\nOptimization took {:.3f} s ({})'.format
+            res += took_msg(ttime, utils.s2HMS(ttime))
+            self._progress_msgs.append(res)
+            print(res)
         else:
             self.endTicker(outCode)
         if self._dump_generations:
             self.keep_generation(self.generation)
+
+    def get_progress_report(self):
+        return '\n'.join(self._progress_msgs)
 
     def keep_generation(self, generation):
         self._generation_popvalues.append(self.pop)
@@ -302,6 +319,7 @@ class DeODEOptimizer(de.DESolver):
         best.optimization_exit_by = self.exitCodeStrings[self.exitCode]
         best.max_generations = self.max_generations
         best.pop_size = self.pop_size
+        best.progress_report = self.get_progress_report()
 
         # TODO: Store initial solver parameters?
 
@@ -355,13 +373,7 @@ class DeODEOptimizer(de.DESolver):
 
         sols = timecourse.Solutions()
         for (i, tc) in enumerate(self.tc):
-            sol = self.computeSolution(i, self.best, dense=True)
-            # ts = linspace(tc.t[0], tc.t[-1], 500)
-
-            # sol = timecourse.SolutionTimeCourse(ts, Y.T,
-            #                                     self.varnames,
-            #                                     title=tc.title)
-            sols += sol
+            sols += self.computeSolution(i, self.best, dense=True)
 
         best.optimum_dense_tcs = sols
 
@@ -413,7 +425,7 @@ def s_timate(model, timecourses=None, opt_settings=None,
 
 
 def test():
-    from stimator import read_model, Solution, get_examples_path
+    from stimator import read_model, get_examples_path
     from matplotlib import pyplot as plt
 
     # --- example 1 --------------------
@@ -457,6 +469,10 @@ popsize = 60     # population size in GA
     print(best)
     best.plot(palette='Dark2').set(xlabel='t')
     plt.show()
+
+    print('----- Progress report -------')
+    print(best.progress_report)
+    print('----- End of progress report -')
 
     print('--- Modifying model ---')
     m2 = model.copy()
