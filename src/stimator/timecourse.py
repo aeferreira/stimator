@@ -15,12 +15,12 @@ REAL_RE = re.compile(REAL_PATTERN, re.IGNORECASE)
 
 
 class StimatorTCError(Exception):
-
     def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):
         return self.msg
+
 
 # ----------------------------------------------------------------------------
 #         THE BASIC TIMECOURSE CLASS
@@ -33,10 +33,10 @@ class SolutionTimeCourse(object):
     def __init__(self, t=None, data=None, names=None, title="", dense=False):
         if t is None:
             t = np.array([])
-        self.t = t          # values of time points
+        self.t = t  # values of time points
         if data is None:
             data = np.array([])
-        self.data = data    # table of points: series in rows, times in cols
+        self.data = data  # table of points: series in rows, times in cols
         if names is None:
             names = []
         self.names = names  # names of the series
@@ -56,10 +56,12 @@ class SolutionTimeCourse(object):
     def __getNumberOfTimes(self):
         """Retrieves the number of time points"""
         return self.data.shape[1]
+
     ntimes = property(__getNumberOfTimes)
 
     def __getShape(self):
         return self.data.shape
+
     shape = property(__getShape)
 
     def __getitem__(self, key):
@@ -75,12 +77,12 @@ class SolutionTimeCourse(object):
     def state_at(self, t):
         """Retrieves a dict with values at a time point.
 
-           Interpolation may be necessary."""
+        Interpolation may be necessary."""
         if t > self.t[-1] or t < self.t[0]:
             raise ValueError("No data for time '%s' in timecourse" % str(t))
         # Interpolate:
-        ileft = self.t.searchsorted(t, side='left')
-        iright = self.t.searchsorted(t, side='right')
+        ileft = self.t.searchsorted(t, side="left")
+        iright = self.t.searchsorted(t, side="right")
         if iright == ileft:
             ileft -= 1
             tl = self.t[ileft]
@@ -98,8 +100,8 @@ class SolutionTimeCourse(object):
         if t > self.t[-1] or t < self.t[0]:
             raise ValueError("No data for time '%s' in timecourse" % str(t))
         # Find closest:
-        ileft = self.t.searchsorted(t, side='left')
-        iright = self.t.searchsorted(t, side='right')
+        ileft = self.t.searchsorted(t, side="left")
+        iright = self.t.searchsorted(t, side="right")
         if iright == ileft:
             ileft -= 1
             tl = self.t[ileft]
@@ -114,23 +116,26 @@ class SolutionTimeCourse(object):
     def __getLastState(self):
         """Retrieves state_at last timepoint"""
         return self.state_at(self.t[-1])
+
     last = property(__getLastState)  # use as 'sol.last'
 
     def __getInitState(self):
         """Retrieves state_at first timepoint"""
         return self.state_at(self.t[0])
+
     init = property(__getInitState)  # use as 'sol.init'
 
     def apply_transf(self, f, newnames=None, new_title=None):
         """Apply a transformation to time series in place.
 
-           f is the transformation function, with signature
-           f(variables,t). variables is an array, list or tuple, t is a scalar.
-           newnames is a list of names of the transformed variables.
-           results are kept 'in place': data is substituted."""
+        f is the transformation function, with signature
+        f(variables,t). variables is an array, list or tuple, t is a scalar.
+        newnames is a list of names of the transformed variables.
+        results are kept 'in place': data is substituted."""
 
         def newf(newdata, f):
             return f(newdata[1:], newdata[0])
+
         trf = np.apply_along_axis(newf, 0, np.vstack((self.t, self.data)), f)
         if newnames is not None:
             self.names = newnames
@@ -142,9 +147,9 @@ class SolutionTimeCourse(object):
     def transform(self, f, newnames=None, new_title=None):
         """Apply a transformation to time series.
 
-           f is the transformation function, with signature
-           f(variables,t). variables is an array, list or tuple, t is a scalar.
-           newnames is a list of names of the transformed variables."""
+        f is the transformation function, with signature
+        f(variables,t). variables is an array, list or tuple, t is a scalar.
+        newnames is a list of names of the transformed variables."""
 
         return self.clone().apply_transf(f, newnames, new_title)
 
@@ -180,9 +185,9 @@ class SolutionTimeCourse(object):
         for line in f:
             line = line.strip()
             if len(line) == 0:
-                continue    # empty lines are skipped
-            if line.startswith('#'):
-                continue    # comment lines are skipped
+                continue  # empty lines are skipped
+            if line.startswith("#"):
+                continue  # comment lines are skipped
             items = line.split()
 
             if ID_RE.match(items[0]):
@@ -198,7 +203,7 @@ class SolutionTimeCourse(object):
                     nvars = len(items)
                     t0found = True
                 temprow = [np.nan] * nvars
-                for (i, num) in enumerate(items):
+                for i, num in enumerate(items):
                     if REAL_RE.match(num):
                         temprow[i] = float(num)
                 rows.append(temprow)
@@ -207,34 +212,33 @@ class SolutionTimeCourse(object):
 
         # create default names "t, x1, x2, x3,..." or use names if provided
         if len(header) == 0:
-            header = ['t']
+            header = ["t"]
             for i in range(1, nvars):
-                header.append('x%d' % i)
+                header.append("x%d" % i)
             if names is not None:
                 smallindx = min(len(header) - 1, len(names))
                 for i in range(smallindx):
                     header[i + 1] = names[i]
         data = np.array(rows)
         if len(data.shape) != 2 or data.shape[0] < 1 or data.shape[1] < 1:
-            raise StimatorTCError('tc data has a wrong format')
+            raise StimatorTCError("tc data has a wrong format")
         self.names = header[1:]
         self.t = data[:, 0].T
         self.data = data[:, 1:].T
         return self
 
     def __str__(self):
-        out = ["%s %s" % ('t', " ".join(self.names))]
+        out = ["%s %s" % ("t", " ".join(self.names))]
         npoints = len(self.t)
         for i in range(npoints):
             row = [self.t[i]]
             row.extend(self.data[:, i])
             row = " ".join([str(j) for j in row])
             out.append(row)
-        return '\n'.join(out)
+        return "\n".join(out)
 
     def write_to(self, destination):
-        """Writes a time course to a path or file-like object.
-        """
+        """Writes a time course to a path or file-like object."""
 
         ishandle = False
         try:
@@ -249,10 +253,13 @@ class SolutionTimeCourse(object):
 
     def clone(self, new_title=None):
         """Clones the entire solution."""
-        tc = SolutionTimeCourse(self.t.copy(),
-                                self.data.copy(),
-                                self.names[:],
-                                self.title, self.dense)
+        tc = SolutionTimeCourse(
+            self.t.copy(),
+            self.data.copy(),
+            self.names[:],
+            self.title,
+            self.dense,
+        )
         if new_title is not None:
             tc.title = new_title
         return tc
@@ -292,6 +299,7 @@ class SolutionTimeCourse(object):
     def plot(self, **kwargs):
         return plots.plot_timecourse(self, **kwargs)
 
+
 # ----------------------------------------------------------------------------
 #         A CONTAINER FOR SEVERAL TIMECOURSES
 # ----------------------------------------------------------------------------
@@ -310,7 +318,7 @@ class Solutions(object):
 
     def __str__(self):
         output = (str(s) for s in self.solutions)
-        return '\n'.join(output)
+        return "\n".join(output)
 
     def __getitem__(self, key):
         """retrieves a solution by index or Solutions object if a slice"""
@@ -332,7 +340,11 @@ class Solutions(object):
             self.solutions.append(other)
         elif isinstance(other, Solutions):
             self.solutions.extend(other.solutions)
-        elif isinstance(other, list) or isinstance(other, tuple) or isinstance(other, set):
+        elif (
+            isinstance(other, list)
+            or isinstance(other, tuple)
+            or isinstance(other, set)
+        ):
             for s in other:
                 if not isinstance(s, SolutionTimeCourse):
                     raise TypeError("Must add a solution or a set of them")
@@ -355,7 +367,7 @@ class Solutions(object):
         # check and load timecourses
         cwd = Path.cwd()
         if filedir is None:
-            filedir = ''
+            filedir = ""
         if _is_string(filenames):
             filenames = [filenames]
         names = [cwd / filedir / k for k in filenames]
@@ -407,12 +419,7 @@ class Solutions(object):
         return plots.prepare_grid(self, **kwargs)
 
 
-def read_tc(source,
-            filedir=None,
-            names=None,
-            title=None,
-            verbose=False):
-
+def read_tc(source, filedir=None, names=None, title=None, verbose=False):
     if isinstance(source, Solutions):
         tcs = Solutions
     elif isinstance(source, SolutionTimeCourse):
@@ -425,10 +432,10 @@ def read_tc(source,
         return tcs
 
     tcsnames = None
-    if hasattr(source, 'metadata'):
+    if hasattr(source, "metadata"):
         # retrieve info from model declaration
-        objs = source.metadata.get('timecourses', [])
-        tcsnames =  source.metadata.get('defaultnames', None)
+        objs = source.metadata.get("timecourses", [])
+        tcsnames = source.metadata.get("defaultnames", None)
     elif _is_string(source):
         objs = [source]
     else:
@@ -447,10 +454,10 @@ def read_tc(source,
     # check and load timecourses
     cwd = Path.cwd()
     if filedir is None:
-        filedir = ''
+        filedir = ""
 
     if title is None:
-        title = ''
+        title = ""
     tcs = Solutions(title=title)
 
     if verbose:
@@ -473,10 +480,10 @@ def read_tc(source,
             if _is_string(obj):
                 try:
                     f2read = StringIO(obj)
-                    fname = f'timecourse {iobj}'
+                    fname = f"timecourse {iobj}"
                     sol.read_from(f2read, names=names)
                     if sol.shape == (0, 0):
-                        raise StimatorTCError('no data')
+                        raise StimatorTCError("no data")
                 except StimatorTCError:
                     from_path = True
             if from_path:
@@ -542,7 +549,9 @@ def L2_midpoint_weights(timecourses, delta_t, indexes):
         for j in range(i + 1, len(timecourses)):
             numResult = 0.0
             for t1, t2 in zip(timecourses[i], timecourses[j]):
-                tempTC = np.float64((((t1 - t2)**2) / (((t1 + t2)/2.0)**2)))
+                tempTC = np.float64(
+                    (((t1 - t2) ** 2) / (((t1 + t2) / 2.0) ** 2))
+                )
                 tempTC = tempTC * delta_t
                 numResult -= np.nansum(tempTC)
             result.append(numResult)
@@ -564,7 +573,7 @@ def L2(timecourses, delta_t, indexes):
 
 def _transform2array(vect):
     """Given a float or sequence, transform into a diagonal array.
-       A 2D array is left unchanged."""
+    A 2D array is left unchanged."""
     if _is_number(vect):
         res = np.array((vect), dtype=float)
     elif _is_sequence(vect):
@@ -579,6 +588,7 @@ def constError_func(vect):
 
     def CE(x):
         return res
+
     return CE
 
 
@@ -587,6 +597,7 @@ def propError_func(vect):
 
     def CE(x):
         return res * x
+
     return CE
 
 

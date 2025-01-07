@@ -1,4 +1,5 @@
 import pytest
+from pytest import approx
 
 from pathlib import Path
 
@@ -10,12 +11,6 @@ from stimator import Solution, Solutions, read_tc, get_examples_path
 from stimator.modelparser import read_model
 
 _DATADIR = get_examples_path()
-
-
-def assert_almost_equal(x, y):
-    if abs(x-y) < 0.0001:
-        return True
-    return False
 
 
 def average(x, t):
@@ -79,7 +74,7 @@ nothing really usefull here
 """
 
 
-def test_read_from(tc_1):
+def test_read_from(tc_1: StringIO):
     sol = Solution().read_from(tc_1)
     assert sol.names == ['x', 'y', 'z']
     assert sol.t[0] == 0.0
@@ -200,23 +195,28 @@ def test_Solution_interface():
 
     # state_at(), returns dictionaries
     s02 = sol.state_at(0.2)
+    assert isinstance(s02, dict)
     assert isnan(s02['x'])
     assert isnan(s02['z'])
-    assert assert_almost_equal(s02['y'], 0.2)
+    assert s02['y'] == approx(0.2)
+    assert isinstance(s02['y'], float)
+    assert isinstance(s02['x'], float)
     s045 = sol.state_at(0.45)  # linear interpolation
-    assert assert_almost_equal(s045['x'], 0.55)
-    assert assert_almost_equal(s045['y'], 0.7)
-    assert assert_almost_equal(s045['z'], 0.8)
+    assert s045['x'] == approx(0.55)
+    assert s045['y'] == approx(0.7)
+    assert s045['z'] == approx(0.8)
 
-    # init() and last(), returns dictionaries
+    # init() and last(), return dictionaries
     sinit = sol.init
-    assert assert_almost_equal(sinit['x'], 0.95)
-    assert assert_almost_equal(sinit['y'], 0.0)
-    assert assert_almost_equal(sinit['z'], 0.0)
+    assert isinstance(sinit, dict)
+    assert sinit['x'] == approx(0.95)
+    assert sinit['y'] == approx(0.0)
+    assert sinit['z'] == approx(0.0)
     slast = sol.last
+    assert isinstance(sinit, dict)
     assert isnan(slast['x'])
     assert isnan(slast['z'])
-    assert assert_almost_equal(slast['y'], 0.5)
+    assert slast['y'] == approx(0.5)
 
     # iteration
     for series, sdata in zip(sol, sol.data):
@@ -362,16 +362,16 @@ def test_readTCs():
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['SDLTSH', 'HTA']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['x1']
-    assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
+    assert tcs[1].init['x1'] == approx(7.69231E-05)
+    assert tcs[1].last['x1'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
     assert tcs.title == 'read solutions'
 
@@ -398,16 +398,16 @@ def test_readTCs_default_names():
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['SDLTSH', 'HTA']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
-    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].init['SDLTSH'] == approx(7.69231E-05)
+    assert tcs[1].last['SDLTSH'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
     assert tcs.get_common_full_vars() == ['SDLTSH']
 
@@ -419,20 +419,20 @@ def test_readTCs_and_change_order():
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['HTA', 'SDLTSH']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['x1']
-    assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
+    assert tcs[1].init['x1'] == approx(7.69231E-05)
+    assert tcs[1].last['x1'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
 
 
-def test_readTCs_mixtypes(tc_1):
+def test_readTCs_mixtypes(tc_1: StringIO):
     sol = Solution().read_from(tc_1)
     sol.title = 'the last one'
     tcs = read_tc(['TSH2b.txt', 'TSH2a.txt', demodata2, sol], _DATADIR,
@@ -442,22 +442,22 @@ def test_readTCs_mixtypes(tc_1):
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['SDLTSH', 'HTA']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
-    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].init['SDLTSH'] == approx(7.69231E-05)
+    assert tcs[1].last['SDLTSH'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
 
     assert tcs[2].shape == (3, 8)
     assert tcs[2].title == 'timecourse 2'
-    assert assert_almost_equal(tcs[2].init['x'], 0.95)
-    assert assert_almost_equal(tcs[2].last['y'], 0.4)
+    assert tcs[2].init['x'] == approx(0.95)
+    assert tcs[2].last['y'] == approx(0.4)
 
     assert tcs[3].title == 'the last one'
     assert tcs[3].names == ['x', 'y', 'z']
@@ -480,16 +480,16 @@ def test_write_to():
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['SDLTSH', 'HTA']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b_2.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['x1']
-    assert assert_almost_equal(tcs[1].init['x1'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['x1'], 0.022615385)
+    assert tcs[1].init['x1'] == approx(7.69231E-05)
+    assert tcs[1].last['x1'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a_2.txt'
     assert Path.is_file(wpath / 'TSH2b_2.txt')
     assert Path.is_file(wpath / 'TSH2a_2.txt')
@@ -514,16 +514,16 @@ def test_read_tc_declared_in_model():
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['SDLTSH', 'HTA']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
-    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].init['SDLTSH'] == approx(7.69231E-05)
+    assert tcs[1].last['SDLTSH'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
 
     tcs.order_by_modelvars(m)
@@ -532,14 +532,14 @@ def test_read_tc_declared_in_model():
 
     assert tcs[0].shape == (2, 347)
     assert tcs[0].names == ['HTA', 'SDLTSH']
-    assert assert_almost_equal(tcs[0].init['SDLTSH'], 0.001246154)
-    assert assert_almost_equal(tcs[0].init['HTA'], 0.2688)
-    assert assert_almost_equal(tcs[0].last['SDLTSH'], 0.042815385)
+    assert tcs[0].init['SDLTSH'] == approx(0.001246154)
+    assert tcs[0].init['HTA'] == approx(0.2688)
+    assert tcs[0].last['SDLTSH'] == approx(0.042815385)
     assert isnan(tcs[0].last['HTA'])
     assert tcs[0].title == 'TSH2b.txt'
 
     assert tcs[1].shape == (1, 244)
     assert tcs[1].names == ['SDLTSH']
-    assert assert_almost_equal(tcs[1].init['SDLTSH'], 7.69231E-05)
-    assert assert_almost_equal(tcs[1].last['SDLTSH'], 0.022615385)
+    assert tcs[1].init['SDLTSH'] == approx(7.69231E-05)
+    assert tcs[1].last['SDLTSH'] == approx(0.022615385)
     assert tcs[1].title == 'TSH2a.txt'
