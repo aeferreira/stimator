@@ -15,19 +15,20 @@ import scipy.optimize
 
 
 class DESolver(object):
-
-    def __init__(self, pars_count,
-                 pop_size,
-                 min_values,
-                 max_values,
-                 deStrategy,
-                 diffScale,
-                 crossoverProb,
-                 cutoff_score,
-                 max_generations=200,
-                 conv_noimprov=20,
-                 useClassRandomNumberMethods=False):
-
+    def __init__(
+        self,
+        pars_count,
+        pop_size,
+        min_values,
+        max_values,
+        deStrategy,
+        diffScale,
+        crossoverProb,
+        cutoff_score,
+        max_generations=200,
+        conv_noimprov=20,
+        useClassRandomNumberMethods=False,
+    ):
         np.random.seed(3)
 
         self.max_generations = max_generations
@@ -58,42 +59,57 @@ class DESolver(object):
         self.pop = self.pop * (max_values - min_values) + min_values
 
         # initial scores for comparison
-        self.scores = np.ones(self.pop_size) * float('inf')
+        self.scores = np.ones(self.pop_size) * float("inf")
 
         self.best = np.empty(self.pars_count)
-        self.best_score = float('inf')
+        self.best_score = float("inf")
         self.generation = 0
         self.gen_no_improv = 0
-        self.atSolution = False
+        self.at_solution = False
         self.exitCode = 0
 
-    exitCodeStrings = (
+    exit_messages = (
         "not done",
         "Solution found by energy criterium",
         "Solution found by diversity criterium",
         "Hit max generations ",
         "Too many generations with no improvement",
-        "Solution found by convergence criterium")
+        "Solution found by convergence criterium",
+    )
 
-    def reportInitial(self):
-        print("Solving...")
-        # initialize stopwatch
-        self.start_time = time.time()
+    def report_function(self, phase: int):
+        """Pluggable reporting function customizable in derived classes.
 
-    def reportGeneration(self):
-        print("{:-4d}: {:f}".format(self.generation, self.best_score))
+        The function should be overidden in derived classes.
 
-    def reportFinal(self):
-        ttime = time.time() - self.start_time
-        code = DESolver.exitCodeStrings[self.exitCode]
-        res = ['Done!',
-               '%s in %d generations.' % (code, self.generation),
-               'best score = %f' % self.best_score,
-               'best solution: %s' % self.best]
-        res = '\n' + '\n'.join(res)
-        took_msg = '\nOptimization took {:.3f} s ({})'.format
-        res += took_msg(ttime, utils.s2HMS(ttime))
-        print(res)
+        phase is an integer indicating the phase of DE:
+        0: initial, before optimization begins
+        1: on completion of each generation
+        2: end of DE, before refining optimum
+        3: final, after end result computed or after failure"""
+        if phase == 0:
+            print("Solving...")
+            # initialize stopwatch
+            self.start_time = time.time()
+        elif phase == 1:
+            print(f"{self.generation:-4d}: {self.best_score:f}")
+        elif phase == 2:
+            print("refining optimum...")
+        elif phase == 3:
+            ttime = time.time() - self.start_time
+            code = DESolver.exitCodeStrings[self.exitCode]
+            res = [
+                "Done!",
+                f"{code} in {self.generation} generations.",
+                f"best score = {self.best_score:f}",
+                f"best solution: {self.best}",
+            ]
+            res = "\n" + "\n".join(res)
+            took_msg = "\nOptimization took {:.3f} s ({})".format
+            res += took_msg(ttime, utils.s2HMS(ttime))
+            print(res)
+        else:
+            pass
 
     # this class might normally be subclassed and this method overridden,
     # or the self.external_score_function(individual) set
@@ -102,7 +118,7 @@ class DESolver(object):
         try:
             score = self.external_score_function(individual)
         except (ArithmeticError, FloatingPointError):
-            score = float('inf')  # high energies for computational exceptions
+            score = float("inf")  # high energies for computational exceptions
 
         # we will be "done" if the score is
         # less than or equal to the cut-off score
@@ -125,36 +141,38 @@ class DESolver(object):
             return
 
         if self.generation == 0:  # compute energies for generation 0
-            self.reportInitial()
+            self.report_function(0)
             for i in range(self.pop_size):
-                score, self.atSolution = self.score_function(np.copy(self.pop[i]))
+                score, self.at_solution = self.score_function(
+                    np.copy(self.pop[i])
+                )
                 self.scores[i] = score
                 if score < self.best_score:
                     self.best_score = score
                     self.best = np.copy(self.pop[i])
-            self.reportGeneration()
-            if not self.atSolution:
+            self.report_function(1)
+            if not self.at_solution:
                 self.gen_no_improv += 1
 
         # no need to try another generation if we are done (energy criterium)
-        if self.atSolution:
+        if self.at_solution:
             self.exitCode = 1
             return
 
         # return if whole population "converged"
-        if (np.ptp(self.scores)/self.scores.mean()) < 1.0E-2:
+        if (np.ptp(self.scores) / self.scores.mean()) < 1.0e-2:
             self.exitCode = 5
             return
 
         self.generation += 1
 
         for i in range(self.pop_size):
-            if self.atSolution:
+            if self.at_solution:
                 break
 
             new_i = self.calcTrialSolution(i)
             if new_i is not None:
-                score, self.atSolution = self.score_function(new_i)
+                score, self.at_solution = self.score_function(new_i)
 
                 if score < self.scores[i]:
                     # New low for this individual
@@ -166,14 +184,14 @@ class DESolver(object):
                         self.gen_no_improv = 0
 
             # no need to try another i if we are done
-            if self.atSolution:
+            if self.at_solution:
                 # it is possible for self.score_function()
-                # to return self.atSolution == True even if we are not at
+                # to return self.at_solution == True even if we are not at
                 # the best score. Copy the current values
                 self.best, self.best_score = new_i, score
 
-        self.reportGeneration()
-        if not self.atSolution:
+        self.report_function(1)
+        if not self.at_solution:
             self.gen_no_improv += 1
         return
 
@@ -182,11 +200,12 @@ class DESolver(object):
         if self.exitCode == 0:
             self.exitCode = -1
         if self.exitCode > 0:
-            print('refining last solution ...')
-            self.best = scipy.optimize.fmin(self.external_score_function,
-                                            self.best, disp=0)
-            self.best_score, self.atSolution = self.score_function(self.best)
-        self.reportFinal()
+            self.report_function(2)
+            self.best = scipy.optimize.fmin(
+                self.external_score_function, self.best, disp=0
+            )
+            self.best_score, self.at_solution = self.score_function(self.best)
+        self.report_function(3)
 
     def run(self):
         while self.exitCode == 0:
@@ -236,7 +255,9 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] = self.best[n] + self.scale * (pop[r1][n] + pop[r2][n] - pop[r3][n] - pop[r4][n])
+            new_i[n] = self.best[n] + self.scale * (
+                pop[r1][n] + pop[r2][n] - pop[r3][n] - pop[r4][n]
+            )
         return new_i
 
     def RandToBest1Exp(self, i):
@@ -247,7 +268,9 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] = self.scale * (self.best[n] - new_i[n]) + self.scale * (pop[r1][n] - pop[r2][n])
+            new_i[n] = self.scale * (self.best[n] - new_i[n]) + self.scale * (
+                pop[r1][n] - pop[r2][n]
+            )
         return new_i
 
     def Rand2Exp(self, i):
@@ -258,7 +281,9 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] = pop[r1][n] + self.scale * (pop[r2][n] + pop[r3][n] - pop[r4][n] - pop[r5][n])
+            new_i[n] = pop[r1][n] + self.scale * (
+                pop[r2][n] + pop[r3][n] - pop[r4][n] - pop[r5][n]
+            )
         return new_i
 
     def Best1Bin(self, i):
@@ -268,7 +293,9 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] = self.best[n] + self.scale * (self.pop[r1][n] - self.pop[r2][n])
+            new_i[n] = self.best[n] + self.scale * (
+                self.pop[r1][n] - self.pop[r2][n]
+            )
         return new_i
 
     def Rand1Bin(self, i):
@@ -289,7 +316,9 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] += self.scale * (self.best[n] - new_i[n]) + self.scale * (self.pop[r1][n] - self.pop[r2][n])
+            new_i[n] += self.scale * (self.best[n] - new_i[n]) + self.scale * (
+                self.pop[r1][n] - self.pop[r2][n]
+            )
         return new_i
 
     def Best2Bin(self, i):
@@ -299,7 +328,12 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] = self.best[n] + self.scale * (self.pop[r1][n] + self.pop[r2][n] - self.pop[r3][n] - self.pop[r4][n])
+            new_i[n] = self.best[n] + self.scale * (
+                self.pop[r1][n]
+                + self.pop[r2][n]
+                - self.pop[r3][n]
+                - self.pop[r4][n]
+            )
         return new_i
 
     def Rand2Bin(self, i):
@@ -309,7 +343,12 @@ class DESolver(object):
         if len(change) == 0:
             return None
         for n in change:
-            new_i[n] = self.pop[r1][n] + self.scale * (self.pop[r2][n] + self.pop[r3][n] - self.pop[r4][n] - self.pop[r5][n])
+            new_i[n] = self.pop[r1][n] + self.scale * (
+                self.pop[r2][n]
+                + self.pop[r3][n]
+                - self.pop[r4][n]
+                - self.pop[r5][n]
+            )
         return new_i
 
     def SelectSamples(self, i, n):
@@ -325,15 +364,24 @@ class DESolver(object):
     def SetupClassRandomNumberMethods(self):
         np.random.seed(3)  # this yields same results each time run() is run
         self.nonStandardRandomCount = self.pop_size * self.pars_count * 3
-        if self.nonStandardRandomCount < 523:  # set a minimum number of random numbers
+        if (
+            self.nonStandardRandomCount < 523
+        ):  # set a minimum number of random numbers
             self.nonStandardRandomCount = 523
 
-        self.ArrayOfRandomIntegersBetweenZeroAndParameterCount = \
-        np.random.random_integers(0, self.pars_count-1, size=(self.nonStandardRandomCount))
-        self.ArrayOfRandomRandomFloatBetweenZeroAndOne = \
-        np.random.uniform(size=(self.nonStandardRandomCount))
-        self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize \
-        = np.random.random_integers(0, self.pop_size-1, size=(self.nonStandardRandomCount))
+        self.ArrayOfRandomIntegersBetweenZeroAndParameterCount = (
+            np.random.random_integers(
+                0, self.pars_count - 1, size=(self.nonStandardRandomCount)
+            )
+        )
+        self.ArrayOfRandomRandomFloatBetweenZeroAndOne = np.random.uniform(
+            size=(self.nonStandardRandomCount)
+        )
+        self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize = (
+            np.random.random_integers(
+                0, self.pop_size - 1, size=(self.nonStandardRandomCount)
+            )
+        )
         self.randCounter1 = 0
         self.randCounter2 = 0
         self.randCounter3 = 0
@@ -342,16 +390,22 @@ class DESolver(object):
         self.randCounter1 += 1
         if self.randCounter1 >= self.nonStandardRandomCount:
             self.randCounter1 = 0
-        return self.ArrayOfRandomIntegersBetweenZeroAndParameterCount[self.randCounter1]
+        return self.ArrayOfRandomIntegersBetweenZeroAndParameterCount[
+            self.randCounter1
+        ]
 
     def GetClassRandomFloatBetweenZeroAndOne(self):
         self.randCounter2 += 1
         if self.randCounter2 >= self.nonStandardRandomCount:
             self.randCounter2 = 0
-        return self.ArrayOfRandomRandomFloatBetweenZeroAndOne[self.randCounter2]
+        return self.ArrayOfRandomRandomFloatBetweenZeroAndOne[
+            self.randCounter2
+        ]
 
     def GetClassRandomIntegerBetweenZeroAndPopulationSize(self):
         self.randCounter3 += 1
         if self.randCounter3 >= self.nonStandardRandomCount:
             self.randCounter3 = 0
-        return self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize[self.randCounter3]
+        return self.ArrayOfRandomIntegersBetweenZeroAndPopulationSize[
+            self.randCounter3
+        ]
