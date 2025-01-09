@@ -1,12 +1,19 @@
 # Parameter estimation.
 
+Given experimental observations, *parameter estimation* is the tuning of the parameters of an ODE model so that its solutions fit the observations as best as possible, usually using a least-squares measure for fitting.
+
 The **estimation.py** module combines ODE solving with the DE (differential evolution) genetic optimizer.
+
+As indicated in the [basic features](basic_features.md) page, we start by importing `stimator`, and tweeking a bit the matplotlib style for plotting:
 
 ```py exec="true" source="above" session="parst"
 import stimator as st
+from io import StringIO # markdown-exec: hide
+from matplotlib import pyplot as plt
+st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 ```
 
-##  Linear pathway with three reactions
+##  A simple example
 
 ```py exec="true" source="above" session="parst"
 
@@ -62,14 +69,6 @@ bestpars = [(n,v) for n,v,e in best.parameters]
 m2.setp(bestpars)
 for (pname, pvalue) in bestpars:
     print(f"{pname} = {pvalue}")
-```
-
-A bit of styling of the plots:
-
-```py exec="true" source="above" session="parst"
-from io import StringIO # markdown-exec: hide
-from matplotlib import pyplot as plt
-st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 ```
 
 ```py exec="true" source="above" session="parst" html="1"
