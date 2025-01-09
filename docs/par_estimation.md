@@ -10,10 +10,7 @@ import stimator as st
 
 ```py exec="true" source="above" session="parst"
 
-# ----------- Model ------------------------
-
-mdl = """# Example file for S-timator
-title Example 1
+mdl = """title Example 1
 
 vin  : -> x1     , rate = k1
 v2   : x1 ->  x2 , rate = k2 * x1
@@ -53,6 +50,7 @@ t   x1   x2
 ```py exec="true" source="above" session="parst" result="txt"
 best = m1.estimate(timecourses=example_data)
 
+print(best.progress_report) # markdown-exec: hide
 print(best)
 ```
 
@@ -62,7 +60,8 @@ One can update the model parameters to the best fit values and obtain the same t
 m2 = m1.copy()
 bestpars = [(n,v) for n,v,e in best.parameters]
 m2.setp(bestpars)
-print(dict(bestpars))
+for (pname, pvalue) in bestpars:
+    print(f"{pname} = {pvalue}")
 ```
 
 A bit of styling of the plots:
@@ -82,7 +81,6 @@ m2.solve(tf=20.0).plot(ax=ax2, palette='Dark2', xlabel='time')
 buffer = StringIO() # markdown-exec: hide
 f.savefig(buffer, format="svg") # markdown-exec: hide
 print(buffer.getvalue()) # markdown-exec: hide
-
 ```
 
 ## An example with **two time courses**
@@ -115,13 +113,11 @@ timecourse TSH2a.txt
 timecourse TSH2b.txt
 """
 m1 = st.read_model(mdl)
-print(mdl)
-```
 
-```py exec="true" source="above" session="parst" result="txt"
 tcdir = st.get_examples_path()
 
 optimum = m1.estimate(tc_dir=tcdir, names=['SDLTSH', 'HTA'])
+print(optimum.progress_report) # markdown-exec: hide
 print(optimum)
 ```
 
@@ -159,6 +155,7 @@ best = m2.estimate('TSH2a.txt',
                   names=['SDLTSH', 'HTA'], tc_dir=tcdir,
                   opt_settings=dict(pop_size=60))
 
+print(best.progress_report) # markdown-exec: hide
 print(best)
 ```
 
@@ -206,6 +203,7 @@ optimum = mtransf.estimate(tc_dir=tcdir,
                            timecourses='tc_double.txt',
                            names=['sdlx2', 'SDLTSH', 'HTA'])
 
+print(best.progress_report) # markdown-exec: hide
 print(optimum)
 ```
 
