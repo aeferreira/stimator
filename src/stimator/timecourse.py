@@ -53,6 +53,14 @@ class SolutionTimeCourse(object):
 
     __nonzero__ = __bool__
 
+    def items(self):
+        yield ('t', self.t)
+        for i, name in enumerate(self.names):
+            yield (name, self.data.__getitem__(i))
+
+    def to_dict(self):
+        return dict(self.items())
+
     def __getNumberOfTimes(self):
         """Retrieves the number of time points"""
         return self.data.shape[1]

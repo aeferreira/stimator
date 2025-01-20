@@ -145,11 +145,9 @@ class OptimumData(object):
 
 
 class DeODEOptimizer(de.DESolver):
-    """Overides energy function and report functions.
+    """Overides de.DESolver, combining sODE solving with DE.
 
     The energy function solves ODEs and computes a least-squares score.
-    Ticker functions are called on completion of a generation and when
-    optimization finishes.
     """
 
     def __init__(
@@ -158,8 +156,6 @@ class DeODEOptimizer(de.DESolver):
         optSettings,
         tcs,
         weights=None,
-        aMsgTicker=None,
-        anEndComputationTicker=None,
         dump_generations=False,
         dump_predictions=False,
         initial="init",
@@ -169,8 +165,6 @@ class DeODEOptimizer(de.DESolver):
         self.model = model.copy()
         self.model_solvers = []
         self.tc = tcs
-        self.endTicker = anEndComputationTicker
-        self.msgTicker = aMsgTicker
         self.dump_predictions = dump_predictions
         self._dump_generations = dump_generations
 
@@ -285,17 +279,11 @@ class DeODEOptimizer(de.DESolver):
                 self._generation_score_values = []
                 # self.dumpfile = open('generations.txt', 'w')
             self._progress_msgs.append(msg)
-            if not self.msgTicker:
-                print(msg)
-            else:
-                self.msgTicker(msg)
+            print(msg)
         elif phase == 1:
             msg = f"{self.generation:>4d}: {float(self.best_score):f}"
             self._progress_msgs.append(msg)
-            if not self.msgTicker:
-                print(msg)
-            else:
-                self.msgTicker(msg)
+            print(msg)
             if self._dump_generations:
                 self.keep_generation(self.generation)
         elif phase == 2:
@@ -303,7 +291,7 @@ class DeODEOptimizer(de.DESolver):
         elif phase == 3:
             success = self.exitCode > 0
             self.generate_optimum(success)
-            if not self.endTicker and success:
+            if success:
                 ttime = time.time() - self.start_time
                 code = de.DESolver.exit_messages[self.exitCode]
                 res = (
@@ -316,8 +304,6 @@ class DeODEOptimizer(de.DESolver):
                 res = "\n".join(res)
                 self._progress_msgs.append(res)
                 print(res)
-            else:
-                self.endTicker(success)
 
             self.optimum.progress_report = self.get_progress_report()
 

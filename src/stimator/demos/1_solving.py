@@ -1,5 +1,6 @@
 import stimator as st
 from matplotlib import pyplot as plt
+import pandas as pd
 from stimator.examples import models
 
 print("---------------- EXAMPLE 1 ------------------")
@@ -23,7 +24,8 @@ init: (x1=0, x2=0)
 m = st.read_model(mdl)
 
 with st.style.context("st-bmh"):
-    m.solve(tf=5.0).plot(xlabel="time", ylabel="conc", palette="Dark2")
+    sol1 = m.solve(tf=5.0)
+    sol1.plot(xlabel="time", ylabel="conc", palette="Dark2")
 
     plt.text(
         2.8,
@@ -138,3 +140,9 @@ with st.style.context("st-seaborn"):
     f, ax = plt.subplots(figsize=(9, 6))
     solstairs.plot(ax=ax, legend="out")
     plt.show()
+
+print("---- transformation of timecourses to Pandas dataframes -----------")
+
+stairs = pd.DataFrame(sol1.to_dict()).set_index("t")
+
+print(stairs)
