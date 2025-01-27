@@ -14,6 +14,42 @@ import numpy as np
 import scipy.optimize
 
 
+def default_report_function(optimizer, phase: int = 0):
+    """Pluggable reporting function customizable in derived classes.
+
+    The function should be overidden in derived classes.
+
+    phase is an integer indicating the phase of DE:
+    0: initial, before optimization begins
+    1: on completion of each generation
+    2: end of DE, before refining optimum
+    3: final, after end result computed or after failure"""
+    if phase == 0:
+        print("Solving...")
+        # initialize stopwatch
+        optimizer.start_time = time.time()
+    elif phase == 1:
+        print(f"{optimizer.generation:-4d}: {optimizer.best_score:f}")
+    elif phase == 2:
+        print("refining optimum...")
+    elif phase == 3:
+        ttime = time.time() - optimizer.start_time
+        code = optimizer.exit_messages[optimizer.exitCode]
+        res = [
+            "Done!",
+            f"{code} in {optimizer.generation} generations.",
+            f"best score = {optimizer.best_score:f}",
+            f"best solution: {optimizer.best}",
+        ]
+        res = "\n" + "\n".join(res)
+        took_msg = "\nOptimization took {:.3f} s ({})".format
+        res += took_msg(ttime, utils.s2HMS(ttime))
+        print(res)
+    else:
+        pass
+
+
+
 class DESolver(object):
     def __init__(
         self,
@@ -28,8 +64,11 @@ class DESolver(object):
         max_generations=200,
         conv_noimprov=20,
         useClassRandomNumberMethods=False,
+        report_function=default_report_function,
     ):
         np.random.seed(3)
+
+        self.report_function = report_function
 
         self.max_generations = max_generations
         self._conv_noimprov = conv_noimprov
@@ -77,40 +116,6 @@ class DESolver(object):
         "Solution found by convergence criterium",
     )
 
-    def report_function(self, phase: int):
-        """Pluggable reporting function customizable in derived classes.
-
-        The function should be overidden in derived classes.
-
-        phase is an integer indicating the phase of DE:
-        0: initial, before optimization begins
-        1: on completion of each generation
-        2: end of DE, before refining optimum
-        3: final, after end result computed or after failure"""
-        if phase == 0:
-            print("Solving...")
-            # initialize stopwatch
-            self.start_time = time.time()
-        elif phase == 1:
-            print(f"{self.generation:-4d}: {self.best_score:f}")
-        elif phase == 2:
-            print("refining optimum...")
-        elif phase == 3:
-            ttime = time.time() - self.start_time
-            code = DESolver.exitCodeStrings[self.exitCode]
-            res = [
-                "Done!",
-                f"{code} in {self.generation} generations.",
-                f"best score = {self.best_score:f}",
-                f"best solution: {self.best}",
-            ]
-            res = "\n" + "\n".join(res)
-            took_msg = "\nOptimization took {:.3f} s ({})".format
-            res += took_msg(ttime, utils.s2HMS(ttime))
-            print(res)
-        else:
-            pass
-
     # this class might normally be subclassed and this method overridden,
     # or the self.external_score_function(individual) set
     # and this method used as is
@@ -141,7 +146,8 @@ class DESolver(object):
             return
 
         if self.generation == 0:  # compute energies for generation 0
-            self.report_function(0)
+            if self.report_function is not None:
+                self.report_function(self, phase=0)
             for i in range(self.pop_size):
                 score, self.at_solution = self.score_function(
                     np.copy(self.pop[i])
@@ -150,7 +156,8 @@ class DESolver(object):
                 if score < self.best_score:
                     self.best_score = score
                     self.best = np.copy(self.pop[i])
-            self.report_function(1)
+            if self.report_function is not None:
+                self.report_function(self, phase=1)
             if not self.at_solution:
                 self.gen_no_improv += 1
 
@@ -190,7 +197,8 @@ class DESolver(object):
                 # the best score. Copy the current values
                 self.best, self.best_score = new_i, score
 
-        self.report_function(1)
+        if self.report_function is not None:
+            self.report_function(self, phase=1)
         if not self.at_solution:
             self.gen_no_improv += 1
         return
@@ -200,12 +208,14 @@ class DESolver(object):
         if self.exitCode == 0:
             self.exitCode = -1
         if self.exitCode > 0:
-            self.report_function(2)
+            if self.report_function is not None:
+                self.report_function(self, phase=2)
             self.best = scipy.optimize.fmin(
-                self.external_score_function, self.best, disp=0
+                self.external_score_function, self.best, disp=0,
             )
             self.best_score, self.at_solution = self.score_function(self.best)
-        self.report_function(3)
+        if self.report_function is not None:
+            self.report_function(self, phase=3)
 
     def run(self):
         while self.exitCode == 0:

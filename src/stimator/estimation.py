@@ -143,6 +143,87 @@ class OptimumData(object):
 #         Class to perform DE optimization for ODE systems
 # ----------------------------------------------------------------------------
 
+def txt_report_function(optimizer, phase: int = 0):
+    """DESolver overidden function.
+
+    phase is an integer indicating the phase of DE:
+    0: initial, before optimization begins
+    1: on completion of each generation
+    2: end of DE, before refining optimum
+    3: final, after end result computed or after failure"""
+    if phase == 0:
+        msg = f"\nNOW Solving {optimizer.model.metadata.get('title', '')}..."
+        # initialize stopwatch
+        optimizer.start_time = time.time()
+        if optimizer._dump_generations:
+            optimizer._generation_popvalues = []
+            optimizer._generation_score_values = []
+            # optimizer.dumpfile = open('generations.txt', 'w')
+        optimizer._progress_msgs.append(msg)
+        print(msg)
+    elif phase == 1:
+        msg = f"{optimizer.generation:>4d}: {float(optimizer.best_score):f}"
+        optimizer._progress_msgs.append(msg)
+        print(msg)
+        if optimizer._dump_generations:
+            optimizer.keep_generation(optimizer.generation)
+    elif phase == 2:
+        print("refining optimum...")
+    elif phase == 3:
+        success = optimizer.exitCode > 0
+        optimizer.generate_optimum(success)
+        if success:
+            ttime = time.time() - optimizer.start_time
+            code = de.DESolver.exit_messages[optimizer.exitCode]
+            res = (
+                "\nOptimization completed!",
+                f"{code} in {optimizer.generation:d} generations.",
+                f"best score = {optimizer.best_score:f}",
+                f"best solution: {optimizer.best}",
+                f"Optimization took {ttime:.3f} s ({utils.s2HMS(ttime)})",
+            )
+            res = "\n".join(res)
+            optimizer._progress_msgs.append(res)
+            print(res)
+
+        optimizer.optimum.progress_report = optimizer.get_progress_report()
+
+        if optimizer._dump_generations:
+            optimizer.keep_generation(optimizer.generation)
+    else:
+        pass
+
+
+def silent_report_function(optimizer, phase: int = 0):
+    """DESolver overidden function.
+
+    phase is an integer indicating the phase of DE:
+    0: initial, before optimization begins
+    1: on completion of each generation
+    2: end of DE, before refining optimum
+    3: final, after end result computed or after failure"""
+    if phase == 0:
+        # initialize stopwatch
+        optimizer.start_time = time.time()
+        if optimizer._dump_generations:
+            optimizer._generation_popvalues = []
+            optimizer._generation_score_values = []
+            # optimizer.dumpfile = open('generations.txt', 'w')
+    elif phase == 1:
+        if optimizer._dump_generations:
+            optimizer.keep_generation(optimizer.generation)
+    elif phase == 2:
+        pass
+    elif phase == 3:
+        success = optimizer.exitCode > 0
+        optimizer.generate_optimum(success)
+        optimizer.optimum.progress_report = optimizer.get_progress_report()
+
+        if optimizer._dump_generations:
+            optimizer.keep_generation(optimizer.generation)
+    else:
+        pass
+
 
 class DeODEOptimizer(de.DESolver):
     """Overides de.DESolver, combining sODE solving with DE.
@@ -161,6 +242,7 @@ class DeODEOptimizer(de.DESolver):
         initial="init",
         max_generations=200,
         convergence_noimprovement=20,
+        report_function=txt_report_function,
     ):
         self.model = model.copy()
         self.model_solvers = []
@@ -185,6 +267,9 @@ class DeODEOptimizer(de.DESolver):
             optSettings["max_generations"] = optSettings["generations"]
         max_generations = optSettings["max_generations"]
 
+        if report_function is None:
+            report_function = silent_report_function
+
         # initialize base class
         de.DESolver.__init__(
             self,
@@ -199,6 +284,7 @@ class DeODEOptimizer(de.DESolver):
             0.0,
             max_generations=max_generations,
             conv_noimprov=convergence_noimprovement,
+            report_function = report_function,
         )
 
         # cutoffEnergy is 1e-6 of deviation from data
@@ -233,6 +319,9 @@ class DeODEOptimizer(de.DESolver):
         self.timecourse_scores = empty(len(self.tc))
         self._progress_msgs = []
 
+        # set report function
+        self.report_function = report_function
+
     def compute_solution(self, i, trial, dense=None):
         """Computes solution for timecourse i, given parameters trial."""
 
@@ -261,56 +350,6 @@ class DeODEOptimizer(de.DESolver):
 
         globalscore = self.timecourse_scores.sum()
         return globalscore
-
-    def report_function(self, phase: int):
-        """DESolver overidden function.
-
-        phase is an integer indicating the phase of DE:
-        0: initial, before optimization begins
-        1: on completion of each generation
-        2: end of DE, before refining optimum
-        3: final, after end result computed or after failure"""
-        if phase == 0:
-            msg = f"\nSolving {self.model.metadata.get('title', '')}..."
-            # initialize stopwatch
-            self.start_time = time.time()
-            if self._dump_generations:
-                self._generation_popvalues = []
-                self._generation_score_values = []
-                # self.dumpfile = open('generations.txt', 'w')
-            self._progress_msgs.append(msg)
-            print(msg)
-        elif phase == 1:
-            msg = f"{self.generation:>4d}: {float(self.best_score):f}"
-            self._progress_msgs.append(msg)
-            print(msg)
-            if self._dump_generations:
-                self.keep_generation(self.generation)
-        elif phase == 2:
-            print("refining optimum...")
-        elif phase == 3:
-            success = self.exitCode > 0
-            self.generate_optimum(success)
-            if success:
-                ttime = time.time() - self.start_time
-                code = de.DESolver.exit_messages[self.exitCode]
-                res = (
-                    "\nOptimization completed!",
-                    f"{code} in {self.generation:d} generations.",
-                    f"best score = {self.best_score:f}",
-                    f"best solution: {self.best}",
-                    f"Optimization took {ttime:.3f} s ({utils.s2HMS(ttime)})",
-                )
-                res = "\n".join(res)
-                self._progress_msgs.append(res)
-                print(res)
-
-            self.optimum.progress_report = self.get_progress_report()
-
-            if self._dump_generations:
-                self.keep_generation(self.generation)
-        else:
-            pass
 
     def get_progress_report(self):
         return "\n".join(self._progress_msgs)
@@ -529,16 +568,22 @@ timecourse TSH2b.txt
     tcdir = get_examples_path()
 
     optimum = s_timate(
-        m1, tc_dir=tcdir, names=["SDLTSH", "HTA"], dump_generations=True
+        m1, tc_dir=tcdir, names=["SDLTSH", "HTA"],
+        dump_generations=True,
+        report_function=None,
     )
     # convergence_noimprovement=40)
     # ... intvarsorder=(0,2,1) ...
 
     print(optimum)
 
-    optimum.plot(0, xlabel="t (s)", ylabel="conc (microM)")
-    plt.show()
-    optimum.plot(1, xlabel="t (s)", ylabel="conc (microM)")
+    print("\n----- Progress report -------")
+    print(optimum.progress_report)
+    print("----- End of progress report -\n\n")
+
+    f, (axl, axr) = plt.subplots(1, 2, figsize=(9, 4), tight_layout=True)
+    optimum.plot(0, ax=axl, xlabel="t (s)", ylabel="conc (microM)")
+    optimum.plot(1, ax=axr, xlabel="t (s)", ylabel="conc (microM)")
     plt.show()
 
     # optimum.print_generations()
