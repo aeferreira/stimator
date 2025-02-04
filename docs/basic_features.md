@@ -225,6 +225,52 @@ print(tc.last)
 
 `last` is returned as a *Python dictionary*.
 
+The whole time course can also be displayed as text, using Python's function `print()`.
+This will usually produce long and a bit unpleasant output of numbers.
+
+However if a Python module for working with tabular data is installed, a better-looking output can be obtained.
+
+For `pandas`, for instance, a time course can be transformed into a `pandas`' `DataFrame`, by transforming the time course into a Python *dictionary* and then using
+the `DataFrame` constructor on this dictionary:
+
+```py exec="true" source="above" session="basicdemo" result="txt"
+# Remove the # in the next line if you want the whole text of tc
+# print(tc)
+
+import pandas as pd
+df = pd.DataFrame(tc.to_dict()).set_index("t")
+print(df)
+print('===============\n')
+buffer = df.to_string(show_dimensions=False, max_rows=10, index_names=False)
+print(buffer)
+from tabulate import tabulate
+print("+++++++++++++++++")
+data = [line.split() for line in buffer.splitlines()]
+data[0].insert(0, "t")
+print(data)
+print("--now   tabulate...")
+print(tabulate(data, tablefmt="github", headers="firstrow", numalign="decimal", floatfmt=".3f"))
+print('\n\n===============\n')
+new_df = pd.read_csv(StringIO(buffer), sep=r'\s+')
+new_df.index.name="t"
+print(new_df)
+print('++++++++++\n')
+print(new_df.to_markdown(numalign="decimal", floatfmt=".3f"))
+print('===============\n')
+whole = df.to_markdown(floatfmt=".3f", stralign="left")
+lines = whole.splitlines()
+short = [line for i, line in enumerate(lines) if i < 7 or i > len(lines)- 6]
+short.insert(7, "|"+"... |"*(short[0].count("|") - 1))
+short = "\n".join(short)
+print(short)
+```
+
+```py exec="true" source="above" session="basicdemo"
+df
+#print(df.to_markdown(floatfmt=".4f", stralign="center"))  # markdown-exec: hide
+print(short)
+```
+
 
 ## Inflows and outflows
 

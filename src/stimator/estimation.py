@@ -143,6 +143,7 @@ class OptimumData(object):
 #         Class to perform DE optimization for ODE systems
 # ----------------------------------------------------------------------------
 
+
 def txt_report_function(optimizer, phase: int = 0):
     """DESolver overidden function.
 
@@ -284,7 +285,7 @@ class DeODEOptimizer(de.DESolver):
             0.0,
             max_generations=max_generations,
             conv_noimprov=convergence_noimprovement,
-            report_function = report_function,
+            report_function=report_function,
         )
 
         # cutoffEnergy is 1e-6 of deviation from data
@@ -568,7 +569,9 @@ timecourse TSH2b.txt
     tcdir = get_examples_path()
 
     optimum = s_timate(
-        m1, tc_dir=tcdir, names=["SDLTSH", "HTA"],
+        m1,
+        tc_dir=tcdir,
+        names=["SDLTSH", "HTA"],
         dump_generations=True,
         report_function=None,
     )

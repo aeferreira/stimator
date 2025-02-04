@@ -7,5 +7,7 @@ packages = ["src/stimator"]
 [envs.docs]
 dependencies = [
   "mkdocs-material",
-  "markdown-exec[ansi]"
+  "markdown-exec[ansi]",
+  "pandas",
+  "tabulate",
 ]
