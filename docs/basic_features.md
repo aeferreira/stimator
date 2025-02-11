@@ -240,37 +240,20 @@ the `DataFrame` constructor on this dictionary:
 import pandas as pd
 df = pd.DataFrame(tc.to_dict()).set_index("t")
 print(df)
-print('===============\n')
-buffer = df.to_string(show_dimensions=False, max_rows=10, index_names=False)
-print(buffer)
-from tabulate import tabulate
-print("+++++++++++++++++")
-data = [line.split() for line in buffer.splitlines()]
-data[0].insert(0, "t")
-print(data)
-print("--now   tabulate...")
-print(tabulate(data, tablefmt="github", headers="firstrow", numalign="decimal", floatfmt=".3f"))
-print('\n\n===============\n')
-new_df = pd.read_csv(StringIO(buffer), sep=r'\s+')
-new_df.index.name="t"
-print(new_df)
-print('++++++++++\n')
-print(new_df.to_markdown(numalign="decimal", floatfmt=".3f"))
-print('===============\n')
-whole = df.to_markdown(floatfmt=".3f", stralign="left")
-lines = whole.splitlines()
-short = [line for i, line in enumerate(lines) if i < 7 or i > len(lines)- 6]
-short.insert(7, "|"+"... |"*(short[0].count("|") - 1))
-short = "\n".join(short)
-print(short)
 ```
 
 ```py exec="true" source="above" session="basicdemo"
 df
-#print(df.to_markdown(floatfmt=".4f", stralign="center"))  # markdown-exec: hide
-print(short)
+whole = df.to_markdown(numalign="decimal", floatfmt=".4f", stralign="center")  # markdown-exec: hide
+def keep_only_n_rows(whole, n=5):  # markdown-exec: hide
+    lines = whole.splitlines()  # markdown-exec: hide
+    nlins = len(lines)  # markdown-exec: hide
+    short = [lin for i, lin in enumerate(lines) if i < n+2 or i > nlins-n-1]  # markdown-exec: hide
+    short.insert(n+2, "|"+"... |"*(short[0].count("|") - 1))  # markdown-exec: hide
+    return "\n".join(short)  # markdown-exec: hide
+short = keep_only_n_rows(whole)  # markdown-exec: hide
+print(short) # markdown-exec: hide
 ```
-
 
 ## Inflows and outflows
 
