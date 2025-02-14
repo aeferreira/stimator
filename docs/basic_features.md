@@ -34,7 +34,8 @@ To keep it simple, let's start by looking at the following system of two chemica
 
 ![Example: a two-reaction chemical system](images/2chem.png)
 
-This *reaction scheme* indicates that a chemical species A is transformed into B by reaction 1 and, in turn, B is transformed into C by reaction 2. The arrows mean that reaction 1 is *almost irreversible*, whereas reaction 2 is *reversible*.
+This *reaction scheme* indicates that a chemical species A is transformed into B by a chemical reaction and, in turn, B is transformed into C by another reaction.
+The arrows and the numbering mean that the first reaction 1 is *almost irreversible*, whereas the second is *reversible*, whith forward and reverse half-reactions denoted by 1 an2, respectively.
 
 
 If we consider that the **reactions are *processes*** and the **concentrations of the chemical species are the *variables***, we are starting to formulate a kinetic model about this system.
@@ -46,7 +47,7 @@ In simple chemical reactions, if the temperature is approximately constant, it i
 
 $$ v_1 = k_1 \cdot A, \qquad v_2 = k_2 \cdot B - k_3 \cdot C $$
 
-Here, $v_1$ and $v_2$ represent the rates of the reactions 1 and 2, respectively, $A$, $B$ and $C$ represent the concentrations of the chemical species and $k_1$, $k_2$ and $k_3$ are constants appearing in the mathematical expressions of the rates. These constants are called **parameters** of the model.
+Here, $v_1$ and $v_2$ represent the rates of the two reactions, $A$, $B$ and $C$ represent the concentrations of the chemical species and $k_1$, $k_2$ and $k_3$ are constants appearing in the mathematical expressions of the rates of the three half-reactions. These constants are called **parameters** of the model.
 
 The values of the parameters must also be indicated in a kinetic model:
 
@@ -230,11 +231,15 @@ This will usually produce long and a bit unpleasant output of numbers.
 
 However if a Python module for working with tabular data is installed, a better-looking output can be obtained.
 
+Time couses havd a `to_dict()` function (*class merthod*) to obtain a Python *dictionary*. After
+applying this fucntion, most tabular-data handling modules can use Python dictionaries
+in the constructors of their primary data structures.
+
 For `pandas`, for instance, a time course can be transformed into a `pandas`' `DataFrame`, by transforming the time course into a Python *dictionary* and then using
 the `DataFrame` constructor on this dictionary:
 
 ```py exec="true" source="above" session="basicdemo" result="txt"
-# Remove the # in the next line if you want the whole text of tc
+# Remove the # in the next line if you want the whole time course as text
 # print(tc)
 
 import pandas as pd
@@ -242,17 +247,20 @@ df = pd.DataFrame(tc.to_dict()).set_index("t")
 print(df)
 ```
 
-```py exec="true" source="above" session="basicdemo"
-df
-whole = df.to_markdown(numalign="decimal", floatfmt=".4f", stralign="center")  # markdown-exec: hide
-def keep_only_n_rows(whole, n=5):  # markdown-exec: hide
-    lines = whole.splitlines()  # markdown-exec: hide
-    nlins = len(lines)  # markdown-exec: hide
-    short = [lin for i, lin in enumerate(lines) if i < n+2 or i > nlins-n-1]  # markdown-exec: hide
-    short.insert(n+2, "|"+"... |"*(short[0].count("|") - 1))  # markdown-exec: hide
-    return "\n".join(short)  # markdown-exec: hide
-short = keep_only_n_rows(whole)  # markdown-exec: hide
-print(short) # markdown-exec: hide
+To obtain an even better data display, notice that if using a rich Python interactive prompts or a platform capable of using computing document formats such as Jupyter notebooks,
+indicating a DataFrame object as the last line in a cell will render it as a web-friendly (*HTML*) table.
+
+```py exec="true" source="above" session="basicdemo" html="1"
+df=df.reset_index()  # markdown-exec: hide
+nhr = 5; precision = 4  # markdown-exec: hide
+s = df.style.format(precision=precision).format(lambda s: '...', subset=(nhr, slice(None))).hide(subset=range(nhr+1,len(df)-nhr)).hide()  # markdown-exec: hide
+s.set_table_styles([   # markdown-exec: hide
+    {'selector': 'td', 'props': 'text-align: right;'},  # markdown-exec: hide
+    {'selector': 'td.col0', 'props': 'font-weight:bold;'},  # markdown-exec: hide
+    {'selector': 'th.col_heading', 'props': 'text-align: center;'},  # markdown-exec: hide
+], overwrite=False)  # markdown-exec: hide
+print(s.to_html())  # markdown-exec: hide
+df # this will display the time course as a HTML table in the Jupyter compatible platforms
 ```
 
 ## Inflows and outflows
