@@ -24,8 +24,8 @@ For a brief introduction check out the [basic features](basic_features.md) mini-
 
 S-timator requires Python >= 3.8.
 
-It is recomended that S-timator is installed in a virtual environment, for example,
-using [venv environments](https://docs.python.org/3/library/venv.html) or [conda environments](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html).
+It is recomended that S-timator is installed in a virtual environment. For example,
+ [venv environments](https://docs.python.org/3/library/venv.html) or [conda environments](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html) are suitable options.
 
 The latest stable version of *S-timator* can be installed from the [Python Package Index](https://pypi.python.org/pypi), with `pip`:
 
@@ -61,11 +61,22 @@ python -m pip install stimator
 
 The following example showcases the how a solution of an ODE system can be obtained and plotted:
 
-```py
+``` py exec="true" source="above" session="index"
 import stimator as st
 st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 
 model="""
+
+title A simple chemical system
+
+r1: A -> B, rate = k1 * A
+r2: B -> C, rate = k2 * B - k3 * C
+
+k1 = 0.1
+k2 = 2
+k3 = 1
+
+init: (A = 1)
 
 """
 ```
