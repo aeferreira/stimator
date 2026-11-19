@@ -112,7 +112,7 @@ def _gen_canonical_symbmap(model, extra_id_list=None):
         extra_id_list = []
 
     for i, x in enumerate(chain(model.varnames, par_names, extra_id_list)):
-        name = "_symbol_Id%d" % i
+        name = f"_symbol_Id{i:d}"
         symbmap[x] = name
         sympysymbs[name] = sympy.Symbol(name)
 
@@ -122,13 +122,13 @@ def _gen_canonical_symbmap(model, extra_id_list=None):
 def _replace_exprs2canonical(s, symbmap):
     for symb in symbmap:
         symbesc = symb.replace(".", r"\.")
-        s = re.sub(r"(?<![_.])\b%s\b(?![_.\[])" % symbesc, symbmap[symb], s)
+        s = re.sub(rf"(?<![_.])\b{symbesc}\b(?![_.\[])", symbmap[symb], s)
     return s
 
 
 def _replace_canonical2exprs(s, symbmap):
     for symb in symbmap:
-        s = re.sub(r"(?<![.])\b%s\b" % symbmap[symb], symb, s)
+        s = re.sub(rf"(?<![.])\b{symbmap[symb]}\b", symb, s)
     return s
 
 
@@ -233,7 +233,8 @@ def add_dSdt_to_model(m, pars):
     for x in vnames:
         new_row = []
         for p in pars:
-            Sname = "d_%s_d_%s" % (x, p.replace(".", "_"))
+            underlined = p.replace(".", "_")
+            Sname = f'd_{x}_d_{underlined}'
             new_row.append(Sname)
             Snames.append((x, p, Sname))
         Smatrix.append(new_row)
@@ -255,7 +256,7 @@ def add_dSdt_to_model(m, pars):
             resstr = dfdpstrs[i][j] if init_of[j] is None else ""
             # matrix multiplication with strings:
             for k in range(nvars):
-                resstr = resstr + "+(%s)*(%s)" % (J[i][k], Smatrix[k][j])
+                resstr = resstr + f"+({J[i][k]})*({Smatrix[k][j]})"
             dres = _simplify_expr(resstr, symbols=symbols)
 
             # add new variable to model
@@ -280,19 +281,19 @@ def calc_string(rateString, symbmap):
 def _gen_calc_symbmap(model, with_uncertain=False):
     symbmap = {}
     for i, x in enumerate(model.varnames):
-        symbname = "variables[%d]" % i
+        symbname = f"variables[{i:d}]"
         symbmap[x] = symbname
     for i, invar in enumerate(model.input_variables):
-        symbname = "input_variables[%d]" % i
+        symbname = f"input_variables[{i:d}]"
         symbmap[invar.name] = symbname
     if with_uncertain:
         for i, u in enumerate(model.with_bounds):
-            symbname = "m_Parameters[%d]" % i
+            symbname = f"m_Parameters[{i:d}]"
             symbmap[u.name] = symbname
     for p in model.parameters:
         if p.bounds and with_uncertain:
             continue
-        valuestr = "%g" % p
+        valuestr = f"{p:g}"
         symbmap[p.name] = valuestr
 
     return symbmap
@@ -372,7 +373,7 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
 
         for i, p in enumerate(model.with_bounds):
             if p.name == name:
-                c_str = "m_Parameters[{}]".format(i)
+                c_str = f"m_Parameters[{i}]"
                 out_bytecode.append(compile(c_str, "<string>", "eval"))
                 exist = True
                 break
@@ -392,7 +393,7 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
             continue
         try:
             i = model._Model__variables.index(name)
-            c_str = "variables[{}]".format(i)
+            c_str = f"variables[{i}]"
             out_bytecode.append(compile(c_str, "<string>", "eval"))
             continue
         except ValueError:
@@ -403,11 +404,11 @@ def get_outputs_function(model, with_uncertain=False, out_names=None):
             continue
         i = model._Model__invars.iget(name)
         if i is not None:
-            c_str = "input_variables[{}]".format(i)
+            c_str = f"input_variables[{i}]"
             out_bytecode.append(compile(c_str, "<string>", "eval"))
             continue
         if not exist:
-            error_msg = "{} is not a component in this model".format(name)
+            error_msg = f"{name} is not a component in this model"
             raise AttributeError(error_msg)
 
     _out_rates = np.empty(len(out_bytecode))
@@ -615,7 +616,7 @@ def solve(
     return sol
 
 
-class ModelSolver(object):
+class ModelSolver:
     def __init__(
         self,
         model,
@@ -782,7 +783,7 @@ def scan(
     if titles is None:
         titles = []
         for run_values in scan_values:
-            pairs = ["%s = %g" % (n, v) for (n, v) in zip(names, run_values)]
+            pairs = [f"{n:s} = {v:g}" for (n, v) in zip(names, run_values)]
             titles.append(", ".join(pairs))
 
     ms = ModelSolver(

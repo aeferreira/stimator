@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 import pandas as pd
 from stimator.examples import models
 
+plt.rcParams["mathtext.fontset"] = "cm"
+
 print("---------------- EXAMPLE 1 ------------------")
 mdl = """# Example file for S-timator
 title Example 1
@@ -23,19 +25,19 @@ init: (x1=0, x2=0)
 
 m = st.read_model(mdl)
 
-with st.style.context("st-bmh"):
-    sol1 = m.solve(tf=5.0)
-    sol1.plot(xlabel="time", ylabel="conc", palette="Dark2")
+st.style.use("st-bmh")
+sol1 = m.solve(tf=5.0)
+sol1.plot(xlabel="time", ylabel="conc", palette="Dark2")
 
-    plt.text(
-        2.8,
-        0.7,
-        r" ⟶ x1 ⟶ x2 ⟶ ",
-        fontsize="x-large",
-        bbox=dict(fc="white", ec="steelblue", lw=2),
-    )
+plt.text(
+    2.8,
+    0.7,
+    r" ⟶ x1 ⟶ x2 ⟶ ",
+    fontsize="x-large",
+    bbox={"fc": "white", "ec": "steelblue", "lw": 2},
+)
 
-    plt.show()
+plt.show()
 
 print("---------------- EXAMPLE 2 ------------------")
 mtext = """
@@ -56,14 +58,14 @@ m1 = st.read_model(mtext)
 
 solution1 = m1.solve(tf=50, title="two enzymes, use !! A C ~")
 solution1a = m1.solve(
-    tf=50, outputs="A B C sum".split(), title="explicit outputs=[A, B, C, sum]"
+    tf=50, outputs=['A', 'B', 'C', 'sum'], title="explicit outputs=[A, B, C, sum]"
 )
 solution1v = m1.solve(tf=100, outputs=">>", title='outputs=">>"')
 
 print("--- Last time point ----")
 print("At t =", solution1.t[-1])
 for x in solution1.last:
-    print("%-8s= %f" % (x, solution1.last[x]))
+    print(f"{x:>8s} = {solution1.last[x]:f}")
 
 print("---------------- EXAMPLE 3 ------------------")
 m3 = st.read_model(models.ca.text)
@@ -76,7 +78,7 @@ m4 = st.read_model(models.rossler.text)
 
 print(m4)
 
-solution4 = m4.solve(tf=100.0, npoints=2000, outputs="x1 x2 x3".split())
+solution4 = m4.solve(tf=100.0, npoints=2000, outputs=['x1', 'x2', 'x3'])
 solution4b = m4.solve(
     tf=100.0, npoints=2000, outputs="~", title='Rossler, outputs="~"'
 )
@@ -98,7 +100,7 @@ sols = st.Solutions(
 )
 
 with st.style.context("st-seaborn-whitegrid"):
-    f, axs = st.plots.prepare_grid(sols, figsize=(9, 6))
+    f, axs = sols.prepare_grid(figsize=(9, 6))
     sols.plot(axs=axs, palette="Set1")
     plt.show()
 
@@ -114,7 +116,7 @@ with st.style.context("st-seaborn-whitegrid"):
     sols2.plot(
         what="Ca", axs=axs, legend=False, ylim=(0, 1.5), xlabel="$t$ (min)"
     )
-    suptitle = "Cytosolic $Ca^{2+}$ as a function of stimulus strength"
+    suptitle = r"Cytosolic $\mathrm{Ca}^{2+}$ as a function of stimulus strength"
     f.suptitle(suptitle)
     plt.show()
 

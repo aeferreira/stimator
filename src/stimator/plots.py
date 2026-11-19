@@ -1,16 +1,16 @@
 import math
 from itertools import cycle
 from string import Template
-import numpy as np
+
 import matplotlib as mpl
+import numpy as np
+from cycler import Cycler, cycler
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
-from cycler import cycler, Cycler
-
 from packaging.version import Version
 
-from stimator.utils import _is_string, _is_sequence
 import stimator as st
+from stimator.utils import _is_sequence, _is_string
 
 
 def _find_what_to_plot(timecourse, what):
@@ -19,7 +19,7 @@ def _find_what_to_plot(timecourse, what):
     if _is_string(what):
         what = [what]
     if not _is_sequence(what):
-        raise ValueError(f"No data for {str(what)} in timecourse")
+        raise ValueError(f"No data for {what:s} in timecourse")
     cols2plot = []
     for elem in what:
         if isinstance(elem, int):
@@ -31,7 +31,7 @@ def _find_what_to_plot(timecourse, what):
                 raise ValueError(f"Index {elem} out of range in timecourse")
         elif _is_string(elem):
             if elem not in timecourse.names:
-                raise ValueError(f"No data for {str(elem)} in timecourse")
+                raise ValueError(f"No data for {elem:s} in timecourse")
             if elem not in cols2plot:
                 cols2plot.append(elem)
     return cols2plot
@@ -201,9 +201,8 @@ def plot_timecourse(timecourse, what=None, ax=None,
 
     # remove the left margin for the x-axis
     # to start the plot at t0, if 'tight_t0'
-    if tight_t0:
-        if timecourse.t[0] < timecourse.t[-1]:
-            ax.set_xlim(timecourse.t[0], None)
+    if tight_t0 and (timecourse.t[0] < timecourse.t[-1]):
+        ax.set_xlim(timecourse.t[0], None)
     return ax
 
 
@@ -220,7 +219,7 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
     symsol = opt.optimum_dense_tcs[tc_index]
 
     if exp_style is None:
-        exp_style = dict(marker='o', linestyle='none')
+        exp_style = {"marker": 'o', "linestyle": 'none'}
 
     # retrieve 'prop_cycle' and 'palette' and 'styling' arguments
     prop_cycle = axes_settings.pop('prop_cycle', None)
@@ -292,9 +291,8 @@ def plot_estim_optimum_timecourse(opt, tc_index=0, ax=None, title=None,
 
     # remove the left margin for the x-axis
     # to start the plot at t0
-    if tight_t0:
-        if symsol.t[0] < symsol.t[-1]:
-            ax.set_xlim(symsol.t[0], None)
+    if tight_t0 and (symsol.t[0] < symsol.t[-1]):
+        ax.set_xlim(symsol.t[0], None)
 
     return ax
 
@@ -352,9 +350,8 @@ def one_plot(time_courses, what=None, ax=None, label_fmt='${title}: ${name}',
 
     # remove the left margin for the x-axis
     # to start the plot at t0, if 'tight_t0'
-    if tight_t0:
-        if time_courses[0].t[0] < time_courses[0].t[-1]:
-            ax.set_xlim(time_courses[0].t[0], None)
+    if tight_t0 and (time_courses[0].t[0] < time_courses[0].t[-1]):
+        ax.set_xlim(time_courses[0].t[0], None)
     return ax
 
 
@@ -376,8 +373,8 @@ def prepare_grid(sols, layout_style=None, **kwargs):
 
     # compute shape of grid
     if not ('nrows' in kwargs or 'ncols' in kwargs):
-        ncols = int(math.ceil(math.sqrt(nplts)))
-        nrows = int(math.ceil(float(nplts)/ncols))
+        ncols = math.ceil(math.sqrt(nplts))
+        nrows = math.ceil(float(nplts)/ncols)
         subplots_kwargs['nrows'] = nrows
         subplots_kwargs['ncols'] = ncols
 
@@ -612,7 +609,7 @@ nothing really usefull here
     plt.show()
 
     f, axs = prepare_grid(only_sol)
-    st = {'*': dict(marker='o')}
+    st = {'*': {"marker": 'o'}}
     only_sol.plot(axs=axs, styling=st, titles=False)
     plt.gcf().suptitle('plot Solutions with only one solution')
     plt.show()

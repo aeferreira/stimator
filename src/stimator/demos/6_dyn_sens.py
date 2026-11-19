@@ -1,8 +1,9 @@
 """S-timator : DEMO of dynamic sensitivities."""
 
+from matplotlib import pyplot as plt
+
 import stimator as st
 from stimator.dynamics import add_dSdt_to_model
-from matplotlib import pyplot as plt
 
 print(__doc__, '\n')
 print("""Sensitivity ODEs are added to model, according to formula:
@@ -29,7 +30,7 @@ print(m)
 
 print('\nAdding sensitivity ODEs -------------------------')
 # pars = ["B", "k1", "K3"] # for calcium model
-pars = "V1 Km1".split()
+pars = ["V1", "Km1"]
 npars = len(pars)
 print('npars =', npars)
 nvars = len(m.varnames)
@@ -46,8 +47,8 @@ sol = m.solve(tf=4030.0)
 plots = st.Solutions([sol.copy(names="HTA SDLTSH", newtitle='X')])
 
 for p in pars:
-    plots.append(sol.copy(names='d_HTA_d_%s d_SDLTSH_d_%s' % (p, p),
-                          newtitle='dX/d' + p))
+    plots.append(sol.copy(names=f'd_HTA_d_{p:s} d_SDLTSH_d_{p:s}',
+                          newtitle=f'$dX/d{p:s}$'))
 
 st.style.use(['st-seaborn-whitegrid', 'seaborn-talk'])
 

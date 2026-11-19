@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from matplotlib import pyplot as plt
 
 from stimator.utils import _is_string
@@ -10,7 +11,7 @@ basic = {'xaxis.labellocation': 'right',
 
 def _process_style_args(args):
 
-    if _is_string(args) or isinstance(args, dict) or isinstance(args, Path):
+    if _is_string(args) or isinstance(args, (dict, Path)):
         args = [args]
 
     # add basic mods to style if starts with st-
@@ -23,7 +24,7 @@ def _process_style_args(args):
         else:
             new_args.append(arg)
 
-    # fix change of names of seaaborn styles in v3.6
+    # fix change of names of seaborn styles in v3.6
     final_args = []
     for arg in new_args:
         if _is_string(arg) and arg.startswith('seaborn'):
