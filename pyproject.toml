@@ -81,3 +81,8 @@ uv = ">=0.13.9,<0.14"
 hatch = ">=1.18.2,<2"
 twine = ">=7.0.0,<8"
 pytest = ">=9.2.0,<10"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
