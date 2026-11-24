@@ -1,12 +1,12 @@
 # import os.path
 import re
+from io import StringIO
 from pathlib import Path
+
 import numpy as np
 
-from io import StringIO
-
-import stimator.plots as plots
-from stimator.utils import _is_string, _is_number, _is_sequence
+from stimator import plots
+from stimator.utils import _is_number, _is_sequence, _is_string
 
 FRAC_PATTERN = r"[-]?\d*[.]?\d+"
 REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
@@ -27,7 +27,7 @@ class StimatorTCError(Exception):
 # ----------------------------------------------------------------------------
 
 
-class SolutionTimeCourse(object):
+class SolutionTimeCourse:
     """Holds a timecourse created by ODE solvers"""
 
     def __init__(self, t=None, data=None, names=None, title="", dense=False):
@@ -61,6 +61,9 @@ class SolutionTimeCourse(object):
     def to_dict(self):
         return dict(self.items())
 
+    def as_dict(self):
+        return self.to_dict()
+
     def __getNumberOfTimes(self):
         """Retrieves the number of time points"""
         return self.data.shape[1]
@@ -78,7 +81,7 @@ class SolutionTimeCourse(object):
             try:
                 i = self.names.index(key)
             except ValueError:
-                raise ValueError("No data for '%s' in timecourse" % str(key))
+                raise ValueError(f"No data for '{key!s}' in timecourse")
             return self.data.__getitem__(i)
         return self.data.__getitem__(key)
 
@@ -87,7 +90,7 @@ class SolutionTimeCourse(object):
 
         Interpolation may be necessary."""
         if t > self.t[-1] or t < self.t[0]:
-            raise ValueError("No data for time '%s' in timecourse" % str(t))
+            raise ValueError(f"No data for time '{t!s}' in timecourse")
         # Interpolate:
         ileft = self.t.searchsorted(t, side="left")
         iright = self.t.searchsorted(t, side="right")
@@ -101,12 +104,12 @@ class SolutionTimeCourse(object):
             y = yl + m * (t - tl)
         else:
             y = self.data[:, ileft]
-        return dict([(x, float(value)) for (x, value) in zip(self.names, y)])
+        return {x: float(value) for (x, value) in zip(self.names, y)}
 
     def i_time(self, t):
         """Retrieves the closest index for time t."""
         if t > self.t[-1] or t < self.t[0]:
-            raise ValueError("No data for time '%s' in timecourse" % str(t))
+            raise ValueError(f"No data for time '{t!s}' in timecourse")
         # Find closest:
         ileft = self.t.searchsorted(t, side="left")
         iright = self.t.searchsorted(t, side="right")
@@ -236,7 +239,7 @@ class SolutionTimeCourse(object):
         return self
 
     def __str__(self):
-        out = ["%s %s" % ("t", " ".join(self.names))]
+        out = ["t {}".format(" ".join(self.names))]
         npoints = len(self.t)
         for i in range(npoints):
             row = [self.t[i]]
@@ -274,7 +277,7 @@ class SolutionTimeCourse(object):
 
     def copy(self, names=[], newtitle=None):
         """Constructs new solution, restricted to the variables in 'names'."""
-        if not (isinstance(names, list) or isinstance(names, tuple)):
+        if not (isinstance(names, (list, tuple))):
             names = names.strip().split()
         t = self.t.copy()
         if names == []:
@@ -282,7 +285,7 @@ class SolutionTimeCourse(object):
         nameindexes = []
         for name in names:
             if name not in self.names:
-                raise ValueError("No data for '%s' in timecourse" % name)
+                raise ValueError(f"No data for '{name}' in timecourse")
             nameindexes.append(self.names.index(name))
         data = self.data[nameindexes, :].copy()
         if newtitle is not None:
@@ -313,7 +316,7 @@ class SolutionTimeCourse(object):
 # ----------------------------------------------------------------------------
 
 
-class Solutions(object):
+class Solutions:
     """Holds a colection of objects of class SolutionTimeCourse"""
 
     def __init__(self, aList=None, title=""):
@@ -349,9 +352,7 @@ class Solutions(object):
         elif isinstance(other, Solutions):
             self.solutions.extend(other.solutions)
         elif (
-            isinstance(other, list)
-            or isinstance(other, tuple)
-            or isinstance(other, set)
+            isinstance(other, (list, tuple, set))
         ):
             for s in other:
                 if not isinstance(s, SolutionTimeCourse):
@@ -449,9 +450,8 @@ def read_tc(source, filedir=None, names=None, title=None, verbose=False):
     else:
         objs = source
 
-    if names is None:
-        if tcsnames is not None:
-            names = tcsnames
+    if names is None and tcsnames is not None:
+        names = tcsnames
 
     # raise Exception if there are no files to read
     if len(objs) == 0:
@@ -558,7 +558,7 @@ def L2_midpoint_weights(timecourses, delta_t, indexes):
             numResult = 0.0
             for t1, t2 in zip(timecourses[i], timecourses[j]):
                 tempTC = np.float64(
-                    (((t1 - t2) ** 2) / (((t1 + t2) / 2.0) ** 2))
+                    ((t1 - t2) ** 2) / (((t1 + t2) / 2.0) ** 2)
                 )
                 tempTC = tempTC * delta_t
                 numResult -= np.nansum(tempTC)
@@ -573,7 +573,7 @@ def L2(timecourses, delta_t, indexes):
         for j in range(i + 1, len(timecourses)):
             numResult = 0.0
             for tc1, tc2 in zip(timecourses[i], timecourses[j]):
-                tempTC = np.float64(((tc1 - tc2) ** 2)) * delta_t
+                tempTC = np.float64((tc1 - tc2) ** 2) * delta_t
                 numResult -= np.nansum(tempTC)
             result.append(numResult)
     return result

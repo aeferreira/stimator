@@ -1,15 +1,11 @@
 import time
 
-from numpy import array, nansum, fabs, empty
 import numpy as np
+from numpy import array, empty, fabs, nansum
 
-import stimator.de as de
-from stimator import utils as utils
+from stimator import de, fim, plots, timecourse
 from stimator.dynamics import ModelSolver
-import stimator.fim as fim
-import stimator.timecourse as timecourse
-import stimator.plots as plots
-
+from stimator.utils import s2HMS
 
 # ----------------------------------------------------------------------------
 #         Optimum criteria for TC similarity
@@ -100,21 +96,20 @@ class OptimumData(object):
 
     def info(self):
         optimum = self
-        headerformat = "--- %-20s -----------------------------\n"
-        res = "\n" + (headerformat % "PARAMETERS")
+        res = "\n--------------- PARAMETERS -----------------------------\n"
         res += "\n".join(["%s\t%12g +- %g" % i for i in optimum.parameters])
         res += "\n\n"
-        res += headerformat % "OPTIMIZATION"
-        res += "%s\t%g\n" % ("Final Score", optimum.optimization_score)
-        res += "%s\t%d\n" % ("generations", optimum.optimization_generations)
+        res += "\n--------------- OPTIMIZATION -----------------------------\n"
+        res += f"Final Score\t{optimum.optimization_score:g}\n"
+        res += f"generations\t{optimum.optimization_generations:d}\n"
 
-        res += "%s\t%d\n" % ("max generations", optimum.max_generations)
-        res += "%s\t%d\n" % ("population size", optimum.pop_size)
-        res += "%s\t%s\n" % ("Exit by", optimum.optimization_exit_by)
+        res += f"max generations\t{optimum.max_generations:d}\n"
+        res += f"population size\t{optimum.pop_size:d}\n"
+        res += f"Exit by\t{optimum.optimization_exit_by:s}\n"
         res += "\n\n"
 
-        res += headerformat % "TIME COURSES"
-        res += "\t\t".join(["Name", "Points", "Score"]) + "\n"
+        res += "\n--------------- TIME COURSES -----------------------------\n"
+        res += "Name\t\tPoints\t\tScore\n"
         res += "\n".join(["%s\t%d\t%g" % i for i in optimum.tcdata])
         res += "\n\n"
         return res
@@ -181,7 +176,7 @@ def txt_report_function(optimizer, phase: int = 0):
                 f"{code} in {optimizer.generation:d} generations.",
                 f"best score = {optimizer.best_score:f}",
                 f"best solution: {optimizer.best}",
-                f"Optimization took {ttime:.3f} s ({utils.s2HMS(ttime)})",
+                f"Optimization took {ttime:.3f} s ({s2HMS(ttime)})",
             )
             res = "\n".join(res)
             optimizer._progress_msgs.append(res)
@@ -479,8 +474,9 @@ def s_timate(
 
 
 def test():
-    from stimator import read_model, get_examples_path
     from matplotlib import pyplot as plt
+
+    from stimator import get_examples_path, read_model
 
     # --- example 1 --------------------
 

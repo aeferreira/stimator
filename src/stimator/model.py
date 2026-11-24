@@ -10,16 +10,13 @@ import re
 from collections import OrderedDict
 from itertools import chain
 
-from dotmap import DotMap
-
 import sympy
+from dotmap import DotMap
 from sympy.parsing.sympy_parser import T, parse_expr
 
-import stimator.dynamics as dynamics
-import stimator.estimation as estimation
-from stimator.kinetics import (allowed_sympy_funcs, allowed_math_funcs)
-import stimator.kinetics as kinetics
-from stimator.utils import _args_2_dict, _is_number, _is_sequence
+from . import kinetics
+from .kinetics import allowed_math_funcs, allowed_sympy_funcs
+from .utils import _args_2_dict, _is_number, _is_sequence
 
 # ----------------------------------------------------------------------------
 #         DotMap functions to recursively insert, get and test inclusion
@@ -74,11 +71,8 @@ def get_allowed_f():
     math_f = {}
     for k in v:
         obj = v[k]
-        if isinstance(obj, float):
+        if isinstance(obj, float) or callable(obj) and not obj.__name__.startswith("__"):
             math_f[k] = obj
-        elif callable(obj):
-            if not obj.__name__.startswith("__"):
-                math_f[k] = obj
     fdict.update(math_f)
     return fdict
 
@@ -192,7 +186,7 @@ def _mass_action_str(k, reagents):
 # ----------------------------------------------------------------------------
 
 
-class ModelObject(object):
+class ModelObject:
     """Base for all model components.
 
     The only common features are a name and a dictionary with metadata"""
@@ -242,7 +236,7 @@ def _set_par(obj, name, value, is_bounds=False):
 
     if not already_exists:
         if vv is None:
-            raise BadTypeComponent("Can not set parameter %s to None" % name)
+            raise BadTypeComponent(f"Can not set parameter {name} to None")
         if isinstance(vv, ConstValue):
             newvalue = vv
         else:  # Bounds object
@@ -315,7 +309,7 @@ class ConstValue(float, ModelObject):
                 vv1 = float(value[1])  # can raise ValueError
                 b = Bounds(self.name, vv0, vv1)
             except (TypeError, ValueError):
-                msg = f"Can not use {str(value)} in {self.name}.bounds"
+                msg = f"Can not use {value} in {self.name}.bounds"
                 raise BadTypeComponent(msg)
         self.bounds = b
 
@@ -399,7 +393,7 @@ class _HasOwnParameters(ModelObject):
         return True
 
 
-class _Has_Parameters_Accessor(object):
+class _Has_Parameters_Accessor:
     def __init__(self, haspar_obj):
         self._haspar_obj = haspar_obj
 
@@ -442,7 +436,7 @@ class StateArray(_HasOwnParameters):
 
     def __str__(self):
         tlist = [(k, str(float(v))) for (k, v) in self._ownparameters.items()]
-        elist = ["{} = {}".format(k, v) for (k, v) in tlist]
+        elist = [f"{k} = {v}" for (k, v) in tlist]
         return "({})".format(", ".join(elist))
 
 
@@ -453,18 +447,18 @@ class _HasRate(_HasOwnParameters):
         self._value = None
 
     def __str__(self):
-        res = "%s:\n  rate = %s\n" % (self.name, str(self()))
+        res = f"{self.name}:\n  rate = {self()}\n"
         if len(self._ownparameters) > 0:
             res += "  Parameters:\n"
             for k, v in self._ownparameters.items():
-                res += "    %s = %g\n" % (k, v)
+                res += f"    {k} = {v:g}\n"
         return res
 
     def __call__(self, fully_qualified=False):
         rate = self.__rate
         if fully_qualified:
             for parname in self._ownparameters:
-                fully = "%s.%s" % (self.name, parname)
+                fully = f"{self.name}.{parname}"
                 rate = re.sub(r"(?<!\.)\b%s\b(?![.\[])" % parname, fully, rate)
         return rate
 
@@ -497,18 +491,18 @@ class Reaction(_HasRate):
 
     def __str__(self):
         rel = [
-            "%s:" % self.name,
-            "  reagents: %s" % str(self._reagents),
-            "  products: %s" % str(self._products),
-            "  stoichiometry: %s" % self.stoichiometry_string,
-            "  rate = %s" % str(self()),
+            f"{self.name}:",
+            f"  reagents: {str(self._reagents)}",
+            f"  products: {str(self._products)}",
+            f"  stoichiometry: {self.stoichiometry_string}",
+            f"  rate = {str(self())}",
         ]
         res = "\n".join(rel) + "\n"
 
         if len(self._ownparameters) > 0:
             resp = ["  Parameters:"]
             for k, v in self._ownparameters.items():
-                resp.append("    %s = %g" % (k, v))
+                resp.append(f"    {k} = {v:g}")
             res = res + "\n".join(resp) + "\n"
         return res
 
@@ -542,7 +536,7 @@ class Reaction(_HasRate):
                 c = str(int(c))
             else:
                 c = str(c)
-            left.append("%s %s" % (c, v))
+            left.append(f"{c} {v}")
         right = []
         for v, c in self._products:
             if c == 1:
@@ -551,14 +545,14 @@ class Reaction(_HasRate):
                 c = str(int(c))
             else:
                 c = str(c)
-            right.append("%s %s" % (c, v))
+            right.append(f"{c} {v}")
         left = " + ".join(left)
         right = " + ".join(right)
         if self._irreversible:
             irrsign = "->"
         else:
             irrsign = "<=>"
-        return ("%s %s %s" % (left, irrsign, right)).strip()
+        return (f"{left} {irrsign} {right}").strip()
 
     stoichiometry_string = property(_stoichiometry_string)
 
@@ -616,7 +610,7 @@ def _set_in_collection(name, col, newobj):
     col.append(newobj)
 
 
-class _init_Accessor(object):
+class _init_Accessor:
     def __init__(self, model):
         self._model = model
 
@@ -639,7 +633,7 @@ class _init_Accessor(object):
         return item in self._model._init._ownparameters
 
 
-class _Parameters_Accessor(object):
+class _Parameters_Accessor:
     def __init__(self, model):
         self._model = model
         self._reactions = model._Model__reactions
@@ -675,7 +669,7 @@ class _Parameters_Accessor(object):
             return self._model.getp(name)
         else:
             report = (name, self._model.name)
-            raise AttributeError("%s is not a parameter of %s" % report)
+            raise AttributeError("{} is not a parameter of {}".format(*report))
 
     def __contains__(self, item):
         try:
@@ -763,7 +757,7 @@ class Model(ModelObject):
         self._ownparameters = OrderedDict()
         self.__transf = QueriableList()
         self.__invars = QueriableList()
-        self._init = StateArray("init", dict())
+        self._init = StateArray("init", {})
         ModelObject.__init__(self, name=title)
         self.__m_Parameters = None
         self.metadata["title"] = title
@@ -875,8 +869,8 @@ class Model(ModelObject):
         if _is_number(rate):
             rate = str(float(rate))
 
-        react_name = "d_%s_dt" % name
-        stoich = " -> %s" % name
+        react_name = f"d_{name}_dt"
+        stoich = f" -> {name}"
         name = react_name  # hope this works...
         self.set_reaction(name, stoich, rate, pars)
 
@@ -946,7 +940,7 @@ class Model(ModelObject):
         if o is None:
             o = self.__invars.get(name)
         if o is None:
-            raise AttributeError("%s is not a component of this model" % name)
+            raise AttributeError(f"{name} is not a component of this model")
         return o
 
     def set_bounds(self, name, value):
@@ -1058,30 +1052,30 @@ class Model(ModelObject):
                 raise BadRateError(msg)
 
         res = [self.metadata["title"]]
-        res.append("\nVariables: %s\n" % " ".join(self.__variables))
+        res.append("\nVariables: {}\n".format(" ".join(self.__variables)))
         if len(self.__extvariables) > 0:
             res.append(
-                "External variables: %s\n" % " ".join(self.__extvariables)
+                "External variables: {}\n".format(" ".join(self.__extvariables))
             )
         for i in chain(self.__reactions, self.__transf, self.__invars):
             res.append(str(i))
-        res.append("init: %s\n" % str(self._init))
+        res.append(f"init: {str(self._init)}\n")
 
         for p in self._ownparameters.values():
-            res.append("%s = %g" % (p.name, p))
+            res.append(f"{p.name} = {p:g}")
 
         if len(self.with_bounds) > 0:
             res.append("\nWith bounds:")
 
             for u in self.with_bounds:
                 res.append(
-                    "%s = ?(%g, %g)" % (u.name, u.bounds.lower, u.bounds.upper)
+                    f"{u.name} = ?({u.bounds.lower:g}, {u.bounds.upper:g})"
                 )
         for k, o in self.metadata.items():
             # skip title and empty container metadata
             if k == "title" or (hasattr(o, "__len__") and len(o) == 0):
                 continue
-            res.append("\n%s: %s" % (str(k), str(o)))
+            res.append(f"\n{str(k)}: {str(o)}")
         return "\n".join(res)
 
     def copy(self, new_title=None):
@@ -1189,14 +1183,14 @@ class Model(ModelObject):
                     print(vname, "are equal")
         return True
 
-    def solve(self, **kwargs):
-        return dynamics.solve(self, **kwargs)
+    # def solve(self, **kwargs):
+    #     return solve(self, **kwargs)
 
-    def scan(self, plan, **kwargs):
-        return dynamics.scan(self, plan, **kwargs)
+    # def scan(self, plan, **kwargs):
+    #     return scan(self, plan, **kwargs)
 
-    def estimate(self, timecourses=None, **kwargs):
-        return estimation.s_timate(self, timecourses=timecourses, **kwargs)
+    # def estimate(self, timecourses=None, **kwargs):
+    #     return estimation.s_timate(self, timecourses=timecourses, **kwargs)
 
     def set_uncertain(self, uncertainparameters):
         self.__m_Parameters = uncertainparameters
@@ -1346,7 +1340,7 @@ def parse_const(model, parsed_name, valueexpr):
         excpt_msg = str(e)
         if excpt_type == "SyntaxError":
             excpt_msg = "Bad expression"
-        return ("%s : %s" % (excpt_type, excpt_msg), 0.0)
+        return (f"{excpt_type} : {excpt_msg}", 0.0)
     return ("", value)
 
 

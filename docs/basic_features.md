@@ -1,4 +1,6 @@
-# Basic features
+---
+title: "Basic features"
+---
 
 ## Models
 

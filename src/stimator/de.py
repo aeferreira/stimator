@@ -8,10 +8,12 @@
 
 """DE : Real-value optimization by Differential evolution."""
 
-from . import utils
 import time
+
 import numpy as np
 import scipy.optimize
+
+from . import utils
 
 
 def default_report_function(optimizer, phase: int = 0):
@@ -50,7 +52,7 @@ def default_report_function(optimizer, phase: int = 0):
 
 
 
-class DESolver(object):
+class DESolver:
     def __init__(
         self,
         pars_count,
@@ -374,10 +376,8 @@ class DESolver(object):
     def SetupClassRandomNumberMethods(self):
         np.random.seed(3)  # this yields same results each time run() is run
         self.nonStandardRandomCount = self.pop_size * self.pars_count * 3
-        if (
-            self.nonStandardRandomCount < 523
-        ):  # set a minimum number of random numbers
-            self.nonStandardRandomCount = 523
+
+        self.nonStandardRandomCount = max(523, self.nonStandardRandomCount)
 
         self.ArrayOfRandomIntegersBetweenZeroAndParameterCount = (
             np.random.random_integers(

@@ -7,9 +7,8 @@ The parsing loop relies on regular expressions."""
 import re
 from io import StringIO
 
-import stimator.model as model
-from stimator.model import (dotmap_insert, dotmap_contains)
-from stimator.model import parse_const
+from stimator import model
+from stimator.model import dotmap_contains, dotmap_insert, parse_const
 
 # ----------------------------------------------------------------------------
 #         Regular expressions for grammar elements and dispatchers
@@ -162,10 +161,9 @@ def logicalLines(textlines):
             currloc = end
             yield (logline, linenum, start, end)
             continuing = False
-    return
 
 
-class _Physical_Line(object):
+class _Physical_Line:
     def __init__(
         self,
         start,
@@ -187,7 +185,7 @@ class _Physical_Line(object):
         self.endlinepos = endlinepos  # end pos, relative to end line
 
 
-class _Logical_Line(object):
+class _Logical_Line:
     def __init__(self, nline, start, end, linestart, lineend):
         self.nline = nline  # logical line
         self.start = start  # start relative to logical line
@@ -274,7 +272,7 @@ def read_model(text):
 # ----------------------------------------------------------------------------
 
 
-class StimatorParser(object):
+class StimatorParser:
     def __init__(self):
         self.reset()
 
@@ -322,7 +320,7 @@ class StimatorParser(object):
                     matchfound = True
                     break  # do not try any more patterns
             if not matchfound:
-                self.setError("Invalid syntax:\n%s" % line, loc)
+                self.setError(f"Invalid syntax:\n{line}", loc)
                 return
 
         # check the validity of rate laws
@@ -331,7 +329,7 @@ class StimatorParser(object):
             m = syntaxErrormatch.match(msg)
             if m:
                 inrate = m.group("inrate")
-                msg = "Syntax Error: bad math expression \n%s" % inrate
+                msg = f"Syntax Error: bad math expression \n{inrate}"
             # get name of transformation with offending rate
             m = inRateErrormatch.match(msg)
             if m:
@@ -443,7 +441,7 @@ class StimatorParser(object):
 
     def dxdtDefParse(self, line, loc, match):
         name = match.group("name")
-        dxdtname = "d_%s_dt" % name
+        dxdtname = f"d_{name}_dt"
         if dxdtname in self.model.reactions:  # repeated declaration
             self.setError("Repeated declaration", loc)
             return
@@ -530,7 +528,7 @@ class StimatorParser(object):
         try:
             _ = eval(state)
         except Exception:
-            self.setError("Bad '%s' state definition" % name, loc)
+            self.setError(f"Bad '{name}' state definition", loc)
             return
 
     def initDefParse(self, line, loc, match):
@@ -538,12 +536,12 @@ class StimatorParser(object):
         state = match.group("value")
         if state[0] == "(" and state[-1] == ")":
             state = state[1:-1]
-        state = "self.model.set_init(%s)" % state
+        state = f"self.model.set_init({state})"
 
         try:
             _ = eval(state)
         except Exception:
-            self.setError("Bad '%s' state definition" % name, loc)
+            self.setError(f"Bad '{name}' state definition", loc)
             return
 
     def constDefParse(self, line, loc, match):
@@ -711,17 +709,17 @@ def try2read_model(text):
             caretline = [" "] * (len(ppos.startline) + 1)
             caretline[ppos.startlinepos] = "^"
             caretline = "".join(caretline)
-            value = "%s\n%s\n" % (ppos.startline.rstrip(), caretline)
+            value = f"{ppos.startline.rstrip()}\n{caretline}\n"
             caretline = [" "] * (len(ppos.endline) + 1)
             caretline[ppos.endlinepos] = "^"
             caretline = "".join(caretline)
-            value = "%s\n%s\n%s" % (value, ppos.endline.rstrip(), caretline)
+            value = f"{value}\n{ppos.endline.rstrip()}\n{caretline}"
         else:
             caretline = [" "] * (len(ppos.startline) + 1)
             caretline[ppos.startlinepos] = "^"
             caretline[ppos.endlinepos] = "^"
             caretline = "".join(caretline)
-            value = "%s\n%s" % (ppos.startline.rstrip(), caretline)
+            value = f"{ppos.startline.rstrip()}\n{caretline}"
         print(value)
 
         print(expt)

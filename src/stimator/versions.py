@@ -2,8 +2,9 @@ versions = {}
 # populate versions dictionary
 
 # these are standard
-import sys
 import platform
+import sys
+
 versions['platform'] = platform.platform()
 versions['python'] = sys.version
 
@@ -51,7 +52,6 @@ except ImportError:
 
 
 def version_info(plist=None):
-    fmtstring = '%-16s : %s\n'
     if plist is None or plist == 'all':
         plist = ['platform', 'python', 'numpy',
                  'scipy', 'matplotlib', 'pandas',
@@ -68,9 +68,9 @@ def version_info(plist=None):
     for p in plist:
         v = versions[p]
         if v is None:
-            res += fmtstring % (p, 'not installed')
+            res += '%-16s : %s\n' % (p, 'not installed')
         else:
-            res += fmtstring % (p, v)
+            res += '%-16s : %s\n' % (p, v)
     return res
 
 if __name__ == '__main__':

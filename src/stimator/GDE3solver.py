@@ -1,10 +1,9 @@
 from time import time
+
 import numpy as np
 from scipy import integrate
 
-import stimator.timecourse as timecourse
-import stimator.dynamics as dynamics
-import stimator.utils as utils
+from stimator import dynamics, timecourse, utils
 from stimator.de import DESolver
 from stimator.moo.rmc import remove_most_crowded
 from stimator.moo.sorting import MOOSorter
@@ -62,7 +61,7 @@ def dominance_delta(old_energies, new_energies):
     return [dominance(o, n) for o, n in zip(old_energies, new_energies)]
 
 
-class ModelSolver(object):
+class ModelSolver:
     """Driver to compute timecourses, given a model and a trial vector.
 
     'model' is a model object
@@ -210,7 +209,7 @@ class GDE3Solver(DESolver):
         self.dif = dif
 
         # threshold for improvement based on 5 % of new solution count
-        self.roomForImprovement = int(round(0.05 * pop_size))
+        self.roomForImprovement = round(0.05 * pop_size)
 
         # counter of number of generations with only non-dominated solutions
         self.fullnondominated = 0
@@ -220,7 +219,7 @@ class GDE3Solver(DESolver):
                         'KL': timecourse.KLdivergence,
                         'L2': timecourse.L2}
         if self.objFunc not in str2distance:
-            raise ("%s is not an implemented divergence function" % self.objFunc)
+            raise (f"{self.objFunc} is not an implemented divergence function")
 
         if self.objFunc in ('L2_midpoint_weights', 'L2'):  # symetric measures
             self.trueMetric = True
@@ -313,7 +312,7 @@ class GDE3Solver(DESolver):
             # print '------- END CONTROL ------------------------------'
 
             timeElapsed = time() - time0
-            print('generation took {} s'.format(timeElapsed))
+            print(f'generation took {timeElapsed} s')
             self.gen_times.append(timeElapsed)
             if self.dump_generations is not None:
                 print(self.generation_string('0'), file=self.dumpfile)
@@ -321,7 +320,7 @@ class GDE3Solver(DESolver):
         else:  # generation >= 1
             time0 = time()
             print('------------------------------------')
-            print('\nGeneration {}'.format(self.generation))
+            print(f'\nGeneration {self.generation}')
 
             print("Generating new candidates...")
             self.new_generation_energies = []
@@ -336,7 +335,8 @@ class GDE3Solver(DESolver):
                     #     print 'SOL REPEATED'
                     #     continue
                     # check if out of bounds
-                    inbounds = np.all(np.logical_and(ltrial <= self.opt_maxs, ltrial >= self.opt_mins))
+                    inbounds = np.all(np.logical_and(ltrial <= self.opt_maxs,
+                                                     ltrial >= self.opt_mins))
                     if inbounds:
                         break
                     else:
@@ -387,7 +387,7 @@ class GDE3Solver(DESolver):
                     working_sols.append(np.copy(self.new_population[i]))
                     n_keys += 2
 
-            print('New dominant solutions: {}'.format(newBetterSols))
+            print(f'New dominant solutions: {newBetterSols}')
             print
             sortingtime = time()
             print("Sorting solutions...")
@@ -396,7 +396,7 @@ class GDE3Solver(DESolver):
             sorter = MOOSorter(objectives, indexes=list(range(1, n_keys + 1)))
             nondominated_waves = sorter.get_non_dominated_fronts()
             flengths = [len(i) for i in nondominated_waves]
-            print('Front lengths: {}'.format(flengths))
+            print(f'Front lengths: {flengths}')
 
             # rebuild current population to pop_size
             self.pop = []
@@ -483,11 +483,11 @@ class GDE3Solver(DESolver):
 
     def generation_string(self, generation):
         generation = str(generation)
-        res = 'generation %s -------------------------\n' % generation
+        res = f'generation {generation} -------------------------\n'
         for s, o in zip(self.pop, self.population_energies):
             sstr = ' '.join([str(i) for i in s])
             ostr = ' '.join([str(i) for i in o])
-            res = res + '%s %s\n' % (sstr, ostr)
+            res = res + f'{sstr} {ostr}\n'
         return res
 
     def finalize(self):
@@ -498,8 +498,8 @@ class GDE3Solver(DESolver):
         print("Finished!")
         print(GDE3Solver.exitCodeStrings[self.exitCode])
         print()
-        print('%d generations' % (self.generation))
-        print("Total time: %g s (%s)" % (ttime, utils.s2HMS(ttime)))
+        print(f'{self.generation} generations')
+        print(f"Total time: {ttime:g} s ({utils.s2HMS(ttime)})")
         print()
         if self.dump_generations is not None:
             if self.generation-1 not in self.dump_generations:

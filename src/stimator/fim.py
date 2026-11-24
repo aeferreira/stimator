@@ -1,6 +1,8 @@
 """functions to compute Fisher Information Matrix"""
 from collections import OrderedDict
-from numpy import array, diag, matrix, zeros, linalg, dstack, sum
+
+from numpy import array, diag, dstack, linalg, matrix, sum, zeros
+
 from stimator.dynamics import add_dSdt_to_model, solve
 from stimator.timecourse import Solutions, constError_func
 
@@ -17,8 +19,8 @@ def __computeNormalizedFIM(model, pars, timecoursedata, expCOV, vars=None):
 
     model is a model object.
 
-    pars is a dicionary of parameter names as keys and parameter values as values,
-    or list of (name,value) pairs
+    pars is a dicionary of parameter names as keys
+    and parameter values as values,or list of (name,value) pairs
         names of the form init.<name> are possible.
 
     timecoursecollection is a Solutions object
@@ -153,7 +155,9 @@ def computeFIM(model, pars, TCs, COV, vars=None):
 def test():
     from stimator.model import Model
     m = Model("Glyoxalase system")
-    m.set_reaction('glo1', "HTA -> SDLTSH", "V*HTA/(Km1 + HTA)", pars=dict(V=2.57594e-05))
+    m.set_reaction('glo1', "HTA -> SDLTSH",
+                   "V*HTA/(Km1 + HTA)",
+                   pars={"V": 2.57594e-05})
     m.set_reaction('glo2', "SDLTSH -> ", "V2*SDLTSH/(Km2 + SDLTSH)")
     m.setp('V', 2.57594e-05)
     m.setp('Km1', 0.252531)
@@ -161,7 +165,7 @@ def test():
     m.setp('Km2', 0.0980973)
     m.set_init(SDLTSH=7.69231E-05, HTA=0.1357)
 
-    pars = "glo1.V Km1".split()
+    pars = ["glo1.V", "Km1"]
     parvalues = [m.parameters.glo1.V, m.parameters.Km1]
 
     sols = Solutions()
@@ -177,19 +181,19 @@ def test():
     divider = '\n------------------------------------------------'
 
     print(divider)
-    glo_1tc_msg = 'Glyoxalase model, 1 timecourse, parameters {} and {}'.format
-    glo_2tc_msg = 'Glyoxalase model, 2 timecourses, parameters {} and {}'.format
-    print(glo_1tc_msg(pars[0], pars[1]))
+    glo_1tc_msg = f'Glyoxalase model, 1 timecourse, pars {pars[0]} and {pars[1]}'
+    glo_2tc_msg = 'Glyoxalase model, 2 timecourses, pars {} and {}'.format
+    print(glo_1tc_msg)
     print('Timecourse with HTA and SDLTSH')
-    _, invFIM1 = computeFIM(m, parsdict, sols, errors, "HTA SDLTSH".split())
+    _, invFIM1 = computeFIM(m, parsdict, sols, errors, ["HTA", "SDLTSH"])
 
     print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
         print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
     print(divider)
-    print(glo_1tc_msg(pars[0], pars[1]))
+    print(glo_1tc_msg)
     print('Timecourse with SDLTSH only')
-    _, invFIM1 = computeFIM(m, parsdict, sols, errors_sdl_only, "SDLTSH".split())
+    _, invFIM1 = computeFIM(m, parsdict, sols, errors_sdl_only, ["SDLTSH"])
     print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
         print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
@@ -203,7 +207,7 @@ def test():
     m.init.HTA = 0.2688
     sols += solve(m, tf=5190.0)
 
-    _, invFIM1 = computeFIM(m, parsdict, sols, errors, "HTA SDLTSH".split())
+    _, invFIM1 = computeFIM(m, parsdict, sols, errors, ["HTA", "SDLTSH"])
     print('\nParameters ---------------------------')
     for i, p in enumerate(parsdict.keys()):
         print("%7s = %.5e +- %.5e" % (p, parsdict[p], invFIM1[i, i]**0.5))
