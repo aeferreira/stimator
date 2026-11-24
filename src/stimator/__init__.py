@@ -1,7 +1,7 @@
 """S-timator package"""
 from pathlib import Path
 
-from . import style
+from . import plots, style
 from .dynamics import scan, solve
 from .estimation import s_timate
 from .model import Model
@@ -17,6 +17,10 @@ from .timecourse import (
 Model.estimate = s_timate  # type: ignore
 Model.solve = solve  # type: ignore
 Model.scan = scan  # type: ignore
+Solution.plot = plots.plot_timecourse
+Solutions.plot = plots.plotTCs
+Solutions.one_plot = plots.one_plot
+Solutions.prepare_grid = plots.prepare_grid
 
 __version__ = '1.0.1'
 

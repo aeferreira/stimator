@@ -120,3 +120,6 @@ venv.bak/
 
 # for now ...
 docs/*
+# pixi environments
+.pixi/*
+!.pixi/config.toml

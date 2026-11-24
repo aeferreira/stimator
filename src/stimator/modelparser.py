@@ -6,6 +6,7 @@ The parsing loop relies on regular expressions."""
 
 import re
 from io import StringIO
+from pathlib import Path
 
 from stimator import model
 from stimator.model import dotmap_contains, dotmap_insert, parse_const
@@ -240,14 +241,10 @@ class StimatorParserError(Exception):
 
 
 def _get_text_as_file(text):
-    # try to open in case it is a pathname
-    try:
-        f = open(text)
-        text = f.read()
-        f.close()
-    except (IOError, OSError):
-        pass
-
+    # read, in case it is a pathname
+    path = Path(text)
+    if path.is_file():
+        text = path.read_text()
     textlines = StringIO(str(text))
     return textlines
 
@@ -408,7 +405,7 @@ class StimatorParser:
             return
 
         if rate.endswith(".."):
-            rate = rate.rstrip("..")
+            rate = rate.removesuffix("..")
             resstring, value = parse_const(self.model, name, rate)
             if resstring != "":
                 loc.start = match.start("rate")
@@ -698,10 +695,9 @@ def try2read_model(text):
                 f"Error in line {expt.physloc.nendline} of model definition"
             )
         else:
-            locmsg = "Error in lines %d-%d of model definition" % (
-                expt.physloc.nstartline,
-                expt.physloc.nendline,
-            )
+            sl = expt.physloc.nstartline
+            el = expt.physloc.nendline
+            locmsg = f"Error in lines {sl}-{el} of model definition"
         print(locmsg)
 
         ppos = expt.physloc

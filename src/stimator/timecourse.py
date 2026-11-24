@@ -5,8 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
-from stimator import plots
-from stimator.utils import _is_number, _is_sequence, _is_string
+# from . import plots
+from .utils import _is_number, _is_sequence, _is_string
 
 FRAC_PATTERN = r"[-]?\d*[.]?\d+"
 REAL_PATTERN = FRAC_PATTERN + r"(e[-]?\d+)?"
@@ -307,8 +307,8 @@ class SolutionTimeCourse:
         self.names = [self.names[i] for i in newindexes]
         self.data = self.data[np.array(newindexes, dtype=int)]
 
-    def plot(self, **kwargs):
-        return plots.plot_timecourse(self, **kwargs)
+    # def plot(self, **kwargs):
+    #     return plots.plot_timecourse(self, **kwargs)
 
 
 # ----------------------------------------------------------------------------
@@ -418,14 +418,14 @@ class Solutions:
                 common_names.intersection_update(names)
         return list(common_names)
 
-    def plot(self, **kwargs):
-        return plots.plotTCs(self, **kwargs)
+    # def plot(self, **kwargs):
+    #     return plots.plotTCs(self, **kwargs)
 
-    def one_plot(self, **kwargs):
-        return plots.one_plot(self, **kwargs)
+    # def one_plot(self, **kwargs):
+    #     return plots.one_plot(self, **kwargs)
 
-    def prepare_grid(self, **kwargs):
-        return plots.prepare_grid(self, **kwargs)
+    # def prepare_grid(self, **kwargs):
+    #     return plots.prepare_grid(self, **kwargs)
 
 
 def read_tc(source, filedir=None, names=None, title=None, verbose=False):
